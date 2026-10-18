@@ -1,6 +1,7 @@
 # Builds and publishes the Docker images of a release, when a version tag reaches the public repository
 # (scripts/publish-public.sh): the server and the MCP server, for amd64 and arm64, on Docker Hub (totalbase/…) and GitHub's
-# registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release.
+# registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release; any other pre-release
+# (a test of this workflow) only its version.
 name: Release
 
 on:
@@ -40,12 +41,19 @@ jobs:
         name: Tags
         run: |
           version="${GITHUB_REF_NAME#v}"
-          channel=$([[ "$version" == *-beta.* ]] && echo beta || ([[ "$version" == *-rc.* ]] && echo rc || echo latest))
+          # A channel only for what it names: a beta, a release candidate, a stable version. Any other pre-release
+          # (a test of this workflow, 0.0.0-test.1) gets its version alone - never latest.
+          case "$version" in
+            *-beta.*) channel=beta ;;
+            *-rc.*) channel=rc ;;
+            *-*) channel= ;;
+            *) channel=latest ;;
+          esac
           {
             echo "list<<EOF"
             for registry in "totalbase" "ghcr.io/totalbase-io"; do
               echo "$registry/${{ matrix.image }}:$version"
-              echo "$registry/${{ matrix.image }}:$channel"
+              [ -n "$channel" ] && echo "$registry/${{ matrix.image }}:$channel"
             done
             echo "EOF"
           } >> "$GITHUB_OUTPUT"

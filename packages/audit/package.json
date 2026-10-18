@@ -1,0 +1,26 @@
+{
+  "name": "@totalbase/audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --no-file-parallelism"
+  },
+  "dependencies": {
+    "@totalbase/database": "workspace:*",
+    "@totalbase/errors": "workspace:*",
+    "@totalbase/settings": "workspace:*",
+    "@totalbase/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@totalbase/migrations": "workspace:*",
+    "vitest": "^2.1.8"
+  }
+}

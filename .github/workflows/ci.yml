@@ -1,0 +1,85 @@
+# Continuous integration (Pre_Beta_Review 5.1): typecheck, build, the admin's unit tests, and the PostgreSQL
+# integration suite on every supported major (AGENTS.md §4A: 15-18). The Playwright e2e suite isn't run here -
+# it needs a running instance and is exercised by hand before a release.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, build, admin unit tests
+    runs-on: ubuntu-latest
+    env:
+      # The admin's `nuxt typecheck` (vue-tsc) peaks around 2.6 GB, over Node's default heap.
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r run build
+      # Includes the admin's `nuxt typecheck`.
+      - run: pnpm -r run typecheck
+      - run: pnpm --filter @totalbase/admin run lint
+      - run: pnpm --filter @totalbase/admin exec vitest run
+
+  integration:
+    name: Integration tests (PostgreSQL ${{ matrix.postgres }})
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [15, 16, 17, 18]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: totalbase
+          POSTGRES_PASSWORD: totalbase
+          POSTGRES_DB: totalbase_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U totalbase"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # files.storage_local_path's default, as the Dockerfile creates it.
+      - run: sudo mkdir -p /var/lib/totalbase/files && sudo chown -R "$USER" /var/lib/totalbase
+      # scripts/test-integration.sh sources .env and points POSTGRES_DB at the test database itself.
+      - name: Write .env
+        run: |
+          cat > .env <<'ENV'
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+          POSTGRES_DB=totalbase_test
+          POSTGRES_USER=totalbase
+          POSTGRES_PASSWORD=totalbase
+          TOTALBASE_TEST_DB=totalbase_test
+          TOTALBASE_ADMIN_EMAIL=admin@totalbase.local
+          TOTALBASE_ADMIN_PASSWORD=ci-admin-password-1
+          TOTALBASE_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          TOTALBASE_PUBLIC_URL=http://localhost:3050
+          TOTALBASE_PORT=3050
+          NODE_ENV=test
+          LOG_LEVEL=warn
+          ENV
+      - run: bash scripts/test-integration.sh

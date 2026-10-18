@@ -1,0 +1,64 @@
+# Builds and publishes the Docker images of a release, when a version tag reaches the public repository
+# (scripts/publish-public.sh): the server and the MCP server, for amd64 and arm64, on Docker Hub (totalbase/…) and GitHub's
+# registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    # Only the public repository publishes; the development repository's tags never do.
+    if: github.repository == 'totalbase-io/totalbase'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: server
+            image: totalbase
+          - target: mcp
+            image: totalbase-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: tags
+        name: Tags
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          channel=$([[ "$version" == *-beta.* ]] && echo beta || ([[ "$version" == *-rc.* ]] && echo rc || echo latest))
+          {
+            echo "list<<EOF"
+            for registry in "totalbase" "ghcr.io/totalbase-io"; do
+              echo "$registry/${{ matrix.image }}:$version"
+              echo "$registry/${{ matrix.image }}:$channel"
+            done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/totalbase-io/totalbase
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

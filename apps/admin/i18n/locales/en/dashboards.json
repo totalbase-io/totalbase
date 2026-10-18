@@ -1,0 +1,1282 @@
+{
+  "dashboards": {
+    "catalog": {
+      "groups": {
+        "indicators": "Indicators",
+        "comparison": "Comparison",
+        "trend": "Trend",
+        "proportion": "Proportion",
+        "distribution": "Distribution and relation",
+        "maps": "Maps",
+        "tables": "Tables",
+        "visualization": "Visualization",
+        "insertion": "Insertion"
+      },
+      "widgets": {
+        "KPI": {
+          "label": "KPI",
+          "description": "One number, large - with its change and its trend.",
+          "roles": {
+            "value": {
+              "description": "The number shown - from the last row. Defaults to the first number column."
+            },
+            "target": {
+              "description": "A goal from the query - shown as how far the value is from it."
+            }
+          }
+        },
+        "GAUGE": {
+          "label": "Gauge",
+          "description": "A value on an arc, against its target.",
+          "roles": {
+            "value": {
+              "description": "The value on the arc - from the last row. Defaults to the first number column."
+            },
+            "target": {
+              "description": "The full arc, from the query. Without it, the Target prop."
+            }
+          },
+          "props": {
+            "thresholds": {
+              "description": "Colors by value, in order: the first is the base color, each next one applies from its value up - a number, a column of the row or a variable. On a gauge, the arc in bands of those colors."
+            }
+          }
+        },
+        "BAR": {
+          "label": "Bar chart",
+          "description": "Vertical bars - one group per category, one bar per series."
+        },
+        "BAR_HORIZONTAL": {
+          "label": "Horizontal bar",
+          "description": "Horizontal bars - for long labels; order the query yourself."
+        },
+        "LEADERBOARD": {
+          "label": "Leaderboard",
+          "description": "A ranked list with bars - order and LIMIT the query yourself.",
+          "roles": {
+            "value": {
+              "description": "The ranked value. Defaults to the first number column."
+            },
+            "category": {
+              "description": "Each row's name. Defaults to the first column that isn't a number."
+            },
+            "image": {
+              "description": "A file column (an image) shown as a thumbnail beside each row. Defaults to the first file column."
+            }
+          }
+        },
+        "LINE": {
+          "label": "Line chart",
+          "description": "One line per series, over time or categories - oldest first."
+        },
+        "AREA": {
+          "label": "Area chart",
+          "description": "Lines filled below - totals over time."
+        },
+        "PIE": {
+          "label": "Pie chart",
+          "description": "Each row a slice of the whole.",
+          "roles": {
+            "value": {
+              "description": "The slice sizes. Defaults to the first number column."
+            },
+            "category": {
+              "description": "Each slice's name. Defaults to the first column that isn't a number."
+            }
+          }
+        },
+        "DONUT": {
+          "label": "Donut chart",
+          "description": "A pie with a hole - each row a slice of the whole.",
+          "roles": {
+            "value": {
+              "description": "The slice sizes. Defaults to the first number column."
+            },
+            "category": {
+              "description": "Each slice's name. Defaults to the first column that isn't a number."
+            }
+          }
+        },
+        "MAP": {
+          "label": "Map",
+          "description": "Points on a street map - from a point column, or latitude and longitude.",
+          "roles": {
+            "label": {
+              "description": "Shown on a point's tooltip. Defaults to the first column that isn't a number."
+            }
+          },
+          "props": {
+            "displayFormat": {
+              "description": "How the Size value reads in a point's tooltip. Unset: its column's format."
+            }
+          }
+        },
+        "TABLE": {
+          "label": "Table",
+          "description": "The rows as they come - columns starting with _ never show.",
+          "props": {
+            "colorColumn": {
+              "description": "A column whose value - a palette name - tints its row. Unset, a column named _color. _<column>_color shows that column as colored badges."
+            },
+            "click": {
+              "description": "What a click on a row does. Its values are formulas over the clicked row and the variables."
+            }
+          }
+        },
+        "TImage": {
+          "description": "A fixed image - a logo, a branch's floor plan: a file uploaded here (public) or an https URL."
+        },
+        "THeading": {
+          "description": "A section title - a formula may name what is shown: \"Sales of \" + {'{'}{'{'}vars.seller.label{'}'}{'}'}."
+        },
+        "TText": {
+          "description": "A paragraph - its text a formula over the variables, the viewer and the query's rows."
+        },
+        "TQrCode": {
+          "description": "A QR code of a value - a link to this report, a device's code - drawn in the browser."
+        },
+        "UBadge": {
+          "description": "A short label - its text and color may be formulas: a state, a count."
+        },
+        "UAlert": {
+          "description": "A message with a title and a description - a warning the query or a variable decides."
+        },
+        "USeparator": {
+          "description": "A rule between sections, with an optional label."
+        },
+        "TFrame": {
+          "description": "Another site's page in a sandboxed frame - its URL may take {'{'}{'{'}vars.…{'}'}{'}'}, {'{'}{'{'}user.…{'}'}{'}'} and {'{'}{'{'}row.…{'}'}{'}'} values after the site."
+        },
+        "PROGRESS": {
+          "label": "Progress",
+          "description": "A bar of a value toward its target - \"$ 13.9M of $ 30M · 46 %\", colored by thresholds.",
+          "roles": {
+            "value": {
+              "description": "The value - from the last row. Defaults to the first number column."
+            },
+            "target": {
+              "description": "The goal, from the query. Without it, the Target prop."
+            }
+          },
+          "props": {
+            "target": {
+              "description": "The goal, when the query has no Target column."
+            },
+            "thresholds": {
+              "description": "Colors by value, in order: the first is the base color, each next one applies from its value up - a number, a column of the row or a variable. On the value, or on the percent with Thresholds on: Percent. Wins over Color."
+            }
+          }
+        },
+        "COMBO": {
+          "label": "Combo chart",
+          "description": "Bars and lines on two axes - the first value column as bars on the left, the rest as lines on the right.",
+          "roles": {
+            "values": {
+              "description": "Two or more columns: the first as bars (left axis), the rest as lines (right axis) - Series changes that."
+            }
+          }
+        },
+        "WATERFALL": {
+          "label": "Waterfall",
+          "description": "How a total is built - each row a change up or down; a total row the running sum so far.",
+          "roles": {
+            "value": {
+              "description": "Each row's change, with its sign. Defaults to the first number column."
+            }
+          }
+        },
+        "FUNNEL": {
+          "label": "Funnel",
+          "description": "Steps in the query's order, each with its share of the first or the previous step.",
+          "roles": {
+            "category": {
+              "description": "Each step's name - in the query's order. Defaults to the first column that isn't a number."
+            },
+            "value": {
+              "description": "Each step's value - never negative. Defaults to the first number column."
+            }
+          }
+        },
+        "TREEMAP": {
+          "label": "Treemap",
+          "description": "Nested rectangles by levels (branch → category → product), each sized by its value; a parent is the sum of its children.",
+          "roles": {
+            "value": {
+              "description": "A leaf's value - summable (never an average), never negative. Defaults to the first number column."
+            }
+          },
+          "props": {
+            "showLabels": {
+              "description": "Each node's name in it."
+            }
+          }
+        },
+        "SUNBURST": {
+          "label": "Sunburst",
+          "description": "Rings by levels, the innermost the first; a parent is the sum of its children.",
+          "roles": {
+            "levels": {
+              "description": "The hierarchy, innermost ring first - every column that isn't a number by default. A NULL ends its branch there."
+            },
+            "value": {
+              "description": "A leaf's value - summable (never an average), never negative. Defaults to the first number column."
+            }
+          }
+        },
+        "HEATMAP": {
+          "label": "Heatmap",
+          "description": "A grid of two categories (day × hour, branch × month), each cell colored by its value; a missing cell stays empty.",
+          "roles": {
+            "value": {
+              "description": "Each cell's value. Defaults to the first number column."
+            }
+          },
+          "props": {
+            "color": {
+              "description": "The scale's hue, from the background to it - unset, the theme's primary. Thresholds draw fixed bands instead."
+            },
+            "thresholds": {
+              "description": "Colors by value, in order: the first is the base color, each next one applies from its value up - a number, a column of the row or a variable. On a heatmap, bands of those colors with their legend."
+            },
+            "click": {
+              "description": "What a click on a cell does. Its values are formulas over the clicked row and the variables."
+            }
+          }
+        },
+        "CALENDAR": {
+          "label": "Calendar heatmap",
+          "description": "Every day of a year colored by its value - a year per row, the latest three.",
+          "roles": {
+            "value": {
+              "description": "Each day's value. Defaults to the first number column."
+            }
+          },
+          "props": {
+            "color": {
+              "description": "The scale's hue, from the background to it - unset, the theme's primary. Thresholds draw fixed bands instead."
+            },
+            "thresholds": {
+              "description": "Colors by value, in order: the first is the base color, each next one applies from its value up - a number, a column of the row or a variable. On a calendar, bands of those colors with their legend."
+            },
+            "click": {
+              "description": "What a click on a day does. Its values are formulas over the clicked row and the variables."
+            }
+          }
+        },
+        "SCATTER": {
+          "label": "Scatter and bubbles",
+          "description": "Points by two numbers - with Size, bubbles; with Group, a series per group.",
+          "roles": {
+            "x": {
+              "description": "Defaults to the first number column; a date chosen by hand."
+            },
+            "y": {
+              "description": "Defaults to the next number column."
+            },
+            "size": {
+              "description": "Each point's size (radius by its square root, 6 to 40 px) - bubbles. Optional."
+            },
+            "label": {
+              "description": "Each point's name in its tooltip. Defaults to the first column that isn't a number."
+            }
+          },
+          "props": {
+            "series": {
+              "description": "Per Group value: its name and color. Unset: the Group column's presentation (its labels and colors)."
+            },
+            "axes": {
+              "description": "The x and y axes' title, range, scale and format. Unset minimum: fitted to the data."
+            },
+            "references": {
+              "description": "Lines and bands - a line on the y axis (or the x one), at a number, a statistic, a column or a variable."
+            },
+            "click": {
+              "description": "What a click on a point does. Its values are formulas over the clicked row and the variables."
+            },
+            "zoom": {
+              "description": "Bars under and beside the chart, and the wheel or a pinch, to zoom into a range of x and y."
+            }
+          }
+        },
+        "DETAIL": {
+          "label": "Detail",
+          "description": "One row as label / value pairs, with its image - the query's first row.",
+          "roles": {
+            "columns": {
+              "description": "The fields shown, in this order. Defaults to every column (but _ ones)."
+            },
+            "image": {
+              "description": "A file column shown as its image, above (or beside, with layout Two). Defaults to the first file column."
+            }
+          },
+          "props": {
+            "columnSettings": {
+              "label": "Field settings",
+              "description": "Per field: its title, format, text when empty, look - over what its presentation says."
+            },
+            "click": {
+              "description": "What a click on the card does. Its values are formulas over the clicked row and the variables."
+            }
+          }
+        },
+        "PIVOT": {
+          "label": "Pivot table",
+          "description": "The query's detail rows aggregated by PostgreSQL into rows × columns, with subtotals and totals - never added up on screen.",
+          "roles": {
+            "columns": {
+              "description": "Levels across the top (at most 60 values). Optional."
+            },
+            "values": {
+              "description": "What is aggregated - each with its aggregate. Defaults to every number column."
+            }
+          },
+          "props": {
+            "columnSettings": {
+              "label": "Value settings",
+              "description": "Per value or row column: its title, format, text when empty - over what its presentation says."
+            },
+            "click": {
+              "description": "What a click on a detail cell (not a total) does. Its values are formulas over the clicked row and the variables."
+            }
+          }
+        }
+      },
+      "roles": {
+        "category": {
+          "label": "Category",
+          "description": "The axis labels - a date makes a time axis. Defaults to the first column that isn't a number."
+        },
+        "values": {
+          "label": "Values",
+          "description": "One series per column, in this order. Defaults to every number column."
+        },
+        "series": {
+          "label": "Series",
+          "description": "Long format: one series per value of this column (`month, seller, total`) - with one value column. Optional."
+        },
+        "label": {
+          "label": "Label",
+          "description": "Each row's name. Defaults to the first column that isn't a number."
+        },
+        "value": {
+          "label": "Value",
+          "description": "The number shown - from the last row. Defaults to the first number column."
+        },
+        "compare": {
+          "label": "Comparison",
+          "description": "The value it compares with, from the same row (e.g. last month's). Without it, the previous row's value."
+        },
+        "time": {
+          "label": "Time",
+          "description": "With it, the rows are a series, oldest first: the last is the value, the rest its trend."
+        },
+        "target": {
+          "label": "Target",
+          "description": "A goal from the query - shown as how far the value is from it."
+        },
+        "location": {
+          "label": "Location",
+          "description": "A point column (x = longitude, y = latitude). Defaults to the first point column."
+        },
+        "latitude": {
+          "label": "Latitude",
+          "description": "Only without a point column - chosen by hand, with Longitude."
+        },
+        "longitude": {
+          "label": "Longitude",
+          "description": "Only without a point column - chosen by hand, with Latitude."
+        },
+        "size": {
+          "label": "Size",
+          "description": "Scales each point by this value. Optional."
+        },
+        "columns": {
+          "label": "Columns",
+          "description": "The columns shown, in this order. Defaults to every column (but _ ones)."
+        },
+        "tooltip": {
+          "label": "Tooltip",
+          "description": "More columns shown in a mark's tooltip, with their titles and formats. Optional."
+        },
+        "total": {
+          "label": "Total",
+          "description": "Chosen by hand: a true/false column - a true row draws the running total so far from 0 (its value is ignored)."
+        },
+        "levels": {
+          "label": "Levels",
+          "description": "The hierarchy, outermost first - every column that isn't a number by default. A NULL ends its branch there."
+        },
+        "x": {
+          "label": "X",
+          "description": "The columns - in the query's order (a date sorted). Defaults to the first column that isn't a number; a number (an hour) only by hand."
+        },
+        "y": {
+          "label": "Y",
+          "description": "The rows - in the query's order (a date sorted). Defaults to the next column that isn't a number; a number (a weekday) only by hand."
+        },
+        "group": {
+          "label": "Group",
+          "description": "A series per value of this column, colored by its presentation. Optional."
+        },
+        "date": {
+          "label": "Date",
+          "description": "The day. Defaults to the first date column."
+        },
+        "image": {
+          "label": "Image",
+          "description": "A file column shown as its image. Defaults to the first file column."
+        },
+        "rows": {
+          "label": "Rows",
+          "description": "One or more levels down the side, outermost first. Defaults to the first column that isn't a number."
+        }
+      },
+      "props": {
+        "color": {
+          "label": "Color",
+          "description": "A palette hue for its marks - unset, the theme's primary."
+        },
+        "showLegend": {
+          "label": "Show legend",
+          "description": "The series' (or slices') names, beside the chart."
+        },
+        "compact": {
+          "label": "Compact number",
+          "description": "Abbreviates large numbers - 11.6M, 2.4K - keeping the format's text and decimals (\"$ #,##0\" + compact: $ 1.3M). Unset: on, unless a format applies."
+        },
+        "colorColumn": {
+          "label": "Color column",
+          "description": "A column whose value - a palette name: red, emerald, amber... - colors its row's mark. Unset, a column named _color, if the query returns one."
+        },
+        "stacked": {
+          "label": "Stacked",
+          "description": "Stacks the series instead of placing them side by side."
+        },
+        "smooth": {
+          "label": "Smooth line",
+          "description": "Curves the line between points."
+        },
+        "showDelta": {
+          "label": "Show change",
+          "description": "Percent change vs. the comparison, green up / red down."
+        },
+        "sparkline": {
+          "label": "Show trend",
+          "description": "A small line of the value across the rows (order them by time)."
+        },
+        "lowerIsBetter": {
+          "label": "Lower is better",
+          "description": "Flips the change's colors - for costs or response times."
+        },
+        "target": {
+          "label": "Target",
+          "description": "The value the full arc stands for, when the query has no Target column."
+        },
+        "cluster": {
+          "label": "Group nearby points",
+          "description": "Joins points close together into a numbered circle."
+        },
+        "columnSettings": {
+          "label": "Column settings",
+          "description": "Per column: its title, alignment, format, look and total - over what its presentation says."
+        },
+        "displayFormat": {
+          "label": "Format",
+          "description": "How its numbers read - a pattern such as \"$ #,##0\", \"0.0 %\" (% never multiplies: 85 reads 85.0 %) or \"CURRENCY:ARS\". Unset: the value column's own format, else the viewer's language."
+        },
+        "series": {
+          "label": "Series",
+          "description": "Per value column - or, in long format, per value of the Series column: its name, color, type, axis and format. Unset: inherited."
+        },
+        "axes": {
+          "label": "Axes",
+          "description": "Each axis' title, range, scale and format. The right axis shows once a series uses it."
+        },
+        "thresholds": {
+          "label": "Thresholds",
+          "description": "Colors by value, in order: the first is the base color, each next one applies from its value up - a number, a column of the row or a variable. Wins over Color."
+        },
+        "references": {
+          "label": "Reference lines",
+          "description": "Lines and bands on the value axis - at a number, a statistic of the series, a column or a variable. Their labels read in the axis' format."
+        },
+        "click": {
+          "label": "On click",
+          "description": "What a click on a mark does. Its values are formulas over the clicked row and the variables."
+        },
+        "zoom": {
+          "label": "Zoom",
+          "description": "A bar under the chart, and the wheel or a pinch, to zoom into a range."
+        },
+        "showTarget": {
+          "label": "Show target",
+          "description": "\"of $ 30M\" after the value."
+        },
+        "showPercent": {
+          "label": "Show percent",
+          "description": "The share of the target reached - past it, its real value (115 %)."
+        },
+        "thresholdsOn": {
+          "label": "Thresholds on",
+          "description": "Value: the thresholds read the value; Percent: the percent of the target (60 = 60 %)."
+        },
+        "finalTotal": {
+          "label": "Final total",
+          "description": "A last bar with the running total."
+        },
+        "finalTotalLabel": {
+          "label": "Final total's name",
+          "description": "Unset: \"Total\" in the viewer's language."
+        },
+        "increaseColor": {
+          "label": "Increase color",
+          "description": "A palette hue for a change up."
+        },
+        "decreaseColor": {
+          "label": "Decrease color",
+          "description": "A palette hue for a change down."
+        },
+        "totalColor": {
+          "label": "Total color",
+          "description": "A palette hue for a total - unset, the theme's primary."
+        },
+        "sort": {
+          "label": "Order",
+          "description": "The query's order, or the largest first."
+        },
+        "conversion": {
+          "label": "Conversion",
+          "description": "Each step's percent of the first step, of the previous one, or none."
+        },
+        "showLabels": {
+          "label": "Show labels",
+          "description": "Each node's name on it."
+        },
+        "visibleLevels": {
+          "label": "Levels shown",
+          "description": "How many levels at once - a tap goes down one, the breadcrumb back."
+        },
+        "showValues": {
+          "label": "Show values",
+          "description": "Each cell's number written in it."
+        },
+        "layout": {
+          "label": "Layout",
+          "description": "Automatic: two columns from 6 wide, one on a phone; or always one or two."
+        },
+        "aggregates": {
+          "label": "Aggregates",
+          "description": "Required for each value: sum, average, minimum, maximum or count, computed by PostgreSQL over the detail rows - an average is the real one, never an average of averages."
+        },
+        "subtotals": {
+          "label": "Subtotals",
+          "description": "A subtotal for each level of the rows."
+        },
+        "rowTotals": {
+          "label": "Row totals",
+          "description": "A total column at the right."
+        },
+        "columnTotals": {
+          "label": "Column totals",
+          "description": "A total row at the bottom."
+        },
+        "sortBy": {
+          "label": "Sort rows by",
+          "description": "A value's total, ascending or descending. Unset: by the rows' own values."
+        }
+      },
+      "refresh": {
+        "30": "Every 30 seconds",
+        "60": "Every minute",
+        "300": "Every 5 minutes",
+        "900": "Every 15 minutes",
+        "3600": "Every hour"
+      }
+    },
+    "variables": {
+      "presets": {
+        "last_hour": "Last hour",
+        "today": "Today",
+        "last_7_days": "Last 7 days",
+        "last_30_days": "Last 30 days",
+        "last_90_days": "Last 90 days",
+        "this_month": "This month",
+        "last_month": "Last month",
+        "this_year": "This year",
+        "all": "All time"
+      },
+      "types": {
+        "DATE_RANGE": {
+          "label": "Date range",
+          "description": "Use as $VAR.<name>.from / $VAR.<name>.to (timestamptz)."
+        },
+        "SELECT": {
+          "label": "Select",
+          "description": "One option (text) or several (text[] - use = ANY(...))."
+        },
+        "TEXT": {
+          "label": "Text",
+          "description": "Free text (text)."
+        },
+        "NUMBER": {
+          "label": "Number",
+          "description": "A number (numeric)."
+        }
+      }
+    },
+    "createModal": {
+      "title": "New Dashboard",
+      "description": "Name it and give it a slug - widgets come next.",
+      "nameSlugRequired": "Name and slug are required",
+      "createFailed": "Could not create Dashboard"
+    },
+    "fromTable": {
+      "blank": "Blank",
+      "menu": "From a table",
+      "title": "New Dashboard from a table",
+      "description": "Reads a table or view and proposes a dashboard - you choose what goes in.",
+      "submit": "Create Dashboard",
+      "steps": {
+        "source": {
+          "title": "Source",
+          "description": "The table or view"
+        },
+        "analysis": {
+          "title": "Analysis",
+          "description": "Each column's role"
+        },
+        "review": {
+          "title": "Review",
+          "description": "Widgets and security"
+        },
+        "generate": {
+          "title": "Generate",
+          "description": "Create the draft"
+        }
+      },
+      "tableOrView": "Table or view",
+      "tableOrViewHelp": "Read from its definition, constraints and statistics - never its rows.",
+      "analyzing": "Analyzing...",
+      "analyzed": "{columns} columns analyzed, {widgets} widgets proposed.",
+      "analyzeFailed": "Could not analyze the table",
+      "analyzeAgain": "Analyze again",
+      "columnsCount": "{n} column | {n} columns",
+      "column": "Column",
+      "role": "Role",
+      "reason": "Why",
+      "alternatives": "Alternatives: {columns}",
+      "roles": {
+        "moment": "Moment",
+        "deadline": "Deadline",
+        "measure": "Measure",
+        "category": "Category",
+        "dimension": "Dimension",
+        "identifier": "Identifier",
+        "place": "Place",
+        "file": "File",
+        "discarded": "Discarded"
+      },
+      "nameHelp": "Up to {max} characters. The slug comes from it.",
+      "nameRequired": "The name is required",
+      "nameTooLong": "At most {max} characters",
+      "widgets": "Widgets",
+      "widgetsHelp": "The proposed ones are ticked; the rest can be added.",
+      "variables": "Variables",
+      "variablesHelp": "Filters the viewer picks - change them in the editor afterwards.",
+      "security": "Security",
+      "securityOptions": {
+        "openOnViewers": "Open on the viewer's {column}",
+        "onlyViewers": "Only the viewer's {column}"
+      },
+      "securityAllRows": "Every row",
+      "source": "Source",
+      "widgetsCount": "{n} widget | {n} widgets",
+      "variablesCount": "No variables | {n} variable | {n} variables",
+      "generateHelp": "Creates an unpublished draft: every widget's SQL stays visible and editable in the editor.",
+      "specInvalid": "The dashboard could not be created: {n} problem | The dashboard could not be created: {n} problems",
+      "created": "Dashboard \"{name}\" created",
+      "createFailed": "Could not create the Dashboard"
+    },
+    "detailsModal": {
+      "title": "Dashboard details",
+      "refreshOff": "Off",
+      "loadRolesFailed": "Could not load roles",
+      "saveFailed": "Could not save Dashboard",
+      "autoRefresh": "Auto-refresh",
+      "autoRefreshHelp": "How often the App re-runs every widget while the page is open and its tab visible. Applies at once, without publishing; the editor doesn't auto-refresh.",
+      "visibleToRoles": "Visible to roles",
+      "visibleToRolesHelp": "Who can view this dashboard in Apps once it's published. Administrators always can. Leave empty for administrators only."
+    },
+    "widgetDrawer": {
+      "query": "Query",
+      "runFailed": "Could not run the query.",
+      "saveFailed": "Could not save widget",
+      "widget": "Widget",
+      "queryDescription": "SQL runs read-only. Ctrl+Enter to run. Use $VAR.<name> for the dashboard's variables and $USER.<column> for the viewer.",
+      "runToPreview": "Run the query to preview the widget.",
+      "rows": "{n} rows | {n} row | {n} rows",
+      "cutOff": " (cut off at {setting})",
+      "wrap": "Wrap",
+      "example": "Example",
+      "replacesQuery": "Replaces the current query.",
+      "runsOnItsOwn": "Runs on its own - no table needed.",
+      "useThisQuery": "Use this query",
+      "optionalFilter": "Optional filter",
+      "optionalFilterHelp": "A condition that applies only while the variable has a value - standard SQL, written at the cursor.",
+      "variable": "Variable",
+      "column": "Column",
+      "columnHelp": "A column of your query, or an expression ({example}).",
+      "insert": "Insert",
+      "results": "Results",
+      "run": "Run",
+      "duration": " · {ms} ms",
+      "presentationDescription": "Read-only SQL, optional: its formulas read the first row as {'{'}{'{'}row.<column>{'}'}{'}'} and every row as {'{'}{'{'}rows{'}'}{'}'}, beside {'{'}{'{'}vars.<name>{'}'}{'}'} and {'{'}{'{'}user.<field>{'}'}{'}'}.",
+      "detailFirstRow": "Detail shows the first of {count} rows."
+    },
+    "variablesBar": {
+      "loadOptionsFailed": "Could not load options",
+      "customRange": "Custom range",
+      "from": "{label} from",
+      "to": "{label} to",
+      "reset": "Reset"
+    },
+    "variablesModal": {
+      "defaultLabel": "Variable {n}",
+      "noDefault": "None (unset)",
+      "fixedList": "Fixed list",
+      "fixedListHelp": "Type the options.",
+      "query": "Query",
+      "queryHelp": "First column = value, optional second = label. May use $USER.* and other variables ($VAR.country) - its options then follow them.",
+      "saveFailed": "Could not save variables",
+      "title": "Variables",
+      "description": "Filters viewers pick in the bar above the canvas. Reference them in widget SQL as $VAR.<name>.",
+      "empty": "No variables yet.",
+      "add": "Add variable",
+      "nameHelp": "Lowercase, digits, underscores.",
+      "labelHelp": "Shown in the variables bar.",
+      "allowSeveral": "Allow several values",
+      "options": "Options",
+      "values": "Values",
+      "valuesHelp": "Each option: its value (what the query compares) and, optionally, what the viewer reads - true / Yes. Unset is All.",
+      "optionsQuery": "Options query",
+      "optionsQueryHelp": "Runs read-only, like a widget query.",
+      "default": "Default",
+      "defaultHelp": "Used until the viewer picks a value.",
+      "useInSql": "Use in SQL:",
+      "addToStart": "Add a variable to start.",
+      "fromTable": "Table",
+      "fromTableHelp": "A table's rows: its key the value, its row presentation the label - no SQL.",
+      "table": "Table",
+      "tableHelp": "Each row an option - its key the value, its row presentation (Database) the label.",
+      "filters": "Filters",
+      "filtersHelp": "A column of the table equal to another variable's value - the cities of the selected country. No value, no filter.",
+      "filterColumn": "Filter {n}: column",
+      "filterVariable": "Filter {n}: variable",
+      "addFilter": "Add filter",
+      "optionValue": "Option {n}: value",
+      "optionLabel": "Option {n}: label",
+      "removeOption": "Remove option {n}",
+      "removeFilter": "Remove filter {n}",
+      "addOption": "Add option",
+      "defaultNone": "None",
+      "defaultConstant": "A value",
+      "defaultUser": "The viewer's",
+      "userField": "User field",
+      "userFieldHelp": "A column of the viewer's user row - their branch, their region. Without one (an embed), no value."
+    },
+    "view": {
+      "notAvailable": "Dashboard not available",
+      "notAvailableHelp": "It doesn't exist, isn't published, or you don't have access to it.",
+      "noWidgets": "This dashboard has no widgets yet.",
+      "updatedAgo": "Updated {ago}"
+    },
+    "viewer": {
+      "autoRefresh": "Auto-refresh: {interval}"
+    },
+    "tabs": {
+      "add": "Add tab",
+      "label": "Name",
+      "firstHelp": "Every widget already on the canvas goes on this first tab.",
+      "rename": "Rename…",
+      "remove": "Remove…",
+      "actions": "Actions for {tab}",
+      "renameTitle": "Rename tab",
+      "removeTitle": "Remove the tab {tab}",
+      "removeHolds": "It holds a widget - it moves to the tab you choose. | It holds {count} widgets - they move to the tab you choose.",
+      "removeEmpty": "It holds no widgets.",
+      "moveTo": "Move its widgets to",
+      "lastTab": "It is the last tab: its widgets stay, in one grid without tabs.",
+      "moveAndRemove": "Move and remove",
+      "saveFailed": "Could not save the tabs"
+    },
+    "widgetCard": {
+      "moveToTab": "Move to tab",
+      "downloadCsv": "Download CSV",
+      "downloadExcel": "Download Excel",
+      "downloadImage": "Download image",
+      "fullscreen": "Full screen",
+      "exportTruncated": "Only the first {count} rows were downloaded - the result was cut short.",
+      "exportError": "Could not download",
+      "actions": "Widget actions",
+      "timing": "{rows} · {ms} ms",
+      "truncated": "Showing the first {count} rows",
+      "truncatedHint": "The query returned more - filter or aggregate it to see everything.",
+      "slow": "Slow query - over {seconds} s. For a large table, a materialized view refreshed on a schedule helps (see the dashboards guide).",
+      "about": "About this widget"
+    },
+    "widgetView": {
+      "empty": "(empty)",
+      "notConfigured": "Not configured",
+      "configure": "Configure",
+      "noLocations": "No rows with a valid location - return a point column (or lat/lng columns) and map it in the widget's properties.",
+      "ofTarget": "of {target}",
+      "stillComputing": "Still computing…",
+      "failed": "This widget couldn't load its data.",
+      "timeout": "It took too long - try a shorter period, or ask the author to speed it up.",
+      "noData": "No data",
+      "noDataForPeriod": "No data for this period",
+      "details": "Details",
+      "clickHint": {
+        "filter": "Click to filter",
+        "dataview": "Click to see the records",
+        "dashboard": "Click to open the dashboard",
+        "record": "Click to open the record",
+        "url": "Click to open"
+      },
+      "tapHint": {
+        "filter": "Tap again to filter",
+        "dataview": "Tap again to see the records",
+        "dashboard": "Tap again to open the dashboard",
+        "record": "Tap again to open the record",
+        "url": "Tap again to open"
+      },
+      "total": "Total",
+      "cumulative": "Cumulative",
+      "field": "Field",
+      "value": "Value",
+      "fileBlocked": "Image not available on this link",
+      "openImage": "Open {name}",
+      "detailFirstRow": "Detail shows the first of {count} rows",
+      "calendarMonthsCut": "Showing the latest {months} months",
+      "calendarYearsCut": "Showing the latest {shown} of {count} years"
+    },
+    "widgetTable": {
+      "total": "Total"
+    },
+    "embedDrawer": {
+      "allowFiles": "Show private files",
+      "allowFilesHelp": "Images and files the queries return that aren't public (a photo) - off: \"Image not available on this link\".",
+      "allowFilesLinkWarning": "Anyone with this link will see those images - a person's photo, for one. Turn it on only if that's intended.",
+      "allowFilesWarning": "Whoever the portal shows this embed to will see those images. Turn it on only if that's intended.",
+      "allowExport": "Allow downloads",
+      "allowExportHelp": "Each widget's ⋮ offers CSV, Excel and an image. Only a convenience: whatever its queries return is already in the visitor's browser - in a public link, public.",
+      "clicksNotHere": "A click doesn't run here on: {widgets} - an embed runs only a filter on a variable its visitor changes, and a link marked \"also in embeds\".",
+      "loadFailed": "Could not load the embeds",
+      "toggleFailed": "Could not change embedding",
+      "themes": {
+        "auto": "Auto",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "refreshAsDashboard": "As the dashboard",
+      "expiry": {
+        "never": "Never",
+        "days30": "In 30 days",
+        "days90": "In 90 days",
+        "year": "In a year"
+      },
+      "modes": {
+        "editable": "Editable",
+        "editableHelp": "In the bar - the visitor chooses.",
+        "hidden": "Hidden",
+        "hiddenHelp": "Not in the bar - its default or the value below. Not a restriction.",
+        "locked": "Locked",
+        "lockedHelp": "Fixed by the embed - the visitor can never change it."
+      },
+      "kinds": {
+        "link": "Public link",
+        "linkHelp": "Paste it in a page - anyone with the URL sees it. For data that may be public.",
+        "signed": "Signed (portal)",
+        "signedHelp": "Your portal's backend signs a token per visit - for private or per-customer data."
+      },
+      "devices": {
+        "desktop": "Desktop",
+        "tablet": "Tablet",
+        "phone": "Phone"
+      },
+      "previewFailed": "Could not preview this embed.",
+      "saved": "Embed saved",
+      "linkCreated": "Link created - copy it above",
+      "signedCreated": "Signed embed created",
+      "saveFailed": "Could not save the embed",
+      "status": {
+        "revoked": "Revoked",
+        "expired": "Expired",
+        "needsUpdate": "Needs update"
+      },
+      "copyFailed": "Could not copy - select it and copy it by hand",
+      "revoked": "\"{name}\" revoked",
+      "revokeFailed": "Could not revoke",
+      "deleteFailed": "Could not delete",
+      "title": "Share · {name}",
+      "description": "Show the published dashboard on another site - a public link or a signed embed for a portal.",
+      "device": "Device",
+      "allowEmbedding": "Allow embedding",
+      "allowEmbeddingHelp": "Off, none of its embeds shows anything. Embeds show the published version - a publish updates them all.",
+      "unpublishedTitle": "Unpublished changes aren't embedded",
+      "unpublishedHelp": "Embeds and this preview show the published version.",
+      "noOriginsTitle": "No site may frame an embed yet",
+      "noOriginsHelp": "Add the sites in Settings › Dashboards › Embedding. The preview here works anyway.",
+      "editTitle": "Edit \"{name}\"",
+      "newEmbed": "New embed",
+      "linkToPaste": "Link to paste in the page",
+      "urlToFrame": "URL to frame - your backend puts the signed token after the #",
+      "copyLink": "Copy link",
+      "copyUrl": "Copy URL",
+      "copyIframe": "Copy iframe",
+      "copyPayload": "Copy payload",
+      "copied": {
+        "link": "Link copied",
+        "url": "URL copied",
+        "iframe": "Iframe copied",
+        "payload": "Token payload copied"
+      },
+      "nameHelp": "To tell embeds apart - e.g. Website, Customer portal.",
+      "kind": "Kind",
+      "theme": "Theme",
+      "showTitle": "Show the title and description",
+      "transparent": "Transparent background",
+      "variableMode": "{label} mode",
+      "variableValue": "{label} value",
+      "variablesHelp": "The value as in the App's URL: a preset or {example} for a period, commas for several. Only Locked restricts data.",
+      "variablesHelpSigned": "The value as in the App's URL: a preset or {example} for a period, commas for several. Only Locked restricts data - a Locked one left empty is given by the token.",
+      "lockedMissing": "A public link needs a value for {names}.",
+      "noVariables": "No variables published.",
+      "origins": "Sites that may frame it",
+      "originsHelp": "Empty: every site in Settings › Dashboards › Embedding.",
+      "expires": "Expires",
+      "expiresNow": "Now {date} - choose to change it.",
+      "linkPublicHelp": "A public link is public to anyone who has its URL - it's in the page's HTML and opens outside the frame too. The sites above only decide who may frame it.",
+      "secretMissing": "Signed embeds need the embedding secret (Settings › Dashboards › Embedding).",
+      "createLink": "Create link",
+      "createSigned": "Create signed embed",
+      "embeds": "Embeds",
+      "empty": "No embeds yet",
+      "badges": {
+        "link": "Link",
+        "signed": "Signed"
+      },
+      "lastUsed": "Last used {date}",
+      "notUsed": "Not used yet",
+      "expiresOn": " · expires {date}",
+      "locksMissing": "It locks {names}, no longer in the dashboard - it shows nothing until it's updated.",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke \"{name}\"? It stops at once, for good.",
+      "notPublished": "Not published yet",
+      "notPublishedHelp": "An embed shows the published version - publish the dashboard first.",
+      "previewTitle": "Embed preview"
+    },
+    "editor": {
+      "openVersionFailed": "Could not open version",
+      "restored": "Restored v{version} into the draft",
+      "restoredHelp": "Nothing is published yet - publish to make it live.",
+      "restoreFailed": "Could not restore",
+      "copyCreated": "Created \"{name}\"",
+      "copyCreatedHelp": "An unpublished copy - publish it when ready.",
+      "copyFailed": "Could not create the copy",
+      "variablesSaved": "Variables saved",
+      "saved": "Dashboard saved",
+      "published": "Published v{version}",
+      "publishFailed": "Could not publish Dashboard",
+      "share": "Share",
+      "addWidget": "Add widget",
+      "variablesCount": "Variables ({n})",
+      "deleteFailed": "Could not delete Dashboard",
+      "removeWidgetFailed": "Could not remove widget",
+      "copyLabel": "{label} (copy)",
+      "duplicateWidgetFailed": "Could not duplicate widget",
+      "moveWidgetFailed": "Could not move widget",
+      "addWidgetFailed": "Could not add widget",
+      "canvas": "Widget canvas",
+      "publishAs": "Publish as v{version}?",
+      "publishHelp": "Makes the current widget layout the version Apps consumers see.",
+      "unconfigured": "{n} widgets are not configured and won't be shown in Apps. | {n} widget is not configured and won't be shown in Apps. | {n} widgets are not configured and won't be shown in Apps.",
+      "brokenEmbeds": "Stops the embed {names}: it locks {variables}, no longer in the dashboard. Update it in Share. | Stops {n} embeds {names}: they lock {variables}, no longer in the dashboard. Update them in Share.",
+      "widgets": "Widgets",
+      "addAWidget": "Add a widget",
+      "largerScreen": "Moving and resizing widgets needs a larger screen.",
+      "devicePreview": "{device} preview - switch to Desktop to move and resize widgets.",
+      "desktopTooltip": "Desktop - 12 columns",
+      "deviceTooltip": "{device} preview - {n} column | {device} preview - {n} columns",
+      "versionEmpty": "This version has no widgets.",
+      "emptyCompact": "Add a widget from the ⋮ menu.",
+      "empty": "Pick a widget from the sidebar to add it to the canvas.",
+      "deleteTitle": "Delete this Dashboard?",
+      "deleteHelp": "{name}, its widgets and every version are removed. This can't be undone.",
+      "thisDashboard": "This dashboard",
+      "deleteWidgetTitle": "Delete this widget?",
+      "deleteWidgetHelp": "{name} and its query leave the draft - publish to take it off the live dashboard.",
+      "duplicate": "Duplicate…",
+      "editVariables": "Edit variables"
+    },
+    "tree": {
+      "searchLabel": "Search Dashboards",
+      "search": "Search...",
+      "loadFailed": "Could not load Dashboards",
+      "notInMenu": "(not in the App menu)",
+      "notInMenuHelp": "Not in the App menu - embedded in other forms only",
+      "empty": "No Dashboards found.",
+      "brokenWidgets": "A widget's query names what is gone: {widgets} | {count} widgets' queries name what is gone: {widgets}"
+    },
+    "index": {
+      "title": "Select a Dashboard",
+      "description": "Choose a Dashboard from the sidebar, or create a new one.",
+      "blankDescription": "An empty draft - add its widgets and variables yourself.",
+      "fromTableDescription": "Pick a table or view: it proposes the widgets, variables and filters - you choose what goes in."
+    },
+    "widget": {
+      "designName": "Dashboard · {name}",
+      "dashboard": "Dashboard",
+      "pick": "Pick its Dashboard in the inspector.",
+      "boundFromPage": "{names} set from the page.",
+      "viewerPicks": "Its variables are the viewer's to pick.",
+      "none": "No Dashboard",
+      "noneHelp": "Its Dashboard isn't set."
+    },
+    "charts": {
+      "total": "total",
+      "more": "More",
+      "less": "Less"
+    },
+    "inspector": {
+      "tabs": {
+        "props": "Properties",
+        "styles": "Styles"
+      },
+      "actions": "Widget actions",
+      "restoreDefaults": "Restore defaults",
+      "typeHelp": "The types that fit what the query returns - the others greyed, with why. Switching keeps the equivalent columns.",
+      "title": "Title",
+      "titleHelp": "Shown at the top of the widget - empty, none.",
+      "data": "Data",
+      "runToListColumns": "Run the query to list its columns.",
+      "automatic": "Automatic: {columns} - {rule}.",
+      "rules": {
+        "first": "the first matching column",
+        "all": "every matching column",
+        "none": "none"
+      },
+      "noAutomatic": "No column of a kind it takes - choose one.",
+      "none": "None.",
+      "missingColumn": "The query no longer returns {columns}.",
+      "wrongKind": "Not a kind of column this takes.",
+      "removeColumn": "Remove {column}",
+      "addColumn": "Add a column…",
+      "useAutomatic": "Back to automatic",
+      "useDefault": "Back to the default",
+      "sections": {
+        "format": "Number format",
+        "appearance": "Appearance",
+        "series": "Series",
+        "axes": "Axes",
+        "thresholds": "Thresholds",
+        "events": "Events",
+        "zoomExport": "Zoom & export"
+      },
+      "inheritedFormat": "Inherited from the column ({column}): {format}",
+      "editInTable": "Edit in the table",
+      "card": {
+        "section": "Card",
+        "description": "Description",
+        "descriptionHelp": "Shown by an ⓘ next to the title.",
+        "emptyText": "Text with no data",
+        "emptyTextHelp": "Default: \"No data for this period\" when the query reads a date range, else \"No data\".",
+        "mobile": "On a phone",
+        "mobileHelp": "Automatic: half for a small widget (a KPI), else the whole width.",
+        "mobileOptions": {
+          "AUTO": "Automatic",
+          "FULL": "Whole width",
+          "HALF": "Half",
+          "HIDDEN": "Hidden"
+        }
+      },
+      "unsetFormat": "Unset: {format}.",
+      "unsetLocaleFormat": "Unset: the viewer's language.",
+      "source": {
+        "number": "Number",
+        "statistic": "Statistic",
+        "column": "Column",
+        "variable": "Variable",
+        "statistics": {
+          "average": "Average",
+          "min": "Minimum",
+          "max": "Maximum",
+          "median": "Median"
+        }
+      },
+      "list": {
+        "moveUp": "Move up",
+        "moveDown": "Move down"
+      },
+      "series": {
+        "empty": "Run the query to list its series.",
+        "emptyLong": "No series value yet - add one below, or run the query.",
+        "defaultLabel": "Unset: {label}.",
+        "automaticType": "Automatic ({type})",
+        "types": {
+          "bar": "Bar",
+          "line": "Line",
+          "area": "Area"
+        },
+        "axis": "Axis",
+        "axes": {
+          "left": "Left",
+          "right": "Right"
+        },
+        "addValue": "Add a series value",
+        "addValueHelp": "In long format each value of the Series column is a series - type one to set its name, color or type."
+      },
+      "axes": {
+        "category": "Category axis",
+        "value": "Value axis",
+        "value2": "Right axis",
+        "title": "Title",
+        "min": "Minimum",
+        "max": "Maximum",
+        "minUnset": {
+          "zero": "Unset: 0.",
+          "fit": "Unset: fitted to the data."
+        },
+        "maxUnset": "Unset: fitted to the data.",
+        "log": "Logarithmic scale",
+        "logHelp": "For values spanning several orders of magnitude.",
+        "formatUnset": "Unset: its series' format.",
+        "x": "X axis",
+        "y": "Y axis"
+      },
+      "thresholds": {
+        "empty": "No thresholds - Color applies.",
+        "base": "Base color - below the first threshold.",
+        "from": "From",
+        "add": "Add a threshold",
+        "addBase": "Add a base color"
+      },
+      "references": {
+        "empty": "No reference lines.",
+        "line": "Line",
+        "band": "Band",
+        "addLine": "Add a line",
+        "addBand": "Add a band",
+        "from": "From",
+        "to": "To",
+        "series": "Series",
+        "allSeries": "Every series",
+        "axis": "Axis"
+      },
+      "click": {
+        "action": "Action",
+        "actions": {
+          "NONE": "None",
+          "FILTER": "Filter this dashboard",
+          "DATAVIEW": "Open a DataView",
+          "DASHBOARD": "Open a dashboard",
+          "RECORD": "Open a record",
+          "URL": "Open a URL"
+        },
+        "worksIn": {
+          "app": "Works in the App.",
+          "embeds": "Works in the App and in embeds."
+        },
+        "variable": "Variable",
+        "variableHelp": "A variable of this dashboard - in an embed, only one the visitor may change.",
+        "noFilterVariables": "This dashboard has no Select, Text or Number variable - add one in Variables.",
+        "formulaHelp": "A formula - {row} reads the clicked row ({columns}), {vars} a variable ({variables}).",
+        "dataview": "DataView",
+        "filter": "Filter",
+        "filterHelp": "Optional - a JSON object in the Data API's where grammar, its values formulas: {example}",
+        "filterInvalid": "Not a JSON object - it is kept as typed until it is one.",
+        "pk": "Record key",
+        "dashboard": "Dashboard",
+        "tab": "Tab",
+        "firstTab": "The first tab",
+        "variables": "Its variables",
+        "noTargetVariables": "That dashboard has no variables.",
+        "url": "URL",
+        "urlHelp": "Its site written out (https://...), then {row} and {vars} after it - encoded.",
+        "newTab": "Open in a new tab",
+        "inEmbeds": "Also in embeds",
+        "inEmbedsHelp": "Runs in a public link or a signed embed too.",
+        "hint": "Tooltip line",
+        "hintHelp": "The tooltip's last line - what a click does."
+      },
+      "total": {
+        "label": "Total",
+        "help": "A footer row, computed by PostgreSQL over every row the query returns, in the column's format.",
+        "kinds": {
+          "none": "None",
+          "sum": "Sum",
+          "avg": "Average",
+          "min": "Minimum",
+          "max": "Maximum",
+          "count": "Count"
+        }
+      },
+      "problems": {
+        "DASHBOARD_COMBO_NEEDS_TWO_VALUES": "A combo chart needs at least two columns in Values - for a series per value of a column, use a Bar chart."
+      },
+      "aggregates": {
+        "empty": "Run the query to list its values.",
+        "required": "Choose its aggregate - each value needs one.",
+        "of": "Aggregate of {column}",
+        "notAValue": "Not among the Values"
+      },
+      "pivotSort": {
+        "value": "Value",
+        "direction": "Direction",
+        "none": "The rows' own values",
+        "directions": {
+          "ASC": "Ascending",
+          "DESC": "Descending"
+        }
+      },
+      "options": {
+        "thresholdsOn": {
+          "VALUE": "Value",
+          "PERCENT": "Percent"
+        },
+        "sort": {
+          "NONE": "The query's order",
+          "DESC": "Largest first"
+        },
+        "conversion": {
+          "FIRST": "Of the first step",
+          "PREVIOUS": "Of the previous step",
+          "NONE": "None"
+        },
+        "layout": {
+          "AUTO": "Automatic",
+          "ONE": "One column",
+          "TWO": "Two columns"
+        }
+      }
+    },
+    "palette": {
+      "search": "Search widgets…",
+      "none": "No widget matches."
+    },
+    "settings": {
+      "design": "Dashboard design",
+      "appliesAtOnce": "Changes on this tab apply at once - no Publish needed.",
+      "appliesOnPublish": "Variables are versioned: a change reaches the App on the next Publish.",
+      "sections": {
+        "nav": "Dashboard settings",
+        "general": "General",
+        "variables": "Variables",
+        "data": "Data",
+        "share": "Share",
+        "security": "Security",
+        "versions": "Versions"
+      }
+    }
+  }
+}

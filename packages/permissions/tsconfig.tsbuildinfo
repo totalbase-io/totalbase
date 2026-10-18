@@ -1,0 +1,1 @@
+{"root":["./src/effective-permission-service.test.ts","./src/effective-permission-service.ts","./src/index.ts","./src/permission-resolver.test.ts","./src/permission-resolver.ts","./src/permissions-service.test.ts","./src/permissions-service.ts","./src/role-assignments-service.ts","./src/roles-service.test.ts","./src/roles-service.ts"],"version":"5.9.3"}

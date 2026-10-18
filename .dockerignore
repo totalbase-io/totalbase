@@ -1,0 +1,20 @@
+# Only what the image builds from: the workspace's packages, apps/server,
+# apps/admin and the migrations.
+.git
+**/node_modules
+**/dist
+**/.output
+**/.nuxt
+**/.nitro
+**/.cache
+.env
+.env.*
+!.env.example
+website
+e2e
+mockups
+specs
+docs
+deploy
+coverage
+*.log

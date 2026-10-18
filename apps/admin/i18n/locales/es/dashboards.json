@@ -1,0 +1,1282 @@
+{
+  "dashboards": {
+    "catalog": {
+      "groups": {
+        "indicators": "Indicadores",
+        "comparison": "Comparación",
+        "trend": "Tendencia",
+        "proportion": "Proporción",
+        "distribution": "Distribución y relación",
+        "maps": "Mapas",
+        "tables": "Tablas",
+        "visualization": "Visualización",
+        "insertion": "Inserción"
+      },
+      "widgets": {
+        "KPI": {
+          "label": "KPI",
+          "description": "Un número, grande - con su variación y su tendencia.",
+          "roles": {
+            "value": {
+              "description": "El número que se muestra - de la última fila. Por defecto, la primera columna numérica."
+            },
+            "target": {
+              "description": "Una meta que viene de la consulta - se muestra cuánto falta para llegar."
+            }
+          }
+        },
+        "GAUGE": {
+          "label": "Indicador",
+          "description": "Un valor sobre un arco, frente a su meta.",
+          "roles": {
+            "value": {
+              "description": "El valor sobre el arco - de la última fila. Por defecto, la primera columna numérica."
+            },
+            "target": {
+              "description": "El arco completo, desde la consulta. Sin ella, la propiedad Meta."
+            }
+          },
+          "props": {
+            "thresholds": {
+              "description": "Colores según el valor, en orden: el primero es el color base y cada siguiente rige desde su valor - un número, una columna de la fila o una variable. En un medidor, el arco en tramos de esos colores."
+            }
+          }
+        },
+        "BAR": {
+          "label": "Gráfico de barras",
+          "description": "Barras verticales - un grupo por categoría, una barra por serie."
+        },
+        "BAR_HORIZONTAL": {
+          "label": "Barras horizontales",
+          "description": "Barras horizontales - para etiquetas largas; ordena la consulta tú mismo."
+        },
+        "LEADERBOARD": {
+          "label": "Ranking",
+          "description": "Una lista ordenada con barras - ordena la consulta y aplícale LIMIT tú mismo.",
+          "roles": {
+            "value": {
+              "description": "El valor del ranking. Por defecto, la primera columna numérica."
+            },
+            "category": {
+              "description": "El nombre de cada fila. Por defecto, la primera columna que no es un número."
+            },
+            "image": {
+              "description": "Una columna de archivo (una imagen) que se muestra como miniatura junto a cada fila. Por defecto, la primera columna de archivo."
+            }
+          }
+        },
+        "LINE": {
+          "label": "Gráfico de líneas",
+          "description": "Una línea por serie, en el tiempo o por categoría - de la más antigua a la más reciente."
+        },
+        "AREA": {
+          "label": "Gráfico de áreas",
+          "description": "Líneas con el área rellena - totales en el tiempo."
+        },
+        "PIE": {
+          "label": "Gráfico circular",
+          "description": "Cada fila, una porción del total.",
+          "roles": {
+            "value": {
+              "description": "El tamaño de las porciones. Por defecto, la primera columna numérica."
+            },
+            "category": {
+              "description": "El nombre de cada porción. Por defecto, la primera columna que no es un número."
+            }
+          }
+        },
+        "DONUT": {
+          "label": "Gráfico de dona",
+          "description": "Un circular con un hueco - cada fila, una porción del total.",
+          "roles": {
+            "value": {
+              "description": "El tamaño de las porciones. Por defecto, la primera columna numérica."
+            },
+            "category": {
+              "description": "El nombre de cada porción. Por defecto, la primera columna que no es un número."
+            }
+          }
+        },
+        "MAP": {
+          "label": "Mapa",
+          "description": "Puntos sobre un mapa de calles - desde una columna point, o latitud y longitud.",
+          "roles": {
+            "label": {
+              "description": "Se muestra en el tooltip de cada punto. Por defecto, la primera columna que no es un número."
+            }
+          },
+          "props": {
+            "displayFormat": {
+              "description": "Cómo se lee el valor de Tamaño en el tooltip de un punto. Sin definir: el formato de su columna."
+            }
+          }
+        },
+        "TABLE": {
+          "label": "Tabla",
+          "description": "Las filas tal como vienen - las columnas que empiezan con _ no se muestran.",
+          "props": {
+            "colorColumn": {
+              "description": "Una columna cuyo valor - un nombre de la paleta - tiñe su fila. Sin definir, una columna llamada _color. _<columna>_color muestra esa columna como insignias de color."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre una fila. Sus valores son fórmulas sobre la fila del clic y las variables."
+            }
+          }
+        },
+        "TImage": {
+          "description": "Una imagen fija - un logo, el plano de una sucursal: un archivo subido aquí (público) o una URL https."
+        },
+        "THeading": {
+          "description": "Un título de sección - una fórmula puede nombrar lo que se muestra: \"Ventas de \" + {'{'}{'{'}vars.vendedor.label{'}'}{'}'}."
+        },
+        "TText": {
+          "description": "Un párrafo - su texto una fórmula sobre las variables, quien mira y las filas de la consulta."
+        },
+        "TQrCode": {
+          "description": "Un código QR de un valor - un enlace a este reporte, el código de un equipo - dibujado en el navegador."
+        },
+        "UBadge": {
+          "description": "Una etiqueta corta - su texto y su color pueden ser fórmulas: un estado, una cantidad."
+        },
+        "UAlert": {
+          "description": "Un mensaje con título y descripción - un aviso que decide la consulta o una variable."
+        },
+        "USeparator": {
+          "description": "Una línea entre secciones, con una etiqueta opcional."
+        },
+        "TFrame": {
+          "description": "La página de otro sitio en un marco aislado - su URL puede tomar valores {'{'}{'{'}vars.…{'}'}{'}'}, {'{'}{'{'}user.…{'}'}{'}'} y {'{'}{'{'}row.…{'}'}{'}'} después del sitio."
+        },
+        "PROGRESS": {
+          "label": "Progreso",
+          "description": "Una barra de un valor hacia su meta - \"$ 13,9 M de $ 30 M · 46 %\", con colores por umbrales.",
+          "roles": {
+            "value": {
+              "description": "El valor - de la última fila. Por defecto, la primera columna numérica."
+            },
+            "target": {
+              "description": "La meta, desde la consulta. Sin ella, la propiedad Meta."
+            }
+          },
+          "props": {
+            "target": {
+              "description": "La meta, cuando la consulta no tiene una columna Meta."
+            },
+            "thresholds": {
+              "description": "Colores según el valor, en orden: el primero es el color base y cada siguiente rige desde su valor - un número, una columna de la fila o una variable. Sobre el valor o, con Umbrales sobre: Porcentaje, sobre el porcentaje. Le gana a Color."
+            }
+          }
+        },
+        "COMBO": {
+          "label": "Gráfico combinado",
+          "description": "Barras y líneas en dos ejes - la primera columna de valores en barras a la izquierda, las demás en líneas a la derecha.",
+          "roles": {
+            "values": {
+              "description": "Dos o más columnas: la primera en barras (eje izquierdo), las demás en líneas (eje derecho) - Series lo cambia."
+            }
+          }
+        },
+        "WATERFALL": {
+          "label": "Cascada",
+          "description": "Cómo se arma un total - cada fila, un cambio hacia arriba o hacia abajo; una fila de total, el acumulado hasta ahí.",
+          "roles": {
+            "value": {
+              "description": "El cambio de cada fila, con su signo. Por defecto, la primera columna numérica."
+            }
+          }
+        },
+        "FUNNEL": {
+          "label": "Embudo",
+          "description": "Pasos en el orden de la consulta, cada uno con su porcentaje del primero o del anterior.",
+          "roles": {
+            "category": {
+              "description": "El nombre de cada paso - en el orden de la consulta. Por defecto, la primera columna que no es un número."
+            },
+            "value": {
+              "description": "El valor de cada paso - nunca negativo. Por defecto, la primera columna numérica."
+            }
+          }
+        },
+        "TREEMAP": {
+          "label": "Treemap",
+          "description": "Rectángulos anidados por niveles (sucursal → categoría → producto), cada uno del tamaño de su valor; un padre es la suma de sus hijos.",
+          "roles": {
+            "value": {
+              "description": "El valor de una hoja - sumable (nunca un promedio), nunca negativo. Por defecto, la primera columna numérica."
+            }
+          },
+          "props": {
+            "showLabels": {
+              "description": "El nombre de cada nodo dentro de él."
+            }
+          }
+        },
+        "SUNBURST": {
+          "label": "Sunburst",
+          "description": "Anillos por niveles, el más interno el primero; un padre es la suma de sus hijos.",
+          "roles": {
+            "levels": {
+              "description": "La jerarquía, desde el anillo más interno - por defecto, todas las columnas que no son números. Un NULL termina la rama ahí."
+            },
+            "value": {
+              "description": "El valor de una hoja - sumable (nunca un promedio), nunca negativo. Por defecto, la primera columna numérica."
+            }
+          }
+        },
+        "HEATMAP": {
+          "label": "Mapa de calor",
+          "description": "Una grilla de dos categorías (día × hora, sucursal × mes), cada celda coloreada por su valor; una celda que falta queda vacía.",
+          "roles": {
+            "value": {
+              "description": "El valor de cada celda. Por defecto, la primera columna numérica."
+            }
+          },
+          "props": {
+            "color": {
+              "description": "El tono de la escala, desde el fondo hasta él - sin definir, el primario del tema. Los umbrales dibujan tramos fijos en su lugar."
+            },
+            "thresholds": {
+              "description": "Colores según el valor, en orden: el primero es el color base y cada siguiente rige desde su valor - un número, una columna de la fila o una variable. En un mapa de calor, tramos de esos colores con su leyenda."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre una celda. Sus valores son fórmulas sobre la fila del clic y las variables."
+            }
+          }
+        },
+        "CALENDAR": {
+          "label": "Calendario de calor",
+          "description": "Cada día de un año coloreado por su valor - un año por renglón, los tres más recientes.",
+          "roles": {
+            "value": {
+              "description": "El valor de cada día. Por defecto, la primera columna numérica."
+            }
+          },
+          "props": {
+            "color": {
+              "description": "El tono de la escala, desde el fondo hasta él - sin definir, el primario del tema. Los umbrales dibujan tramos fijos en su lugar."
+            },
+            "thresholds": {
+              "description": "Colores según el valor, en orden: el primero es el color base y cada siguiente rige desde su valor - un número, una columna de la fila o una variable. En un calendario, tramos de esos colores con su leyenda."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre un día. Sus valores son fórmulas sobre la fila del clic y las variables."
+            }
+          }
+        },
+        "SCATTER": {
+          "label": "Dispersión y burbujas",
+          "description": "Puntos por dos números - con Tamaño, burbujas; con Grupo, una serie por grupo.",
+          "roles": {
+            "x": {
+              "description": "Por defecto, la primera columna numérica; una fecha, elegida a mano."
+            },
+            "y": {
+              "description": "Por defecto, la siguiente columna numérica."
+            },
+            "size": {
+              "description": "El tamaño de cada punto (radio por su raíz cuadrada, de 6 a 40 px) - burbujas. Opcional."
+            },
+            "label": {
+              "description": "El nombre de cada punto en su tooltip. Por defecto, la primera columna que no es un número."
+            }
+          },
+          "props": {
+            "series": {
+              "description": "Por valor de Grupo: su nombre y su color. Sin definir: la presentación de la columna Grupo (sus etiquetas y colores)."
+            },
+            "axes": {
+              "description": "El título, el rango, la escala y el formato de los ejes x e y. Mínimo sin definir: ajustado a los datos."
+            },
+            "references": {
+              "description": "Líneas y bandas - una línea sobre el eje y (o el x), en un número, una estadística, una columna o una variable."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre un punto. Sus valores son fórmulas sobre la fila del clic y las variables."
+            },
+            "zoom": {
+              "description": "Barras bajo el gráfico y a su lado, y la rueda o el gesto de pellizcar, para acercar un rango de x e y."
+            }
+          }
+        },
+        "DETAIL": {
+          "label": "Detalle",
+          "description": "Una fila en pares etiqueta / valor, con su imagen - la primera fila de la consulta.",
+          "roles": {
+            "columns": {
+              "description": "Los campos que se muestran, en este orden. Por defecto, todas las columnas (menos las que empiezan con _)."
+            },
+            "image": {
+              "description": "Una columna de archivo que se muestra como su imagen, arriba (o al costado, con la distribución Dos). Por defecto, la primera columna de archivo."
+            }
+          },
+          "props": {
+            "columnSettings": {
+              "label": "Ajustes de campos",
+              "description": "Por campo: su título, formato, texto si está vacío y aspecto - sobre lo que dice su presentación."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre la tarjeta. Sus valores son fórmulas sobre la fila del clic y las variables."
+            }
+          }
+        },
+        "PIVOT": {
+          "label": "Tabla dinámica",
+          "description": "Las filas de detalle de la consulta agregadas por PostgreSQL en filas × columnas, con subtotales y totales - nunca sumadas en pantalla.",
+          "roles": {
+            "columns": {
+              "description": "Niveles a lo ancho, arriba (como mucho 60 valores). Opcional."
+            },
+            "values": {
+              "description": "Lo que se agrega - cada uno con su agregado. Por defecto, todas las columnas numéricas."
+            }
+          },
+          "props": {
+            "columnSettings": {
+              "label": "Ajustes de valores",
+              "description": "Por columna de valor o de fila: su título, formato y texto si está vacía - sobre lo que dice su presentación."
+            },
+            "click": {
+              "description": "Qué hace un clic sobre una celda de detalle (no un total). Sus valores son fórmulas sobre la fila del clic y las variables."
+            }
+          }
+        }
+      },
+      "roles": {
+        "category": {
+          "label": "Categoría",
+          "description": "Las etiquetas del eje - una fecha arma un eje de tiempo. Por defecto, la primera columna que no es un número."
+        },
+        "values": {
+          "label": "Valores",
+          "description": "Una serie por columna, en este orden. Por defecto, todas las columnas numéricas."
+        },
+        "series": {
+          "label": "Serie",
+          "description": "Formato largo: una serie por cada valor de esta columna (mes, vendedor, total) - con una sola columna de valor. Opcional."
+        },
+        "label": {
+          "label": "Etiqueta",
+          "description": "El nombre de cada fila. Por defecto, la primera columna que no es un número."
+        },
+        "value": {
+          "label": "Valor",
+          "description": "Por defecto, la primera columna numérica."
+        },
+        "compare": {
+          "label": "Comparación",
+          "description": "El valor con el que se compara, de la misma fila (p. ej. el del mes anterior). Sin ella, el valor de la fila anterior."
+        },
+        "time": {
+          "label": "Tiempo",
+          "description": "Con ella, las filas son una serie, de la más antigua a la más reciente: la última es el valor y el resto, su tendencia."
+        },
+        "target": {
+          "label": "Meta",
+          "description": "Una meta que viene de la consulta."
+        },
+        "location": {
+          "label": "Ubicación",
+          "description": "Una columna point (x = longitud, y = latitud). Por defecto, la primera columna point."
+        },
+        "latitude": {
+          "label": "Latitud",
+          "description": "Solo sin una columna point - se elige a mano, junto con Longitud."
+        },
+        "longitude": {
+          "label": "Longitud",
+          "description": "Solo sin una columna point - se elige a mano, junto con Latitud."
+        },
+        "size": {
+          "label": "Tamaño",
+          "description": "Escala cada punto según este valor. Opcional."
+        },
+        "columns": {
+          "label": "Columnas",
+          "description": "Las columnas que se muestran, en este orden. Por defecto, todas (menos las que empiezan con _)."
+        },
+        "tooltip": {
+          "label": "Tooltip",
+          "description": "Más columnas que se muestran en el tooltip de una marca, con sus títulos y formatos. Opcional."
+        },
+        "total": {
+          "label": "Total",
+          "description": "Se elige a mano: una columna verdadero/falso - una fila verdadera dibuja el acumulado hasta ahí desde 0 (su valor se ignora)."
+        },
+        "levels": {
+          "label": "Niveles",
+          "description": "La jerarquía, de afuera hacia adentro - por defecto, todas las columnas que no son números. Un NULL termina la rama ahí."
+        },
+        "x": {
+          "label": "X",
+          "description": "Las columnas - en el orden de la consulta (una fecha, ordenada). Por defecto, la primera columna que no es un número; un número (una hora), solo a mano."
+        },
+        "y": {
+          "label": "Y",
+          "description": "Las filas - en el orden de la consulta (una fecha, ordenada). Por defecto, la siguiente columna que no es un número; un número (un día de la semana), solo a mano."
+        },
+        "group": {
+          "label": "Grupo",
+          "description": "Una serie por cada valor de esta columna, con los colores de su presentación. Opcional."
+        },
+        "date": {
+          "label": "Fecha",
+          "description": "El día. Por defecto, la primera columna de fecha."
+        },
+        "image": {
+          "label": "Imagen",
+          "description": "Una columna de archivo que se muestra como su imagen. Por defecto, la primera columna de archivo."
+        },
+        "rows": {
+          "label": "Filas",
+          "description": "Uno o más niveles al costado, de afuera hacia adentro. Por defecto, la primera columna que no es un número."
+        }
+      },
+      "props": {
+        "color": {
+          "label": "Color",
+          "description": "Un tono de la paleta para sus marcas - sin definir, el primario del tema."
+        },
+        "showLegend": {
+          "label": "Mostrar leyenda",
+          "description": "Los nombres de las series (o porciones), junto al gráfico."
+        },
+        "compact": {
+          "label": "Número compacto",
+          "description": "Abrevia los números grandes - 11,6 M, 2,4 mil - conservando el texto y los decimales del formato (\"$ #,##0\" + compacto: $ 1,3 M). Sin definir: encendido, salvo que aplique un formato."
+        },
+        "colorColumn": {
+          "label": "Columna de color",
+          "description": "Una columna cuyo valor - un nombre de la paleta: red, emerald, amber... - colorea la marca de su fila. Sin definir, una columna llamada _color, si la consulta la devuelve."
+        },
+        "stacked": {
+          "label": "Apiladas",
+          "description": "Apila las series en vez de ponerlas una al lado de la otra."
+        },
+        "smooth": {
+          "label": "Línea suavizada",
+          "description": "Curva la línea entre los puntos."
+        },
+        "showDelta": {
+          "label": "Mostrar variación",
+          "description": "El cambio porcentual frente a la comparación, verde si sube y rojo si baja."
+        },
+        "sparkline": {
+          "label": "Mostrar tendencia",
+          "description": "Una línea chica con el valor a lo largo de las filas (ordénalas por tiempo)."
+        },
+        "lowerIsBetter": {
+          "label": "Menos es mejor",
+          "description": "Invierte los colores de la variación - para costos o tiempos de respuesta."
+        },
+        "target": {
+          "label": "Meta",
+          "description": "El valor que representa el arco completo, cuando la consulta no tiene una columna Meta."
+        },
+        "cluster": {
+          "label": "Agrupar puntos cercanos",
+          "description": "Une los puntos cercanos en un círculo numerado."
+        },
+        "columnSettings": {
+          "label": "Ajustes de columnas",
+          "description": "Por columna: su título, alineación, formato, aspecto y total - sobre lo que dice su presentación."
+        },
+        "displayFormat": {
+          "label": "Formato",
+          "description": "Cómo se leen sus números - un patrón como \"$ #,##0\", \"0.0 %\" (% nunca multiplica: 85 se lee 85,0 %) o \"CURRENCY:ARS\". Sin definir: el de la columna de valor; si no, el del idioma de quien mira."
+        },
+        "series": {
+          "label": "Series",
+          "description": "Por columna de valores - o, en formato largo, por valor de la columna Serie: su nombre, color, tipo, eje y formato. Sin definir: heredados."
+        },
+        "axes": {
+          "label": "Ejes",
+          "description": "El título, el rango, la escala y el formato de cada eje. El eje derecho aparece cuando una serie lo usa."
+        },
+        "thresholds": {
+          "label": "Umbrales",
+          "description": "Colores según el valor, en orden: el primero es el color base y cada siguiente rige desde su valor - un número, una columna de la fila o una variable. Le gana a Color."
+        },
+        "references": {
+          "label": "Líneas de referencia",
+          "description": "Líneas y bandas sobre el eje de valores - en un número, una estadística de la serie, una columna o una variable. Sus etiquetas usan el formato del eje."
+        },
+        "click": {
+          "label": "Al hacer clic",
+          "description": "Qué hace un clic sobre una marca. Sus valores son fórmulas sobre la fila del clic y las variables."
+        },
+        "zoom": {
+          "label": "Zoom",
+          "description": "Una barra bajo el gráfico, y la rueda o el gesto de pellizcar, para acercar un rango."
+        },
+        "showTarget": {
+          "label": "Mostrar meta",
+          "description": "\"de $ 30 M\" después del valor."
+        },
+        "showPercent": {
+          "label": "Mostrar porcentaje",
+          "description": "La parte de la meta alcanzada - si la supera, su valor real (115 %)."
+        },
+        "thresholdsOn": {
+          "label": "Umbrales sobre",
+          "description": "Valor: los umbrales leen el valor; Porcentaje: el porcentaje de la meta (60 = 60 %)."
+        },
+        "finalTotal": {
+          "label": "Total final",
+          "description": "Una última barra con el acumulado."
+        },
+        "finalTotalLabel": {
+          "label": "Nombre del total final",
+          "description": "Sin definir: \"Total\" en el idioma de quien mira."
+        },
+        "increaseColor": {
+          "label": "Color de subida",
+          "description": "Un tono de la paleta para un cambio hacia arriba."
+        },
+        "decreaseColor": {
+          "label": "Color de bajada",
+          "description": "Un tono de la paleta para un cambio hacia abajo."
+        },
+        "totalColor": {
+          "label": "Color de los totales",
+          "description": "Un tono de la paleta para un total - sin definir, el primario del tema."
+        },
+        "sort": {
+          "label": "Orden",
+          "description": "El orden de la consulta, o el mayor primero."
+        },
+        "conversion": {
+          "label": "Conversión",
+          "description": "El porcentaje de cada paso sobre el primero, sobre el anterior, o ninguno."
+        },
+        "showLabels": {
+          "label": "Mostrar etiquetas",
+          "description": "El nombre de cada nodo sobre él."
+        },
+        "visibleLevels": {
+          "label": "Niveles visibles",
+          "description": "Cuántos niveles a la vez - un toque baja uno y las migas vuelven."
+        },
+        "showValues": {
+          "label": "Mostrar valores",
+          "description": "El número de cada celda escrito en ella."
+        },
+        "layout": {
+          "label": "Distribución",
+          "description": "Automática: dos columnas desde 6 de ancho, una en el celular; o siempre una o dos."
+        },
+        "aggregates": {
+          "label": "Agregados",
+          "description": "Obligatorio para cada valor: suma, promedio, mínimo, máximo o cantidad, calculado por PostgreSQL sobre las filas de detalle - un promedio es el real, nunca un promedio de promedios."
+        },
+        "subtotals": {
+          "label": "Subtotales",
+          "description": "Un subtotal por cada nivel de las filas."
+        },
+        "rowTotals": {
+          "label": "Totales por fila",
+          "description": "Una columna de total a la derecha."
+        },
+        "columnTotals": {
+          "label": "Totales por columna",
+          "description": "Un renglón de total abajo."
+        },
+        "sortBy": {
+          "label": "Ordenar filas por",
+          "description": "El total de un valor, ascendente o descendente. Sin definir: por los valores de las propias filas."
+        }
+      },
+      "refresh": {
+        "30": "Cada 30 segundos",
+        "60": "Cada minuto",
+        "300": "Cada 5 minutos",
+        "900": "Cada 15 minutos",
+        "3600": "Cada hora"
+      }
+    },
+    "variables": {
+      "presets": {
+        "last_hour": "Última hora",
+        "today": "Hoy",
+        "last_7_days": "Últimos 7 días",
+        "last_30_days": "Últimos 30 días",
+        "last_90_days": "Últimos 90 días",
+        "this_month": "Este mes",
+        "last_month": "Mes pasado",
+        "this_year": "Este año",
+        "all": "Todo el período"
+      },
+      "types": {
+        "DATE_RANGE": {
+          "label": "Rango de fechas",
+          "description": "Úsala como $VAR.<name>.from / $VAR.<name>.to (timestamptz)."
+        },
+        "SELECT": {
+          "label": "Selección",
+          "description": "Una opción (text) o varias (text[] - usa = ANY(...))."
+        },
+        "TEXT": {
+          "label": "Texto",
+          "description": "Texto libre (text)."
+        },
+        "NUMBER": {
+          "label": "Número",
+          "description": "Un número (numeric)."
+        }
+      }
+    },
+    "createModal": {
+      "title": "Nuevo Dashboard",
+      "description": "Ponle un nombre y un slug - los widgets vienen después.",
+      "nameSlugRequired": "El nombre y el slug son obligatorios",
+      "createFailed": "No se pudo crear el Dashboard"
+    },
+    "fromTable": {
+      "blank": "En blanco",
+      "menu": "Desde una tabla",
+      "title": "Nuevo Dashboard desde una tabla",
+      "description": "Lee una tabla o vista y propone un dashboard - tú eliges qué incluye.",
+      "submit": "Crear Dashboard",
+      "steps": {
+        "source": {
+          "title": "Origen",
+          "description": "La tabla o vista"
+        },
+        "analysis": {
+          "title": "Análisis",
+          "description": "El papel de cada columna"
+        },
+        "review": {
+          "title": "Revisión",
+          "description": "Widgets y seguridad"
+        },
+        "generate": {
+          "title": "Generar",
+          "description": "Crear el borrador"
+        }
+      },
+      "tableOrView": "Tabla o vista",
+      "tableOrViewHelp": "Se lee de su definición, restricciones y estadísticas - nunca de sus filas.",
+      "analyzing": "Analizando...",
+      "analyzed": "{columns} columnas analizadas, {widgets} widgets propuestos.",
+      "analyzeFailed": "No se pudo analizar la tabla",
+      "analyzeAgain": "Volver a analizar",
+      "columnsCount": "{n} columna | {n} columnas",
+      "column": "Columna",
+      "role": "Papel",
+      "reason": "Motivo",
+      "alternatives": "Alternativas: {columns}",
+      "roles": {
+        "moment": "Momento",
+        "deadline": "Plazo",
+        "measure": "Medida",
+        "category": "Categoría",
+        "dimension": "Dimensión",
+        "identifier": "Identificador",
+        "place": "Lugar",
+        "file": "Archivo",
+        "discarded": "Descartada"
+      },
+      "nameHelp": "Hasta {max} caracteres. El slug sale de él.",
+      "nameRequired": "El nombre es obligatorio",
+      "nameTooLong": "Como máximo {max} caracteres",
+      "widgets": "Widgets",
+      "widgetsHelp": "Los propuestos van marcados; los demás se pueden agregar.",
+      "variables": "Variables",
+      "variablesHelp": "Filtros que elige quien mira - se cambian después en el editor.",
+      "security": "Seguridad",
+      "securityOptions": {
+        "openOnViewers": "Abrir en {column} de quien mira",
+        "onlyViewers": "Solo {column} de quien mira"
+      },
+      "securityAllRows": "Todas las filas",
+      "source": "Origen",
+      "widgetsCount": "{n} widget | {n} widgets",
+      "variablesCount": "Sin variables | {n} variable | {n} variables",
+      "generateHelp": "Crea un borrador sin publicar: el SQL de cada widget queda visible y editable en el editor.",
+      "specInvalid": "No se pudo crear el dashboard: {n} problema | No se pudo crear el dashboard: {n} problemas",
+      "created": "Dashboard \"{name}\" creado",
+      "createFailed": "No se pudo crear el Dashboard"
+    },
+    "detailsModal": {
+      "title": "Detalles del Dashboard",
+      "refreshOff": "Desactivado",
+      "loadRolesFailed": "No se pudieron cargar los roles",
+      "saveFailed": "No se pudo guardar el Dashboard",
+      "autoRefresh": "Actualización automática",
+      "autoRefreshHelp": "Con qué frecuencia la App vuelve a ejecutar cada widget mientras la página está abierta y su pestaña visible. Se aplica al instante, sin publicar; el editor no se actualiza automáticamente.",
+      "visibleToRoles": "Visible para los roles",
+      "visibleToRolesHelp": "Quién puede ver este dashboard en Apps una vez publicado. Los administradores siempre pueden. Déjalo vacío para que solo lo vean los administradores."
+    },
+    "widgetDrawer": {
+      "query": "Consulta",
+      "runFailed": "No se pudo ejecutar la consulta.",
+      "saveFailed": "No se pudo guardar el widget",
+      "widget": "Widget",
+      "queryDescription": "El SQL se ejecuta en solo lectura. Ctrl+Enter para ejecutar. Usa $VAR.<name> para las variables del dashboard y $USER.<column> para quien lo ve.",
+      "runToPreview": "Ejecuta la consulta para ver una vista previa del widget.",
+      "rows": "{n} filas | {n} fila | {n} filas",
+      "cutOff": " (cortado en {setting})",
+      "wrap": "Ajustar",
+      "example": "Ejemplo",
+      "replacesQuery": "Reemplaza la consulta actual.",
+      "runsOnItsOwn": "Se ejecuta por sí sola - no necesita ninguna tabla.",
+      "useThisQuery": "Usar esta consulta",
+      "optionalFilter": "Filtro opcional",
+      "optionalFilterHelp": "Una condición que se aplica solo mientras la variable tiene un valor - SQL estándar, escrito en la posición del cursor.",
+      "variable": "Variable",
+      "column": "Columna",
+      "columnHelp": "Una columna de tu consulta o una expresión ({example}).",
+      "insert": "Insertar",
+      "results": "Resultados",
+      "run": "Ejecutar",
+      "duration": " · {ms} ms",
+      "presentationDescription": "SQL de solo lectura, opcional: sus fórmulas leen la primera fila como {'{'}{'{'}row.<columna>{'}'}{'}'} y todas como {'{'}{'{'}rows{'}'}{'}'}, junto a {'{'}{'{'}vars.<nombre>{'}'}{'}'} y {'{'}{'{'}user.<campo>{'}'}{'}'}.",
+      "detailFirstRow": "Detalle muestra la primera de {count} filas."
+    },
+    "variablesBar": {
+      "loadOptionsFailed": "No se pudieron cargar las opciones",
+      "customRange": "Rango personalizado",
+      "from": "{label} desde",
+      "to": "{label} hasta",
+      "reset": "Restablecer"
+    },
+    "variablesModal": {
+      "defaultLabel": "Variable {n}",
+      "noDefault": "Ninguno (sin definir)",
+      "fixedList": "Lista fija",
+      "fixedListHelp": "Escribe las opciones.",
+      "query": "Consulta",
+      "queryHelp": "Primera columna = valor, segunda opcional = etiqueta. Puede usar $USER.* y otras variables ($VAR.country) - entonces sus opciones las siguen.",
+      "saveFailed": "No se pudieron guardar las variables",
+      "title": "Variables",
+      "description": "Filtros que quien lo ve elige en la barra sobre el lienzo. Haz referencia a ellos en el SQL de los widgets como $VAR.<name>.",
+      "empty": "Aún no hay variables.",
+      "add": "Agregar variable",
+      "nameHelp": "Minúsculas, dígitos y guiones bajos.",
+      "labelHelp": "Se muestra en la barra de variables.",
+      "allowSeveral": "Permitir varios valores",
+      "options": "Opciones",
+      "values": "Valores",
+      "valuesHelp": "Cada opción: su valor (lo que compara la consulta) y, si quieres, lo que lee quien mira - true / Sí. Sin elegir es Todos.",
+      "optionsQuery": "Consulta de opciones",
+      "optionsQueryHelp": "Se ejecuta en solo lectura, como la consulta de un widget.",
+      "default": "Valor por defecto",
+      "defaultHelp": "Se usa hasta que quien lo ve elige un valor.",
+      "useInSql": "Uso en SQL:",
+      "addToStart": "Agrega una variable para empezar.",
+      "fromTable": "Tabla",
+      "fromTableHelp": "Las filas de una tabla: su clave el valor, su presentación de fila la etiqueta - sin SQL.",
+      "table": "Tabla",
+      "tableHelp": "Cada fila es una opción - su clave el valor, su presentación de fila (Base de datos) la etiqueta.",
+      "filters": "Filtros",
+      "filtersHelp": "Una columna de la tabla igual al valor de otra variable - las ciudades del país elegido. Sin valor, sin filtro.",
+      "filterColumn": "Filtro {n}: columna",
+      "filterVariable": "Filtro {n}: variable",
+      "addFilter": "Agregar filtro",
+      "optionValue": "Opción {n}: valor",
+      "optionLabel": "Opción {n}: etiqueta",
+      "removeOption": "Quitar opción {n}",
+      "removeFilter": "Quitar filtro {n}",
+      "addOption": "Agregar opción",
+      "defaultNone": "Ninguno",
+      "defaultConstant": "Un valor",
+      "defaultUser": "El de quien mira",
+      "userField": "Campo del usuario",
+      "userFieldHelp": "Una columna de la fila del usuario que mira - su sucursal, su región. Sin usuario (una inserción), sin valor."
+    },
+    "view": {
+      "notAvailable": "Dashboard no disponible",
+      "notAvailableHelp": "No existe, no está publicado o no tienes acceso a él.",
+      "noWidgets": "Este dashboard aún no tiene widgets.",
+      "updatedAgo": "Actualizado {ago}"
+    },
+    "viewer": {
+      "autoRefresh": "Actualización automática: {interval}"
+    },
+    "tabs": {
+      "add": "Agregar pestaña",
+      "label": "Nombre",
+      "firstHelp": "Todos los widgets que ya están en el lienzo quedan en esta primera pestaña.",
+      "rename": "Cambiar nombre…",
+      "remove": "Quitar…",
+      "actions": "Acciones de {tab}",
+      "renameTitle": "Cambiar el nombre de la pestaña",
+      "removeTitle": "Quitar la pestaña {tab}",
+      "removeHolds": "Tiene un widget - pasa a la pestaña que elijas. | Tiene {count} widgets - pasan a la pestaña que elijas.",
+      "removeEmpty": "No tiene widgets.",
+      "moveTo": "Mover sus widgets a",
+      "lastTab": "Es la última pestaña: sus widgets quedan, en una sola grilla sin pestañas.",
+      "moveAndRemove": "Mover y quitar",
+      "saveFailed": "No se pudieron guardar las pestañas"
+    },
+    "widgetCard": {
+      "moveToTab": "Mover a la pestaña",
+      "downloadCsv": "Descargar CSV",
+      "downloadExcel": "Descargar Excel",
+      "downloadImage": "Descargar imagen",
+      "fullscreen": "Pantalla completa",
+      "exportTruncated": "Se descargaron solo las primeras {count} filas - el resultado vino cortado.",
+      "exportError": "No se pudo descargar",
+      "actions": "Acciones del widget",
+      "timing": "{rows} · {ms} ms",
+      "truncated": "Se muestran las primeras {count} filas",
+      "truncatedHint": "La consulta devolvió más filas; para ver todo, conviene filtrarla o agruparla.",
+      "slow": "Consulta lenta: más de {seconds} s. Para una tabla grande, ayuda una vista materializada que se refresca de forma programada (ver la guía de tableros).",
+      "about": "Acerca de este widget"
+    },
+    "widgetView": {
+      "empty": "(vacío)",
+      "notConfigured": "Sin configurar",
+      "configure": "Configurar",
+      "noLocations": "No hay filas con una ubicación válida - devuelve una columna point (o columnas lat/lng) y asígnala en las propiedades del widget.",
+      "ofTarget": "de {target}",
+      "stillComputing": "Sigue calculando…",
+      "failed": "Este widget no pudo cargar sus datos.",
+      "timeout": "Tardó demasiado: prueba con un período más corto, o pide al autor que lo agilice.",
+      "noData": "Sin datos",
+      "noDataForPeriod": "Sin datos para este período",
+      "details": "Detalle",
+      "clickHint": {
+        "filter": "Clic para filtrar",
+        "dataview": "Clic para ver los registros",
+        "dashboard": "Clic para abrir el tablero",
+        "record": "Clic para abrir el registro",
+        "url": "Clic para abrir"
+      },
+      "tapHint": {
+        "filter": "Toca de nuevo para filtrar",
+        "dataview": "Toca de nuevo para ver los registros",
+        "dashboard": "Toca de nuevo para abrir el tablero",
+        "record": "Toca de nuevo para abrir el registro",
+        "url": "Toca de nuevo para abrir"
+      },
+      "total": "Total",
+      "cumulative": "Acumulado",
+      "field": "Campo",
+      "value": "Valor",
+      "fileBlocked": "Imagen no disponible en este enlace",
+      "openImage": "Abrir {name}",
+      "detailFirstRow": "Detalle muestra la primera de {count} filas",
+      "calendarMonthsCut": "Se muestran los últimos {months} meses",
+      "calendarYearsCut": "Se muestran los {shown} años más recientes de {count}"
+    },
+    "widgetTable": {
+      "total": "Total"
+    },
+    "embedDrawer": {
+      "allowFiles": "Mostrar archivos privados",
+      "allowFilesHelp": "Imágenes y archivos que devuelven las consultas y no son públicos (una foto) - apagado: \"Imagen no disponible en este enlace\".",
+      "allowFilesLinkWarning": "Cualquiera que tenga este enlace va a ver esas imágenes - la foto de una persona, por ejemplo. Actívalo solo si es lo buscado.",
+      "allowFilesWarning": "Quien vea esta inserción en el portal va a ver esas imágenes. Actívalo solo si es lo buscado.",
+      "allowExport": "Permitir descargas",
+      "allowExportHelp": "El ⋮ de cada widget ofrece CSV, Excel e imagen. Es solo una comodidad: lo que devuelven sus consultas ya está en el navegador de quien lo ve - en un enlace público, es público.",
+      "clicksNotHere": "El clic no funciona acá en: {widgets} - una inserción solo ejecuta un filtro sobre una variable que el visitante cambia, y un enlace marcado \"también en inserciones\".",
+      "loadFailed": "No se pudieron cargar las inserciones",
+      "toggleFailed": "No se pudo cambiar la inserción",
+      "themes": {
+        "auto": "Automático",
+        "light": "Claro",
+        "dark": "Oscuro"
+      },
+      "refreshAsDashboard": "Como el dashboard",
+      "expiry": {
+        "never": "Nunca",
+        "days30": "En 30 días",
+        "days90": "En 90 días",
+        "year": "En un año"
+      },
+      "modes": {
+        "editable": "Editable",
+        "editableHelp": "En la barra - el visitante elige.",
+        "hidden": "Oculta",
+        "hiddenHelp": "Fuera de la barra - su valor por defecto o el valor de abajo. No es una restricción.",
+        "locked": "Bloqueada",
+        "lockedHelp": "Fijada por la inserción - el visitante nunca puede cambiarla."
+      },
+      "kinds": {
+        "link": "Enlace público",
+        "linkHelp": "Pégalo en una página - cualquiera con la URL lo ve. Para datos que pueden ser públicos.",
+        "signed": "Firmada (portal)",
+        "signedHelp": "El backend de tu portal firma un token por visita - para datos privados o por cliente."
+      },
+      "devices": {
+        "desktop": "Escritorio",
+        "tablet": "Tableta",
+        "phone": "Teléfono"
+      },
+      "previewFailed": "No se pudo previsualizar esta inserción.",
+      "saved": "Inserción guardada",
+      "linkCreated": "Enlace creado - cópialo arriba",
+      "signedCreated": "Inserción firmada creada",
+      "saveFailed": "No se pudo guardar la inserción",
+      "status": {
+        "revoked": "Revocada",
+        "expired": "Vencida",
+        "needsUpdate": "Necesita actualización"
+      },
+      "copyFailed": "No se pudo copiar - selecciónalo y cópialo a mano",
+      "revoked": "\"{name}\" revocada",
+      "revokeFailed": "No se pudo revocar",
+      "deleteFailed": "No se pudo eliminar",
+      "title": "Compartir · {name}",
+      "description": "Muestra el dashboard publicado en otro sitio - un enlace público o una inserción firmada para un portal.",
+      "device": "Dispositivo",
+      "allowEmbedding": "Permitir inserción",
+      "allowEmbeddingHelp": "Desactivado, ninguna de sus inserciones muestra nada. Las inserciones muestran la versión publicada - una publicación las actualiza todas.",
+      "unpublishedTitle": "Los cambios sin publicar no se insertan",
+      "unpublishedHelp": "Las inserciones y esta vista previa muestran la versión publicada.",
+      "noOriginsTitle": "Ningún sitio puede enmarcar una inserción todavía",
+      "noOriginsHelp": "Agrega los sitios en Configuración › Dashboards › Inserción. La vista previa funciona de todos modos.",
+      "editTitle": "Editar \"{name}\"",
+      "newEmbed": "Nueva inserción",
+      "linkToPaste": "Enlace para pegar en la página",
+      "urlToFrame": "URL para enmarcar - tu backend coloca el token firmado después del #",
+      "copyLink": "Copiar enlace",
+      "copyUrl": "Copiar URL",
+      "copyIframe": "Copiar iframe",
+      "copyPayload": "Copiar payload",
+      "copied": {
+        "link": "Enlace copiado",
+        "url": "URL copiada",
+        "iframe": "Iframe copiado",
+        "payload": "Payload del token copiado"
+      },
+      "nameHelp": "Para distinguir las inserciones - p. ej. Sitio web, Portal de clientes.",
+      "kind": "Clase",
+      "theme": "Tema",
+      "showTitle": "Mostrar el título y la descripción",
+      "transparent": "Fondo transparente",
+      "variableMode": "Modo de {label}",
+      "variableValue": "Valor de {label}",
+      "variablesHelp": "El valor como en la URL de la App: un preset o {example} para un período, comas para varios. Solo Bloqueada restringe los datos.",
+      "variablesHelpSigned": "El valor como en la URL de la App: un preset o {example} para un período, comas para varios. Solo Bloqueada restringe los datos - una Bloqueada vacía la da el token.",
+      "lockedMissing": "Un enlace público necesita un valor para {names}.",
+      "noVariables": "No hay variables publicadas.",
+      "origins": "Sitios que pueden enmarcarla",
+      "originsHelp": "Vacío: todos los sitios de Configuración › Dashboards › Inserción.",
+      "expires": "Vence",
+      "expiresNow": "Ahora {date} - elige para cambiarlo.",
+      "linkPublicHelp": "Un enlace público es público para cualquiera que tenga su URL - está en el HTML de la página y también se abre fuera del marco. Los sitios de arriba solo deciden quién puede enmarcarlo.",
+      "secretMissing": "Las inserciones firmadas necesitan el secreto de inserción (Configuración › Dashboards › Inserción).",
+      "createLink": "Crear enlace",
+      "createSigned": "Crear inserción firmada",
+      "embeds": "Inserciones",
+      "empty": "Aún no hay inserciones",
+      "badges": {
+        "link": "Enlace",
+        "signed": "Firmada"
+      },
+      "lastUsed": "Último uso: {date}",
+      "notUsed": "Aún sin usar",
+      "expiresOn": " · vence el {date}",
+      "locksMissing": "Bloquea {names}, que ya no está en el dashboard - no muestra nada hasta que se actualice.",
+      "revoke": "Revocar",
+      "revokeConfirm": "¿Revocar \"{name}\"? Deja de funcionar al instante y para siempre.",
+      "notPublished": "Aún no publicado",
+      "notPublishedHelp": "Una inserción muestra la versión publicada - publica el dashboard primero.",
+      "previewTitle": "Vista previa de la inserción"
+    },
+    "editor": {
+      "openVersionFailed": "No se pudo abrir la versión",
+      "restored": "Versión v{version} restaurada en el borrador",
+      "restoredHelp": "Todavía no se publicó nada - publica para que entre en vigor.",
+      "restoreFailed": "No se pudo restaurar",
+      "copyCreated": "Se creó \"{name}\"",
+      "copyCreatedHelp": "Una copia sin publicar - publícala cuando esté lista.",
+      "copyFailed": "No se pudo crear la copia",
+      "variablesSaved": "Variables guardadas",
+      "saved": "Dashboard guardado",
+      "published": "Versión v{version} publicada",
+      "publishFailed": "No se pudo publicar el Dashboard",
+      "share": "Compartir",
+      "addWidget": "Agregar widget",
+      "variablesCount": "Variables ({n})",
+      "deleteFailed": "No se pudo eliminar el Dashboard",
+      "removeWidgetFailed": "No se pudo quitar el widget",
+      "copyLabel": "{label} (copia)",
+      "duplicateWidgetFailed": "No se pudo duplicar el widget",
+      "moveWidgetFailed": "No se pudo mover el widget",
+      "addWidgetFailed": "No se pudo agregar el widget",
+      "canvas": "Lienzo de widgets",
+      "publishAs": "¿Publicar como v{version}?",
+      "publishHelp": "Convierte la disposición actual de los widgets en la versión que ven los usuarios de Apps.",
+      "unconfigured": "{n} widgets no están configurados y no se mostrarán en Apps. | {n} widget no está configurado y no se mostrará en Apps. | {n} widgets no están configurados y no se mostrarán en Apps.",
+      "brokenEmbeds": "Detiene la inserción {names}: bloquea {variables}, que el dashboard ya no tiene. Actualízala en Compartir. | Detiene {n} inserciones {names}: bloquean {variables}, que el dashboard ya no tiene. Actualízalas en Compartir.",
+      "widgets": "Widgets",
+      "addAWidget": "Agregar un widget",
+      "largerScreen": "Mover y redimensionar widgets requiere una pantalla más grande.",
+      "devicePreview": "Vista previa de {device} - cambia a Escritorio para mover y redimensionar widgets.",
+      "desktopTooltip": "Escritorio - 12 columnas",
+      "deviceTooltip": "Vista previa de {device} - {n} columna | Vista previa de {device} - {n} columnas",
+      "versionEmpty": "Esta versión no tiene widgets.",
+      "emptyCompact": "Agrega un widget desde el menú ⋮.",
+      "empty": "Elige un widget de la barra lateral para agregarlo al lienzo.",
+      "deleteTitle": "¿Eliminar este Dashboard?",
+      "deleteHelp": "{name}, sus widgets y todas sus versiones se eliminarán. No se puede deshacer.",
+      "thisDashboard": "Este dashboard",
+      "deleteWidgetTitle": "¿Eliminar este widget?",
+      "deleteWidgetHelp": "{name} y su consulta salen del borrador - publica para quitarlo del dashboard publicado.",
+      "duplicate": "Duplicar…",
+      "editVariables": "Editar variables"
+    },
+    "tree": {
+      "searchLabel": "Buscar Dashboards",
+      "search": "Buscar...",
+      "loadFailed": "No se pudieron cargar los Dashboards",
+      "notInMenu": "(no está en el menú de la App)",
+      "notInMenuHelp": "No está en el menú de la App - solo insertado en otros formularios",
+      "empty": "No se encontraron Dashboards.",
+      "brokenWidgets": "La consulta de un widget nombra algo que ya no existe: {widgets} | Las consultas de {count} widgets nombran algo que ya no existe: {widgets}"
+    },
+    "index": {
+      "title": "Selecciona un Dashboard",
+      "description": "Elige un Dashboard de la barra lateral o crea uno nuevo.",
+      "blankDescription": "Un borrador vacío: agregas tú sus widgets y variables.",
+      "fromTableDescription": "Elige una tabla o vista: propone widgets, variables y filtros, y tú eliges qué va."
+    },
+    "widget": {
+      "designName": "Dashboard · {name}",
+      "dashboard": "Dashboard",
+      "pick": "Elige su Dashboard en el inspector.",
+      "boundFromPage": "{names}: definidas desde la página.",
+      "viewerPicks": "Sus variables las elige quien lo ve.",
+      "none": "Sin Dashboard",
+      "noneHelp": "Su Dashboard no está definido."
+    },
+    "charts": {
+      "total": "total",
+      "more": "Más",
+      "less": "Menos"
+    },
+    "inspector": {
+      "tabs": {
+        "props": "Propiedades",
+        "styles": "Estilos"
+      },
+      "actions": "Acciones del widget",
+      "restoreDefaults": "Restaurar valores por defecto",
+      "typeHelp": "Los tipos que sirven para lo que devuelve la consulta - los demás en gris, con el motivo. Al cambiar se conservan las columnas equivalentes.",
+      "title": "Título",
+      "titleHelp": "Se muestra arriba del widget - vacío, ninguno.",
+      "data": "Datos",
+      "runToListColumns": "Ejecuta la consulta para ver sus columnas.",
+      "automatic": "Automático: {columns} - {rule}.",
+      "rules": {
+        "first": "la primera columna que encaja",
+        "all": "todas las columnas que encajan",
+        "none": "ninguna"
+      },
+      "noAutomatic": "Ninguna columna del tipo que acepta - elige una.",
+      "none": "Ninguna.",
+      "missingColumn": "La consulta ya no devuelve {columns}.",
+      "wrongKind": "No es un tipo de columna que acepte.",
+      "removeColumn": "Quitar {column}",
+      "addColumn": "Agregar una columna…",
+      "useAutomatic": "Volver a automático",
+      "useDefault": "Volver al valor por defecto",
+      "sections": {
+        "format": "Formato del número",
+        "appearance": "Apariencia",
+        "series": "Series",
+        "axes": "Ejes",
+        "thresholds": "Umbrales",
+        "events": "Eventos",
+        "zoomExport": "Zoom y exportar"
+      },
+      "inheritedFormat": "Heredado de la columna ({column}): {format}",
+      "editInTable": "Editar en la tabla",
+      "card": {
+        "section": "Tarjeta",
+        "description": "Descripción",
+        "descriptionHelp": "Se muestra con una ⓘ junto al título.",
+        "emptyText": "Texto sin datos",
+        "emptyTextHelp": "Por defecto: \"Sin datos para este período\" si la consulta lee un rango de fechas; si no, \"Sin datos\".",
+        "mobile": "En celular",
+        "mobileHelp": "Automático: la mitad para un widget chico (un KPI); si no, el ancho completo.",
+        "mobileOptions": {
+          "AUTO": "Automático",
+          "FULL": "Ancho completo",
+          "HALF": "Mitad",
+          "HIDDEN": "Oculto"
+        }
+      },
+      "unsetFormat": "Sin definir: {format}.",
+      "unsetLocaleFormat": "Sin definir: el del idioma de quien mira.",
+      "source": {
+        "number": "Número",
+        "statistic": "Estadística",
+        "column": "Columna",
+        "variable": "Variable",
+        "statistics": {
+          "average": "Promedio",
+          "min": "Mínimo",
+          "max": "Máximo",
+          "median": "Mediana"
+        }
+      },
+      "list": {
+        "moveUp": "Subir",
+        "moveDown": "Bajar"
+      },
+      "series": {
+        "empty": "Ejecuta la consulta para ver sus series.",
+        "emptyLong": "Todavía no hay valores de serie - agrega uno abajo o ejecuta la consulta.",
+        "defaultLabel": "Sin definir: {label}.",
+        "automaticType": "Automático ({type})",
+        "types": {
+          "bar": "Barras",
+          "line": "Línea",
+          "area": "Área"
+        },
+        "axis": "Eje",
+        "axes": {
+          "left": "Izquierdo",
+          "right": "Derecho"
+        },
+        "addValue": "Agregar un valor de serie",
+        "addValueHelp": "En formato largo, cada valor de la columna Serie es una serie - escribe uno para definir su nombre, color o tipo."
+      },
+      "axes": {
+        "category": "Eje de categorías",
+        "value": "Eje de valores",
+        "value2": "Eje derecho",
+        "title": "Título",
+        "min": "Mínimo",
+        "max": "Máximo",
+        "minUnset": {
+          "zero": "Sin definir: 0.",
+          "fit": "Sin definir: ajustado a los datos."
+        },
+        "maxUnset": "Sin definir: ajustado a los datos.",
+        "log": "Escala logarítmica",
+        "logHelp": "Para valores que abarcan varios órdenes de magnitud.",
+        "formatUnset": "Sin definir: el formato de sus series.",
+        "x": "Eje x",
+        "y": "Eje y"
+      },
+      "thresholds": {
+        "empty": "Sin umbrales - se usa el Color.",
+        "base": "Color base - por debajo del primer umbral.",
+        "from": "Desde",
+        "add": "Agregar un umbral",
+        "addBase": "Agregar un color base"
+      },
+      "references": {
+        "empty": "Sin líneas de referencia.",
+        "line": "Línea",
+        "band": "Banda",
+        "addLine": "Agregar una línea",
+        "addBand": "Agregar una banda",
+        "from": "Desde",
+        "to": "Hasta",
+        "series": "Serie",
+        "allSeries": "Todas las series",
+        "axis": "Eje"
+      },
+      "click": {
+        "action": "Acción",
+        "actions": {
+          "NONE": "Ninguna",
+          "FILTER": "Filtrar este tablero",
+          "DATAVIEW": "Abrir una DataView",
+          "DASHBOARD": "Abrir un tablero",
+          "RECORD": "Abrir un registro",
+          "URL": "Abrir una URL"
+        },
+        "worksIn": {
+          "app": "Funciona en la App.",
+          "embeds": "Funciona en la App y en las inserciones."
+        },
+        "variable": "Variable",
+        "variableHelp": "Una variable de este tablero - en una inserción, solo una que el visitante pueda cambiar.",
+        "noFilterVariables": "Este tablero no tiene variables de tipo Selección, Texto o Número - agrega una en Variables.",
+        "formulaHelp": "Una fórmula - {row} lee la fila del clic ({columns}), {vars} una variable ({variables}).",
+        "dataview": "DataView",
+        "filter": "Filtro",
+        "filterHelp": "Opcional - un objeto JSON con la gramática where de la Data API, con fórmulas como valores: {example}",
+        "filterInvalid": "No es un objeto JSON - se conserva tal como está escrito hasta que lo sea.",
+        "pk": "Clave del registro",
+        "dashboard": "Tablero",
+        "tab": "Pestaña",
+        "firstTab": "La primera pestaña",
+        "variables": "Sus variables",
+        "noTargetVariables": "Ese tablero no tiene variables.",
+        "url": "URL",
+        "urlHelp": "El sitio escrito completo (https://...) y después {row} y {vars} - codificados.",
+        "newTab": "Abrir en una pestaña nueva",
+        "inEmbeds": "También en inserciones",
+        "inEmbedsHelp": "Funciona también en un enlace público o una inserción firmada.",
+        "hint": "Línea del tooltip",
+        "hintHelp": "La última línea del tooltip - qué hace el clic."
+      },
+      "total": {
+        "label": "Total",
+        "help": "Un renglón al pie, calculado por PostgreSQL sobre todas las filas que devuelve la consulta, con el formato de la columna.",
+        "kinds": {
+          "none": "Ninguno",
+          "sum": "Suma",
+          "avg": "Promedio",
+          "min": "Mínimo",
+          "max": "Máximo",
+          "count": "Cantidad"
+        }
+      },
+      "problems": {
+        "DASHBOARD_COMBO_NEEDS_TWO_VALUES": "Un gráfico combinado necesita al menos dos columnas en Valores - para una serie por cada valor de una columna, usa Barras."
+      },
+      "aggregates": {
+        "empty": "Ejecuta la consulta para ver sus valores.",
+        "required": "Elige su agregado - cada valor necesita uno.",
+        "of": "Agregado de {column}",
+        "notAValue": "No está entre los Valores"
+      },
+      "pivotSort": {
+        "value": "Valor",
+        "direction": "Dirección",
+        "none": "Los valores de las filas",
+        "directions": {
+          "ASC": "Ascendente",
+          "DESC": "Descendente"
+        }
+      },
+      "options": {
+        "thresholdsOn": {
+          "VALUE": "Valor",
+          "PERCENT": "Porcentaje"
+        },
+        "sort": {
+          "NONE": "El orden de la consulta",
+          "DESC": "El mayor primero"
+        },
+        "conversion": {
+          "FIRST": "Del primer paso",
+          "PREVIOUS": "Del paso anterior",
+          "NONE": "Ninguna"
+        },
+        "layout": {
+          "AUTO": "Automática",
+          "ONE": "Una columna",
+          "TWO": "Dos columnas"
+        }
+      }
+    },
+    "palette": {
+      "search": "Buscar widgets…",
+      "none": "Ningún widget coincide."
+    },
+    "settings": {
+      "design": "Diseño del tablero",
+      "appliesAtOnce": "Los cambios de esta pestaña se aplican al instante - sin Publicar.",
+      "appliesOnPublish": "Las variables se versionan: un cambio llega a la App al próximo Publicar.",
+      "sections": {
+        "nav": "Configuración del tablero",
+        "general": "General",
+        "variables": "Variables",
+        "data": "Datos",
+        "share": "Compartir",
+        "security": "Seguridad",
+        "versions": "Versiones"
+      }
+    }
+  }
+}

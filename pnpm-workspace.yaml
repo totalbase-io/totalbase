@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - isolated-vm
+
+patchedDependencies:
+  reka-ui@2.10.3: patches/reka-ui@2.10.3.patch

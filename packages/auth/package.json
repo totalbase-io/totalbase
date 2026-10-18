@@ -1,0 +1,32 @@
+{
+  "name": "@totalbase/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --no-file-parallelism"
+  },
+  "dependencies": {
+    "@totalbase/database": "workspace:*",
+    "@totalbase/errors": "workspace:*",
+    "@totalbase/permissions": "workspace:*",
+    "@totalbase/secrets": "workspace:*",
+    "@totalbase/settings": "workspace:*",
+    "@totalbase/shared": "workspace:*",
+    "argon2": "^0.41.1",
+    "jose": "^5.9.6",
+    "nodemailer": "^10.0.10"
+  },
+  "devDependencies": {
+    "@totalbase/migrations": "workspace:*",
+    "@types/nodemailer": "^8.0.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,24 @@
+diff --git a/dist/Combobox/ComboboxTrigger.cjs b/dist/Combobox/ComboboxTrigger.cjs
+index 1a12e5331ccd67d883e5b64b320f5cef3673d1fd..e004e9ae60e48ad38551584431f8f28680383d35 100644
+--- a/dist/Combobox/ComboboxTrigger.cjs
++++ b/dist/Combobox/ComboboxTrigger.cjs
+@@ -35,7 +35,6 @@ var ComboboxTrigger_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ *
+ 				ref: (0, vue.unref)(forwardRef),
+ 				type: _ctx.as === "button" ? "button" : void 0,
+ 				tabindex: "-1",
+-				"aria-label": "Show popup",
+ 				"aria-haspopup": "listbox",
+ 				"aria-expanded": (0, vue.unref)(rootContext).open.value,
+ 				"aria-controls": (0, vue.unref)(rootContext).contentId,
+diff --git a/dist/Combobox/ComboboxTrigger.js b/dist/Combobox/ComboboxTrigger.js
+index 43f0ba3458339c78c678cd23b900612a7dcc33db..2903abf6255e3bfa5265ac9862ab7c464560fc9f 100644
+--- a/dist/Combobox/ComboboxTrigger.js
++++ b/dist/Combobox/ComboboxTrigger.js
+@@ -34,7 +34,6 @@ var ComboboxTrigger_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ *
+ 				ref: unref(forwardRef),
+ 				type: _ctx.as === "button" ? "button" : void 0,
+ 				tabindex: "-1",
+-				"aria-label": "Show popup",
+ 				"aria-haspopup": "listbox",
+ 				"aria-expanded": unref(rootContext).open.value,
+ 				"aria-controls": unref(rootContext).contentId,

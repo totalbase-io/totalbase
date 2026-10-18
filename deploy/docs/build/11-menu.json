@@ -1,0 +1,13 @@
+[["set_app_menu", {"groups_open": "current", "nodes": [
+  {"group": "Service", "icon": "i-lucide-wrench", "children": [
+    {"dataview": "dispatch-board"}, {"dataview": "work-orders"}, {"dataview": "work-orders-list"}, {"dataview": "new-service-request"}, {"dataview": "schedule"}, {"dataview": "my-work"}, {"dataview": "team"}, {"dataview": "work-order", "label": "Work order"}]},
+  {"group": "Customers", "icon": "i-lucide-building-2", "children": [
+    {"dataview": "customers"}, {"dataview": "sites"}, {"dataview": "equipment"}, {"dataview": "quotes"}]},
+  {"group": "Fleet", "icon": "i-lucide-truck", "children": [{"dataview": "fleet-map"}, {"dataview": "vehicles"}]},
+  {"group": "Inventory", "icon": "i-lucide-boxes", "children": [{"dataview": "stock"}, {"dataview": "purchase-orders"}, {"dataview": "supplier-portal"}]},
+  {"dataview": "projects"},
+  {"dataview": "invoices"},
+  {"group": "Dashboards", "icon": "i-lucide-layout-dashboard", "children": [
+    {"dashboard": "operations"}, {"dashboard": "fleet"}, {"dashboard": "finance"}, {"dashboard": "inventory"}, {"dashboard": "service-status"}]},
+  {"dataview": "parameters"}
+]}]]

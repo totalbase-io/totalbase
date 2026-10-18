@@ -1,0 +1,797 @@
+{
+  "workflows": {
+    "limits": {
+      "thisStep": "sin clave",
+      "templatePath": "El paso {name} tiene una ruta de plantilla de más de {max} caracteres.",
+      "depth": "El paso {name} tiene una configuración anidada en más de {max} niveles.",
+      "fields": "El paso {name} tiene un objeto con más de {max} campos.",
+      "configurationSize": "El paso {name} tiene una configuración de más de {max} KiB.",
+      "operations": "Un workflow admite como máximo {max} pasos, incluido Inicio.",
+      "connections": "Un workflow admite como máximo {max} conexiones.",
+      "definitionSize": "Este workflow ocupa más de 1 MiB."
+    },
+    "runBlocker": {
+      "publish": "Publica este workflow antes de ejecutarlo.",
+      "ownTrigger": "Un workflow de webhook o de evento de base de datos se ejecuta desde su propio disparador - usa Ejecución de prueba para probar el borrador.",
+      "enable": "Habilita este workflow antes de ejecutarlo."
+    },
+    "triggers": {
+      "manual": {
+        "title": "Manual",
+        "description": "Ejecuta este workflow a demanda desde el editor o desde una futura acción manual.",
+        "configDescription": "Sin más configuración."
+      },
+      "dataEvent": {
+        "title": "Evento de base de datos",
+        "description": "Se ejecuta cuando se crea, actualiza o elimina un registro de una tabla.",
+        "configDescription": "Tabla y eventos que admiten una ejecución."
+      },
+      "cron": {
+        "title": "Programación",
+        "description": "Se ejecuta según una programación recurrente.",
+        "configDescription": "Expresión cron, zona horaria y usuario de ejecución."
+      },
+      "webhook": {
+        "title": "Webhook",
+        "description": "Se ejecuta cuando una solicitud externa llama a un endpoint dedicado.",
+        "configDescription": "Modo de respuesta, acceso y usuario de ejecución."
+      }
+    },
+    "catalog": {
+      "groups": {
+        "data": "Datos",
+        "control": "Control",
+        "code": "Código",
+        "integration": "Integración",
+        "communication": "Comunicación",
+        "files": "Archivos",
+        "documents": "Documentos",
+        "composition": "Composición"
+      },
+      "operations": {
+        "read-records": {
+          "label": "Leer registros",
+          "description": "Consultar un recurso"
+        },
+        "create-records": {
+          "label": "Crear registros",
+          "description": "Insertar uno o más registros"
+        },
+        "update-records": {
+          "label": "Actualizar registros",
+          "description": "Modificar una selección"
+        },
+        "delete-records": {
+          "label": "Eliminar registros",
+          "description": "Eliminar una selección"
+        },
+        "condition": {
+          "label": "Condición",
+          "description": "Bifurcar según un filtro"
+        },
+        "for-each": {
+          "label": "Para cada elemento",
+          "description": "Ejecutar un bloque por cada elemento de una lista"
+        },
+        "select-case": {
+          "label": "Seleccionar caso",
+          "description": "Elegir entre ramas"
+        },
+        "finish-error": {
+          "label": "Terminar con error",
+          "description": "Detenerse con un error definido"
+        },
+        "finish-result": {
+          "label": "Terminar con resultado",
+          "description": "Detenerse con un resultado explícito"
+        },
+        "validate-data": {
+          "label": "Validar datos",
+          "description": "Comprobar campos, tipos y condiciones"
+        },
+        "execute-function": {
+          "label": "Ejecutar función",
+          "description": "Invocar una función de PostgreSQL"
+        },
+        "execute-javascript": {
+          "label": "Ejecutar JavaScript",
+          "description": "Lógica o transformación personalizada"
+        },
+        "execute-sql": {
+          "label": "Ejecutar SQL",
+          "description": "Ejecutar una sentencia como un usuario elegido (solo auditoría - sin comprobación de permisos)"
+        },
+        "http-request": {
+          "label": "Solicitud HTTP",
+          "description": "Llamar a una API externa"
+        },
+        "soap-request": {
+          "label": "Solicitud SOAP",
+          "description": "Llamar a un servicio web SOAP"
+        },
+        "sign": {
+          "label": "Firmar",
+          "description": "Firmar datos con un certificado guardado"
+        },
+        "send-email": {
+          "label": "Enviar correo electrónico",
+          "description": "Enviar un mensaje"
+        },
+        "read-file": {
+          "label": "Leer archivo",
+          "description": "Leer un archivo existente"
+        },
+        "create-file": {
+          "label": "Crear archivo",
+          "description": "Guardar contenido generado"
+        },
+        "parse-file": {
+          "label": "Analizar CSV / JSON",
+          "description": "Convertir contenido en datos"
+        },
+        "generate-file": {
+          "label": "Generar CSV / JSON",
+          "description": "Serializar datos para exportar"
+        },
+        "generate-pdf-template": {
+          "label": "Generar PDF desde plantilla",
+          "description": "Rellenar una plantilla pdfme guardada"
+        },
+        "generate-pdf": {
+          "label": "Generar PDF",
+          "description": "Construir un PDF a partir de un diseño personalizado"
+        },
+        "execute-workflow": {
+          "label": "Ejecutar otro workflow",
+          "description": "Reutilizar un proceso"
+        },
+        "wait-resume": {
+          "label": "Esperar",
+          "description": "Pausar durante un tiempo fijo"
+        },
+        "process-batches": {
+          "label": "Procesar por lotes",
+          "description": "Dividir una colección en lotes de tamaño fijo"
+        }
+      }
+    },
+    "triggerFields": {
+      "fieldTypes": {
+        "text": "Texto",
+        "number": "Número",
+        "boolean": "Sí / no",
+        "date": "Fecha"
+      },
+      "forEachRow": "Por cada fila",
+      "forEachRowDescription": "Una ejecución por fila afectada - {path}.",
+      "forEachStatement": "Por cada sentencia",
+      "forEachStatementDescription": "Una ejecución por escritura, con la lista de filas - {path}.",
+      "filterInvalid": "Debe ser un objeto de filtro JSON.",
+      "table": "Tabla",
+      "tableDescription": "La tabla cuyos cambios admiten una ejecución.",
+      "events": "Eventos",
+      "eventsDescription": "Al menos un evento que dispare este workflow.",
+      "eventCreate": "Crear",
+      "eventUpdate": "Actualizar",
+      "eventDelete": "Eliminar",
+      "forEach": "Por cada",
+      "forEachDescription": "Como FOR EACH ROW / FOR EACH STATEMENT de un trigger de PostgreSQL: una escritura masiva de 500 filas inicia 500 ejecuciones, o una sola ejecución con las 500 filas.",
+      "filter": "Filtro",
+      "filterDescription": "Opcional - solo las filas que coinciden con él (la fila resultante; la eliminada en Eliminar). La misma gramática de filtros, p. ej. {example}.",
+      "changedFields": "Campos modificados",
+      "changedFieldsDescription": "Opcional, solo Actualizar - se ejecuta solo cuando cambió alguna de estas columnas.",
+      "oldFilter": "Filtro sobre la fila anterior",
+      "oldFilterDescription": "Opcional, solo Actualizar - la fila antes de la escritura debe coincidir con él, p. ej. {example} con el Filtro status PAID: se ejecuta en PENDING -> PAID.",
+      "executeAs": "Ejecutar como",
+      "executeAsDataEvent": "El cambio de datos que admite una ejecución tiene su propio autor, pero el workflow siempre se ejecuta como esta cuenta - no como quien hizo el cambio.",
+      "executeAsManual": "Vacío: quien lo ejecute. Un usuario elegido aquí: cada ejecución se realiza como él, mientras que quien lo llama sigue registrado como quien la inició - invocarlo sigue limitado por sus roles.",
+      "inputForm": "Formulario de entrada",
+      "inputFormDescription": "Opcional - los campos que completa quien lo llama (Ejecutar los muestra como un formulario). La entrada de una ejecución se comprueba contra ellos: los obligatorios presentes, cada uno de su tipo. Ninguno: se acepta cualquier entrada.",
+      "inputFieldName": "Nombre del campo de entrada {n}",
+      "inputFieldLabel": "Etiqueta del campo de entrada {n}",
+      "inputFieldType": "Tipo del campo de entrada {n}",
+      "removeInputField": "Quitar el campo de entrada {n}",
+      "inputFieldsHelp": "Cada campo: su nombre - la clave que el workflow lee en los datos de Inicio -, una etiqueta y un tipo.",
+      "addField": "Agregar un campo",
+      "confirmation": "Confirmación",
+      "confirmationDescription": "Opcional - se pregunta antes de que Ejecutar lo inicie, p. ej. 'Esto envía un correo electrónico a cada cliente.'",
+      "timezone": "Zona horaria",
+      "timezoneDescription": "Zona horaria IANA con la que se interpreta la programación.",
+      "executeAsCron": "Una ejecución programada no tiene un llamador autenticado - se requiere un usuario específico.",
+      "method": "Método",
+      "methodDescription": "El método HTTP que debe usar el llamador externo para invocar este endpoint.",
+      "response": "Respuesta",
+      "responseDescription": "Síncrona espera el resultado del workflow. Asíncrona acepta la solicitud y continúa en segundo plano.",
+      "sync": "Síncrona",
+      "async": "Asíncrona",
+      "waitTime": "Tiempo de espera",
+      "waitTimeDescription": "Segundos que se espera un resultado antes de aplicar la acción de tiempo agotado - nunca más que Configuración › Workflows › Espera síncrona máxima.",
+      "onTimeout": "Al agotarse el tiempo",
+      "onTimeoutDescription": "Qué ocurre cuando transcurre el tiempo de espera sin un resultado.",
+      "continueInBackground": "Continuar en segundo plano",
+      "requestCancellation": "Solicitar la cancelación",
+      "access": "Acceso",
+      "accessDescription": "Autenticado requiere una identidad válida con permiso de invocación. Público requiere un usuario de ejecución explícito.",
+      "public": "Público",
+      "authenticated": "Autenticado",
+      "executeAsWebhookPublic": "Obligatorio - un webhook público tiene un iniciador anónimo y debe usar un usuario de ejecución específico.",
+      "executeAsWebhookAuthenticated": "Opcional - si se deja vacío, se usa el llamador autenticado."
+    },
+    "cron": {
+      "hourly": "Cada hora",
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "monthly": "Mensual",
+      "custom": "Personalizada",
+      "previewFailed": "No se pudo calcular una vista previa de esta programación.",
+      "minuteOfHour": "Minuto de cada hora",
+      "time": "Hora",
+      "daysOfWeek": "Días de la semana",
+      "months": "Meses",
+      "monthsDescription": "Deja todos los meses seleccionados para ejecutarlo cada mes.",
+      "dayOfMonth": "Día del mes",
+      "expression": "Expresión cron",
+      "expressionDescription": "5 campos: minuto hora día-del-mes mes día-de-la-semana. Los meses JAN-DEC y los días SUN-SAT pueden ir por nombre, p. ej. {example}",
+      "invalid": "Expresión cron no válida.",
+      "lastOccurrence": "Última ocurrencia:",
+      "nextRunsIn": "Próximas ejecuciones ({timezone}):",
+      "nextRunsNone": "Próximas ejecuciones: —"
+    },
+    "conditionModal": {
+      "condition": "Condición",
+      "configureTheBranchThisNode": "Configura la rama que evalúa este nodo.",
+      "input": "Entrada",
+      "anyJsonValueTheFilter": "Cualquier valor JSON que evalúa el filtro de abajo. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "filter": "Filtro",
+      "evaluatedAgainstTheInputAbove": "Se evalúa contra la entrada de arriba. Usa la misma gramática de filtros que los filtros de filas y where[...] de la Data API - un valor también puede usar {c0}."
+    },
+    "createFileModal": {
+      "createFile": "Crear archivo",
+      "storeGeneratedContentAsA": "Guarda contenido generado como un nuevo archivo.",
+      "contentType": "Tipo de contenido",
+      "forExampleTextPlain": "Por ejemplo: text/plain",
+      "folder": "Carpeta",
+      "whereTheFileIsStored": "Dónde se guarda el archivo. Ninguna: la raíz.",
+      "encoding": "Codificación",
+      "base64BinaryContentFromAnother": "Base64: contenido binario de otro paso, p. ej. un PDF.",
+      "content": "Contenido",
+      "theAssetSContentText": "El contenido del archivo - texto, o base64 cuando Codificación lo indica. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "encodingText": "Texto"
+    },
+    "createRecordsModal": {
+      "createRecords": "Crear registros",
+      "insertOneOrMoreRecords": "Inserta uno o más registros en un recurso con las mismas reglas que una solicitud normal de la Data API.",
+      "resource": "Recurso",
+      "onlyActiveTableResourcesWritable": "Solo recursos TABLE activos en los que el principal que ejecuta puede escribir (POST).",
+      "records": "Registros",
+      "aJsonArrayOneObject": "Un array JSON - un objeto por cada registro a insertar. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}), y a los elementos de un array con {c2}.",
+      "emitDatabaseEvents": "Emitir eventos de base de datos",
+      "letThisStepSInserts": "Permite que las inserciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+    },
+    "deleteRecordsModal": {
+      "deleteRecords": "Eliminar registros",
+      "deleteASelectionUsingThe": "Elimina una selección con las mismas reglas que una solicitud normal de la Data API.",
+      "resource": "Recurso",
+      "onlyActiveTableResourcesWritable": "Solo recursos TABLE activos en los que el principal que ejecuta puede escribir (DELETE).",
+      "filterWhere": "Filtro (where)",
+      "whichRowsToDeleteRequired": "Qué filas eliminar. Obligatorio salvo que la opción 'Exigir un filtro para eliminaciones masivas' esté desactivada - entonces vacío coincide con todas las filas. Un valor del filtro puede hacer referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "emitDatabaseEvents": "Emitir eventos de base de datos",
+      "letThisStepSDeletions": "Permite que las eliminaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+    },
+    "editor": {
+      "notConfigured": "Sin configurar",
+      "configured": "Configurado",
+      "noEvents": "sin eventos",
+      "filtered": "Filtrado",
+      "noFilter": "Sin filtro",
+      "filteredLower": "filtrado",
+      "limitN": "límite {n}",
+      "recordsCount": "{n} registro | {n} registros",
+      "notConfiguredLower": "sin configurar",
+      "allRows": "todas las filas",
+      "linesCount": "{n} línea(s)",
+      "batchesOf": "Lotes de {n}",
+      "itemsCount": "{n} elemento(s)",
+      "casesCount": "{n} caso | {n} casos",
+      "defaultLower": "por defecto",
+      "start": "Inicio",
+      "saveFailed": "No se pudo guardar el workflow",
+      "deleteFailed": "No se pudo eliminar el workflow",
+      "nothingToPublish": "Nada que publicar",
+      "alreadyLive": "v{version} ya está publicada.",
+      "published": "Workflow publicado",
+      "publishFailed": "No se pudo publicar el workflow",
+      "updateFailed": "No se pudo actualizar el workflow",
+      "loadVersionFailed": "No se pudo cargar la versión",
+      "restored": "v{version} restaurada en el borrador",
+      "restoredDescription": "Aún no se ha publicado nada - publica para ponerla en producción.",
+      "restoreFailed": "No se pudo restaurar",
+      "copyCreated": "Se creó \"{name}\"",
+      "copyCreatedDescription": "Una copia sin publicar - publícala cuando esté lista.",
+      "copyFailed": "No se pudo crear la copia",
+      "calledBy": "Llamado por {n}",
+      "callerLive": "publicado",
+      "callerDraftOnly": "solo borrador",
+      "run": "Ejecutar",
+      "autoDisabled": "Deshabilitado automáticamente",
+      "publishBeforeEnabling": "Publica este workflow antes de habilitarlo.",
+      "autoDisabledTooltip": "Deshabilitado automáticamente tras {n} ejecuciones fallidas consecutivas.",
+      "settingsUpdateFailed": "No se pudo actualizar la configuración del workflow",
+      "accessUpdateFailed": "No se pudo actualizar el acceso al workflow",
+      "stepNotSaved": "Paso no guardado",
+      "workflow": "Workflow",
+      "visualEditor": "Editor visual",
+      "publishAs": "¿Publicar como v{version}?",
+      "publishDescription": "Guarda el lienzo tal como está y lo convierte en la versión que usa cada nueva ejecución de este workflow.",
+      "zoomIn": "Acercar",
+      "resetZoom": "Restablecer zoom",
+      "zoomOut": "Alejar",
+      "deleteTitle": "¿Eliminar este workflow?",
+      "deleteDescription": "Se eliminan su diseño, todas sus versiones y su historial de ejecuciones. Esto no se puede deshacer. Los registros que ya creó en tus propias tablas NO se eliminan.",
+      "disabledHint": "Deshabilitado - ningún disparador admite ejecuciones. Actívalo en Configuración › General.",
+      "runTest": "Prueba",
+      "runTestDescription": "El borrador tal como está. Sus efectos son reales.",
+      "runProduction": "Producción",
+      "runProductionDescription": "La versión publicada (v{version})."
+    },
+    "executeFunctionModal": {
+      "executeFunction": "Ejecutar función",
+      "invokeAPostgresqlFunctionExposed": "Invoca una función de PostgreSQL expuesta por un recurso.",
+      "function": "Función",
+      "onlyActiveFunctionResourcesInvokable": "Solo recursos FUNCTION activos que el principal que ejecuta puede invocar (POST).",
+      "arguments": "Argumentos",
+      "aJsonObjectArgumentNames": "Un objeto JSON - nombres de argumentos asociados a sus valores. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1})."
+    },
+    "executeJavascriptModal": {
+      "executeJavascript": "Ejecutar JavaScript",
+      "customLogicTransformationRunAs": "Lógica o transformación personalizada, ejecutada como un paso propio.",
+      "code": "Código",
+      "runsInAnIsolatedSandbox": "Se ejecuta en un sandbox aislado con `trigger` y `results` (los datos de los pasos anteriores) disponibles - sin acceso al sistema de archivos, a la red ni al proceso. Debe devolver datos JSON simples."
+    },
+    "executeSqlModal": {
+      "executeSql": "Ejecutar SQL",
+      "runsARawStatementNo": "Ejecuta una sentencia directa - sin comprobación de permisos, solo atribución para auditoría.",
+      "noPermissionChecks": "Sin comprobación de permisos",
+      "thisStatementRunsDirectlyIt": "Esta sentencia se ejecuta directamente - no pasa por la aplicación de roles y permisos como la Data API u otros pasos. Cualquiera que pueda editar este workflow puede agregarla o cambiarla.",
+      "executeAs": "Ejecutar como",
+      "recordedForAuditPurposesOnly": "Se registra solo para auditoría - no restringe lo que puede hacer la sentencia. Vacío, el usuario de la ejecución.",
+      "statement": "Sentencia"
+    },
+    "executeWorkflowModal": {
+      "executeAnotherWorkflow": "Ejecutar otro workflow",
+      "reuseAProcess": "Reutiliza un proceso.",
+      "workflow": "Workflow",
+      "input": "Entrada",
+      "passedAsTheInvokedWorkflow": "Se pasa como los datos del disparador del workflow invocado. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1})."
+    },
+    "finishErrorModal": {
+      "finishWithError": "Terminar con error",
+      "stopTheRunWithA": "Detiene la ejecución con un error definido - un paso terminal, nada se ejecuta después.",
+      "message": "Mensaje",
+      "referenceAnotherStepSResult": "Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "code": "Código",
+      "optionalAShortMachineReadable": "Opcional - un código de error corto, legible por máquinas. Por ejemplo: INVALID_ORDER"
+    },
+    "finishResultModal": {
+      "finishWithResult": "Terminar con resultado",
+      "stopTheRunWithAn": "Detiene la ejecución con un resultado explícito - un paso terminal, nada se ejecuta después.",
+      "result": "Resultado",
+      "anyJsonValueReferenceAnother": "Cualquier valor JSON. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "format": "Formatear"
+    },
+    "forEachModal": {
+      "forEachItem": "Para cada elemento",
+      "runTheBodyOncePer": "Ejecuta el cuerpo una vez por cada elemento de una lista.",
+      "items": "Elementos",
+      "mustResolveToAJson": "Debe resolverse en un array JSON en tiempo de ejecución. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "wireThisStepSItem": "Conecta la salida \"Elemento\" de este paso al primer paso del cuerpo, y \"Listo\" a lo que se ejecuta cuando termina el bucle. Dentro del cuerpo, haz referencia al elemento actual con {c0} (p. ej. {c1})."
+    },
+    "generateFileModal": {
+      "generateCsvJson": "Generar CSV / JSON",
+      "serializeDataForExport": "Serializa datos para exportarlos.",
+      "format": "Formato",
+      "data": "Datos",
+      "aJsonArrayObjectTo": "Un array u objeto JSON a serializar (el formato CSV espera un array de objetos). Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1})."
+    },
+    "generatePdfModal": {
+      "generatePdf": "Generar PDF",
+      "buildAPdfFromA": "Construye un PDF a partir de un diseño pdfme personalizado.",
+      "design": "Diseño",
+      "aPdfmeDesignObjectBasepdf": "Un objeto de diseño pdfme (basePdf + schemas) - la misma forma que guarda una plantilla PDF.",
+      "format": "Formatear",
+      "data": "Datos",
+      "aJsonObjectValuesFor": "Un objeto JSON - valores para los marcadores del diseño."
+    },
+    "generatePdfTemplateModal": {
+      "generatePdfFromTemplate": "Generar PDF desde plantilla",
+      "fillASavedPdfmeTemplate": "Rellena los marcadores de una plantilla pdfme guardada.",
+      "template": "Plantilla",
+      "aPdfTemplateFromThe": "Una plantilla PDF del módulo Plantillas.",
+      "data": "Datos",
+      "aJsonObjectValuesFor": "Un objeto JSON - valores para los marcadores de la plantilla.",
+      "format": "Formatear"
+    },
+    "httpRequestModal": {
+      "httpRequest": "Solicitud HTTP",
+      "callAnExternalApi": "Llama a una API externa.",
+      "method": "Método",
+      "url": "URL",
+      "anHttpOrHttpsUrl": "Una URL http o https. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}). Las direcciones privadas, de loopback y link-local se rechazan salvo que figuren en Configuración > Workflows.",
+      "headers": "Encabezados",
+      "aJsonObjectHeaderNames": "Un objeto JSON - nombres de encabezados asociados a sus valores. Un valor también puede usar {c0}.",
+      "secretHeaders": "Encabezados secretos",
+      "headersWhoseValueIsA": "Encabezados cuyo valor es un secreto de Configuración > Secretos - se lee al ejecutarse el paso y nunca se guarda en el workflow ni en su historial (un token de Authorization, una clave de API).",
+      "addASecretHeader": "Agregar un encabezado secreto",
+      "body": "Cuerpo",
+      "sentAsTheRequestBody": "Se envía como cuerpo de la solicitud (se ignora en GET/DELETE/HEAD/OPTIONS). Cualquier valor JSON - una cadena que es exactamente una expresión {c0} se resuelve en el valor real con su tipo.",
+      "secretHeaderName": "Nombre del encabezado secreto {n}",
+      "secretHeaderSecret": "Secreto del encabezado secreto {n}",
+      "removeSecretHeader": "Quitar el encabezado secreto {n}"
+    },
+    "soapRequestModal": {
+      "soapRequest": "Solicitud SOAP",
+      "callASoapWebService": "Llama a una operación de un servicio web SOAP.",
+      "url": "URL del endpoint",
+      "theServiceEndpoint": "El endpoint del servicio (no su WSDL), una URL http o https. Admite {c0}. Las direcciones privadas, de loopback y link-local se rechazan salvo que figuren en Configuración > Workflows.",
+      "version": "Versión SOAP",
+      "operation": "Operación",
+      "theOperationsElementName": "El nombre del elemento de la operación, como lo llama el WSDL - FECAESolicitar, getPersona.",
+      "namespace": "Namespace",
+      "theOperationsXmlNamespace": "El namespace XML de la operación, el targetNamespace del WSDL.",
+      "soapAction": "SOAPAction",
+      "theSoapActionHeader": "El SOAPAction que el WSDL declara para la operación. Déjalo vacío cuando el WSDL declara uno vacío.",
+      "body": "Cuerpo",
+      "aJsonObjectTheParameters": "Un objeto JSON - los parámetros de la operación, que el servidor convierte en XML. Una clave es el nombre de un elemento, un array lo repite, null lo omite. Un valor puede usar {c0}.",
+      "arrays": "Elementos de lista",
+      "elementsAlwaysReadAsAList": "Nombres de elementos de la respuesta que siempre se leen como lista, separados por comas - así un paso lee la misma forma tanto si el servicio respondió uno como varios.",
+      "soapHeaders": "Encabezados SOAP",
+      "aJsonObjectSentInTheEnvelopesHeader": "Un objeto JSON enviado en el Header del sobre, igual que el cuerpo. Un valor puede usar {c0}.",
+      "httpHeaders": "Encabezados HTTP",
+      "aJsonObjectHttpHeaderNames": "Un objeto JSON - nombres de encabezados HTTP asociados a sus valores. Un valor puede usar {c0}.",
+      "secretHeaders": "Encabezados secretos",
+      "httpHeadersWhoseValueIsA": "Encabezados HTTP cuyo valor es un secreto de Configuración > Secretos - se lee al ejecutarse el paso y nunca se guarda en el workflow ni en su historial.",
+      "addASecretHeader": "Agregar un encabezado secreto",
+      "secretHeaderName": "Nombre del encabezado secreto {n}",
+      "secretHeaderSecret": "Secreto del encabezado secreto {n}",
+      "removeSecretHeader": "Quitar el encabezado secreto {n}"
+    },
+    "signModal": {
+      "sign": "Firmar",
+      "signDataWithAStoredCertificate": "Firma un texto con un certificado y su clave privada de Configuración > Secretos.",
+      "format": "Formato",
+      "cmsDescription": "CMS / PKCS#7 SignedData: el texto adjunto, el certificado incluido, SHA-256, DER en base64 - lo que produce openssl cms -sign y lo que recibe un login WSAA.",
+      "data": "Datos",
+      "theTextToSign": "El texto a firmar, normalmente armado por un paso anterior: {c0}.",
+      "certificate": "Certificado",
+      "aSecretHoldingThePemCertificate": "El secreto que guarda el certificado, en PEM (-----BEGIN CERTIFICATE-----).",
+      "privateKey": "Clave privada",
+      "aSecretHoldingThePemKey": "El secreto que guarda la clave privada del certificado, en PEM. Una clave RSA.",
+      "passphrase": "Contraseña de la clave",
+      "onlyWhenTheKeyIsEncrypted": "Solo si la clave privada está cifrada: el secreto que guarda su contraseña."
+    },
+    "json": {
+      "mustBeObject": "Debe ser un objeto JSON.",
+      "invalid": "JSON no válido."
+    },
+    "parseFileModal": {
+      "parseCsvJson": "Analizar CSV / JSON",
+      "convertAFileSContent": "Convierte el contenido de un archivo en datos.",
+      "file": "Archivo",
+      "aFileIdReferenceAnother": "El id de un archivo. Haz referencia al resultado de otro paso con {c0} (p. ej. {c1}).",
+      "browse": "Examinar",
+      "format": "Formato"
+    },
+    "processBatchesModal": {
+      "processInBatches": "Procesar por lotes",
+      "splitACollectionIntoFixed": "Divide una colección en lotes de tamaño fijo.",
+      "batchSize": "Tamaño del lote",
+      "source": "Origen",
+      "mustResolveToAJson": "Debe resolverse en un array JSON - se divide en lotes del tamaño configurado. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "wireThisStepSBatch": "Conecta la salida \"Lote\" de este paso al primer paso del cuerpo, y \"Listo\" a lo que se ejecuta cuando terminan todos los lotes. Dentro del cuerpo, haz referencia al lote actual con {c0} (p. ej. {c1})."
+    },
+    "readFileModal": {
+      "readFile": "Leer archivo",
+      "readAnExistingFile": "Lee un archivo existente.",
+      "file": "Archivo",
+      "aFileIdReferenceAnother": "El id de un archivo. Haz referencia al resultado de otro paso con {c0} (p. ej. {c1}).",
+      "browse": "Examinar"
+    },
+    "readRecordsModal": {
+      "readRecords": "Leer registros",
+      "queryAResourceUsingThe": "Consulta un recurso con las mismas reglas que una solicitud normal de la Data API.",
+      "resource": "Recurso",
+      "onlyActiveTableViewResources": "Solo recursos TABLE/VIEW activos que el principal que ejecuta puede leer.",
+      "query": "Consulta",
+      "fieldsFilterSearchGroupingOrdering": "Campos, filtro, búsqueda, agrupación, orden, limit/offset. Un valor del filtro puede hacer referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1})."
+    },
+    "selectCaseModal": {
+      "selectCase": "Seleccionar caso",
+      "branchOnTheFirstMatching": "Bifurca en el primer caso que coincida, en orden.",
+      "input": "Entrada",
+      "anyJsonValueEachCase": "Cualquier valor JSON que evalúa el filtro de cada caso de abajo. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "addCase": "Agregar caso",
+      "caseName": "Nombre del caso",
+      "filter": "Filtro",
+      "defaultBranch": "Rama por defecto",
+      "catchesAnyInputThatMatched": "Captura cualquier entrada que no coincidió con ningún caso de arriba. Sin ella, una entrada sin coincidencia hace fallar este paso (sigue su salida Error, si está conectada).",
+      "evaluatedInOrderTheFirst": "Se evalúan en orden - gana el primer caso cuyo filtro coincide. Reordénalos con las flechas. Cada caso tiene un nombre (por ejemplo: high_value) por el que bifurcan los pasos siguientes.",
+      "cases": "Casos",
+      "caseNamePattern": "Letras minúsculas, dígitos y guion bajo - debe empezar por una letra.",
+      "reservedName": "Nombre reservado.",
+      "duplicateName": "Nombre de caso duplicado.",
+      "filterEmpty": "El filtro no puede estar vacío."
+    },
+    "sendEmailModal": {
+      "sendEmail": "Enviar correo electrónico",
+      "sendAMessage": "Envía un mensaje.",
+      "to": "Para",
+      "commaSeparatedRecipientAddressesReferenc": "Direcciones de los destinatarios separadas por comas. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "cc": "Cc",
+      "bcc": "Cco",
+      "replyTo": "Responder a",
+      "commaSeparatedAddresses": "Direcciones separadas por comas.",
+      "whereRepliesToThisMessage": "A dónde deben ir las respuestas a este mensaje, si es distinto del remitente.",
+      "content": "Contenido",
+      "template": "Plantilla",
+      "anEmailTemplateFromTemplates": "Una plantilla de correo electrónico de Plantillas. El ejecutor del workflow necesita READ sobre ella.",
+      "data": "Datos",
+      "aJsonObjectWithA": "Un objeto JSON con un valor para cada {c0} que usan el asunto y el mensaje de la plantilla (los campos anidados como {c1}). Si falta alguno, el paso falla. Los valores pueden hacer referencia al resultado de otro paso con {c2}.",
+      "format": "Formatear",
+      "subject": "Asunto",
+      "bodyType": "Tipo de cuerpo",
+      "attachments": "Adjuntos",
+      "fileIdsOrAnotherStep": "Ids de archivos, o el resultado de otro paso con {c0} (p. ej. {c1}). El ejecutor necesita READ sobre cada archivo; como máximo 10, 20 MB en total.",
+      "browse": "Examinar",
+      "bodyText": "Texto",
+      "bodyBoth": "Ambos",
+      "writeMessage": "Escribir un mensaje",
+      "useTemplate": "Usar una plantilla",
+      "textBody": "Cuerpo de texto",
+      "body": "Cuerpo",
+      "textBodyDescription": "Alternativa en texto plano para los clientes que no pueden mostrar HTML.",
+      "htmlBody": "Cuerpo HTML"
+    },
+    "updateRecordsModal": {
+      "updateRecords": "Actualizar registros",
+      "modifyASelectionUsingThe": "Modifica una selección con las mismas reglas que una solicitud normal de la Data API.",
+      "resource": "Recurso",
+      "onlyActiveTableResourcesWritable": "Solo recursos TABLE activos en los que el principal que ejecuta puede escribir (PATCH).",
+      "filterWhere": "Filtro (where)",
+      "whichRowsToUpdateRequired": "Qué filas actualizar. Obligatorio salvo que la opción 'Exigir un filtro para actualizaciones masivas' esté desactivada - entonces vacío coincide con todas las filas. Un valor del filtro puede hacer referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "set": "Valores",
+      "aJsonObjectColumnNames": "Un objeto JSON - nombres de columnas asociados a sus nuevos valores. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "emitDatabaseEvents": "Emitir eventos de base de datos",
+      "letThisStepSUpdates": "Permite que las actualizaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+    },
+    "validateDataModal": {
+      "validateData": "Validar datos",
+      "checkAValueAgainstRules": "Comprueba un valor contra reglas - continúa en Éxito, o falla con el mensaje de cada regla incumplida.",
+      "input": "Entrada",
+      "anyJsonValueTheRules": "Cualquier valor JSON que comprueban las reglas de abajo. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
+      "filter": "Filtro",
+      "mustMatchTheInputA": "Debe coincidir con la entrada. Un valor también puede usar {c0}.",
+      "message": "Mensaje",
+      "reportedWhenThisRuleFails": "Se informa cuando falla esta regla. Vacío informa 'Rule N failed.'",
+      "addRule": "Agregar regla",
+      "eachRuleIsAFilter": "Cada regla es un filtro sobre la entrada - la misma gramática que los filtros de filas y where[...] de la Data API. Todas las reglas deben cumplirse; cada una que no se cumple informa su mensaje.",
+      "rules": "Reglas",
+      "ruleN": "Regla {n}",
+      "removeRuleN": "Quitar la regla {n}"
+    },
+    "waitResumeModal": {
+      "waitResume": "Esperar / Reanudar",
+      "suspendTheRunForA": "Suspende la ejecución durante un tiempo fijo antes de continuar.",
+      "waitTime": "Tiempo de espera",
+      "secondsToSuspendBeforeThe": "Segundos de suspensión antes de que se ejecute el paso siguiente."
+    },
+    "workflowHistoryFields": {
+      "executionHistory": "Historial de ejecuciones",
+      "offARunIsKept": "Desactivado: una ejecución se conserva solo 24 horas después de terminar, para un workflow cuyas ejecuciones no hace falta conservar.",
+      "keepExecutionHistory": "Conservar el historial de ejecuciones",
+      "historyLevel": "Nivel del historial",
+      "summaryRecordsExecutedStepsDetailed": "Resumen registra los pasos ejecutados; Detallado también conserva las entradas y los resultados permitidos.",
+      "levels": {
+        "summary": "Resumen",
+        "detailed": "Detallado"
+      }
+    },
+    "workflowInvokeRolesField": {
+      "rolesThatMayInvokeThis": "Roles que pueden invocar este workflow",
+      "administratorsCanAlwaysInvokeAny": "Los administradores siempre pueden invocar cualquier workflow. Sin ningún rol permitido, solo ellos pueden.",
+      "onlyMattersForManualCron": "Solo importa para disparadores Manual/Cron/Webhook",
+      "aDataEventTriggerNever": "Un disparador de evento de datos nunca comprueba esto - siempre se ejecuta como su propio usuario configurado, sin importar quién causó la mutación subyacente."
+    },
+    "workflowRunModal": {
+      "triggerInput": "Entrada del disparador",
+      "anyJsonValueTheRun": "Cualquier valor JSON - la ejecución lo lee como {c0}, tal como lo enviaría quien llama a un disparador Manual.",
+      "format": "Formatear",
+      "running": "Ejecutando…",
+      "theRunDidNotStart": "La ejecución no se inició",
+      "runResult": "Resultado de la ejecución",
+      "openInLogs": "Abrir en Ejecuciones",
+      "runIt": "Ejecutarlo",
+      "theRunRecordedNoSteps": "La ejecución no registró ningún paso.",
+      "steps": "Pasos",
+      "testRunTitle": "Ejecución de prueba",
+      "runTitle": "Ejecutar",
+      "testDescription": "Ejecuta el borrador guardado como tú - una ejecución real: sus escrituras y efectos secundarios ocurren. Se marca como TEST; no se publica ni se habilita nada.",
+      "scheduledDescription": "Ejecuta ahora la versión publicada{version}, exactamente como lo haría su programación: como su usuario de ejecución, con los datos de la programación ({path}, started_at, timezone) como entrada.",
+      "productionDescription": "Ejecuta la versión publicada{version} en producción, como tú.",
+      "draftNotSavedReason": "No se pudo guardar el borrador, así que no se ejecutó: {reason}",
+      "draftNotSaved": "No se pudo guardar el borrador, así que no se ejecutó.",
+      "couldNotStart": "No se pudo iniciar la ejecución.",
+      "runTest": "Ejecutar prueba"
+    },
+    "workflowRunStepDetail": {
+      "started": "Inicio",
+      "finished": "Fin",
+      "output": "Salida",
+      "input": "Entrada",
+      "result": "Resultado",
+      "error": "Error"
+    },
+    "workflowRunSummaryCard": {
+      "handledErrors": "Errores gestionados",
+      "summaryHistory": "Historial resumido",
+      "started": "Inicio",
+      "finished": "Fin",
+      "duration": "Duración",
+      "result": "Resultado"
+    },
+    "workflowStepCard": {
+      "stepActions": "Acciones del paso",
+      "deleteStepsTitle": "Eliminar pasos",
+      "deleteStepTitle": "Eliminar paso",
+      "deleteWithDownstream": "¿Eliminar \"{title}\" y {n} paso posterior? | ¿Eliminar \"{title}\" y {n} pasos posteriores?",
+      "deleteOne": "¿Eliminar \"{title}\"?",
+      "removesFollowing": "Esto quita todos los pasos que le siguen en el árbol.",
+      "removesStep": "Esto quita el paso del workflow.",
+      "cannotUndo": "Esto no se puede deshacer.",
+      "deleteNSteps": "Eliminar {n} pasos"
+    },
+    "workflowStepKeyField": {
+      "stepId": "ID del paso",
+      "shortIdOtherStepsUse": "Id corto que usan otros pasos para hacer referencia a la salida de este. Solo letras, números y guiones bajos. Por ejemplo: read_brands",
+      "required": "Obligatorio.",
+      "reservedStart": "\"start\" está reservado para el paso del disparador.",
+      "reservedItem": "\"item\" está reservado para el elemento actual del bucle en las expresiones {expression}.",
+      "reservedError": "\"error\" está reservado para el error gestionado en las expresiones {expression}.",
+      "alreadyUsed": "Ya lo usa otro paso."
+    },
+    "workflowTree": {
+      "outputs": {
+        "true": "Verdadero",
+        "false": "Falso",
+        "item": "Elemento",
+        "batch": "Lote",
+        "done": "Listo",
+        "default": "Por defecto",
+        "error": "Error",
+        "success": "Éxito",
+        "addStep": "Agregar paso"
+      },
+      "limitReached": "Un workflow admite como máximo {max} pasos"
+    },
+    "wizard": {
+      "identity": {
+        "title": "Identificación",
+        "description": "Nombre, descripción y slug."
+      },
+      "trigger": {
+        "title": "Evento disparador",
+        "description": "Qué admite una ejecución de este workflow."
+      },
+      "triggerConfig": {
+        "title": "Configuración",
+        "description": "Elige primero un evento disparador."
+      },
+      "access": {
+        "title": "Acceso",
+        "description": "Qué roles pueden invocar este workflow."
+      },
+      "audit": {
+        "title": "Retención de ejecuciones",
+        "description": "Preferencia del historial de ejecuciones."
+      }
+    },
+    "newModal": {
+      "createFailed": "No se pudo crear el workflow",
+      "title": "Nuevo workflow",
+      "description": "El workflow se crea antes de abrir su editor visual.",
+      "notActivatedTitle": "Crear nunca activa este workflow",
+      "notActivatedDescription": "Publícalo desde el editor cuando su diseño esté listo."
+    },
+    "tree": {
+      "noTrigger": "Sin disparador",
+      "newWorkflow": "Nuevo workflow",
+      "searchAria": "Buscar workflows",
+      "searchPlaceholder": "Buscar...",
+      "loadFailed": "No se pudieron cargar los workflows",
+      "empty": "No se encontraron workflows."
+    },
+    "index": {
+      "title": "Selecciona un workflow",
+      "description": "Elige un workflow en la barra lateral o crea uno nuevo."
+    },
+    "settings": {
+      "sections": {
+        "nav": "Configuración del workflow",
+        "general": "General",
+        "trigger": "Disparador",
+        "security": "Seguridad",
+        "runs": "Ejecuciones",
+        "versions": "Versiones"
+      },
+      "design": "Diseño del workflow",
+      "appliesAtOnce": "Los cambios de esta pestaña se aplican al instante - sin Publicar.",
+      "appliesOnPublish": "El disparador se versiona: un cambio llega a producción al próximo Publicar.",
+      "enabledHelp": "Apagado, ningún disparador admite ejecuciones - la programación, los eventos de datos y el webhook quedan en silencio; la ejecución de prueba sigue funcionando.",
+      "retention": "Retención de ejecuciones"
+    },
+    "runs": {
+      "noun": "ejecución",
+      "nounPlural": "ejecuciones",
+      "noRuns": "Aún no hay ejecuciones",
+      "draft": "Borrador",
+      "loadError": "No se pudo cargar la ejecución",
+      "runDetail": "Ejecución",
+      "stepDetail": "Paso",
+      "backToRun": "Volver a la ejecución",
+      "auditEntries": "Entradas de auditoría",
+      "cancelRun": "Cancelar ejecución",
+      "steps": "Pasos",
+      "noSteps": "No se conservó historial de pasos para esta ejecución.",
+      "summaryHistory": "Esta ejecución conservó un historial Resumen - sin entrada ni resultado por paso, así que no hay detalle que abrir. Elige historial Detallado (Configuración › General) antes de ejecutarlo para verlo.",
+      "cancelRequested": "Cancelación solicitada",
+      "cancelRequestedDescription": "La ejecución se detiene después del paso en curso.",
+      "cancelFailed": "No se pudo cancelar la ejecución",
+      "openInRuns": "Abrir en Ejecuciones",
+      "columns": {
+        "trigger": "Disparador",
+        "mode": "Modo",
+        "version": "Versión",
+        "started": "Inicio",
+        "duration": "Duración",
+        "initiator": "Iniciado por",
+        "error": "Error"
+      },
+      "filters": {
+        "all": "Todos",
+        "period": "Periodo"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "RUNNING": "En curso",
+        "SUCCEEDED": "Correcta",
+        "FAILED": "Fallida",
+        "CANCELLED": "Cancelada",
+        "INTERRUPTED": "Interrumpida"
+      },
+      "trigger": {
+        "MANUAL": "Manual",
+        "CRON": "Programación",
+        "WEBHOOK": "Webhook",
+        "DATA_EVENT": "Evento de datos"
+      },
+      "mode": {
+        "PRODUCTION": "Producción",
+        "TEST": "Prueba"
+      },
+      "period": {
+        "24h": "Últimas 24 horas",
+        "7d": "Últimos 7 días",
+        "30d": "Últimos 30 días",
+        "all": "Todo"
+      },
+      "initiator": {
+        "apiKey": "Token de API",
+        "cron": "Programación",
+        "webhook": "Webhook",
+        "publicWebhook": "Webhook público",
+        "dataEvent": "Evento de datos",
+        "workflow": "Otro workflow",
+        "system": "Sistema"
+      }
+    }
+  }
+}

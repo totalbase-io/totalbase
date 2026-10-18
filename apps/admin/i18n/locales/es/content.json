@@ -1,0 +1,402 @@
+{
+  "content": {
+    "docs": {
+      "openapi": {
+        "asUser": "Como usuario con sesión iniciada",
+        "asApiKey": "Como clave de API",
+        "adminSummary": "{count} rutas de administración documentadas.",
+        "dataSummary": "{count} rutas visibles para {role}.",
+        "thisRole": "este rol",
+        "description": "Generado en vivo desde el servidor en ejecución: no puede quedar desactualizado.",
+        "principal": "Actor",
+        "selectRole": "Selecciona un rol",
+        "selectRoleDescription": "El documento de la Data API solo enumera lo que un actor puede hacer: elige un rol para ver exactamente lo que obtienen sus consumidores de la API.",
+        "find": "Buscar (Ctrl/Cmd+F)",
+        "wordWrap": "Alternar ajuste de línea",
+        "downloadJson": "Descargar JSON",
+        "downloadText": "Descargar como texto sin formato"
+      },
+      "endpoints": {
+        "kinds": {
+          "TABLE": "Tabla",
+          "VIEW": "Vista",
+          "FUNCTION": "Función",
+          "WORKFLOW": "Workflow",
+          "SYSTEM": "Sistema"
+        },
+        "allMethods": "Todos los métodos",
+        "allTypes": "Todos los tipos",
+        "allSchemas": "Todos los esquemas",
+        "method": "Método",
+        "endpoint": "Endpoint",
+        "schema": "Esquema",
+        "curlCopied": "cURL copiado",
+        "urlCopied": "URL copiada",
+        "viewResource": "Ver recurso",
+        "viewWorkflow": "Ver workflow",
+        "openInDocs": "Abrir en la documentación de la API",
+        "copyCurl": "Copiar cURL",
+        "title": "Endpoints",
+        "description": "Cada ruta a la que pueden llamar los consumidores de tu API, en vivo y de solo lectura.",
+        "refresh": "Actualizar endpoints",
+        "searchPlaceholder": "Buscar endpoints...",
+        "noCredentials": "No se necesitan credenciales",
+        "public": "Público",
+        "rowActions": "Acciones del endpoint",
+        "emptyTitle": "No hay endpoints",
+        "emptyDescription": "Expón un recurso o publica un workflow con un disparador HTTP para ver sus rutas aquí.",
+        "pagerNoun": "endpoint",
+        "pagerPlural": "endpoints"
+      }
+    },
+    "files": {
+      "editImage": {
+        "keepOriginal": "Mantener el original",
+        "fitCover": "Cubrir",
+        "fitContain": "Contener",
+        "fitInside": "Dentro",
+        "previewError": "No se pudo generar la vista previa",
+        "editedSuffix": "(editado)",
+        "savedAsNew": "Guardado como archivo nuevo",
+        "saveError": "No se pudo guardar el archivo",
+        "replaced": "Archivo reemplazado",
+        "replaceError": "No se pudo reemplazar el archivo",
+        "titleFile": "Editar {name}",
+        "title": "Editar imagen",
+        "description": "Redimensiona, recorta y convierte: los originales no se modifican hasta que decidas guardar.",
+        "cancelCrop": "Cancelar recorte",
+        "crop": "Recortar",
+        "clearCrop": "Quitar recorte",
+        "rotateLeft": "Girar 90° a la izquierda",
+        "rotateRight": "Girar 90° a la derecha",
+        "flipHorizontal": "Voltear horizontalmente",
+        "flipVertical": "Voltear verticalmente",
+        "quality": "Calidad",
+        "grayscale": "Escala de grises",
+        "blur": "Desenfoque",
+        "sharpen": "Enfocar",
+        "replaceImage": "Reemplazar imagen",
+        "saveAs": "Guardar como",
+        "saveAsHelp": "Guarda la imagen editada como un archivo nuevo. El original no se modifica.",
+        "filename": "Nombre del archivo",
+        "saveAndReplace": "Guardar y reemplazar",
+        "saveAndReplaceHelp": "Sobrescribe el contenido del archivo original con esta versión editada. Esta acción no se puede deshacer.",
+        "replace": "Reemplazar",
+        "applyCrop": "Aplicar recorte",
+        "replaceImageTitle": "¿Reemplazar la imagen?",
+        "replaceImageHelp": "Reemplaza el contenido de este archivo por {name}. Se descartan los cambios hechos arriba. Esta acción no se puede deshacer.",
+        "fit": "Ajuste",
+        "format": "Formato"
+      },
+      "page": {
+        "size": "Tamaño",
+        "visibility": "Visibilidad",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por",
+        "modified": "Modificado",
+        "created": "Creado",
+        "createFolderError": "No se pudo crear la carpeta",
+        "renameFolderError": "No se pudo renombrar la carpeta",
+        "deleteFolderError": "No se pudo eliminar la carpeta",
+        "folderNameRequired": "El nombre de la carpeta es obligatorio",
+        "folderNameSlash": "Los nombres de carpeta no pueden contener /",
+        "folderExists": "Ya existe una carpeta con ese nombre aquí",
+        "chooseFile": "Elige al menos un archivo",
+        "uploaded": "Archivo subido | {n} archivos subidos",
+        "partialUploaded": "{done} de {total} subidos",
+        "failed": "{n} fallaron.",
+        "loadFileError": "No se pudo cargar el archivo",
+        "fileSaved": "Archivo guardado",
+        "visibilityError": "No se pudo actualizar la visibilidad",
+        "fileUpdated": "Archivo actualizado",
+        "updateError": "No se pudo actualizar el archivo",
+        "renamed": "Archivo renombrado",
+        "renameError": "No se pudo renombrar el archivo",
+        "moved": "Movido a {where} | {n} archivos movidos a {where}",
+        "partialMoved": "{done} de {total} movidos",
+        "failedRetry": "{n} fallaron: la selección se mantiene para que puedas reintentar.",
+        "madePublic": "{n} archivos ahora son públicos | {n} archivo ahora es público | {n} archivos ahora son públicos",
+        "madePrivate": "{n} archivos ahora son privados | {n} archivo ahora es privado | {n} archivos ahora son privados",
+        "tagsMerge": "Añadir a las etiquetas existentes",
+        "tagsReplace": "Reemplazar las etiquetas existentes",
+        "filesUpdated": "{n} archivos actualizados | {n} archivo actualizado | {n} archivos actualizados",
+        "partialUpdated": "{done} de {total} actualizados",
+        "deleted": "Archivo eliminado | {n} archivos eliminados",
+        "partialDeleted": "{done} de {total} eliminados",
+        "makePublic": "Hacer público",
+        "makePrivate": "Hacer privado",
+        "tags": "Etiquetas",
+        "moveToFolder": "Mover a carpeta…",
+        "title": "Archivos",
+        "folders": "Carpetas",
+        "searchPlaceholder": "Buscar por nombre o descripción...",
+        "loadError": "No se pudieron cargar los archivos",
+        "noMatchTitle": "Ningún archivo coincide con tu búsqueda",
+        "emptyTitle": "Esta carpeta está vacía",
+        "noMatchDescription": "Prueba con otro nombre, descripción o etiqueta.",
+        "emptyDescription": "Los archivos que subas aquí aparecerán en esta lista.",
+        "uploadFile": "Subir archivo",
+        "selectAll": "Seleccionar todos los archivos",
+        "selectOne": "Seleccionar {name}",
+        "private": "Privado",
+        "properties": "Propiedades del archivo",
+        "renameHelp": "Hasta 255 caracteres. La extensión va después del nombre.",
+        "folder": "Carpeta",
+        "extension": "Extensión",
+        "mimeType": "Tipo MIME",
+        "dimensions": "Dimensiones",
+        "descriptionHelp": "Nota opcional que se muestra con este archivo.",
+        "tagsHelp": "Etiquetas para organizar este archivo.",
+        "storage": "Almacenamiento",
+        "provider": "Proveedor",
+        "key": "Clave",
+        "checksum": "Suma de verificación",
+        "uploadN": "Subir {n} archivos",
+        "dropFiles": "Suelta los archivos aquí",
+        "orBrowse": "o elige uno",
+        "editFile": "Editar archivo",
+        "bulkTagsApplies": "Se aplica a los {count} archivos seleccionados.",
+        "tagsEnter": "Escribe una etiqueta y pulsa Intro.",
+        "moveTitle": "Mover a carpeta",
+        "moveN": "Mover {n} archivos",
+        "moveWhereOne": "Adónde va {name}.",
+        "moveWhereMany": "Adónde van los archivos seleccionados.",
+        "move": "Mover",
+        "deleteOne": "¿Eliminar el archivo?",
+        "deleteN": "¿Eliminar {n} archivos?",
+        "deleteHelp": "Esto elimina de forma permanente los archivos seleccionados y sus metadatos. Esta acción no se puede deshacer.",
+        "downloadError": "No se pudo descargar el archivo"
+      },
+      "textEditor": {
+        "undo": "Deshacer",
+        "redo": "Rehacer",
+        "paste": "Pegar",
+        "wordWrap": "Ajuste de línea",
+        "loading": "Cargando archivo"
+      },
+      "tree": {
+        "loading": "Cargando carpetas",
+        "loadError": "No se pudieron cargar las carpetas",
+        "root": "Raíz (/)",
+        "uploadFile": "Subir archivo",
+        "createdInside": "Se crea dentro de {name}.",
+        "deleteConfirm": "¿Eliminar {name} y sus subcarpetas?"
+      },
+      "pager": {
+        "noun": "archivo",
+        "plural": "archivos"
+      }
+    },
+    "logs": {
+      "ranges": {
+        "last15m": "Últimos 15 minutos",
+        "last1h": "Última hora",
+        "last24h": "Últimas 24 horas",
+        "last7d": "Últimos 7 días",
+        "last30d": "Últimos 30 días",
+        "all": "Todo el historial"
+      },
+      "categories": {
+        "data": "Datos",
+        "access": "Acceso y seguridad",
+        "sql": "Consola SQL",
+        "database": "Base de datos",
+        "system": "Sistema",
+        "bulk": "Importar / Exportar / Imprimir"
+      },
+      "actions": {
+        "CREATE": "Crear",
+        "UPDATE": "Actualizar",
+        "DELETE": "Eliminar",
+        "READ": "Leer",
+        "EXECUTE": "Ejecutar función",
+        "AUTH": "Eventos de acceso",
+        "SQL_EXECUTE": "Ejecutar",
+        "SQL_HISTORY_PURGE": "Purga del historial",
+        "DDL": "Cambio de esquema",
+        "MAINTENANCE": "Mantenimiento",
+        "AUDIT_PURGE": "Purga del registro",
+        "IMPORT": "Importar",
+        "EXPORT": "Exportar",
+        "PRINT": "Imprimir"
+      },
+      "securityViews": {
+        "failed-sign-ins": "Inicios de sesión fallidos",
+        "access-changes": "Roles y permisos",
+        "config-changes": "Configuración y secretos",
+        "credential-changes": "Tokens y sesiones"
+      },
+      "chips": {
+        "principal": "Actor",
+        "event": "Evento",
+        "request": "Solicitud",
+        "workflowRun": "Ejecución de workflow",
+        "resource": "Recurso",
+        "oneResource": "Un recurso",
+        "clear": "Quitar el filtro de {name}"
+      },
+      "page": {
+        "title": "Registro de actividad",
+        "description": "{range} · cada escritura y evento de acceso hecho a través de TotalBase. Solo lectura.",
+        "refresh": "Actualizar y quitar filtros",
+        "empty": "No hay entradas en: {range}",
+        "emptyFiltered": "No hay entradas en: {range} que coincidan con estos filtros"
+      },
+      "panel": {
+        "timeRange": "Intervalo de tiempo",
+        "customRange": "Intervalo personalizado…",
+        "customRangeHint": "Días completos, en tu zona horaria local.",
+        "category": "Categoría",
+        "principal": "Actor",
+        "securityViews": "Vistas de seguridad"
+      }
+    },
+    "systemEmails": {
+      "variables": {
+        "userName": "El nombre del destinatario; su correo electrónico si no tiene nombre.",
+        "userEmail": "La dirección de correo electrónico del destinatario.",
+        "instanceName": "Configuración → General → Nombre de la instancia.",
+        "instancePublicUrl": "Configuración → General → URL pública.",
+        "actionUrl": "El enlace de un solo uso que sigue la persona. Obligatorio.",
+        "expiresIn": "Cuánto tiempo sigue siendo válido el enlace, p. ej. \"7 días\".",
+        "newEmail": "Solo para Correo electrónico cambiado: la nueva dirección (el correo se envía a la anterior, user.email)."
+      },
+      "editor": {
+        "saved": "Correo guardado",
+        "saveError": "No se pudo guardar el correo",
+        "restored": "Versión predeterminada restaurada",
+        "restoreError": "No se pudo restaurar la versión predeterminada",
+        "restoreMenu": "Restaurar la predeterminada…",
+        "settingError": "No se pudo actualizar la configuración",
+        "copiedVariable": "{name} copiado",
+        "sending": "Enviándose",
+        "sendingTooltip": "Este correo se envía. Haz clic para dejar de enviarlo.",
+        "offTooltip": "Este correo no se envía. Haz clic para enviarlo.",
+        "previewError": "No se pudo generar la vista previa",
+        "default": "Predeterminado",
+        "loadError": "No se pudo cargar este correo",
+        "plainText": "Texto sin formato",
+        "bodyHelp": "Envía un cuerpo HTML, uno de texto sin formato o ambos: las aplicaciones de correo muestran el texto sin formato cuando no pueden mostrar HTML.",
+        "layoutHelp": "El cuerpo HTML se envía dentro del diseño de correo de TotalBase (fuente, ancho y un pie de la instancia); usa Vista previa para verlo.",
+        "actionRequired": "Cada cuerpo que completes debe incluir {placeholder}.",
+        "variables": "Variables",
+        "variablesHelp": "Haz clic para copiar. Solo se permiten estas; cualquier otra se rechaza al guardar.",
+        "linkSetting": "El destino del enlace se define en Configuración → Auth → Enlaces de correo.",
+        "previewDescription": "Generada para ti con un enlace de ejemplo; incluye los cambios sin guardar. No se envía nada.",
+        "subjectLabel": "Asunto:",
+        "emailPreview": "Vista previa del correo",
+        "restoreTitle": "¿Restaurar el correo predeterminado?",
+        "restoreDescription": "Tus cambios en este correo se descartan y se vuelve a usar la versión incorporada de TotalBase.",
+        "restore": "Restaurar la predeterminada",
+        "leaveDescription": "Este correo tiene cambios que no se han guardado."
+      },
+      "slots": {
+        "user_invitation": {
+          "label": "Invitación",
+          "description": "Se envía cuando un administrador invita a alguien; el enlace le permite establecer su contraseña."
+        },
+        "password_reset": {
+          "label": "Restablecer contraseña",
+          "description": "Se envía cuando alguien pide restablecer una contraseña olvidada, o un administrador envía un restablecimiento."
+        },
+        "email_verification": {
+          "label": "Verificación de correo electrónico",
+          "description": "Se envía tras el registro para que la persona confirme que la dirección es suya."
+        },
+        "password_changed": {
+          "label": "Contraseña cambiada",
+          "description": "Un aviso de seguridad enviado tras cambiar o restablecer una contraseña."
+        },
+        "email_changed": {
+          "label": "Correo electrónico cambiado",
+          "description": "Un aviso de seguridad enviado a la dirección anterior cuando un administrador cambia el correo electrónico de un usuario."
+        },
+        "user_welcome": {
+          "label": "Bienvenida",
+          "description": "Se envía cuando una cuenta invitada o registrada está lista para usarse (desactivado por defecto)."
+        }
+      }
+    },
+    "templates": {
+      "newTemplate": "Nueva plantilla",
+      "kinds": {
+        "MAILING": {
+          "group": "Correos electrónicos",
+          "label": "Correo electrónico",
+          "description": "Asunto y mensaje con marcadores {example}, enviados por el paso Enviar correo electrónico de un workflow."
+        },
+        "PDF": {
+          "group": "PDF",
+          "label": "PDF",
+          "description": "Un diseño de pdfme convertido en un documento generado."
+        }
+      },
+      "tree": {
+        "searchAria": "Buscar plantillas",
+        "searchPlaceholder": "Buscar...",
+        "loadError": "No se pudieron cargar las plantillas",
+        "noMatches": "Sin coincidencias.",
+        "noneYet": "Ninguna todavía.",
+        "system": "Sistema",
+        "edited": "Editado",
+        "off": "Desactivado"
+      },
+      "newModal": {
+        "createError": "No se pudo crear la plantilla",
+        "description": "Elige su tipo y ponle nombre; el contenido viene después."
+      },
+      "landing": {
+        "title": "Selecciona una plantilla",
+        "description": "Elige una plantilla en la barra lateral o crea una nueva."
+      },
+      "pdfDesigner": {
+        "presets": {
+          "letter": "Carta",
+          "legal": "Oficio",
+          "tabloid": "Tabloide",
+          "receipt58": "Ticket (58mm)",
+          "receipt80": "Ticket (80mm)",
+          "receipt112": "Ticket (112mm)",
+          "custom": "Personalizado"
+        },
+        "loadError": "No se pudo cargar el diseñador de PDF",
+        "width": "Ancho",
+        "height": "Alto",
+        "margin": "Margen",
+        "fixedPdf": "La página de esta plantilla es un archivo PDF fijo, no un tamaño de página simple: el ancho y el alto no se pueden editar aquí.",
+        "largerScreen": "Colocar y editar campos requiere una pantalla más grande.",
+        "loading": "Cargando el diseñador…",
+        "pageSize": "Tamaño de página"
+      },
+      "mailForm": {
+        "defaultCc": "Cc predeterminado",
+        "defaultBcc": "Cco predeterminado",
+        "defaultReplyTo": "Responder a predeterminado",
+        "replyTo": "Responder a",
+        "subject": "Asunto"
+      },
+      "editor": {
+        "saved": "Plantilla guardada",
+        "saveError": "No se pudo guardar la plantilla",
+        "saveDetailsError": "No se pudieron guardar los detalles",
+        "deleted": "Plantilla eliminada",
+        "deleteError": "No se pudo eliminar la plantilla",
+        "detailsMenu": "Detalles…",
+        "copyUrl": "Copiar URL",
+        "previewError": "No se pudo generar la vista previa",
+        "designerNotReady": "El diseñador de PDF aún no ha terminado de cargar",
+        "unsaved": "Sin guardar",
+        "loadError": "No se pudo cargar la plantilla",
+        "detailsTitle": "Detalles de la plantilla",
+        "previewDescription": "Generada con el valor de ejemplo de cada campo; incluye los cambios sin guardar.",
+        "pdfPreview": "Vista previa del PDF",
+        "deleteTitle": "¿Eliminar esta plantilla?",
+        "deleteDescription": "Los envíos ya hechos con ella conservan su propio asunto y mensaje generados. Esta acción no se puede deshacer.",
+        "leaveTitle": "Cambios sin guardar",
+        "leaveDescription": "Esta plantilla tiene cambios que no se han guardado.",
+        "keepEditing": "Seguir editando",
+        "discard": "Descartar"
+      }
+    }
+  }
+}

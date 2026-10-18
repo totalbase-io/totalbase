@@ -1,0 +1,27 @@
+{
+  "name": "@totalbase/schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --no-file-parallelism"
+  },
+  "dependencies": {
+    "@totalbase/tb-catalog": "workspace:*",
+    "@totalbase/database": "workspace:*",
+    "@totalbase/errors": "workspace:*",
+    "knex": "^3.1.0"
+  },
+  "devDependencies": {
+    "@totalbase/migrations": "workspace:*",
+    "mysql2": "^3.11.5",
+    "vitest": "^2.1.8"
+  }
+}

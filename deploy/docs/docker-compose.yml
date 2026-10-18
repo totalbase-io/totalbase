@@ -1,0 +1,57 @@
+# The documentation demo (specs/proposals/Docs_Demo_Field_Service.md): Acme Field Services on its own
+# database, totalbase_docs, installed the way the beta installs - an empty database, the baseline
+# migration, the first administrator. Shaped like deploy/lab.
+name: totalbase-docs
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: ${DOCS_POSTGRES_SUPERUSER_PASSWORD:?set it in .env}
+      TOTALBASE_DB_NAME: totalbase_docs
+      TOTALBASE_DB_USER: ${TOTALBASE_DB_USER:-acme}
+      TOTALBASE_DB_PASSWORD: ${TOTALBASE_DB_PASSWORD:?set it in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d totalbase_docs"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  totalbase:
+    build:
+      context: ../..
+      target: server
+    image: totalbase:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: totalbase_docs
+      POSTGRES_USER: ${TOTALBASE_DB_USER:-acme}
+      POSTGRES_PASSWORD: ${TOTALBASE_DB_PASSWORD}
+      TOTALBASE_MASTER_KEY: ${TOTALBASE_MASTER_KEY:?set it in .env}
+      TOTALBASE_ADMIN_EMAIL: ${TOTALBASE_ADMIN_EMAIL:-admin@acme-field.example}
+      TOTALBASE_ADMIN_PASSWORD: ${TOTALBASE_ADMIN_PASSWORD:?set it in .env}
+      TOTALBASE_PUBLIC_URL: http://localhost:3080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - files:/var/lib/totalbase/files
+    ports:
+      - "3080:3050"
+
+  # Catches the demo's email (workflows, invitations) - its inbox at http://localhost:8026.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8026:8025"
+
+volumes:
+  pgdata:
+  files:

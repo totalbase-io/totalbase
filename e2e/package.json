@@ -1,0 +1,12 @@
+{
+  "name": "totalbase-e2e-scratch",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Ad-hoc Playwright repro for the DataView schema-drift bug - not part of the pnpm workspace/CI, a throwaway verification tool.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

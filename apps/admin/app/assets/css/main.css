@@ -1,0 +1,340 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+ * A DataView widget's own CSS classes (the Design form's Style › CSS classes)
+ * live in the database, where Tailwind never looks - so the usual ones are
+ * always generated: spacing, text, border, radius, shadow, the theme's
+ * backgrounds and a little layout. Anything else typed there may not exist.
+ */
+@source inline("{m,mt,mb,ml,mr,mx,my,p,pt,pb,pl,pr,px,py}-{0,0.5,1,1.5,2,2.5,3,4,5,6,8,10,12,16,20,24}");
+@source inline("gap-{0,1,2,3,4,6,8}");
+@source inline("text-{xs,sm,base,lg,xl,2xl,3xl,4xl,left,center,right,muted,dimmed,toned,highlighted,primary,error,success,warning,info}");
+@source inline("font-{normal,medium,semibold,bold}");
+@source inline("{italic,uppercase,lowercase,capitalize,underline,truncate,whitespace-nowrap}");
+@source inline("rounded{,-none,-sm,-md,-lg,-xl,-full}");
+@source inline("border{,-0,-2,-default,-muted,-accented,-primary}");
+@source inline("shadow{,-none,-sm,-md,-lg}");
+@source inline("bg-{default,muted,elevated,accented,primary/10}");
+@source inline("{flex,inline-flex,hidden,block,flex-col,items-center,justify-center,justify-between,justify-end,self-start,self-center,self-end,w-full,mx-auto,max-w-sm,max-w-md,max-w-lg}");
+@source inline("max-sm:h-auto!");
+@source inline("max-sm:[&_[data-panel]]:flex-none! max-sm:[&_[data-panel]]:h-auto!");
+
+/*
+ * Inter as the site's typeface, falling back to the platform system font
+ * (San Francisco on Apple, Segoe UI on Windows, Roboto on Android/Chrome
+ * OS) if it hasn't loaded yet. "Inter" here is enough for @nuxt/fonts
+ * (bundled with @nuxt/ui) to self-host it automatically - no manual
+ * @import/<link>, no external request at runtime.
+ */
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/*
+ * The primary color one shade darker in light mode (600, not Nuxt UI's 500): white text on a
+ * primary button gets near or past WCAG AA (sky: 4.0:1 instead of 2.7:1; blue would be 5.3:1), whatever primary the operator picks
+ * (T59, Specification_Admin_UI.md §4.1). Dark mode keeps Nuxt UI's 400.
+ */
+html:not(.dark) {
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+/*
+ * Base font size, 16px -> 15px. Every Tailwind/Nuxt UI text utility is
+ * rem-based, so this scales the whole site proportionally (text-sm becomes
+ * 13.125px instead of 14px, etc.) rather than needing a per-utility override.
+ */
+html {
+  font-size: 15px;
+}
+
+:root {
+  --admin-header-height: 72px;
+  /* Nuxt UI's dashboard navbar and sidebar header read this one. */
+  --ui-header-height: var(--admin-header-height);
+}
+
+.action-header,
+.sidebar-header {
+  display: flex;
+  height: var(--admin-header-height);
+  min-height: var(--admin-header-height);
+  align-items: center;
+}
+
+.action-header {
+  width: 100%;
+  flex-shrink: 0;
+  justify-content: center;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.sidebar-header {
+  flex-shrink: 0;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.header-icon {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--ui-bg-elevated);
+  box-shadow: 0 0 0 1px var(--ui-border);
+}
+
+.header-icon__glyph {
+  width: 1rem;
+  height: 1rem;
+  color: var(--ui-text-muted);
+}
+
+.header-title {
+  color: var(--ui-text-highlighted);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.header-subtitle {
+  margin-top: 0.125rem;
+  color: var(--ui-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.125rem;
+}
+
+.page-header--standard,
+.page-header--editor {
+  display: grid;
+  /* The actions column never shrinks below its content (max-content):
+     with many actions the title column gives way and truncates with an
+     ellipsis, instead of the actions spilling over it. The center slot
+     stays centered whenever both sides fit their half. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+  height: var(--admin-header-height);
+  min-height: var(--admin-header-height);
+  max-height: var(--admin-header-height);
+  align-items: center !important;
+  column-gap: 1rem;
+  row-gap: 0;
+}
+
+.page-header {
+  /* HeaderSearch's phone overlay covers the header row. */
+  position: relative;
+}
+
+.page-header__title-row {
+  display: flex;
+  align-items: center;
+}
+
+.page-header__title-row {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* An editor's header (PageHeader height="editor"): every control in its
+   actions row is 2.75rem tall - set once here, never a per-page `h-11`.
+   A badge that stands among them opts in with `page-header__tall`. */
+.page-header--editor .page-header__actions :is(button, .page-header__tall) {
+  height: 2.75rem;
+}
+
+.page-header--standard .page-header__title-row,
+.page-header--editor .page-header__title-row {
+  flex-wrap: nowrap;
+}
+
+.page-header__center {
+  display: flex;
+  align-items: center;
+  justify-self: center;
+  gap: 0.375rem;
+}
+
+.page-header__actions {
+  justify-self: end;
+}
+
+/* Phone width (below md, same as useIsMobile): secondary and object
+   actions have folded into PageHeader's "⋮" menu, so the title takes the
+   rest of the row, truncating. The center slot (informational - a
+   table's endpoint badges) has no room left and hides. */
+@media (max-width: 767px) {
+  .page-header--standard,
+  .page-header--editor {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.5rem;
+  }
+
+  .page-header--standard .page-header__center,
+  .page-header--editor .page-header__center {
+    display: none;
+  }
+
+  .page-header--standard .page-header__actions,
+  .page-header--editor .page-header__actions {
+    gap: 0.25rem;
+  }
+}
+
+.page-header--standard .page-header__primary,
+.page-header--editor .page-header__primary {
+  overflow: hidden;
+  /* Room for the icon's 1px ring (a box-shadow outside it), which the overflow would clip. */
+  padding: 1px;
+  margin: -1px;
+}
+
+.page-header--standard .header-title,
+.page-header--editor .header-title,
+.page-header--standard .page-header__description,
+.page-header--editor .page-header__description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * On a phone or a tablet the title has the header to itself: its description steps aside and it takes
+ * two lines rather than "Autoex…" beside three buttons (T53, Specification_Admin_UI.md §5.2).
+ */
+.page-header--compact .page-header__description {
+  display: none;
+}
+/* A CUSTOM page's own header buttons on a phone or a tablet (T53): an icon's button shows the icon alone, as the
+   lists' New does - its text stays its accessible name, so the title keeps its room. */
+.page-header--compact #custom-page-header button:has([data-slot="leadingIcon"]) [data-slot="label"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+.page-header--compact .header-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
+}
+
+/*
+ * vaul-vue (behind every UDrawer) injects a global, permanent
+ * `[data-vaul-drawer] { will-change: transform }` on import - not scoped
+ * to the open/close animation. That permanently promotes the drawer to
+ * its own GPU compositing layer, which blurs ordinary DOM text inside it
+ * once the layer sits at a fractional device-pixel position (an
+ * inset-x-[n%] drawer almost always does). See AGENTS.md §25 "UDrawer
+ * text blur (vaul-vue)" for the full explanation.
+ *
+ * !important is required - vaul-vue's stylesheet is injected via JS on
+ * import, so it lands after this one in <head> regardless of source
+ * order, winning specificity ties by cascade position alone.
+ *
+ * Global (not per-component <style>) since every UDrawer in the app
+ * needs this - was duplicated across SqlConsoleDrawer.vue and
+ * CreateTableDrawer.vue before being centralized here.
+ */
+[data-vaul-drawer] {
+  will-change: auto !important;
+}
+
+/*
+ * The rail's hover is a tint of its icon's own color, not Nuxt UI's
+ * bg-elevated: a rail the operator's CSS paints dark (Settings >
+ * Appearance - a theme, the Examples' rail, a hand-written one) keeps light
+ * icons, and a near-white hover under them would all but hide them. Light
+ * or dark, the tint follows whatever color the icon has. Unlayered, so it
+ * wins over the button's own hover utility.
+ */
+[data-shell="rail"] :is(a, button):hover {
+  background-color: color-mix(in oklab, currentColor 12%, transparent);
+}
+
+/*
+ * Leaflet in dark mode - every map (a `point` field, the MAP DataView, a
+ * dashboard map widget, the map view picker) uses OpenStreetMap's own
+ * tiles, which only come light; a dark basemap needs another provider and
+ * an API key (CARTO's free dark tiles now require one too). So the tile
+ * layer is inverted instead, and the hue rotated back so water stays blue
+ * (a slate blue, like the admin). Only the tile pane: pins, clusters and
+ * popups sit in their own panes and keep their colors. Controls and popups
+ * take the admin's tokens. Global, like the vaul rule above - one rule for
+ * every map, following `.dark` live.
+ *
+ * Specificity: leaflet.css loads later (imported by each map component),
+ * so each selector here outranks Leaflet's own by one class, `.dark`.
+ */
+.dark .leaflet-container {
+  background: var(--ui-bg-elevated);
+}
+
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(200deg) brightness(0.95) contrast(0.85) saturate(0.5);
+}
+
+.dark .leaflet-bar a,
+.dark .leaflet-bar a:hover {
+  background: var(--ui-bg-elevated);
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+}
+
+.dark .leaflet-bar a.leaflet-disabled {
+  background: var(--ui-bg);
+  color: var(--ui-text-dimmed);
+}
+
+.dark .leaflet-container .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--ui-bg) 80%, transparent);
+  color: var(--ui-text-muted);
+}
+
+.dark .leaflet-container .leaflet-control-attribution a {
+  color: var(--ui-primary);
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: var(--ui-bg-elevated);
+  color: var(--ui-text);
+}
+
+.dark .leaflet-container a.leaflet-popup-close-button {
+  color: var(--ui-text-muted);
+}
+
+/* CUSTOM pages (WidgetRenderer.vue / CustomPage.vue): every area is a
+   12-column grid laid out on the Design form's canvas; a phone stacks its
+   widgets in reading order, like the Design form's own one-column canvas. */
+@media (max-width: 767px) {
+  .widget-area > * {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+/* And in the App, a page's own area its width can't hold - beside its menus on a tablet: the page's width
+   decides, not the window's (T66) - an 8 + 4 pair of cards stacks instead of squeezing. A card's inside keeps
+   its author's layout. */
+.widget-area--live {
+  container-type: inline-size;
+}
+@container (max-width: 719px) {
+  .widget-area--live > * {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}

@@ -1,0 +1,470 @@
+[
+ [
+  "sync_catalog",
+  {
+   "auto_presentation": true
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "branches",
+   "description": "Acme's branches: Salta (head office), Jujuy and Tucumán.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "technicians",
+   "description": "Field technicians, their branch, skills and hourly cost.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "customers",
+   "description": "Customers - a group and its subsidiaries.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "sites",
+   "description": "The places a customer has equipment at.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "equipment_models",
+   "description": "Equipment brands and models, with their maintenance interval.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "equipment",
+   "description": "Units installed at a site.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "contracts",
+   "description": "Service contracts: plan, response hours and monthly fee.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "vehicles",
+   "description": "The fleet.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "vehicle_positions",
+   "description": "GPS positions, append-only.",
+   "expose_methods": [
+    "GET",
+    "POST"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "vehicle_maintenance",
+   "description": "Service, tires, repairs and inspections of each vehicle.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "suppliers",
+   "description": "Parts suppliers.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "warehouses",
+   "description": "Branch warehouses and vans that carry stock.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "parts",
+   "description": "Spare parts and their prices.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "stock",
+   "description": "Stock of each part in each warehouse - never below zero.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "stock_movements",
+   "description": "Every stock change, written by triggers.",
+   "expose_methods": [
+    "GET"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "purchase_orders",
+   "description": "Orders to suppliers; receiving one adds its stock.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "purchase_order_items",
+   "description": "The parts of a purchase order.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "work_orders",
+   "description": "Repairs, maintenance, installations and inspections.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "visits",
+   "description": "Scheduled visits - a technician is never booked twice.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "time_entries",
+   "description": "Time a technician spent on an order.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "work_order_parts",
+   "description": "Parts used on an order - taken out of stock as they are added.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "work_order_photos",
+   "description": "Photos taken on an order.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "projects",
+   "description": "Installation projects.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "project_tasks",
+   "description": "The tasks of a project.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "quotes",
+   "description": "Quotes to customers; the total is kept by PostgreSQL.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "quote_items",
+   "description": "The lines of a quote.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "invoices",
+   "description": "Invoices.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "invoice_items",
+   "description": "The lines of an invoice.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "parameters",
+   "description": "The company's own settings.",
+   "expose_methods": [
+    "GET",
+    "POST",
+    "PATCH",
+    "DELETE"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "vehicles_latest_positions",
+   "description": "The latest position of each vehicle.",
+   "expose_methods": [
+    "GET"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "work_orders_overview",
+   "description": "An order with its customer, site, technician, hours, parts and whether it is overdue.",
+   "expose_methods": [
+    "GET"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "stock_alerts",
+   "description": "Parts at or below their reorder point, per warehouse.",
+   "expose_methods": [
+    "GET"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "orders_due_soon",
+   "description": "Open orders due within the next 2 hours.",
+   "expose_methods": [
+    "GET"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "quote_total",
+   "description": "A quote's total.",
+   "expose_methods": [
+    "POST"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "invoice_total",
+   "description": "An invoice's total with tax.",
+   "expose_methods": [
+    "POST"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "create_invoice_from_work_order",
+   "description": "Invoices a completed work order: billable hours and parts.",
+   "expose_methods": [
+    "POST"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "issue_invoice_from_quote",
+   "description": "Issues the invoice of an accepted quote.",
+   "expose_methods": [
+    "POST"
+   ]
+  }
+ ],
+ [
+  "expose_resource",
+  {
+   "name": "assign_work_order",
+   "description": "Assigns an order to a technician and schedules its visit.",
+   "expose_methods": [
+    "POST"
+   ]
+  }
+ ]
+]

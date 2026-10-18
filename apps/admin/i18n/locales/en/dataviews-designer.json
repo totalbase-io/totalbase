@@ -1,0 +1,3088 @@
+{
+  "designer": {
+    "affectedDataViewsModal": {
+      "clearAll": "Clear all",
+      "description": "Their drafts show it already; their viewers keep seeing the published version until it's published again.",
+      "leaveUnpublished": "Leave unpublished",
+      "live": "Live: v{version}",
+      "otherChanges": "Has other unpublished changes - publish it from its own page.",
+      "publishError": "Could not publish",
+      "publishNow": "Publish now",
+      "published": "{n} DataView published | {n} DataViews published",
+      "selectAll": "Select all",
+      "title": "Published DataViews this change reaches"
+    },
+    "bindingButton": {
+      "bindLabel": "Bind {label}",
+      "boundTooltip": "{label} is bound - click to edit",
+      "cannotBind": "{label} can't be bound here.",
+      "collapseRelated": "Collapse {column}'s related columns",
+      "errorResult": "Error: {error}",
+      "exampleHint": "e.g.",
+      "examples": "Examples",
+      "examplesDescription": "Click any row to insert it at the cursor/selection. Result is computed live against one fixed sample record.",
+      "examplesTitle": "Formula examples",
+      "expandRelated": "Expand {column}'s related columns",
+      "fields": "Fields",
+      "format": "Format",
+      "functions": "Functions",
+      "iconHint": "{signature} - Lucide icons only for now",
+      "loadColumnsError": "Could not load columns.",
+      "modalDescription": "A formula evaluated against this record's own field values - falls back to {label}'s static value above when empty or unparseable.",
+      "noMatch": "No examples match \"{search}\".",
+      "removeBinding": "Remove binding",
+      "sampleRecord": "Sample record used",
+      "searchExamples": "Search examples...",
+      "types": {
+        "boolean": "Boolean",
+        "date": "Date",
+        "format": "Format",
+        "numeric": "Numeric",
+        "text": "Text"
+      },
+      "unboundTooltip": "Bind {label} to a formula"
+    },
+    "cameraFeed": {
+      "problems": {
+        "denied": "Camera permission was denied - allow it in the browser to use it.",
+        "failed": "The camera could not be opened.",
+        "insecure": "The browser opens the camera only over HTTPS (or on localhost).",
+        "missing": "No camera was found on this device.",
+        "unsupported": "This browser has no camera access."
+      },
+      "unavailable": "Camera unavailable"
+    },
+    "catalog": {
+      "groups": {
+        "action": "Actions",
+        "container": "Layout",
+        "display": "Display",
+        "embed": "Embed",
+        "form": "Form",
+        "input": "Inputs",
+        "overlay": "Overlays"
+      },
+      "sharedProps": {
+        "accept": {
+          "description": "File types to accept, e.g. image/*,.pdf",
+          "label": "Accepted types"
+        },
+        "actions": {
+          "description": "Icon buttons at the end of each row - Action clicked tells which by its Name; each may be off or hidden by a formula per row.",
+          "label": "Row actions"
+        },
+        "align": {
+          "description": "Its text and buttons, left to right.",
+          "label": "Align content"
+        },
+        "alt": {
+          "label": "Alternative text"
+        },
+        "arrow": {
+          "description": "A small arrow pointing at what opened it.",
+          "label": "Arrow"
+        },
+        "autoresize": {
+          "description": "Gets taller as the text grows, instead of scrolling.",
+          "label": "Grow with its text"
+        },
+        "avatar": {
+          "description": "Its avatar's image URL - empty shows the name's initials.",
+          "label": "Image"
+        },
+        "background": {
+          "description": "Its box's color - the theme's, light and dark.",
+          "label": "Background"
+        },
+        "block": {
+          "description": "Its input fills the field - set the field's width and the input follows.",
+          "label": "Full width"
+        },
+        "border": {
+          "description": "A line around its box.",
+          "label": "Border"
+        },
+        "calendar": {
+          "description": "A calendar button beside the field - its days stop at the column's CHECK bounds; a timestamp's time below it. Typing stays.",
+          "label": "Calendar"
+        },
+        "clear": {
+          "description": "An ✕ that empties the value.",
+          "label": "Clear button"
+        },
+        "clearable": {
+          "description": "An ✕ that empties the value.",
+          "label": "Clear button"
+        },
+        "close": {
+          "description": "An ✕ in its corner that closes it.",
+          "label": "Close button"
+        },
+        "color": {
+          "description": "One of the theme's colors - primary, error, success...",
+          "label": "Color"
+        },
+        "colorKey": {
+          "description": "Each option's icon color, one of the theme's (primary, success, warning...) - a field, or a formula: {'{'}{'{'}balance{'}'}{'}'} < 0 ? \"error\" : \"success\".",
+          "label": "Color field"
+        },
+        "column": {
+          "description": "A column of the page's record: its input edits record.data.<column>. PostgreSQL's NOT NULL makes it required, and it's read-only where the viewer may not write it.",
+          "label": "Linked by"
+        },
+        "columnSettings": {
+          "description": "Each column's title, format and look - what isn't set comes from its resource's column. In its Rows' order; a hidden one still comes with Row clicked's row.",
+          "label": "Columns"
+        },
+        "columns": {
+          "description": "Options per row - the rest wrap below. Two per row on a phone.",
+          "label": "Columns"
+        },
+        "computedColumns": {
+          "description": "A formula per row - {'{'}{'{'}quantity{'}'}{'}'} * {'{'}{'{'}unit_price{'}'}{'}'} - shown after its Rows' fields; its look in Columns. A total that must add up belongs in PostgreSQL.",
+          "label": "Computed columns"
+        },
+        "contentType": {
+          "label": "Content type"
+        },
+        "createItem": {
+          "description": "Options from a Resource: typing a value it doesn't list offers Create - a new row of its table with that value in its Label field, saved as the viewer (their CREATE permission), then picked. PostgreSQL decides whether the row is valid.",
+          "label": "Create from search"
+        },
+        "cssClass": {
+          "description": "Tailwind classes on its box, beyond the Style tab's - spacing, text, layout.",
+          "label": "CSS classes"
+        },
+        "dashboard": {
+          "description": "A published Dashboard. Who sees it is its own: a viewer without access sees it isn't available.",
+          "label": "Dashboard"
+        },
+        "data": {
+          "label": "Rows"
+        },
+        "dataview": {
+          "description": "A published DataView over the detail table: its grid shows the rows, its record form edits each one.",
+          "label": "DataView"
+        },
+        "defaultOpen": {
+          "description": "Starts expanded.",
+          "label": "Open at first"
+        },
+        "description": {
+          "label": "Description"
+        },
+        "descriptionKey": {
+          "description": "Shown muted beneath the label - a field, or a formula over its fields.",
+          "label": "Description field"
+        },
+        "disabled": {
+          "description": "Shown greyed out - it can't be used.",
+          "label": "Disabled"
+        },
+        "disabledKey": {
+          "description": "Turns an option off - a true/false field, or a formula over its fields and the page: {'{'}{'{'}id{'}'}{'}'} == 5 && !{'{'}{'{'}vars.customer.data.active{'}'}{'}'}.",
+          "label": "Disabled field"
+        },
+        "dismissible": {
+          "description": "Closes when the viewer clicks outside it.",
+          "label": "Close on outside click"
+        },
+        "empty": {
+          "label": "Empty text"
+        },
+        "error": {
+          "label": "Error"
+        },
+        "expandable": {
+          "description": "A button that grows it to almost the whole screen.",
+          "label": "Expand button"
+        },
+        "fillHeight": {
+          "description": "Takes the height the page has left, so everything fits on screen - a Detail's rows, an editor. Its own height is then the least it takes.",
+          "label": "Fill height"
+        },
+        "filter": {
+          "description": "A search box above the options.",
+          "label": "Filter box"
+        },
+        "fullscreen": {
+          "description": "Covers the whole screen.",
+          "label": "Fullscreen"
+        },
+        "granularity": {
+          "description": "A timestamp's: to the minute when unset. A date column is always to the day.",
+          "label": "Precision"
+        },
+        "help": {
+          "label": "Help"
+        },
+        "highlight": {
+          "description": "Outlined in its color, to draw attention.",
+          "label": "Highlight"
+        },
+        "hint": {
+          "label": "Hint"
+        },
+        "htmlAttrs": {
+          "description": "Extra attributes on the widget, e.g. data-test or title.",
+          "label": "HTML attributes"
+        },
+        "icon": {
+          "description": "An icon at its start.",
+          "label": "Icon"
+        },
+        "iconKey": {
+          "description": "Each option's icon, e.g. i-lucide-banknote - a field, or a formula over its fields.",
+          "label": "Icon field"
+        },
+        "iconSize": {
+          "description": "Each option's icon - from sm to 2xl; empty keeps Nuxt UI's.",
+          "label": "Icon size"
+        },
+        "indicator": {
+          "description": "Where its dot sits - hidden shows each option's icon instead, as cards do.",
+          "label": "Indicator"
+        },
+        "inset": {
+          "description": "Floats with a margin from the edge of the screen.",
+          "label": "Inset"
+        },
+        "items": {
+          "description": "Its label may be a formula - \"Items (\" + {'{'}{'{'}vars.items.count{'}'}{'}'} + \")\"; one off until a customer is picked, another shown only to some.",
+          "label": "Options"
+        },
+        "keepActive": {
+          "label": "Hidden, still active",
+          "description": "Hidden by Visible, it stays on the page unseen - its methods and what it listens to keep working: a scanner listening to the page, a modal opened by code."
+        },
+        "label": {
+          "label": "Label"
+        },
+        "labelKey": {
+          "description": "The field shown for each option - or a formula over its fields, e.g. {'{'}{'{'}sku{'}'}{'}'} + \" - \" + {'{'}{'{'}name{'}'}{'}'}; its Resource must read them.",
+          "label": "Label field"
+        },
+        "legend": {
+          "label": "Legend"
+        },
+        "length": {
+          "label": "Length"
+        },
+        "level": {
+          "label": "Level"
+        },
+        "loading": {
+          "description": "Shows a spinner while something is busy.",
+          "label": "Loading"
+        },
+        "loadingAuto": {
+          "description": "Its submit button shows loading while the submit handler runs.",
+          "label": "Busy while submitting"
+        },
+        "margin": {
+          "label": "Margin"
+        },
+        "marginBottom": {
+          "label": "Margin bottom"
+        },
+        "marginLeft": {
+          "label": "Margin left"
+        },
+        "marginRight": {
+          "label": "Margin right"
+        },
+        "marginTop": {
+          "label": "Margin top"
+        },
+        "mask": {
+          "description": "Hides what is typed, like a password.",
+          "label": "Mask"
+        },
+        "max": {
+          "label": "Max"
+        },
+        "maxLength": {
+          "label": "Max length"
+        },
+        "maxrows": {
+          "label": "Max rows"
+        },
+        "min": {
+          "label": "Min"
+        },
+        "mode": {
+          "label": "Opens on"
+        },
+        "modelValue": {
+          "description": "A Value variable it reads and writes - or a formula (the link): shown read only, written nowhere, e.g. {'{'}{'{'}controls.selectCustomer.item.tax_id{'}'}{'}'}.",
+          "label": "Value"
+        },
+        "multiple": {
+          "description": "Picks several options - its value is a list.",
+          "label": "Multiple"
+        },
+        "name": {
+          "description": "Its value's key in the form's data - by convention the column it saves to. Empty: its column, else the input's variable.",
+          "label": "Name"
+        },
+        "newLabel": {
+          "label": "New button"
+        },
+        "openInNewTab": {
+          "description": "A button above it that opens the same page in a new tab.",
+          "label": "Open in new tab"
+        },
+        "orientation": {
+          "description": "Laid out in a row or in a column.",
+          "label": "Orientation"
+        },
+        "padding": {
+          "label": "Padding"
+        },
+        "paddingBottom": {
+          "label": "Padding bottom"
+        },
+        "paddingLeft": {
+          "label": "Padding left"
+        },
+        "paddingRight": {
+          "label": "Padding right"
+        },
+        "paddingTop": {
+          "label": "Padding top"
+        },
+        "pager": {
+          "description": "Pages through its Rows' Resource on the server - its limit is the page size; with Count the total, too.",
+          "label": "Pager"
+        },
+        "paging": {
+          "description": "Off: every row at once - a record's items.",
+          "label": "Pages"
+        },
+        "editInline": {
+          "label": "Edit in the grid",
+          "description": "Linked by a column: its rows edited in place - Tab from cell to cell, Tab past the last adds one - and saved with the page's record, in one transaction. Off: each row in its own form."
+        },
+        "pattern": {
+          "description": "A regular expression (JavaScript) the whole value must match - checked as the viewer types, with the column's own CHECK. PostgreSQL still decides on save; an empty value is left to Required.",
+          "label": "Pattern"
+        },
+        "patternMessage": {
+          "description": "Shown under the field when the value doesn't match. Empty: Invalid format.",
+          "label": "Pattern message"
+        },
+        "radius": {
+          "description": "Its box's rounded corners.",
+          "label": "Radius"
+        },
+        "range": {
+          "description": "Picks a start and an end date.",
+          "label": "Date range"
+        },
+        "readOnly": {
+          "description": "No New, editing or deleting here - an issued invoice's items: {'{'}{'{'}vars.record.data.status{'}'}{'}'} == \"ISSUED\".",
+          "label": "Read only"
+        },
+        "readonly": {
+          "description": "Shown, but can't be changed.",
+          "label": "Read only"
+        },
+        "required": {
+          "description": "Needs a value before the form submits - a NOT NULL column already does.",
+          "label": "Required"
+        },
+        "rowColorKey": {
+          "description": "Tints each row - a field holding a palette color (red, green...), or a formula: {'{'}{'{'}vencida{'}'}{'}'} ? \"red\" : \"\".",
+          "label": "Row color"
+        },
+        "rows": {
+          "label": "Rows"
+        },
+        "scrollable": {
+          "description": "The whole modal scrolls, not only its body.",
+          "label": "Scroll the whole modal"
+        },
+        "search": {
+          "description": "A search box over its Rows' Resource - the server searches its text fields.",
+          "label": "Search"
+        },
+        "searchBlock": {
+          "description": "The search box as wide as the table - in a modal or a sidebar.",
+          "label": "Full-width search"
+        },
+        "searchWindow": {
+          "label": "Search window",
+          "description": "Options from a Resource: a 🔍 beside it opens them as a table - its Resource's fields as columns, searched and paged on the server - to pick one by any of them. For long lists."
+        },
+        "searchWindowAs": {
+          "label": "Search window as",
+          "description": "Where the search window opens - a sidebar (the default, room for a long list) or a modal. Full screen on a phone."
+        },
+        "shadow": {
+          "description": "Lifts its box off the page.",
+          "label": "Shadow"
+        },
+        "side": {
+          "label": "Side"
+        },
+        "size": {
+          "description": "From xs to xl - Default is md.",
+          "label": "Size"
+        },
+        "square": {
+          "description": "As wide as it is tall - for an icon alone.",
+          "label": "Square"
+        },
+        "src": {
+          "label": "Image"
+        },
+        "startExpanded": {
+          "description": "Opens at almost the whole screen - for content that needs the room.",
+          "label": "Open expanded"
+        },
+        "status": {
+          "description": "Shows the value as a number beside the bar.",
+          "label": "Show the value"
+        },
+        "step": {
+          "label": "Step"
+        },
+        "sticky": {
+          "description": "The column titles stay in view while scrolling.",
+          "label": "Sticky header"
+        },
+        "text": {
+          "label": "Initials"
+        },
+        "title": {
+          "description": "What the frame shows, for screen readers.",
+          "label": "Title"
+        },
+        "tooltip": {
+          "description": "Shows the value above the handle while dragging.",
+          "label": "Tooltip"
+        },
+        "trailingIcon": {
+          "description": "An icon at its end.",
+          "label": "Trailing icon"
+        },
+        "type": {
+          "description": "The browser's own input for it - datetime-local shows a timestamp with time zone in the viewer's.",
+          "label": "Type"
+        },
+        "url": {
+          "description": "https://… - a value goes where a token is: https://tracking.example/shipments/{'{'}{'{'}vars.record.data.tracking_id{'}'}{'}'}. The site itself is fixed (tokens only after the / that follows it), each value is URL-encoded, and the values are sent to that site.",
+          "label": "URL"
+        },
+        "validate": {
+          "description": "A Code function (dataview, {'{'} data {'}'}) returning {'{'} errors: [{'{'} field, message {'}'}] {'}'} - may be async.",
+          "label": "Validate"
+        },
+        "valueKey": {
+          "description": "The field of each option that is stored - its primary key by default.",
+          "label": "Value field"
+        },
+        "variables": {
+          "description": "A formula per variable, e.g. {'{'}{'{'}vars.record.data.id{'}'}{'}'} - set ones are hidden from its bar; the rest stay the viewer's to pick.",
+          "label": "Variables"
+        },
+        "variant": {
+          "description": "Its style: filled, outlined, soft...",
+          "label": "Variant"
+        },
+        "verticalAlign": {
+          "description": "Where it sits in its row, beside a taller widget - stretch: a Card or a Box takes the row's height, even with the one beside it.",
+          "label": "Vertical align"
+        },
+        "visible": {
+          "description": "Off - or a formula giving false - it leaves the page: no space, and its methods (dataview.controls.<name>.open()) and what it listens to (a Scanner's USB reader) stop. Hidden, still active keeps it working unseen.",
+          "label": "Visible"
+        },
+        "searchWindowSize": {
+          "label": "Search window size",
+          "description": "Its width - unset, Nuxt UI's own (a narrow sidebar or modal); sm to xl as a record form's sizes, xl for a wide table. Full screen on a phone from md."
+        }
+      },
+      "snippetGroups": {
+        "controls": "Controls",
+        "data": "Data",
+        "feedback": "Feedback",
+        "navigation": "Navigation",
+        "record": "Record"
+      },
+      "snippets": {
+        "clearForm": {
+          "description": "Removes the messages its validation left.",
+          "label": "Clear a form's errors",
+          "params": {
+            "form": {
+              "label": "Form"
+            }
+          }
+        },
+        "confirmThen": {
+          "description": "Stops unless the viewer confirms - then runs another snippet.",
+          "label": "Ask for confirmation, then…",
+          "params": {
+            "button": {
+              "description": "Optional - \"OK\" otherwise.",
+              "label": "Confirm button"
+            },
+            "message": {
+              "label": "Question"
+            },
+            "then": {
+              "label": "Then"
+            },
+            "title": {
+              "description": "Optional - the dialog's heading.",
+              "label": "Title"
+            }
+          }
+        },
+        "copyToClipboard": {
+          "description": "The event's value or a fixed text, with a notification.",
+          "label": "Copy to the clipboard",
+          "params": {
+            "from": {
+              "label": "What",
+              "options": {
+                "event": "The event's value",
+                "text": "A fixed text"
+              }
+            },
+            "value": {
+              "description": "When What is a fixed text.",
+              "label": "Fixed text"
+            }
+          }
+        },
+        "filterResource": {
+          "description": "A runtime filter on one column, AND-ed with its designed where - an empty value clears it.",
+          "label": "Filter a Resource by a value",
+          "params": {
+            "column": {
+              "label": "Column"
+            },
+            "from": {
+              "label": "Value",
+              "options": {
+                "event": "The event's value",
+                "variable": "A Value variable"
+              }
+            },
+            "operator": {
+              "label": "Match",
+              "options": {
+                "_eq": "Equal",
+                "_gte": "From (greater or equal)",
+                "_ilike": "Contains (any case)",
+                "_lte": "Up to (less or equal)"
+              }
+            },
+            "resource": {
+              "label": "Resource"
+            },
+            "variable": {
+              "description": "When Value is a Value variable.",
+              "label": "Value variable"
+            }
+          }
+        },
+        "focusInput": {
+          "description": "Puts the cursor in it - after opening a modal, or when a check fails.",
+          "label": "Focus an input",
+          "params": {
+            "input": {
+              "label": "Input"
+            }
+          }
+        },
+        "notify": {
+          "description": "A message in the corner.",
+          "label": "Show a notification",
+          "params": {
+            "color": {
+              "label": "Color",
+              "options": {
+                "error": "Error",
+                "info": "Info",
+                "success": "Success",
+                "warning": "Warning"
+              }
+            },
+            "message": {
+              "label": "Message"
+            }
+          }
+        },
+        "openDataView": {
+          "description": "Goes to it - with this record's key as its ?pk=, which opens that record there.",
+          "label": "Open another DataView",
+          "params": {
+            "dataview": {
+              "label": "DataView"
+            },
+            "newTab": {
+              "label": "In a new tab"
+            },
+            "withRecord": {
+              "description": "Only on a page with a record.",
+              "label": "Pass this record's key (pk)"
+            }
+          }
+        },
+        "openLink": {
+          "description": "A URL, here or in a new tab.",
+          "label": "Open a link",
+          "params": {
+            "newTab": {
+              "label": "In a new tab"
+            },
+            "url": {
+              "label": "URL"
+            }
+          }
+        },
+        "recordAction": {
+          "description": "New, undo the changes, delete (asks first), clone or reread the record.",
+          "label": "A record action",
+          "params": {
+            "action": {
+              "label": "Action",
+              "options": {
+                "cancel": "Undo the changes",
+                "clone": "Copy it into a new one",
+                "delete": "Delete it",
+                "new": "Start a new one",
+                "refresh": "Reread it, keeping the changes",
+                "reload": "Reread it, dropping the changes"
+              }
+            }
+          }
+        },
+        "refreshData": {
+          "description": "Reads a Resource again - every widget bound to it updates.",
+          "label": "Refresh data",
+          "params": {
+            "resource": {
+              "label": "Resource"
+            }
+          }
+        },
+        "runCall": {
+          "description": "Executes a Call, then opens its file or tells the viewer; a failure shows its message.",
+          "label": "Run a workflow or function",
+          "params": {
+            "call": {
+              "label": "Call"
+            },
+            "input": {
+              "label": "Input",
+              "options": {
+                "designed": "Its designed input",
+                "event": "The event - a form's submit, {'{'} data {'}'}",
+                "record": "The page's record - {'{'} data: record.data {'}'}"
+              }
+            },
+            "openFile": {
+              "description": "A print or a PDF: {'{'} asset {'}'} or {'{'} mimeType, content {'}'}.",
+              "label": "Open the result as a file"
+            },
+            "success": {
+              "description": "Optional.",
+              "label": "Message when it succeeds"
+            }
+          }
+        },
+        "saveRecord": {
+          "description": "Saves it; if PostgreSQL says no, the viewer sees why and the record stays as it was.",
+          "label": "Save the record",
+          "params": {
+            "success": {
+              "description": "Optional.",
+              "label": "Message when it saves"
+            },
+            "then": {
+              "label": "Then",
+              "options": {
+                "close": "Close it",
+                "new": "Start a new one",
+                "stay": "Stay on it"
+              }
+            }
+          }
+        },
+        "searchResource": {
+          "description": "The event's value (what was typed) as the Resource's search.",
+          "label": "Search a Resource",
+          "params": {
+            "resource": {
+              "label": "Resource"
+            }
+          }
+        },
+        "setRecordColumn": {
+          "description": "Puts a value in one of the record's columns - the event's, or a fixed one. Saved with the record.",
+          "label": "Set a column of the record",
+          "params": {
+            "column": {
+              "label": "Column"
+            },
+            "from": {
+              "label": "To",
+              "options": {
+                "event": "The event's value",
+                "text": "A fixed value"
+              }
+            },
+            "value": {
+              "description": "When To is a fixed value.",
+              "label": "Fixed value"
+            }
+          }
+        },
+        "setVariable": {
+          "description": "Puts a value in a Value - the event's, or a fixed one.",
+          "label": "Set a variable",
+          "params": {
+            "from": {
+              "label": "To",
+              "options": {
+                "event": "The event's value",
+                "text": "A fixed value"
+              }
+            },
+            "value": {
+              "description": "When To is a fixed value.",
+              "label": "Fixed value"
+            },
+            "variable": {
+              "label": "Value"
+            }
+          }
+        },
+        "submitForm": {
+          "description": "Validates it and emits its submit - as its submit button would.",
+          "label": "Submit a form",
+          "params": {
+            "form": {
+              "label": "Form"
+            }
+          }
+        },
+        "toggleOverlay": {
+          "description": "By the name it has in the Design form.",
+          "label": "Open or close a modal or slideover",
+          "params": {
+            "action": {
+              "label": "Action",
+              "options": {
+                "close": "Close it",
+                "open": "Open it"
+              }
+            },
+            "overlay": {
+              "label": "Modal or slideover"
+            }
+          }
+        },
+        "useSelectedRow": {
+          "description": "On a Table's select: puts one of the row's fields in a Value.",
+          "label": "Use the selected row",
+          "params": {
+            "field": {
+              "description": "A field the Table's Resource reads - id, nombre…",
+              "label": "Field of the row"
+            },
+            "variable": {
+              "label": "Value"
+            }
+          }
+        }
+      },
+      "valueTypes": {
+        "array": {
+          "description": "A list of values.",
+          "label": "List"
+        },
+        "boolean": {
+          "description": "true or false.",
+          "label": "Boolean"
+        },
+        "date": {
+          "description": "A calendar day, YYYY-MM-DD.",
+          "label": "Date"
+        },
+        "date_range": {
+          "description": "A calendar period (this month, last year…) or two dates.",
+          "label": "Date range"
+        },
+        "json": {
+          "description": "Any JSON value.",
+          "label": "JSON"
+        },
+        "number": {
+          "description": "A finite number.",
+          "label": "Number"
+        },
+        "point": {
+          "description": "A map point, {'{'} lng, lat {'}'}.",
+          "label": "Point"
+        },
+        "text": {
+          "description": "A string.",
+          "label": "Text"
+        },
+        "time": {
+          "description": "A time of day, HH:MM or HH:MM:SS.",
+          "label": "Time"
+        },
+        "time_range": {
+          "description": "Two times of day.",
+          "label": "Time range"
+        },
+        "timestamp": {
+          "description": "An instant, ISO 8601.",
+          "label": "Date and time"
+        }
+      },
+      "variables": {
+        "CALL": {
+          "description": "A function, a MANUAL workflow or a table write, run on demand as the viewer.",
+          "emits": {
+            "before:execute": "Before run",
+            "complete": "Finished",
+            "error": "Failed",
+            "success": "Succeeded"
+          },
+          "expose": {
+            "clear": "Empties data and error.",
+            "execute": "Runs it - with input, instead of the designed one; resolves to the result, rejects on failure.",
+            "setInput": "Replaces the designed input."
+          },
+          "label": "Call",
+          "props": {
+            "input": {
+              "description": "The request body: {'{'} \"data\": {'{'}...{'}'} {'}'}; a table update or delete also names its row - \"pk\" or \"where\". Values may use {'{'}{'{'}vars.*{'}'}{'}'}.",
+              "label": "Input"
+            },
+            "target": {
+              "description": "A function, a MANUAL workflow, or a table to create, update or delete rows in.",
+              "label": "Target"
+            }
+          },
+          "state": {
+            "data": {
+              "description": "The last result.",
+              "label": "Result"
+            },
+            "error": {
+              "description": "The last failure, as the API's {'{'} errors: [{'{'} code, message {'}'}] {'}'}, or null.",
+              "label": "Error"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Status"
+            }
+          }
+        },
+        "RECORD": {
+          "description": "A row of the DataView's source table - loaded, edited and saved through the Data API as the viewer.",
+          "emits": {
+            "before:save": "Before save",
+            "load": "Loaded",
+            "save": "Saved"
+          },
+          "expose": {
+            "cancel": "Discards the changes.",
+            "clone": "A new record with its values - not its key or generated columns.",
+            "close": "Closes the page or panel it's open in.",
+            "delete": "Deletes it, after a confirmation; resolves to whether it did.",
+            "edit": "Leaves view mode.",
+            "new": "Starts a new record, with values.",
+            "open": "Opens another row by its key - read-only with view, until edit().",
+            "refresh": "Reads it again, keeping the edits - what a trigger recomputed shows up (a Detail's rowsChanged).",
+            "reload": "Reads it again, dropping the edits.",
+            "save": "Saves it, with values set first; resolves to false when it didn't - the record is then left as it was.",
+            "set": "Sets a column's value."
+          },
+          "label": "Record",
+          "state": {
+            "data": {
+              "description": "The row's values, edits included - data.<column>.",
+              "label": "Data"
+            },
+            "dirty": {
+              "description": "true while it has unsaved changes.",
+              "label": "Unsaved changes"
+            },
+            "error": {
+              "description": "The last failure, as the API's {'{'} errors: [{'{'} code, message {'}'}] {'}'}, or null.",
+              "label": "Error"
+            },
+            "mode": {
+              "description": "create · edit · view",
+              "label": "Mode"
+            },
+            "pk": {
+              "description": "The primary key's value - null for a new record.",
+              "label": "Key"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Status"
+            }
+          }
+        },
+        "RESOURCE": {
+          "description": "Read-only data from a table or view, through the Data API and the viewer's permissions.",
+          "emits": {
+            "before:load": "Before load",
+            "error": "Error",
+            "load": "Loaded",
+            "update:data": "Data changed"
+          },
+          "expose": {
+            "clear": "Empties data.",
+            "clearFilter": "Removes the runtime filter.",
+            "execute": "Same as refresh().",
+            "find": "The row whose column equals value, read apart - data stays as it is; null if none.",
+            "refresh": "Runs the query again; resolves to data.",
+            "setFilter": "A runtime filter, AND-ed with the designed where.",
+            "setOrder": "The query's order.",
+            "setPage": "The page, from 1.",
+            "setSearch": "The query's search."
+          },
+          "label": "Resource",
+          "props": {
+            "count": {
+              "label": "Count the total"
+            },
+            "immediate": {
+              "label": "Load on open"
+            },
+            "mode": {
+              "description": "Rows, or one row (or null).",
+              "label": "Mode"
+            },
+            "query": {
+              "description": "Fields (required), where, search, group by, aggregates, order and limit.",
+              "label": "Query"
+            },
+            "resource": {
+              "description": "A table or view exposed for GET.",
+              "label": "Resource"
+            },
+            "watch": {
+              "label": "Reload when its variables change"
+            }
+          },
+          "state": {
+            "count": {
+              "description": "The total, when Count is on.",
+              "label": "Count"
+            },
+            "data": {
+              "description": "The rows (list) or the row (record).",
+              "label": "Data"
+            },
+            "error": {
+              "description": "The last error, or null.",
+              "label": "Error"
+            },
+            "limit": {
+              "description": "Its query's limit - null when it has none.",
+              "label": "Page size"
+            },
+            "page": {
+              "description": "The page it read, from 1 - setPage() moves it, a new search or filter goes back to 1.",
+              "label": "Page"
+            },
+            "search": {
+              "description": "What setSearch() set (a Table's search box) - null without one, the query's own search then.",
+              "label": "Search"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Status"
+            }
+          }
+        },
+        "VALUE": {
+          "description": "Page state - what the viewer picked or typed, or what code set.",
+          "emits": {
+            "update:value": "Value changed"
+          },
+          "expose": {
+            "reset": "Back to the default.",
+            "set": "Sets the value, coerced to the variable's type."
+          },
+          "label": "Value",
+          "props": {
+            "default": {
+              "description": "A constant, a formula, a URL parameter or a field of the viewer ($USER).",
+              "label": "Default"
+            },
+            "type": {
+              "label": "Type"
+            }
+          },
+          "state": {
+            "value": {
+              "description": "The current value, of the variable's type.",
+              "label": "Value"
+            }
+          }
+        }
+      },
+      "widgetState": {
+        "item": {
+          "description": "The chosen option's whole row - its fields as .campo; null with none (or several).",
+          "label": "Item"
+        },
+        "row": {
+          "description": "The last row clicked - its fields as .campo; null until one is.",
+          "label": "Row"
+        },
+        "value": {
+          "description": "What it holds now.",
+          "label": "Value"
+        }
+      },
+      "widgets": {
+        "TBox": {
+          "description": "A plain area grouping widgets - no frame of its own: its look is its Style (padding, border, background, radius).",
+          "label": "Box",
+          "props": {
+            "fillHeight": {
+              "description": "Takes the height the page or panel has left - what it holds scrolls inside it (a Card's body, between its header and footer). A widget in it with Fill height fills it."
+            }
+          },
+          "slots": {
+            "default": "Content"
+          }
+        },
+        "TCamera": {
+          "description": "Takes a photo with the device's camera, crops and compresses it, and stores it as a file - for a file column, like a person's photo.",
+          "emits": {
+            "update:modelValue": "Photo changed"
+          },
+          "label": "Camera",
+          "props": {
+            "aspect": {
+              "description": "original keeps the photo as framed. A ratio crops it to that shape (1:1 square, 3:4 portrait).",
+              "label": "Crop"
+            },
+            "facing": {
+              "description": "environment: the back camera. user: the front one. The viewer can switch.",
+              "label": "Camera"
+            },
+            "label": {
+              "description": "The button's text - empty: Take photo.",
+              "label": "Button"
+            },
+            "maxSize": {
+              "description": "In pixels - a larger photo is scaled down to it (default 1600).",
+              "label": "Largest side"
+            },
+            "quality": {
+              "description": "JPEG quality from 0.1 to 1 (default 0.85) - lower, a smaller file.",
+              "label": "Quality"
+            },
+            "icon": {
+              "label": "Icon",
+              "description": "The button's icon - unset: a camera."
+            }
+          }
+        },
+        "TColorSelect": {
+          "description": "A palette color or any hex color.",
+          "emits": {
+            "update:modelValue": "Value changed"
+          },
+          "label": "Color"
+        },
+        "TDashboard": {
+          "description": "A published Dashboard, its variables set from the page - a customer's own figures, for one.",
+          "label": "Dashboard"
+        },
+        "TDataView": {
+          "label": "DataView",
+          "description": "Another DataView inside the page - its grid, cards, map, board, calendar or timeline, its New and its record form. Linked by a column: the rows that belong to the page's record (an order's items, a person's history); without: every row its own filter allows.",
+          "props": {
+            "dataview": {
+              "label": "DataView",
+              "description": "A published DataView. Its viewers' permissions decide what they read and write in it."
+            },
+            "column": {
+              "label": "Linked by",
+              "description": "The rows that belong to the page's record: only those whose column points at it, a new row starts linked to it, and nothing shows until the record is saved. Empty: every row."
+            },
+            "view": {
+              "label": "View",
+              "description": "Which of the DataView's views it shows - empty: the one it opens with."
+            },
+            "columns": {
+              "label": "Columns",
+              "description": "Each of its columns shown or hidden here - their format is the DataView's. Empty: as the DataView shows them."
+            },
+            "newLabel": {
+              "label": "New button"
+            },
+            "paging": {
+              "label": "Pages",
+              "description": "Off: every row at once - a record's items."
+            },
+            "editInline": {
+              "label": "Edit in the grid",
+              "description": "Linked by a column: its rows edited in place - Tab from cell to cell, Tab past the last adds one - and saved with the page's record, in one transaction. Off: each row in its own form."
+            },
+            "readOnly": {
+              "label": "Read only",
+              "description": "Nothing but reading here, whatever Allow says - an issued invoice's items: {'{'}{'{'}vars.record.data.status{'}'}{'}'} == \"ISSUED\"."
+            },
+            "allow": {
+              "label": "Allow",
+              "description": "What it lets a viewer do besides reading - only less than their permissions and than the DataView it shows allows, never more. Empty: all three."
+            },
+            "toolbarMode": {
+              "label": "Toolbar",
+              "description": "none: only New; compact: search and a menu; full: every action a button. A phone is always compact."
+            },
+            "tools": {
+              "label": "Toolbar functions",
+              "description": "Each of its toolbar's functions, on or off here - only off what the DataView has on."
+            }
+          },
+          "emits": {
+            "rowsChanged": "Rows changed",
+            "rowSelected": "Row selected",
+            "rowOpened": "Row opened"
+          }
+        },
+        "TDrawer": {
+          "description": "A panel rising from the bottom - TotalBase's own drawer, for working on something with room.",
+          "emits": {
+            "update:open": "Opened / closed"
+          },
+          "label": "Drawer",
+          "props": {
+            "size": {
+              "description": "Its width, from sm to xl - lg by default, as every drawer in TotalBase."
+            }
+          },
+          "slots": {
+            "body": "Body",
+            "footer": "Footer"
+          }
+        },
+        "TFrame": {
+          "description": "Another site's page in a sandboxed frame - its URL may take values from the page, e.g. the record's tracking number.",
+          "label": "Frame"
+        },
+        "THeading": {
+          "description": "A section title.",
+          "label": "Heading",
+          "props": {
+            "label": {
+              "label": "Text"
+            }
+          }
+        },
+        "TJson": {
+          "description": "Structured data, edited as a tree.",
+          "emits": {
+            "update:modelValue": "Value changed"
+          },
+          "label": "JSON"
+        },
+        "TRangeInput": {
+          "description": "A PostgreSQL range - from and to, with the date or number inputs its type takes; empty, no value.",
+          "emits": {
+            "update:modelValue": "Range changed"
+          },
+          "label": "Range"
+        },
+        "TLeafletMap": {
+          "description": "A point picked on an OpenStreetMap map.",
+          "emits": {
+            "update:modelValue": "Point changed"
+          },
+          "label": "Map (Leaflet)"
+        },
+        "TScanner": {
+          "description": "Reads a QR code, a PDF417 (a DNI) or a barcode - with the device's camera or a USB reader in keyboard mode - and emits what it read.",
+          "emits": {
+            "error": "Error",
+            "scan": "Scanned",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Scanner",
+          "props": {
+            "beep": {
+              "description": "A short tone on each read.",
+              "label": "Beep"
+            },
+            "camera": {
+              "description": "A button that opens the camera to read a code. The browser allows it only over HTTPS (or on localhost).",
+              "label": "Camera"
+            },
+            "continuous": {
+              "description": "The camera stays open after a read, for the next one.",
+              "label": "Keep reading"
+            },
+            "formats": {
+              "description": "The codes the camera reads, comma-separated - empty: all of them (qr_code, pdf417, code_128, ean_13...).",
+              "label": "Formats"
+            },
+            "input": {
+              "description": "A field where a USB reader types (or a person does) - Enter reads it.",
+              "label": "Text field"
+            },
+            "label": {
+              "description": "The camera button's text - empty: an icon only.",
+              "label": "Camera button"
+            },
+            "listen": {
+              "description": "field: what is typed in its text field. page: a reader's burst of keys anywhere on the page, with nothing focused - for a kiosk.",
+              "label": "USB reader"
+            },
+            "modelValue": {
+              "description": "A Value variable that keeps the last code read (or a record column it fills).",
+              "label": "Value"
+            },
+            "vibrate": {
+              "description": "A short vibration on each read, where the device can.",
+              "label": "Vibrate"
+            },
+            "icon": {
+              "label": "Icon",
+              "description": "The camera button's icon - unset: a barcode."
+            }
+          }
+        },
+        "TText": {
+          "description": "A paragraph - its content can be a formula.",
+          "label": "Text",
+          "props": {
+            "label": {
+              "label": "Text"
+            }
+          }
+        },
+        "UAccordion": {
+          "description": "Sections that expand one (or several) at a time.",
+          "emits": {
+            "update:modelValue": "Section toggled"
+          },
+          "label": "Accordion",
+          "props": {
+            "items": {
+              "description": "Its label may be a formula; one off or hidden by a formula over the page.",
+              "label": "Sections"
+            },
+            "modelValue": {
+              "description": "A Value holding the open section's key - a list of them with Open: multiple. Set it from Code to open one.",
+              "label": "Open sections"
+            },
+            "type": {
+              "label": "Open"
+            }
+          },
+          "slots": {
+            "body": "Section body"
+          }
+        },
+        "UAlert": {
+          "description": "A message with a title and a description.",
+          "emits": {
+            "update:open": "Closed"
+          },
+          "label": "Alert",
+          "slots": {
+            "actions": "Actions"
+          }
+        },
+        "UAvatar": {
+          "description": "An image, initials or an icon in a circle.",
+          "label": "Avatar"
+        },
+        "UBadge": {
+          "description": "A short label.",
+          "label": "Badge"
+        },
+        "UButton": {
+          "description": "Runs a Code function on click.",
+          "emits": {
+            "click": "Click"
+          },
+          "label": "Button",
+          "props": {
+            "block": {
+              "description": "Fills the width of its container."
+            },
+            "type": {
+              "description": "Submit sends the form it is in."
+            }
+          }
+        },
+        "UCard": {
+          "description": "A framed section with a header and a footer.",
+          "label": "Card",
+          "props": {
+            "fillHeight": {
+              "description": "Takes the height the page or panel has left - what it holds scrolls inside it (a Card's body, between its header and footer). A widget in it with Fill height fills it."
+            }
+          },
+          "slots": {
+            "default": "Body",
+            "footer": "Footer",
+            "header": "Header"
+          }
+        },
+        "UCheckbox": {
+          "description": "A yes/no value.",
+          "emits": {
+            "change": "Change"
+          },
+          "label": "Checkbox"
+        },
+        "UCheckboxGroup": {
+          "description": "Pick any number of options, all visible.",
+          "emits": {
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Checkbox group"
+        },
+        "UCollapsible": {
+          "description": "A trigger that shows or hides its content.",
+          "emits": {
+            "update:open": "Opened / closed"
+          },
+          "label": "Collapsible",
+          "slots": {
+            "content": "Content",
+            "default": "Trigger"
+          }
+        },
+        "UDropdownMenu": {
+          "description": "A menu of actions under its trigger - each item runs a Code function.",
+          "emits": {
+            "update:open": "Opened / closed"
+          },
+          "label": "Dropdown menu",
+          "props": {
+            "items": {
+              "description": "Each runs its Code function - Cancel off once it's paid, Delete only for some: a formula over the page.",
+              "label": "Items"
+            }
+          },
+          "slots": {
+            "default": "Trigger"
+          }
+        },
+        "UEditor": {
+          "description": "A rich text editor - Markdown, HTML or JSON content.",
+          "emits": {
+            "update:modelValue": "Value changed"
+          },
+          "label": "Rich text"
+        },
+        "UEmpty": {
+          "description": "An icon, a title and a description for \"nothing here yet\".",
+          "label": "Empty state",
+          "slots": {
+            "actions": "Actions"
+          }
+        },
+        "UFileUpload": {
+          "description": "A single uploaded file or image.",
+          "emits": {
+            "update:modelValue": "File changed"
+          },
+          "label": "File upload",
+          "props": {
+            "aspect": {
+              "description": "With Show the image: original keeps the image's own shape; a ratio frames it (3:4 portrait - a carnet photo).",
+              "label": "Image shape"
+            },
+            "height": {
+              "description": "In pixels, whatever the screen: the empty area's - to line it up with the cards beside it - and, with Show the image, the image's (with a shape its width follows, centered; without, it spans the field; it covers the frame).",
+              "label": "Height"
+            },
+            "preview": {
+              "description": "An image shows itself across the field instead of its name - tapping it picks another. Read only, it is only the image.",
+              "label": "Show the image"
+            },
+            "label": {
+              "label": "Label",
+              "description": "The empty field's text - the area's, or the button variant's. Unset: Drop a file here or click to browse."
+            },
+            "description": {
+              "label": "Description",
+              "description": "A line under the area's text."
+            },
+            "buttonLabel": {
+              "label": "Button",
+              "description": "The area variant: a button under its text (Upload file), for whoever doesn't know the area can be tapped."
+            }
+          }
+        },
+        "UForm": {
+          "description": "Groups fields: checks the required ones and emits submit with {'{'} data {'}'} - the fields' values by name.",
+          "emits": {
+            "error": "Errors",
+            "submit": "Submit"
+          },
+          "label": "Form",
+          "slots": {
+            "default": "Fields"
+          }
+        },
+        "UFormField": {
+          "description": "A labelled field around one input: label, help, required.",
+          "label": "Form field",
+          "props": {
+            "column": {
+              "label": "Column"
+            },
+            "labelWidth": {
+              "description": "Horizontal: the label takes this share of the field and the input the rest - set the same on fields beside each other and their values line up. A phone stacks it, label above.",
+              "label": "Label width"
+            }
+          },
+          "slots": {
+            "default": "Input"
+          }
+        },
+        "UIcon": {
+          "description": "A single icon.",
+          "label": "Icon",
+          "props": {
+            "name": {
+              "description": "The icon to show.",
+              "label": "Icon"
+            }
+          }
+        },
+        "UInput": {
+          "description": "A single-line text field.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Input"
+        },
+        "UInputDate": {
+          "description": "A date, a date and time, or a date range.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Date"
+        },
+        "UInputMenu": {
+          "description": "Type to find an option.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "clear": "Cleared",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Autocomplete"
+        },
+        "UInputNumber": {
+          "description": "A number, with increment and decrement buttons.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Number"
+        },
+        "UInputRating": {
+          "description": "A star rating out of a fixed maximum.",
+          "emits": {
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Rating",
+          "props": {
+            "length": {
+              "label": "Stars"
+            }
+          }
+        },
+        "UInputTags": {
+          "description": "A free-form list of short text values.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Tags"
+        },
+        "UInputTime": {
+          "description": "A time of day, or a time range.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Time",
+          "props": {
+            "range": {
+              "description": "Picks a start and an end time.",
+              "label": "Time range"
+            }
+          }
+        },
+        "UListbox": {
+          "description": "A visible, filterable list to pick from.",
+          "emits": {
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Listbox"
+        },
+        "UModal": {
+          "description": "A dialog over the page.",
+          "emits": {
+            "after:leave": "Closed (after its animation)",
+            "update:open": "Opened / closed"
+          },
+          "label": "Modal",
+          "props": {
+            "size": {
+              "description": "Its width, from sm to xl - unset, Nuxt UI's own."
+            }
+          },
+          "slots": {
+            "body": "Body",
+            "footer": "Footer",
+            "header": "Header"
+          }
+        },
+        "UPinInput": {
+          "description": "A short code with a fixed number of characters.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "complete": "Completed",
+            "update:modelValue": "Value changed"
+          },
+          "label": "PIN input"
+        },
+        "UPopover": {
+          "description": "A small panel anchored to its trigger.",
+          "emits": {
+            "update:open": "Opened / closed"
+          },
+          "label": "Popover",
+          "slots": {
+            "content": "Content",
+            "default": "Trigger"
+          }
+        },
+        "UProgress": {
+          "description": "A progress bar.",
+          "label": "Progress"
+        },
+        "URadioGroup": {
+          "description": "Pick one of a few options, all visible.",
+          "emits": {
+            "change": "Change"
+          },
+          "label": "Radio group",
+          "props": {
+            "iconKey": {
+              "description": "Each option's icon, e.g. i-lucide-banknote - a field, or a formula over its fields. Shown above its label when Indicator is hidden."
+            }
+          }
+        },
+        "UScrollArea": {
+          "description": "A box with its own height that scrolls what it holds - its look from the Style tab.",
+          "label": "Scroll area",
+          "slots": {
+            "default": "Content"
+          }
+        },
+        "USelect": {
+          "description": "Pick from a short list - no search.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Select"
+        },
+        "USelectMenu": {
+          "description": "Pick from a list, with search.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "clear": "Cleared",
+            "create": "Row created",
+            "focus": "Focus",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Select menu"
+        },
+        "USeparator": {
+          "description": "A rule between sections, with an optional label.",
+          "label": "Separator",
+          "props": {
+            "type": {
+              "label": "Line"
+            }
+          }
+        },
+        "USlideover": {
+          "description": "A panel sliding in from an edge.",
+          "emits": {
+            "after:leave": "Closed (after its animation)",
+            "update:open": "Opened / closed"
+          },
+          "label": "Slideover",
+          "props": {
+            "size": {
+              "description": "Its width, from sm to xl - unset, Nuxt UI's own."
+            }
+          },
+          "slots": {
+            "body": "Body",
+            "footer": "Footer",
+            "header": "Header"
+          }
+        },
+        "USlider": {
+          "description": "A number picked along a bounded range.",
+          "emits": {
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Slider"
+        },
+        "USplitter": {
+          "description": "Panels side by side, or one above the other - the viewer drags what's between them; each panel scrolls on its own.",
+          "label": "Splitter",
+          "props": {
+            "disabled": {
+              "description": "The panels keep their sizes - nothing to drag.",
+              "label": "Locked"
+            },
+            "items": {
+              "description": "One per panel - its label names it on the canvas; its size and minimum in % of the whole, the sizes summing to 100 (changing one reshares the rest); Collapsible lets the viewer drag it shut.",
+              "label": "Panels"
+            }
+          },
+          "slots": {
+            "panel": "Panel"
+          }
+        },
+        "USwitch": {
+          "description": "An on/off value.",
+          "emits": {
+            "change": "Change"
+          },
+          "label": "Switch"
+        },
+        "UTable": {
+          "description": "Rows of a Resource - its columns are the Resource's fields.",
+          "emits": {
+            "action": "Action clicked",
+            "searchEnter": "Search Enter",
+            "select": "Row clicked"
+          },
+          "label": "Table",
+          "slots": {
+            "empty": "Empty"
+          }
+        },
+        "UTabs": {
+          "description": "Sections one at a time, under a tab strip.",
+          "emits": {
+            "update:modelValue": "Tab changed"
+          },
+          "label": "Tabs",
+          "props": {
+            "items": {
+              "label": "Tabs"
+            },
+            "modelValue": {
+              "description": "A Value holding the open tab's key - set it from Code to switch tabs; empty opens the first.",
+              "label": "Open tab"
+            }
+          },
+          "slots": {
+            "content": "Tab content"
+          }
+        },
+        "UTextarea": {
+          "description": "Multi-line text.",
+          "emits": {
+            "blur": "Blur",
+            "change": "Change",
+            "update:modelValue": "Value changed"
+          },
+          "label": "Textarea"
+        },
+        "UTooltip": {
+          "description": "A hint shown over its content on hover.",
+          "label": "Tooltip",
+          "props": {
+            "text": {
+              "label": "Text"
+            }
+          },
+          "slots": {
+            "default": "Content"
+          }
+        },
+        "UUser": {
+          "description": "A name and a description beside an avatar.",
+          "emits": {
+            "click": "Click"
+          },
+          "label": "User"
+        },
+        "TSignature": {
+          "label": "Signature",
+          "description": "A pad to sign on with a finger or the mouse - stored as a PNG file, its value the file's id, like a Camera's. Clear starts over; a few ink colors. In a modal behind a button, with the signature shown on the page by a read-only Signature or Camera on the same column.",
+          "props": {
+            "height": {
+              "label": "Height",
+              "description": "The pad's height in pixels (default 180) - it takes the field's width."
+            },
+            "colors": {
+              "label": "Ink colors",
+              "description": "A few colors to pick the ink from - off: black only."
+            },
+            "readonly": {
+              "label": "Read only",
+              "description": "The signature shown, never changed - no pad, no Clear."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Signed"
+          }
+        },
+        "TImage": {
+          "label": "Image",
+          "description": "An image - one uploaded here, a file of the record ({'{'}{'{'}vars.record.data.foto{'}'}{'}'}) or a URL; with its caption, an icon or a text when there's none, and Clicked to use it as a button.",
+          "props": {
+            "src": {
+              "label": "Image",
+              "description": "A file's id or an https URL. Uploaded here, it's a public file - anyone who opens the page sees it. A formula: a file column of the record, {'{'}{'{'}vars.record.data.foto{'}'}{'}'}."
+            },
+            "alt": {
+              "label": "Alternative text",
+              "description": "What it shows, for a screen reader - and if it can't load."
+            },
+            "caption": {
+              "label": "Caption",
+              "description": "A line under it."
+            },
+            "aspect": {
+              "label": "Shape",
+              "description": "original keeps the image's own shape; a ratio frames it."
+            },
+            "fit": {
+              "label": "Fit",
+              "description": "In a frame: contain shows all of it; cover fills it, cropping."
+            },
+            "height": {
+              "label": "Height",
+              "description": "In pixels - unset: its width and shape decide."
+            },
+            "maxWidth": {
+              "label": "Largest width",
+              "description": "In pixels - unset: the field's width."
+            },
+            "emptyIcon": {
+              "label": "Icon when empty",
+              "description": "Shown when there's no image - unset: a picture icon."
+            },
+            "emptyText": {
+              "label": "Text when empty",
+              "description": "A line beside that icon."
+            },
+            "corners": {
+              "label": "Corners",
+              "description": "How round the image's corners are - full: a circle (or a pill). The Style tab's Radius rounds its box."
+            }
+          },
+          "emits": {
+            "click": "Clicked"
+          }
+        },
+        "TResult": {
+          "description": "A large panel for an outcome at a glance - a color, an icon, a title and a description, with a tone and a vibration - shown by the page's Code with dataview.controls.<name>.show(); it goes back to waiting on its own after Reset after seconds.",
+          "emits": {
+            "reset": "Back to waiting"
+          },
+          "label": "Result",
+          "props": {
+            "idleTitle": {
+              "label": "Waiting title",
+              "description": "What it says while waiting for a result - unset: Ready."
+            },
+            "idleDescription": {
+              "label": "Waiting description",
+              "description": "A line under it while waiting - e.g. Scan your code."
+            },
+            "idleIcon": {
+              "label": "Waiting icon",
+              "description": "Its icon while waiting - unset: a scan frame."
+            },
+            "idleColor": {
+              "label": "Waiting color",
+              "description": "Its color while waiting - one of the theme's colors."
+            },
+            "resetAfter": {
+              "label": "Reset after",
+              "description": "Seconds a result stays before it goes back to waiting - 0: until the next one or reset(). show({ resetAfter }) may change it for one result."
+            },
+            "variant": {
+              "label": "Variant",
+              "description": "How a result fills the panel: solid, outline, soft or subtle. Waiting, it is always soft."
+            },
+            "size": {
+              "label": "Size",
+              "description": "Its icon and text, from md to xl."
+            },
+            "sound": {
+              "label": "Sound",
+              "description": "A tone with each result - a rising one for success, a low one for error and warning; show({ sound }) may choose."
+            },
+            "vibrate": {
+              "label": "Vibrate",
+              "description": "A vibration with each result, where the device can - longer for an error."
+            }
+          }
+        }
+      },
+      "propSections": {
+        "search": "Search"
+      }
+    },
+    "codeReferenceSlideover": {
+      "description": "What a handler's dataview holds.",
+      "insert": "Insert",
+      "title": "Reference"
+    },
+    "customCanvasArea": {
+      "dropHere": "Drop widgets here",
+      "dropHereIn": "{label} - drop widgets here"
+    },
+    "customCanvasItem": {
+      "focus": "Focus",
+      "focusTooltip": "Focus - edit it alone",
+      "rows": "{rows} rows",
+      "widgetActions": "Widget actions",
+      "widgetCount": "{n} widget | {n} widgets",
+      "hiddenFormulaTag": "Hidden · formula",
+      "hiddenOffTag": "Hidden",
+      "hiddenOff": "Visible is off - never shown"
+    },
+    "customCodeReference": {
+      "controls": {
+        "description": "A placed widget with a Name.",
+        "entries": {
+          "form": "A Form: validate and submit, validate only, clear its errors; its data as {data}.",
+          "open": "A Modal, a Slideover, a Popover; an input's focus.",
+          "result": "A Result: show an outcome - a color, an icon, a title, a description -, back to waiting now.",
+          "locate": "A map field or a Location: the device's position into its value."
+        },
+        "title": "Controls - {code}"
+      },
+      "handlers": {
+        "description": "A function the page or a widget calls - pick it in an Events tab or in Page events.",
+        "entries": {
+          "handler": "May be async - it is awaited. event: what happened (a value, an item, a row). A handler that throws shows its message to the viewer; the page keeps working.",
+          "onLoad": "Runs once the page has loaded its record and its immediate Resources."
+        },
+        "title": "Handlers"
+      },
+      "page": {
+        "entries": {
+          "confirm": "The page's own dialog - true when confirmed. A text, or {shape}.",
+          "format": "With the instance's formats and time zone.",
+          "notify": "A toast - success, info, warning, error, neutral.",
+          "openDataView": "Opens another DataView.",
+          "openFile": "Shows a Call's file (a PDF, an image) to print or download.",
+          "params": "The page's URL parameters.",
+          "device": "The device's position - {'{'} lng, lat, accuracy {'}'}; rejects with reason: insecure, unsupported, denied, unavailable, timeout."
+        },
+        "title": "Page"
+      },
+      "record": {
+        "description": "The page's row, when the DataView has a source table.",
+        "entries": {
+          "canEdit": "Whether this viewer may write the column now.",
+          "data": "Its values (edits included), its key, create / edit / view, unsaved changes.",
+          "other": "Another record, read-only until edit() with view.",
+          "refresh": "Reads it again - refresh keeps the edits in progress (totals a trigger recomputed), reload drops them.",
+          "save": "Saves, with values set first - one step. Resolves to false when it didn't save; the form shows PostgreSQL's reason.",
+          "set": "Changes one value."
+        },
+        "title": "The record - {code}"
+      },
+      "variables": {
+        "description": "Defined in the Variables tab.",
+        "entries": {
+          "call": "A function, a workflow or a table write. Resolves to its result; a failure carries the API's {errors}.",
+          "resource": "Rows read from the Data API, with the viewer's permissions.",
+          "value": "Page state."
+        },
+        "title": "Variables - {code}"
+      }
+    },
+    "customDesigner": {
+      "accessItsTable": "its table",
+      "accessWarning": "Fails for {reasons}: they may not read it - Roles › Permissions.",
+      "addFieldError": "Could not add the field",
+      "addFields": {
+        "addColumn": "Add {column}",
+        "allOnPage": "Every column is on the page",
+        "description": "The record's columns not on the page yet - added at the end of the page.",
+        "descriptionIn": "The record's columns not on the page yet - added at the end of {widget}.",
+        "labelOf": "Label of {column}",
+        "title": "Add fields"
+      },
+      "addFieldsEllipsis": "Add fields…",
+      "addFieldsError": "Could not add the fields",
+      "addWidget": "Add widget",
+      "addWidgetDescription": "Placed at the end of the area in view.",
+      "addWidgetError": "Could not add {widget}",
+      "breadcrumbFocus": "{widget} (focus)",
+      "breadcrumbPage": "Page",
+      "changeInputError": "Could not change the input",
+      "codeHelp": "JavaScript for this page - handlers receive {args} and may be async. Live for viewers once published.",
+      "deleteConfirm": "Delete this widget and the {n} inside it?",
+      "deleteError": "Could not delete the widget",
+      "duplicateError": "Could not duplicate the widget",
+      "fieldSetup": {
+        "add": "Add field",
+        "column": "Column",
+        "createVariable": "Keep its value in a new variable",
+        "createVariableHelp": "A {type} Value the form reads, and code as {code}.",
+        "description": "A labelled field around one input.",
+        "edits": "Edits",
+        "sourceColumn": "A column of the record",
+        "sourceColumnHelp": "Saved with {code}; PostgreSQL says whether it is required.",
+        "sourceValue": "A value of the page",
+        "sourceValueHelp": "Kept in a Value - for filters and anything not saved as is.",
+        "title": "New form field",
+        "variable": "Variable",
+        "variableHelp": "Letters, digits and _, starting with a lowercase letter."
+      },
+      "hideProperties": "Hide properties",
+      "hideWidgets": "Hide widgets",
+      "input": "Input",
+      "inputHelp": "The widget that edits the field's value - changing it keeps the variable it's bound to.",
+      "inputFromColumn": "Its column's input - it follows the column (Database › the column › Input) while none is picked here.",
+      "useColumnInput": "Use the column's ({input})",
+      "insertSnippet": "Insert snippet",
+      "invalidName": "A name is a code identifier: letters, digits and _, not starting with a digit.",
+      "layOutIn": "Lay out in {n} column | Lay out in {n} columns",
+      "nameHelp": "Optional - how code reaches it: {example}.",
+      "noSelectionDescription": "Click a widget on the canvas to edit it.",
+      "noSelectionTitle": "No widget selected",
+      "pageEvents": {
+        "button": "Page events",
+        "declared": "In your code - go to it",
+        "notDeclared": "Not in your code yet - add it",
+        "onLoad": "{name} - once the variables have loaded",
+        "page": "The page",
+        "record": "The record"
+      },
+      "pageFooter": "Page footer",
+      "pageFooterHelp": "pinned under the page: buttons, menus, text, badges and boxes. Empty, there is none.",
+      "pageHeader": "Page header",
+      "pageHeaderHelp": "buttons and menus here show in the page's header, beside its title.",
+      "reference": "Reference",
+      "reloadError": "Could not reload the widgets",
+      "renameInCode": "The Code still says \"{name}\" - rename it there too.",
+      "saveVariablesError": "Could not save the variables",
+      "saveWidgetError": "Could not save the widget",
+      "showProperties": "Show properties",
+      "showWidgets": "Show widgets",
+      "thePage": "The page",
+      "undoColumns": "Undo the columns layout",
+      "widgetActions": "Widget actions",
+      "tabWidgets": "Widgets",
+      "tabStructure": "Structure",
+      "hiddenMarked": "Hidden widgets faded and labeled - show them as the App does",
+      "hiddenAsApp": "Hidden widgets as the App shows them - fade and label them",
+      "resourceWidened": "{name} now reads every column of its table - the search window shows and searches them. Drop the ones you don't need in Variables.",
+      "openSaveError": "Could not save how the form opens",
+      "pageOptions": "Page"
+    },
+    "customPage": {
+      "codeError": "The page's code doesn't compile",
+      "emptyDescription": "Place widgets on it in the Design form.",
+      "emptyTitle": "This page is empty",
+      "print": "Print"
+    },
+    "dataViewCalendarSettings": {
+      "colorHelp": "Optional - falls back to the fixed color below when empty.",
+      "date": "Date",
+      "dateHelp": "Required - a date/timestamp column. Rows are placed on the day this column falls on.",
+      "defaultEventColor": "Default event color",
+      "defaultView": "Default view",
+      "eventDescription": "Event description",
+      "eventDescriptionHelp": "Optional - shown when the event is opened.",
+      "eventTitle": "Event title",
+      "eventTitleHelp": "Required - the chip's headline.",
+      "heading": "Calendar settings",
+      "monday": "Monday",
+      "noDateColumns": "No date/timestamp visible columns - a CALENDAR DataView needs one to place rows.",
+      "sunday": "Sunday",
+      "views": {
+        "agenda": "Agenda",
+        "day": "Day",
+        "month": "Month",
+        "week": "Week"
+      },
+      "weekStartsOn": "Week starts on"
+    },
+    "dataViewCardSettings": {
+      "cardDescription": "Card description",
+      "cardDescriptionHelp": "Optional - shown under the title.",
+      "cardImage": "Card image",
+      "cardImageHelp": "Optional - a column, or a formula combining several/branching on a value.",
+      "cardTitle": "Card title",
+      "cardTitleHelp": "Required - the card's headline.",
+      "center": "Center",
+      "contain": "Whole image",
+      "cover": "Fill the shape",
+      "default": "Default (16:9)",
+      "heading": "Card settings",
+      "imageAspect": "Image shape",
+      "imageAspectHelp": "3:4 for a portrait photo.",
+      "imageFit": "Image fit",
+      "imageFitHelp": "Fill crops the edges; whole shows all of it.",
+      "imagePosition": "Crop from",
+      "imagePositionHelp": "Top keeps a face in a portrait.",
+      "original": "Original",
+      "top": "Top"
+    },
+    "dataViewAddColumns": {
+      "title": "Add columns",
+      "intro": "The table's columns and, under each foreign key, the columns of the table it points at (read only). The ones already in this DataView are checked.",
+      "search": "Search columns",
+      "all": "All",
+      "hidden": "Hidden",
+      "noMatch": "No columns match.",
+      "unavailable": "Its table isn't exposed for reading - its columns can't be added.",
+      "addCount": "Add {n}"
+    },
+    "dataViewColumnsSettings": {
+      "addColumns": "Add columns…",
+      "addError": "Could not add the columns",
+      "columnName": "Column name",
+      "copyButton": "Copy button",
+      "copyButtonDescription": "A button in the cell copies its value.",
+      "empty": "No columns yet - use Form design in the header to add some.",
+      "heading": "Columns",
+      "intro": "What this DataView reads, and how its grid shows it: order, shown or hidden, header, cell widget and default sort. A hidden column is read but not shown - a layout or a formula can use it, and a viewer can show it. A column not here is never read. Saves as you go.",
+      "moveDown": "Move down",
+      "moveUp": "Move up",
+      "notSecurity": "Not security: each viewer still gets only the columns and rows their roles allow (Roles › Permissions).",
+      "keyOnlyFor": "{roles} see its key, not the row: their READ on this table lacks {paths} (Roles › Permissions).",
+      "notSeenBy": "Not seen by {roles}: their READ on this table lacks {column} (Roles › Permissions).",
+      "primaryKeyTooltip": "Primary key - always read: editing and deleting a row need it. It can be hidden, not removed.",
+      "related": "Related",
+      "relatedTooltip": "A column of the table its foreign key points at - read only, sorted, filtered and searched by its path.",
+      "remove": "Remove from the DataView",
+      "removeError": "Could not remove the column",
+      "removeHelp": "It's no longer read. Add columns… brings it back.",
+      "removePrimaryKey": "The primary key stays: editing and deleting a row need it. Uncheck it to hide it.",
+      "saveError": "Could not save column",
+      "saveOrderError": "Could not save the default order/sort",
+      "settingsOf": "Settings of {name}",
+      "showColumn": "Show {name}",
+      "showColumnUnnamed": "Show column",
+      "sort": "Sort",
+      "sortHint": {
+        "asc": "Sorted ascending{priority} - click for descending",
+        "desc": "Sorted descending{priority} - click to remove",
+        "none": "Not sorted - click to sort ascending",
+        "priority": " (priority {priority})"
+      },
+      "sync": {
+        "added": "{n} new column | {n} new columns",
+        "error": "Could not sync columns",
+        "inSync": "Already in sync",
+        "inSyncDescription": "No new or renamed columns found.",
+        "orphaned": "{n} field point at removed columns | {n} fields point at removed columns",
+        "orphanedDescription": "That column no longer exists on the table - remove the field manually from the Design form's canvas if it's no longer needed.",
+        "renamed": "{n} renamed",
+        "synced": "Columns synced"
+      },
+      "syncColumns": "Sync columns",
+      "syncTooltip": "Reconcile columns against the table's real, current columns",
+      "truncate": "Truncate",
+      "truncateDescription": "One line, ending in … - the whole value on hover.",
+      "widget": "Widget",
+      "total": "Total",
+      "totalDescription": "At the grid's foot: over every row its filters keep, not only the page - PostgreSQL computes it, in this column's format.",
+      "totalOf": "Total of {name}",
+      "totals": {
+        "sum": "Sum",
+        "avg": "Average",
+        "min": "Minimum",
+        "max": "Maximum",
+        "count": "Count"
+      },
+      "panel": {
+        "properties": "Properties",
+        "fromColumn": "From the column",
+        "visible": "Shown",
+        "order": "Order"
+      },
+      "removeOf": "Remove {name} from the DataView?"
+    },
+    "dataViewFormulaField": {
+      "notSet": "Not set."
+    },
+    "dataViewFrameSettings": {
+      "noPreview": "No preview yet",
+      "noPreviewHelp": "Enter an https URL above.",
+      "previewHelp": "What viewers see below the header.",
+      "urlError": "Enter an absolute https:// URL of another site, without a user name or password.",
+      "urlHelp": "The https page to embed - fixed for every viewer. It isn't a secret: anyone who can open this DataView can see it. The site must allow being embedded; many refuse, and show a blank frame."
+    },
+    "dataViewGanttSettings": {
+      "barDescription": "Bar description",
+      "barDescriptionHelp": "Optional - shown in the bar's tooltip.",
+      "barTitle": "Bar title",
+      "barTitleHelp": "Required - the bar's headline.",
+      "colorHelp": "Optional - falls back to the fixed color below when empty.",
+      "dateHelp": "Required - a date/timestamp column.",
+      "defaultBarColor": "Default bar color",
+      "defaultZoom": "Default zoom",
+      "endDate": "End date",
+      "fewDates": "Fewer than two date/timestamp visible columns - a GANTT DataView needs a Start and an End to draw a bar.",
+      "groupBy": "Group by",
+      "groupByHelp": "Optional - a Foreign Key column. Each row of its related table becomes one swimlane; leave unmapped for one flat timeline.",
+      "heading": "Gantt settings",
+      "laneOrderHelp": "Move up/down to reorder the timeline's swimlanes. A lane the related table gained since this was last saved is added at the end automatically.",
+      "noLanes": "No lanes yet.",
+      "progress": "Progress",
+      "progressHelp": "Optional - a numeric column from 0 to 100. The bar fills up to it.",
+      "startDate": "Start date",
+      "zoom": {
+        "day": "Day",
+        "month": "Month",
+        "week": "Week"
+      }
+    },
+    "dataViewTreeSettings": {
+      "heading": "Tree",
+      "icon": "Icon",
+      "iconHelp": "An icon name (i-lucide-folder) for each node."
+    },
+    "dataViewKanbanSettings": {
+      "cardDescription": "Card description",
+      "cardDescriptionHelp": "Optional - shown under the title.",
+      "cardImage": "Card image",
+      "cardImageHelp": "Optional - shown at the top of each card. Assumed to be a URL, or a File Upload column.",
+      "cardTitle": "Card title",
+      "cardTitleHelp": "Required - the card's headline.",
+      "groupBy": "Group by",
+      "groupByHelp": "Required - a foreign key, a lane per row of its related table, or a column with a CHECK list, a lane per value in the CHECK's order (labelled, colored and iconed by its presentation's options).",
+      "heading": "Kanban settings",
+      "laneOrderHelp": "Move up/down to reorder the board's lanes. A lane the related table gained since this was last saved is added at the end automatically.",
+      "noLanes": "No lanes yet - pick a Group by column above.",
+      "noGroupColumns": "No visible foreign key or column with a CHECK list - a KANBAN DataView needs one to group records into lanes.",
+      "readOnly": "Read only",
+      "readOnlyHelp": "Cards don't move between lanes - another process sets the column (a function, a workflow)."
+    },
+    "dataViewLaneColumns": {
+      "laneColorColumn": "Lane color column",
+      "laneColorColumnHelp": "Optional - a column on the related table holding a color (a palette name or hex) that marks each lane.",
+      "laneOrderColumn": "Lane order column",
+      "laneOrderColumnHelp": "Optional - a number column on the related table (e.g. its position). Empty: lanes by name. Moving a lane below still wins."
+    },
+    "dataViewLaneOrder": {
+      "laneOrder": "Lane order",
+      "moveDown": "Move down",
+      "moveUp": "Move up"
+    },
+    "dataViewMapSettings": {
+      "colorHelp": "Optional - falls back to the fixed color below when empty.",
+      "defaultPinColor": "Default pin color",
+      "defaultPinIcon": "Default pin icon",
+      "heading": "Map settings",
+      "iconHelp": "Optional - falls back to the fixed icon below when empty.",
+      "initialView": "Initial view",
+      "initialViewHelp": "Pan/zoom to where this map should always open - fixed, not auto-fit to the rows.",
+      "latitude": "Latitude",
+      "location": "Location",
+      "locationHelp": "Required - a coordinates (point) column.",
+      "locationModes": {
+        "pair": {
+          "description": "Two numeric columns.",
+          "label": "Latitude and longitude"
+        },
+        "point": {
+          "description": "One coordinates (point) column.",
+          "label": "A point column"
+        }
+      },
+      "longitude": "Longitude",
+      "numericHelp": "Required - a numeric column.",
+      "popupDescription": "Popup description",
+      "popupDescriptionHelp": "Optional - shown under the name in the popup.",
+      "popupName": "Popup name",
+      "popupNameHelp": "Required - the popup's headline."
+    },
+    "dataViewPreviewDrawer": {
+      "description": "How users will see it once published - live data, read-only.",
+      "device": "Device",
+      "devices": {
+        "desktop": "Desktop",
+        "phone": "Phone",
+        "tablet": "Tablet"
+      },
+      "frameTitle": {
+        "phone": "{name} on a phone",
+        "tablet": "{name} on a tablet"
+      },
+      "loadError": "Could not load the draft.",
+      "publishAs": "Publish as v{version}?",
+      "publishNote": "Viewers see this draft from now on.",
+      "readOnlyBadge": "Preview – read-only",
+      "title": "Preview · {name}"
+    },
+    "dataViewRecordTableSettings": {
+      "chooseDescription": "Optional. The page gets a record of it - {record} - and form fields bound to its columns; a URL's {pk} opens that row. Once chosen it can't be changed.",
+      "heading": "Record",
+      "recordTable": "Record table",
+      "setDescription": "The page's record - {record} - and what its form fields are bound to. Set once: those fields point at its columns.",
+      "setError": "Could not set the record table",
+      "useTable": "Use this table"
+    },
+    "dataViewScopeSettings": {
+      "columnSet": "Column set",
+      "filter": "Filter",
+      "heading": "Scope",
+      "invalidJson": "Invalid JSON",
+      "query": "Query",
+      "queryDescription": "What this DataView asks the Data API for: fields from Columns, where from the Filter, order_by from the default sort. Each viewer's permissions apply on top.",
+      "recordsNote": "What this query brings, read with your permissions - a viewer's own permissions can narrow it further.",
+      "recordsTitle": "{name} - records",
+      "showRecords": "Show records"
+    },
+    "dataViewVersionPreview": {
+      "noPreview": "This layout has no preview.",
+      "opensAsPage": "In the App this opens as its own page."
+    },
+    "dataViewWizardCalendarStep": {
+      "colorColumn": "Color column",
+      "colorColumnHelp": "Optional - per-row event color. Falls back to the fixed color below when unmapped.",
+      "date": "Date",
+      "dateHelp": "Required - a date/timestamp column. Rows are placed on the day this column falls on.",
+      "defaultColorHelp": "Used for every row when no Color column is mapped above.",
+      "defaultEventColor": "Default event color",
+      "defaultView": "Default view",
+      "eventDescription": "Event description",
+      "eventDescriptionHelp": "Optional - shown when the event is opened.",
+      "eventTitle": "Event title",
+      "eventTitleHelp": "Required - the chip's headline.",
+      "monday": "Monday",
+      "noDateColumns": "No date/timestamp visible columns - a CALENDAR DataView needs one to place rows.",
+      "sunday": "Sunday",
+      "views": {
+        "agenda": "Agenda",
+        "day": "Day",
+        "month": "Month",
+        "week": "Week"
+      },
+      "weekStartsOn": "Week starts on"
+    },
+    "dataViewWizardCardStep": {
+      "descriptionHelp": "Optional - shown under the title.",
+      "image": "Image",
+      "imageHelp": "Optional - shown at the top of each card. Assumed to be a URL, or a File Upload column.",
+      "title": "Title",
+      "titleHelp": "Required - the card's headline."
+    },
+    "dataViewWizardColumns": {
+      "columnName": "Column name",
+      "helpText": "Help text (optional)",
+      "helpTextOf": "Help text of {column}",
+      "include": "Include {column}",
+      "intro": "The selected columns become the grid's columns and the form's fields - Label and Widget go to both, Help text to the form field. Afterwards each is edited on its own: columns in Settings, fields in Form design.",
+      "labelOf": "Label of {column}",
+      "loadError": "Could not load columns",
+      "primaryKeyTooltip": "Primary key - always read: editing and deleting a row need it. Unchecked, it's hidden.",
+      "show": "Show {column}",
+      "widget": "Widget"
+    },
+    "dataViewWizardGanttStep": {
+      "barDescription": "Bar description",
+      "barDescriptionHelp": "Optional - shown in the bar's tooltip.",
+      "barTitle": "Bar title",
+      "barTitleHelp": "Required - the bar's headline.",
+      "colorColumn": "Color column",
+      "colorColumnHelp": "Optional - per-row bar color. Falls back to the fixed color below when unmapped.",
+      "dateHelp": "Required - a date/timestamp column.",
+      "defaultBarColor": "Default bar color",
+      "defaultColorHelp": "Used for every row when no Color column is mapped above.",
+      "defaultZoom": "Default zoom",
+      "defaultZoomHelp": "Which timeline scale this DataView opens to - changeable later from the toolbar.",
+      "endDate": "End date",
+      "fewDates": "Fewer than two date/timestamp visible columns - a GANTT DataView needs a Start and an End to draw a bar.",
+      "groupBy": "Group by",
+      "groupByHelp": "Optional - a Foreign Key column. Each row of its related table becomes one swimlane; leave unmapped for one flat timeline.",
+      "startDate": "Start date",
+      "zoom": {
+        "day": "Day",
+        "month": "Month",
+        "week": "Week"
+      }
+    },
+    "dataViewWizardTreeStep": {
+      "noParent": "This table has no foreign key to itself",
+      "noParentHelp": "A tree needs a column holding each row's parent - a foreign key of the table to its own primary key. Add one in Database > Tables, then come back.",
+      "parent": "Parent",
+      "parentHelp": "The foreign key of the table to itself - the row each one sits under.",
+      "order": "Order",
+      "orderHelp": "A number column ordering the rows under the same parent - renumbered when one is dragged. None: by title.",
+      "cycleGuard": "Protect against cycles",
+      "cycleGuardHelp": "Adds a trigger to the table refusing a row placed under itself or under one of its descendants - for every writer, not only this DataView.",
+      "title": "Title",
+      "titleHelp": "What each node shows.",
+      "description": "Description",
+      "descriptionHelp": "A second line, beside the title in the tree and under it in the org chart.",
+      "image": "Image",
+      "imageHelp": "An avatar for each node - a photo in an org chart.",
+      "color": "Color",
+      "colorHelp": "A palette color name or a CSS color - a mark on each node.",
+      "display": "Opens as",
+      "displayHelp": "A viewer can switch, and the choice is remembered on their browser.",
+      "expandLevel": "Open levels",
+      "expandLevelHelp": "How many levels are open when it loads - 0 shows only the top level."
+    },
+    "dataViewWizardKanbanStep": {
+      "cardDescription": "Card description",
+      "cardDescriptionHelp": "Optional - shown under the title.",
+      "cardImage": "Card image",
+      "cardImageHelp": "Optional - shown at the top of each card. Assumed to be a URL, or a File Upload column.",
+      "cardTitle": "Card title",
+      "cardTitleHelp": "Required - the card's headline.",
+      "groupBy": "Group by",
+      "groupByHelp": "Required - a foreign key, a lane per row of its related table, or a column with a CHECK list, a lane per value.",
+      "noForeignKeys": "No visible foreign key or column with a CHECK list - a KANBAN DataView needs one to group records into lanes."
+    },
+    "dataViewWizardMapStep": {
+      "colorColumn": "Color column",
+      "colorColumnHelp": "Optional - per-row pin color. Falls back to the fixed color below when unmapped.",
+      "defaultPinColor": "Default pin color",
+      "defaultPinIcon": "Default pin icon",
+      "defaultsHelp": "Used for every row when no Icon/Color column is mapped above.",
+      "descriptionHelp": "Optional - shown under the name in the popup.",
+      "iconColumn": "Icon column",
+      "iconColumnHelp": "Optional - per-row pin icon. Falls back to the fixed icon below when unmapped.",
+      "initialView": "Initial view",
+      "initialViewHelp": "Pan/zoom to where this map should always open - fixed, not auto-fit to the rows.",
+      "latitude": "Latitude",
+      "location": "Location",
+      "locationHelp": "Required - a coordinates (point) column.",
+      "locationModes": {
+        "pair": {
+          "description": "Two numeric columns.",
+          "label": "Latitude and longitude"
+        },
+        "point": {
+          "description": "One coordinates (point) column.",
+          "label": "A point column"
+        }
+      },
+      "longitude": "Longitude",
+      "nameHelp": "Required - the popup's headline when a pin is clicked.",
+      "noNumeric": "No numeric visible columns - a MAP DataView needs at least two (Latitude/Longitude) to plot anything.",
+      "numericHelp": "Required - a numeric column."
+    },
+    "dataViewWizardModal": {
+      "byColumn": "By its column \"{column}\"",
+      "columnSet": "Column set",
+      "columnsIntro": "Pick which columns of {resource} this view uses.",
+      "createError": "Could not create DataView",
+      "cycleGuardError": "The DataView was created, but the cycle guard could not be added",
+      "created": "DataView created",
+      "detailColumnsIntro": "The columns of {resource} each row shows - in the Detail's grid and in the form that edits a row. All are chosen; uncheck what you don't want. Anything left out can be added later: columns in Settings, fields in Form design.",
+      "detailTable": "Detail table",
+      "detailTableHelp": "Its rows are the record's detail - shown in a Detail control, each one edited in a modal you can design afterwards.",
+      "formModeHelp": "What this DataView's form opens into - changeable later from Edit DataView.",
+      "manyColumns": "This DataView has more than {count} visible columns - a Page usually fits a form this size better than {presentation}.",
+      "masterTable": "Master table",
+      "masterTableHelp": "The table each new record is created in - an invoice, an order.",
+      "mode": "Mode",
+      "modeHelp": "How the Edit form opens from the grid - changeable later in Settings.",
+      "noFormFeatures": "No form features for this layout yet.",
+      "noRelatedTables": "No related tables",
+      "noRelatedTablesHelp": "No table has a foreign key to the master table - a detail table needs one (for example {example}).",
+      "noTableFeatures": "No table features for this layout yet.",
+      "position": "Position",
+      "previewIntro": "What {resource} gives this DataView - the selected columns, always with the primary key. A filter and a default sort come later, in Settings.",
+      "previewNote": "What this DataView will read, with your permissions - a viewer's own permissions can narrow it further.",
+      "recordTable": "Record table",
+      "recordTableHelp": "Optional. The page gets a record of it - {variable} - and form fields bound to its columns; a URL's {param} opens that row. Without one, the page edits no record.",
+      "recordsTitle": "{name} - records",
+      "showRecords": "Show records",
+      "size": "Size",
+      "steps": {
+        "calendarLayout": {
+          "description": "Which date column places rows, and each event's content/color.",
+          "title": "Calendar layout"
+        },
+        "cardLayout": {
+          "description": "Which columns show on each card.",
+          "title": "Card layout"
+        },
+        "columns": {
+          "description": "Which columns should this view use - all, unless you uncheck them.",
+          "title": "Columns"
+        },
+        "detail": {
+          "description": "The table holding each record's detail rows.",
+          "title": "Detail"
+        },
+        "detailColumns": {
+          "description": "Which columns each detail row shows.",
+          "title": "Detail columns"
+        },
+        "formFeatures": {
+          "description": "Edit form behavior and record actions.",
+          "title": "Form features"
+        },
+        "frame": {
+          "description": "The https page to embed, and its header buttons.",
+          "title": "Frame"
+        },
+        "ganttLayout": {
+          "description": "Start/end date columns for each bar, an optional grouping column, and each bar's content/color.",
+          "title": "Gantt layout"
+        },
+        "treeLayout": {
+          "title": "Tree layout",
+          "description": "The parent column, the order of each level and what each node shows."
+        },
+        "identity": {
+          "description": "Name, description, slug, icon, and color.",
+          "title": "Identity"
+        },
+        "kanbanLayout": {
+          "description": "Which FK column groups records into lanes, and each card's content.",
+          "title": "Kanban layout"
+        },
+        "mapLayout": {
+          "description": "Position, popup, and pin icon/color for each row.",
+          "title": "Map layout"
+        },
+        "master": {
+          "description": "The table each new record is created in, and its columns.",
+          "title": "Master"
+        },
+        "preview": {
+          "description": "The query this DataView will read, and its records.",
+          "title": "Preview"
+        },
+        "record": {
+          "description": "A table as its record - optional.",
+          "title": "Record"
+        },
+        "source": {
+          "description": "The table or view this DataView is built on.",
+          "title": "Source"
+        },
+        "tableFeatures": {
+          "description": "Toolbar and list controls for the DataView.",
+          "title": "Table features"
+        },
+        "type": {
+          "description": "What kind of view are you building?",
+          "title": "Type"
+        },
+        "settingsLayout": {
+          "title": "Settings",
+          "description": "Which columns hold each setting - proposed from their names."
+        },
+        "general": {
+          "description": "Its name and how the App shows it.",
+          "title": "General"
+        },
+        "data": {
+          "description": "The table or view it reads, its columns and the query.",
+          "title": "Data"
+        },
+        "views": {
+          "description": "How the list shows - its layout and what every view shares.",
+          "title": "Views"
+        },
+        "form": {
+          "description": "How a record opens, and its actions.",
+          "title": "Form"
+        },
+        "actions": {
+          "description": "What a viewer can do - Allow and the toolbar's buttons.",
+          "title": "Actions"
+        },
+        "security": {
+          "description": "The roles that open it.",
+          "title": "Security"
+        }
+      },
+      "tableOrView": "Table or view",
+      "tableOrViewHelp": "Only active TABLE/VIEW resources can back a DataView - Functions are out of scope for this round.",
+      "title": "New DataView",
+      "typeGroups": {
+        "rows": {
+          "title": "See and work with many rows",
+          "note": "They can be combined later in the same DataView."
+        },
+        "record": {
+          "title": "Enter or edit one record"
+        },
+        "pages": {
+          "title": "Pages of your own"
+        }
+      },
+      "needs": {
+        "date": "Needs a date column",
+        "range": "Needs a start and an end",
+        "location": "Needs a location",
+        "status": "Needs a status column",
+        "parent": "Needs a column pointing at its own table"
+      },
+      "recommended": "Recommended",
+      "moreOptions": "More options",
+      "rolesError": "The DataView was created, but its roles could not be granted"
+    },
+    "designPage": {
+      "descriptionWithSource": "Design · {source}",
+      "externalFrame": "An external frame has no page to design.",
+      "previewTooltip": "Preview the draft with live data",
+      "publishConfirm": "Publish as v{version}?",
+      "publishConfirmDescription": "Viewers see the current draft from now on.",
+      "publishError": "Could not publish",
+      "published": "Published as v{version}",
+      "title": "Design"
+    },
+    "designerClassListEditor": {
+      "addClass": "Add class",
+      "classN": "Class {n}",
+      "description": "Tailwind classes on its box, beyond the options above - mt-6, text-lg, font-semibold, gap-2... The usual spacing, text, border and layout ones always work.",
+      "label": "CSS classes",
+      "removeClass": "Remove class"
+    },
+    "designerHtmlAttrsEditor": {
+      "addAttribute": "Add attribute",
+      "attribute": "Attribute",
+      "attributeName": "Attribute {n} name",
+      "attributeValue": "Attribute {n} value",
+      "description": "Any other HTML attribute or Nuxt UI prop, by its literal name - a curated one above always wins if it's also set here.",
+      "label": "Custom attributes",
+      "removeAttribute": "Remove attribute"
+    },
+    "displayFormatField": {
+      "currencyCode": "Currency {code}",
+      "description": "Empty: the default for its type. Numbers like #,##0.00, \"$ \"#,##0.00 or CURRENCY:USD; dates like dd/MM/yyyy.",
+      "format": "Format",
+      "numberPresets": {
+        "accounting": "Accounting ((1,234.57))",
+        "currency": "Currency ($1,234.57)",
+        "integer": "Integer (1,234)",
+        "number": "Number (1,234.57)",
+        "percentage": "Percentage (12.34%)"
+      },
+      "presets": "Format presets"
+    },
+    "featuresSettings": {
+      "autoRefresh": "Auto-refresh",
+      "autoRefreshDescription": "Automatically refresh the grid on an interval - a viewer can still override it with their own ?refresh= URL parameter. A custom interval reads like 45s or 2h.",
+      "contentAlign": "Content align",
+      "contentAlignDescription": "Where the form sits on a page wider than it.",
+      "contentWidth": "Content width",
+      "contentWidthCustomDescription": "How wide the page's content and its pinned footer grow. Default: Settings > DataViews > Page width.",
+      "contentWidthDescription": "How wide the form grows on its page. Default: Settings > DataViews > Page width.",
+      "customInterval": "Custom interval",
+      "defaultDensity": "Default density",
+      "defaultPageSize": "Default page size",
+      "defaultToolbar": "Default toolbar",
+      "defaultToolbarHelp": "For someone who hasn't chosen their own. A phone or tablet is always compact.",
+      "editModeDescription": "How the Edit form opens from the grid - also in the Design form's toolbar.",
+      "firstTimeViewer": "What a first-time viewer (or anyone who never personally customized anything) starts with.",
+      "fitToScreen": "Fit to screen",
+      "fitToScreenDescription": "The form fills the page instead of scrolling it - the row holding a widget with Fill height takes the height left and scrolls inside. Ignored on a phone or a tablet.",
+      "formFeatures": "Form features",
+      "formFeaturesDescription": "Edit form behavior and record actions.",
+      "formModeDescription": "What this DataView's form opens into.",
+      "instanceDefault": "Default",
+      "mode": "Mode",
+      "newButtonLabel": "New button label",
+      "newButtonLabelDescription": "The start screen's button. Empty: New {name}.",
+      "onOpen": "On open",
+      "onOpenDescription": "What opening this DataView shows.",
+      "position": "Position",
+      "runtimeDefault": "Runtime default ({value})",
+      "size": "Size",
+      "tableFeatures": "Table features",
+      "tableFeaturesDescription": "Toolbar and list controls for the DataView.",
+      "toolbarCompact": "Compact",
+      "toolbarFull": "Full",
+      "toolbarInstance": "The instance's (Settings > DataViews)",
+      "listMargin": "List margin",
+      "listMarginHelp": "The space around the list - Default: a table none (Settings > DataViews > Table margin), any other list normal.",
+      "listMargins": {
+        "none": "No margin",
+        "compact": "Compact",
+        "normal": "Normal"
+      },
+      "toolbar": "Toolbar",
+      "toolbarDescription": "Shared by every view - each view's layout and own controls are in its tab below.",
+      "kiosk": "Kiosk",
+      "kioskDescription": "The page alone, filling the screen - no menu and no page header - for a totem or a phone used as a reader. A corner button enters full screen; an administrator leaves the kiosk view from it."
+    },
+    "formatPattern": {
+      "presetAccounting": "Accounting ((1,234.57))",
+      "presetCurrency": "Currency ($1,234.57)",
+      "presetInteger": "Integer (1,234)",
+      "presetNumber": "Number (1,234.57)",
+      "presetPercentage": "Percentage (12.34%)"
+    },
+    "inspector": {
+      "advanced": "Advanced",
+      "bindOptionsFirst": "{description} Bind its Options to a Resource variable to pick from its fields.",
+      "bindRowsFirst": "Bind its Rows to a Resource variable first.",
+      "computedReadOnly": "{label} - computed, read only",
+      "createFunction": "Create function",
+      "createHandler": "Create handler",
+      "dashboardNoVariables": "This Dashboard has no variables.",
+      "default": "Default",
+      "formulaFor": "Formula for {name}",
+      "invalidJson": "Invalid JSON.",
+      "invalidRegex": "Not a valid regular expression.",
+      "newVariableOfKind": "New {kind} variable",
+      "noEvents": "No events",
+      "noLinkingColumn": "No column of {detail} points at {table}.",
+      "noRecordTable": "This page has no record table.",
+      "noRecordTableColumn": "This page has no record table - a page gets one when it is created with a Record table.",
+      "openInCode": "Open in Code",
+      "perOption": "{label} - per option",
+      "perRow": "{label} - per row",
+      "pickDashboardFirst": "Pick its Dashboard first.",
+      "receives": "Receives {signature}.",
+      "receivesEvent": "Receives (dataview, event) - event: {payload}",
+      "rolesWithoutDashboard": "{roles} opens this page but can't see this Dashboard - grant it in the Dashboard's Settings. | {roles} open this page but can't see this Dashboard - grant it in the Dashboard's Settings.",
+      "style": {
+        "accented": "Accented",
+        "alignment": "Alignment",
+        "appearance": "Appearance",
+        "background": "Background",
+        "border": "Border",
+        "bottom": "Bottom of its row",
+        "center": "Center",
+        "content": "Content",
+        "elevated": "Elevated",
+        "full": "Full",
+        "inItsRow": "In its row",
+        "largeShadow": "Large shadow",
+        "left": "Left",
+        "mediumShadow": "Medium shadow",
+        "middle": "Middle of its row",
+        "muted": "Muted",
+        "pill": "Pill or circle",
+        "primary": "Primary",
+        "primarySoft": "Primary, soft",
+        "radius": "Radius",
+        "right": "Right",
+        "rounded": "Rounded",
+        "shadow": "Shadow",
+        "slightlyRounded": "Slightly rounded",
+        "smallShadow": "Small shadow",
+        "spacing": "Spacing",
+        "stretch": "The height of its row (a Card or a Box)",
+        "top": "Top of its row",
+        "veryRounded": "Very rounded"
+      },
+      "stylesApplied": "{n} style applied | {n} styles applied",
+      "tabs": {
+        "events": "Events",
+        "props": "Props",
+        "style": "Style",
+        "column": "From the column"
+      },
+      "variableOfKind": "A {kind} variable.",
+      "inheritedValue": "Inherited from the column: {value}",
+      "inheritedUse": "Use the column's",
+      "inheritedNone": "No {label}",
+      "inheritedStateNone": "None - not shown; the column is untouched.",
+      "inheritedStateOwn": "Its own",
+      "inheritedStateInherited": "Inherited from the column",
+      "inheritedStateEmpty": "The column sets none",
+      "inheritedEdit": "Edit in the table",
+      "pickDataViewFirst": "Pick its DataView first.",
+      "autoRefreshTool": "Auto-refresh",
+      "allow": {
+        "create": "Create",
+        "update": "Edit",
+        "delete": "Delete"
+      },
+      "uploadImage": "Upload an image - a public file, anyone who opens the page sees it",
+      "uploadImageFailed": "Could not upload the image",
+      "unknownField": "“{field}” isn't a field its Resource reads - every option would show nothing. A formula goes in the ƒ beside it.",
+      "inheritedStateSame": "The same as the column's"
+    },
+    "palette": {
+      "search": "Search widgets…"
+    },
+    "richTextEditor": {
+      "backToVisual": "Back to visual editor",
+      "htmlSource": "HTML source"
+    },
+    "settingsPage": {
+      "copyError": "Could not create the copy",
+      "created": "Created \"{name}\"",
+      "createdDescription": "An unpublished copy - publish it when ready.",
+      "deleteDescription": "Its layout, every version and its saved viewer states are removed. This can't be undone. The data in its source table is NOT touched.",
+      "deleteError": "Could not delete DataView",
+      "deleteTitle": "Delete this DataView?",
+      "designTooltip": "Canvas, fields, bindings, events, and code",
+      "formDesign": "Form design",
+      "frame": "Frame",
+      "general": "General",
+      "loadVersionError": "Could not load version",
+      "openDataView": "Open DataView",
+      "page": "Page",
+      "pageDesign": "Page design",
+      "previewTooltip": "Preview the draft with live data",
+      "publishAs": "Publish as v{version}?",
+      "publishError": "Could not publish",
+      "publishNote": "Viewers see the current draft from now on.",
+      "published": "Published as v{version}",
+      "restoreError": "Could not restore",
+      "restored": "Restored v{version} into the draft",
+      "restoredDescription": "Nothing is published yet - publish to make it live.",
+      "saveError": "Could not save DataView",
+      "security": "Security",
+      "sections": {
+        "general": "General",
+        "data": "Data",
+        "views": "Views",
+        "form": "Form",
+        "page": "Page",
+        "layout": "Layout",
+        "nav": "Settings sections",
+        "invalid": "Something here needs completing",
+        "actions": "Actions",
+        "security": "Security",
+        "versions": "Versions"
+      },
+      "allow": "Allow",
+      "allowDescription": "What its viewers may do besides reading - only less than their permissions, never more: a history listing with no New while the same role creates elsewhere. The Data API still takes what the role may do."
+    },
+    "snippetModal": {
+      "description": "Plain code, written for you - read and change it afterwards.",
+      "emptyFunction": "Empty function",
+      "emptyFunctionDescription": "A function with a comment saying what it receives - you write its body in the Code.",
+      "insert": "Insert",
+      "insertSnippet": "Insert snippet",
+      "theCode": "The code"
+    },
+    "snippetParamsForm": {
+      "kinds": {
+        "call": "Call",
+        "resource": "Resource",
+        "value": "Value"
+      },
+      "noControl": "No widget of this page has a name that can do this - give it one in its inspector (Name).",
+      "noVariable": "This page has no {kind} yet - create one in Variables."
+    },
+    "styleBoxModel": {
+      "allSidesAria": "{ring} all sides",
+      "allSidesTitle": "{ring} - all sides",
+      "rings": {
+        "margin": "margin",
+        "padding": "padding"
+      },
+      "sideAria": "{ring} {side}",
+      "sideTitle": "{ring} - {side}",
+      "sides": {
+        "bottom": "bottom",
+        "left": "left",
+        "right": "right",
+        "top": "top"
+      }
+    },
+    "useCustomCanvasContext": {
+      "columns": "{n} column | {n} columns",
+      "rename": "Rename",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "wrapCard": "Wrap in a Card",
+      "wrapBox": "Wrap in a Box"
+    },
+    "useWidgetRuntime": {
+      "cancelledInPreview": "Cancelled in the preview.",
+      "deleteNamesRow": "A table delete names its row: \"pk\" or \"where\" in the input.",
+      "functionNotAvailable": "The function is not available.",
+      "notAFile": "The result is not a file.",
+      "nothingToClose": "Nothing to close here.",
+      "ok": "OK",
+      "resourceNotAvailable": "The resource is not available.",
+      "runCreate": "Run the create on {name} for real? It may write data.",
+      "runDelete": "Run the delete on {name} for real? It may write data.",
+      "runFunction": "Run the function {name} for real? It may write data.",
+      "runIt": "Run it",
+      "runUpdate": "Run the update on {name} for real? It may write data.",
+      "runWorkflow": "Run the workflow {name} for real? It may write data.",
+      "tableNotAvailable": "The table is not available.",
+      "updateNamesRow": "A table update names its row: \"pk\" or \"where\" in the input.",
+      "workflowFailed": "The workflow failed."
+    },
+    "variablesPanel": {
+      "action": "Action",
+      "actionDescription": "Through the Data API, as the viewer: their permissions, row filters and payload checks apply, and the write is audited.",
+      "callTypes": {
+        "function": "A function",
+        "table": "A table write",
+        "workflow": "A workflow (MANUAL)"
+      },
+      "confirmDelete": "{name} is used by {users}. Delete it anyway?",
+      "defaultDescription": "What it holds when the page opens.",
+      "defaultFormula": "Default formula",
+      "defaultSources": {
+        "constant": "Constant",
+        "formula": "Formula",
+        "param": "URL parameter",
+        "user": "Current user ($USER)"
+      },
+      "defaultValue": "Default value",
+      "function": "Function",
+      "inputDescription": "The request body, as the API takes it: {body}; a table update or delete names its row with {pk} or {where}. Values may use {formula}. Code can pass another: {code}, e.g. a form submit event.",
+      "inputError": "An object, e.g. {example}.",
+      "invalidJson": "Not valid JSON.",
+      "invalidValue": "Not a valid {type}.",
+      "modes": {
+        "list": "List - rows",
+        "record": "Record - one row"
+      },
+      "nameDescription": "How code and formulas read it: {code}, {formula}.",
+      "nameTaken": "There is already a variable named {name}",
+      "newVariable": "New variable",
+      "noVariables": "No variables yet.",
+      "noneSelected": {
+        "description": "Variables hold the page's data and state - create one, then bind widgets to it.",
+        "title": "No variable selected"
+      },
+      "notes": {
+        "noLimit": "The query has no limit: here, every matching record; on the page, the Data API's default page (Settings › API).",
+        "variablesLeftOut": "Conditions reading a page variable were left out - they have no value here."
+      },
+      "queryValues": "Values can use {formula}.",
+      "recordHelp": "A URL's ?pk= opens that row; without one it starts new. Form fields bound to a column edit it; code reaches it as dataview.vars.record - data, mode, dirty, save(values?), new(), reload(), delete()… - and formulas as {formula}.",
+      "recordsTitle": "{name} - records",
+      "runs": "Runs",
+      "showRecords": "Show records",
+      "table": "Table",
+      "tableActions": {
+        "create": "Create a row",
+        "delete": "Delete rows",
+        "update": "Update rows"
+      },
+      "tableDescription": "Tables exposed for {method}.",
+      "unused": "Nothing uses it yet.",
+      "usedBy": "Used by",
+      "userField": "$USER field",
+      "workflow": "Workflow",
+      "workflowDescription": "Only MANUAL workflows - they run as the viewer who calls them.",
+      "search": "Search variables",
+      "unusedHint": "Used by nothing - perhaps left over"
+    },
+    "widgetItemsEditor": {
+      "addItem": "Add item",
+      "createFunction": "Create function",
+      "defaultColor": "Default",
+      "disabled": "Disabled",
+      "function": "Function",
+      "itemDisabled": "Item {n} disabled",
+      "itemLabel": "Item {n} label",
+      "itemVisible": "Item {n} visible",
+      "moveDown": "Move down",
+      "moveUp": "Move up",
+      "removeItem": "Remove item",
+      "visible": "Visible",
+      "size": "Size %",
+      "minSize": "Min %",
+      "collapsible": "Collapsible",
+      "itemSize": "Item {n} size",
+      "itemMinSize": "Item {n} minimum size",
+      "sizeSum": "Sizes sum {sum}% of 100"
+    },
+    "widgetJsonEditor": {
+      "invalid": "Invalid JSON - not saved yet."
+    },
+    "publishWarning": "Published - one thing to check",
+    "layoutViews": {
+      "heading": "Views",
+      "description": "The views a viewer switches between from the toolbar, in this order - drag them by their grip. It opens with the main one, or the one the viewer used last.",
+      "default": "Opens with",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "unavailable": {
+        "MAP": "Needs a point column or two numeric columns (latitude, longitude).",
+        "KANBAN": "Needs a foreign key or a column with a CHECK list to group the cards by.",
+        "CALENDAR": "Needs a date column.",
+        "GANTT": "Needs two date columns (start, end).",
+        "TREE": "Needs a foreign key of the table to itself (a parent)."
+      },
+      "tabs": "Views",
+      "offer": "Offer this view",
+      "offerHelp": "Viewers switch to it from the toolbar.",
+      "offerDefault": "Always offered - the DataView opens with it.",
+      "offered": "On",
+      "position": "Position in the switcher",
+      "positionValue": "{position} of {total}",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "turnOn": "Offer this view to set it up.",
+      "controls": "This view's controls",
+      "sharedDefault": "Shared by the Table and Cards views."
+    },
+    "settingsLayout": {
+      "keyColumn": "Key",
+      "keyColumnHelp": "Required - each setting's identifier, never shown (e.g. clave).",
+      "valueColumn": "Value",
+      "valueColumnHelp": "Required - what is edited. A jsonb column picks each control from its value's type: a number, a switch, a date, text.",
+      "titleColumn": "Title",
+      "titleColumnHelp": "Required - the name each setting shows.",
+      "descriptionColumn": "Description",
+      "descriptionColumnHelp": "Required - the help under its title.",
+      "groupColumn": "Group",
+      "groupColumnHelp": "Optional - one section per group, headed by its name. None: one section.",
+      "orderColumn": "Order",
+      "orderColumnHelp": "Optional - the settings in its order. None: by title.",
+      "heading": "Settings layout",
+      "suggest": "This table looks like a list of settings (a key and a value) - the Settings type edits it like TotalBase's own Settings.",
+      "useSettings": "Use Settings"
+    },
+    "customDesignerTree": {
+      "title": "Page structure",
+      "search": "Search widgets",
+      "filters": "Filters",
+      "show": "Show only",
+      "filter": {
+        "hidden": "Hidden",
+        "formula": "With a formula",
+        "error": "With an error"
+      },
+      "page": "Page",
+      "pageHeader": "Page header",
+      "pageFooter": "Page footer",
+      "empty": "Empty",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "overlay": "Overlay",
+      "hiddenOff": "Visible is off - never shown",
+      "hiddenFormula": "Shown when: {formula}",
+      "formulas": "Formulas: {props}",
+      "events": "Events: {events}",
+      "eventsLabel": "Events",
+      "actions": "Actions",
+      "addIn": "Add a widget in {area}",
+      "cantDrop": "That place doesn't take this widget",
+      "openInCanvas": "Open in the canvas"
+    },
+    "actionsSettings": {
+      "toolbarDescription": "The buttons above the list - every view has them.",
+      "requiresCreate": "Requires Allow › Create."
+    },
+    "presentationSettings": {
+      "heading": "Presentation",
+      "description": "How the list shows, whichever view: what a first-time viewer starts with, the toolbar, the margin and the refresh."
+    },
+    "formSettings": {
+      "howItOpens": "How it opens",
+      "howItOpensDescription": "Where a record opens from the list, and a record page's width.",
+      "design": "Design the form",
+      "recordActions": "Record actions",
+      "recordActionsDescription": "What the record's ⋮ offers."
+    },
+    "viewsAccordion": {
+      "needsSetup": "Needs setup",
+      "main": "Main",
+      "offered": "Offered",
+      "notOffered": "Not offered",
+      "makeMain": "Make main",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "offer": "Offer {view}",
+      "actions": "{view} actions"
+    },
+    "customActions": {
+      "title": "Custom actions",
+      "description": "A function or a MANUAL workflow run on a row, the record or a selection - from their menus, without a page. Each shows only to viewers who may run it.",
+      "new": "New action",
+      "emptyTitle": "No custom actions",
+      "emptyDescription": "Issue or void an invoice, send a reminder to the selected customers.",
+      "missingTarget": "Not available",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "edit": "Edit {name}",
+      "remove": "Remove {name}",
+      "places": {
+        "row": "Row menu",
+        "record": "Record menu",
+        "selection": "Selection bar"
+      },
+      "kinds": {
+        "function": "Function",
+        "workflow": "Workflow"
+      },
+      "colors": {
+        "neutral": "Neutral",
+        "primary": "Primary",
+        "success": "Success",
+        "warning": "Warning",
+        "error": "Danger"
+      },
+      "newTitle": "New action",
+      "editTitle": "{name}",
+      "panelDescription": "What it runs, where it shows and when.",
+      "label": "Label",
+      "labelHelp": "What the menu says - 32 characters at most.",
+      "runs": "Runs",
+      "function": "Function",
+      "functionHelp": "A function exposed for calls. A viewer sees the action only with EXECUTE on it.",
+      "workflow": "Workflow",
+      "workflowHelp": "A published MANUAL workflow. A viewer sees the action only if they may run it.",
+      "argsHelp": "What each argument gets - a column of the row between double braces, the selection's keys as ids between double braces, or a fixed text. The row's key: {key}.",
+      "workflowDefault": "It declares no input fields: it gets the row's key as id - a selection's keys as ids.",
+      "where": "Shows in",
+      "whereHelp": "The row's menu, the record form's menu, the bar shown while rows are selected.",
+      "when": "When",
+      "whenHelp": "Only on rows this filter holds for - PostgreSQL decides. Empty: always. A selection's action always shows.",
+      "whereObject": "A filter is an object.",
+      "whereJson": "Not valid JSON.",
+      "confirm": "Ask first",
+      "confirmHelp": "A confirmation before it runs.",
+      "confirmText": "Question",
+      "confirmTextHelp": "A column of the row between double braces shows its value.",
+      "danger": "Destructive - its button in red"
+    }
+  }
+}

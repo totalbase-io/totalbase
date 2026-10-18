@@ -1,0 +1,402 @@
+{
+  "content": {
+    "docs": {
+      "openapi": {
+        "asUser": "As a signed-in user",
+        "asApiKey": "As an API key",
+        "adminSummary": "{count} admin routes documented.",
+        "dataSummary": "{count} paths visible to {role}.",
+        "thisRole": "this role",
+        "description": "Generated live from the running server - it can't go stale.",
+        "principal": "Principal",
+        "selectRole": "Select a role",
+        "selectRoleDescription": "The Data API document only lists what a principal may do - pick a role to see exactly what its API consumers get.",
+        "find": "Find (Ctrl/Cmd+F)",
+        "wordWrap": "Toggle word wrap",
+        "downloadJson": "Download JSON",
+        "downloadText": "Download as plain text"
+      },
+      "endpoints": {
+        "kinds": {
+          "TABLE": "Table",
+          "VIEW": "View",
+          "FUNCTION": "Function",
+          "WORKFLOW": "Workflow",
+          "SYSTEM": "System"
+        },
+        "allMethods": "All methods",
+        "allTypes": "All types",
+        "allSchemas": "All schemas",
+        "method": "Method",
+        "endpoint": "Endpoint",
+        "schema": "Schema",
+        "curlCopied": "cURL copied",
+        "urlCopied": "URL copied",
+        "viewResource": "View resource",
+        "viewWorkflow": "View workflow",
+        "openInDocs": "Open in API docs",
+        "copyCurl": "Copy cURL",
+        "title": "Endpoints",
+        "description": "Every route your API consumers can call, live and read-only.",
+        "refresh": "Refresh endpoints",
+        "searchPlaceholder": "Search endpoints...",
+        "noCredentials": "No credentials needed",
+        "public": "Public",
+        "rowActions": "Endpoint actions",
+        "emptyTitle": "No endpoints",
+        "emptyDescription": "Expose a resource or publish a workflow with an HTTP trigger to see its routes here.",
+        "pagerNoun": "endpoint",
+        "pagerPlural": "endpoints"
+      }
+    },
+    "files": {
+      "editImage": {
+        "keepOriginal": "Keep original",
+        "fitCover": "Cover",
+        "fitContain": "Contain",
+        "fitInside": "Inside",
+        "previewError": "Could not render preview",
+        "editedSuffix": "(edited)",
+        "savedAsNew": "Saved as new file",
+        "saveError": "Could not save file",
+        "replaced": "File replaced",
+        "replaceError": "Could not replace file",
+        "titleFile": "Edit {name}",
+        "title": "Edit image",
+        "description": "Resize, crop, and convert - originals are never modified until you choose to save.",
+        "cancelCrop": "Cancel crop",
+        "crop": "Crop",
+        "clearCrop": "Clear crop",
+        "rotateLeft": "Rotate left 90°",
+        "rotateRight": "Rotate right 90°",
+        "flipHorizontal": "Flip horizontal",
+        "flipVertical": "Flip vertical",
+        "quality": "Quality",
+        "grayscale": "Grayscale",
+        "blur": "Blur",
+        "sharpen": "Sharpen",
+        "replaceImage": "Replace image",
+        "saveAs": "Save as",
+        "saveAsHelp": "Saves the edited image as a new file. The original is untouched.",
+        "filename": "Filename",
+        "saveAndReplace": "Save and replace",
+        "saveAndReplaceHelp": "Overwrites the original file's content with this edited version. This cannot be undone.",
+        "replace": "Replace",
+        "applyCrop": "Apply crop",
+        "replaceImageTitle": "Replace image?",
+        "replaceImageHelp": "Replaces this file's content with {name}. Any edits made above are discarded. This cannot be undone.",
+        "fit": "Fit",
+        "format": "Format"
+      },
+      "page": {
+        "size": "Size",
+        "visibility": "Visibility",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by",
+        "modified": "Modified",
+        "created": "Created",
+        "createFolderError": "Could not create folder",
+        "renameFolderError": "Could not rename folder",
+        "deleteFolderError": "Could not delete folder",
+        "folderNameRequired": "Folder name is required",
+        "folderNameSlash": "Folder names cannot contain /",
+        "folderExists": "A folder with that name already exists here",
+        "chooseFile": "Choose at least one file",
+        "uploaded": "File uploaded | {n} files uploaded",
+        "partialUploaded": "{done} of {total} uploaded",
+        "failed": "{n} failed.",
+        "loadFileError": "Could not load file",
+        "fileSaved": "File saved",
+        "visibilityError": "Could not update visibility",
+        "fileUpdated": "File updated",
+        "updateError": "Could not update file",
+        "renamed": "File renamed",
+        "renameError": "Could not rename file",
+        "moved": "Moved to {where} | {n} files moved to {where}",
+        "partialMoved": "{done} of {total} moved",
+        "failedRetry": "{n} failed - selection kept so you can retry.",
+        "madePublic": "{n} files made public | {n} file made public | {n} files made public",
+        "madePrivate": "{n} files made private | {n} file made private | {n} files made private",
+        "tagsMerge": "Add to existing tags",
+        "tagsReplace": "Replace existing tags",
+        "filesUpdated": "{n} files updated | {n} file updated | {n} files updated",
+        "partialUpdated": "{done} of {total} updated",
+        "deleted": "File deleted | {n} files deleted",
+        "partialDeleted": "{done} of {total} deleted",
+        "makePublic": "Make public",
+        "makePrivate": "Make private",
+        "tags": "Tags",
+        "moveToFolder": "Move to folder…",
+        "title": "Files",
+        "folders": "Folders",
+        "searchPlaceholder": "Search by name or description...",
+        "loadError": "Could not load files",
+        "noMatchTitle": "No files match your search",
+        "emptyTitle": "This folder is empty",
+        "noMatchDescription": "Try a different name, description, or tag.",
+        "emptyDescription": "Files uploaded here will appear in this list.",
+        "uploadFile": "Upload file",
+        "selectAll": "Select every file",
+        "selectOne": "Select {name}",
+        "private": "Private",
+        "properties": "File properties",
+        "renameHelp": "Up to 255 characters. The extension follows the name.",
+        "folder": "Folder",
+        "extension": "Extension",
+        "mimeType": "MIME type",
+        "dimensions": "Dimensions",
+        "descriptionHelp": "Optional note shown with this file.",
+        "tagsHelp": "Labels used to organize this file.",
+        "storage": "Storage",
+        "provider": "Provider",
+        "key": "Key",
+        "checksum": "Checksum",
+        "uploadN": "Upload {n} files",
+        "dropFiles": "Drop files here",
+        "orBrowse": "or click to browse",
+        "editFile": "Edit file",
+        "bulkTagsApplies": "Applies to all {count} selected files.",
+        "tagsEnter": "Type a tag and press Enter.",
+        "moveTitle": "Move to folder",
+        "moveN": "Move {n} files",
+        "moveWhereOne": "Where {name} goes.",
+        "moveWhereMany": "Where the selected files go.",
+        "move": "Move",
+        "deleteOne": "Delete file?",
+        "deleteN": "Delete {n} files?",
+        "deleteHelp": "This permanently deletes the selected files and their metadata. This cannot be undone.",
+        "downloadError": "Could not download the file"
+      },
+      "textEditor": {
+        "undo": "Undo",
+        "redo": "Redo",
+        "paste": "Paste",
+        "wordWrap": "Word wrap",
+        "loading": "Loading file"
+      },
+      "tree": {
+        "loading": "Loading folders",
+        "loadError": "Could not load folders",
+        "root": "Root (/)",
+        "uploadFile": "Upload File",
+        "createdInside": "Created inside {name}.",
+        "deleteConfirm": "Delete {name} and its subfolders?"
+      },
+      "pager": {
+        "noun": "file",
+        "plural": "files"
+      }
+    },
+    "logs": {
+      "ranges": {
+        "last15m": "Last 15 minutes",
+        "last1h": "Last hour",
+        "last24h": "Last 24 hours",
+        "last7d": "Last 7 days",
+        "last30d": "Last 30 days",
+        "all": "All time"
+      },
+      "categories": {
+        "data": "Data",
+        "access": "Access & security",
+        "sql": "SQL Console",
+        "database": "Database",
+        "system": "System",
+        "bulk": "Import / Export / Print"
+      },
+      "actions": {
+        "CREATE": "Create",
+        "UPDATE": "Update",
+        "DELETE": "Delete",
+        "READ": "Read",
+        "EXECUTE": "Execute function",
+        "AUTH": "Access events",
+        "SQL_EXECUTE": "Execute",
+        "SQL_HISTORY_PURGE": "History purge",
+        "DDL": "Schema change",
+        "MAINTENANCE": "Maintenance",
+        "AUDIT_PURGE": "Log purge",
+        "IMPORT": "Import",
+        "EXPORT": "Export",
+        "PRINT": "Print"
+      },
+      "securityViews": {
+        "failed-sign-ins": "Failed sign-ins",
+        "access-changes": "Roles & permissions",
+        "config-changes": "Settings & secrets",
+        "credential-changes": "Tokens & sessions"
+      },
+      "chips": {
+        "principal": "Principal",
+        "event": "Event",
+        "request": "Request",
+        "workflowRun": "Workflow run",
+        "resource": "Resource",
+        "oneResource": "One resource",
+        "clear": "Clear {name} filter"
+      },
+      "page": {
+        "title": "Audit Logs",
+        "description": "{range} · every write and access event made through TotalBase. Read-only.",
+        "refresh": "Refresh and clear filters",
+        "empty": "No entries in {range}",
+        "emptyFiltered": "No entries in {range} matching these filters"
+      },
+      "panel": {
+        "timeRange": "Time range",
+        "customRange": "Custom range…",
+        "customRangeHint": "Whole days, in your local time zone.",
+        "category": "Category",
+        "principal": "Principal",
+        "securityViews": "Security views"
+      }
+    },
+    "systemEmails": {
+      "variables": {
+        "userName": "The recipient's name - their email when they have none.",
+        "userEmail": "The recipient's email address.",
+        "instanceName": "Settings → General → Instance name.",
+        "instancePublicUrl": "Settings → General → Public URL.",
+        "actionUrl": "The single-use link the person follows. Required.",
+        "expiresIn": "How long the link stays valid, e.g. \"7 days\".",
+        "newEmail": "Email changed only - the address it changed to (the email goes to the previous one, user.email)."
+      },
+      "editor": {
+        "saved": "Email saved",
+        "saveError": "Could not save email",
+        "restored": "Default restored",
+        "restoreError": "Could not restore the default",
+        "restoreMenu": "Restore default…",
+        "settingError": "Could not update the setting",
+        "copiedVariable": "Copied {name}",
+        "sending": "Sending",
+        "sendingTooltip": "This email is sent. Click to stop sending it.",
+        "offTooltip": "This email is not sent. Click to send it.",
+        "previewError": "Could not render the preview",
+        "default": "Default",
+        "loadError": "Could not load this email",
+        "plainText": "Plain text",
+        "bodyHelp": "Send an HTML body, a plain-text body, or both - mail apps show the plain text when they can't show HTML.",
+        "layoutHelp": "The HTML body is sent inside TotalBase's email layout (font, width and an instance footer) - use Preview to see it.",
+        "actionRequired": "Each body you fill in must include {placeholder}.",
+        "variables": "Variables",
+        "variablesHelp": "Click to copy. Only these are allowed - anything else is rejected on save.",
+        "linkSetting": "Where the link points is set in Settings → Auth → Email links.",
+        "previewDescription": "Rendered for you with a sample link - includes unsaved changes. Nothing is sent.",
+        "subjectLabel": "Subject:",
+        "emailPreview": "Email preview",
+        "restoreTitle": "Restore the default email?",
+        "restoreDescription": "Your edits to this email are discarded and TotalBase's built-in version is used again.",
+        "restore": "Restore default",
+        "leaveDescription": "This email has changes that haven't been saved."
+      },
+      "slots": {
+        "user_invitation": {
+          "label": "Invitation",
+          "description": "Sent when an admin invites someone - the link lets them set their password."
+        },
+        "password_reset": {
+          "label": "Password reset",
+          "description": "Sent when someone asks to reset a forgotten password, or an admin sends a reset."
+        },
+        "email_verification": {
+          "label": "Email verification",
+          "description": "Sent after registration so the person confirms they own the address."
+        },
+        "password_changed": {
+          "label": "Password changed",
+          "description": "A security notice sent after a password is changed or reset."
+        },
+        "email_changed": {
+          "label": "Email changed",
+          "description": "A security notice sent to the previous address when an admin changes a user's email."
+        },
+        "user_welcome": {
+          "label": "Welcome",
+          "description": "Sent once an invited or registered account is ready to use (off by default)."
+        }
+      }
+    },
+    "templates": {
+      "newTemplate": "New template",
+      "kinds": {
+        "MAILING": {
+          "group": "Emails",
+          "label": "Email",
+          "description": "Subject and message with {example} placeholders, sent by a workflow's Send email step."
+        },
+        "PDF": {
+          "group": "PDF",
+          "label": "PDF",
+          "description": "A pdfme design rendered into a generated document."
+        }
+      },
+      "tree": {
+        "searchAria": "Search templates",
+        "searchPlaceholder": "Search...",
+        "loadError": "Could not load templates",
+        "noMatches": "No matches.",
+        "noneYet": "None yet.",
+        "system": "System",
+        "edited": "Edited",
+        "off": "Off"
+      },
+      "newModal": {
+        "createError": "Could not create template",
+        "description": "Pick its type and name it - the content comes next."
+      },
+      "landing": {
+        "title": "Select a template",
+        "description": "Choose a template from the sidebar, or create a new one."
+      },
+      "pdfDesigner": {
+        "presets": {
+          "letter": "Letter",
+          "legal": "Legal",
+          "tabloid": "Tabloid",
+          "receipt58": "Receipt (58mm)",
+          "receipt80": "Receipt (80mm)",
+          "receipt112": "Receipt (112mm)",
+          "custom": "Custom"
+        },
+        "loadError": "Could not load the PDF designer",
+        "width": "Width",
+        "height": "Height",
+        "margin": "Margin",
+        "fixedPdf": "This template's page is a fixed PDF file, not a plain page size - width/height aren't editable here.",
+        "largerScreen": "Placing and editing fields needs a larger screen.",
+        "loading": "Loading designer…",
+        "pageSize": "Page size"
+      },
+      "mailForm": {
+        "defaultCc": "Default Cc",
+        "defaultBcc": "Default Bcc",
+        "defaultReplyTo": "Default reply-to",
+        "replyTo": "Reply-to",
+        "subject": "Subject"
+      },
+      "editor": {
+        "saved": "Template saved",
+        "saveError": "Could not save template",
+        "saveDetailsError": "Could not save details",
+        "deleted": "Template deleted",
+        "deleteError": "Could not delete template",
+        "detailsMenu": "Details…",
+        "copyUrl": "Copy URL",
+        "previewError": "Could not generate the preview",
+        "designerNotReady": "The PDF designer has not finished loading yet",
+        "unsaved": "Unsaved",
+        "loadError": "Could not load template",
+        "detailsTitle": "Template details",
+        "previewDescription": "Rendered with each field's sample value - includes unsaved changes.",
+        "pdfPreview": "PDF preview",
+        "deleteTitle": "Delete this template?",
+        "deleteDescription": "Mailings already sent from it keep their own rendered subject/message. This can't be undone.",
+        "leaveTitle": "Unsaved changes",
+        "leaveDescription": "This template has changes that haven't been saved.",
+        "keepEditing": "Keep editing",
+        "discard": "Discard"
+      }
+    }
+  }
+}

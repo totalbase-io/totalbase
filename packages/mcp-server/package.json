@@ -1,0 +1,32 @@
+{
+  "name": "@totalbase/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "totalbase-mcp": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --no-file-parallelism",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@totalbase/tb-catalog": "workspace:*",
+    "@totalbase/shared": "workspace:*",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@totalbase/errors": "workspace:*",
+    "@totalbase/templates": "workspace:*",
+    "@types/node": "^22.0.0",
+    "vitest": "^2.1.8"
+  },
+  "types": "./dist/index.d.ts"
+}

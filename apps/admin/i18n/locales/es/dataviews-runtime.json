@@ -1,0 +1,856 @@
+{
+  "dataviews": {
+    "recordMenu": {
+      "clone": "Clonar",
+      "copy": "Copiar",
+      "print": "Imprimir",
+      "activity": "Actividad"
+    },
+    "record": {
+      "copyError": "No se pudo copiar al portapapeles",
+      "printNewLabel": "Registro nuevo (sin guardar)",
+      "printLabel": "Registro: {pk}",
+      "printField": "Campo",
+      "noLongerExists": "El registro ya no existe.",
+      "rangeOrder": "Desde es posterior a Hasta.",
+      "deleteConfirm": "¿Eliminar este registro? No se puede deshacer.",
+      "deleted": "Eliminado.",
+      "singlePrimaryKey": "Un registro necesita una tabla con una clave primaria de una sola columna.",
+      "saveAndNew": "Guardar y nuevo",
+      "saveShortcut": "Guardar ({shortcut})",
+      "actions": "Acciones del registro",
+      "saved": "Guardado",
+      "titleNew": "Nuevo · {name}",
+      "titleView": "Ver · {name}",
+      "titleEdit": "Editar · {name}",
+      "descriptionCreate": "Completa los campos y guarda.",
+      "descriptionView": "Solo lectura.",
+      "descriptionEdit": "Edita los campos y guarda.",
+      "previous": "Anterior",
+      "startOne": "Inicia uno para completar {name}."
+    },
+    "print": {
+      "pageOf": "Página {page} de {pages}",
+      "paper": {
+        "a4": "A4",
+        "letter": "Carta"
+      },
+      "orientations": {
+        "portrait": "vertical",
+        "landscape": "horizontal"
+      },
+      "truncatedTitle": "Se imprimen las primeras {count} filas coincidentes",
+      "error": "No se pudo imprimir",
+      "slowWarning": "Generar e imprimir tantas filas puede tardar unos segundos.",
+      "header": "Imprimir encabezado",
+      "headerDescription": "Título, descripción y filtro activo en la parte superior de la página.",
+      "footer": "Imprimir pie de página",
+      "footerDescription": "Fecha y hora de impresión y número de página en la parte inferior de la página.",
+      "paperSize": "Tamaño del papel",
+      "orientation": "Orientación",
+      "fontSize": "Tamaño de fuente",
+      "helpTitle": "Imprime un PDF sencillo de la página actual o de cada fila coincidente.",
+      "helpDescription": "Elige el tamaño del papel, el tamaño de fuente, la orientación y las columnas, y luego Imprimir."
+    },
+    "history": {
+      "loadError": "No se pudo cargar el historial",
+      "actions": {
+        "CREATE": "Creado",
+        "UPDATE": "Actualizado",
+        "DELETE": "Eliminado",
+        "PRINT": "Impreso",
+        "EXPORT": "Exportado",
+        "IMPORT": "Importado"
+      },
+      "customFilter": "Filtro personalizado aplicado",
+      "system": "Sistema",
+      "valueRemoved": "Valor (eliminado)",
+      "none": "(ninguno)",
+      "empty": "(vacío)",
+      "title": "Actividad - {name}",
+      "descriptionTable": "Cada cambio registrado en todas las filas, del más reciente al más antiguo - incluidas las filas eliminadas.",
+      "descriptionRow": "Cada cambio registrado en esta fila, del más reciente al más antiguo.",
+      "noneTable": "Todavía no hay historial registrado para esta tabla.",
+      "noneRow": "Todavía no hay historial registrado para esta fila.",
+      "rowCount": "{count} fila | {count} filas",
+      "viewChanges": "Ver cambios",
+      "firstChange": "Primer cambio",
+      "fieldCount": "{count} campo | {count} campos",
+      "rows": "Filas",
+      "format": "Formato",
+      "record": "Registro:",
+      "deletedRecord": "{id} (eliminado)",
+      "firstChangeNote": "Este es el primer cambio registrado de esta fila - se muestra su estado completo en ese momento, no una diferencia con algo anterior.",
+      "failed": "Falló",
+      "change": "cambio",
+      "changes": "cambios",
+      "back": "Volver a la actividad",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    },
+    "meta": {
+      "types": {
+        "TABLE": {
+          "label": "Tabla",
+          "description": "Una cuadrícula de filas que se puede ordenar y buscar."
+        },
+        "FORM": {
+          "label": "Formulario",
+          "description": "Un registro a la vez, dispuesto como un formulario."
+        },
+        "CARDS": {
+          "label": "Tarjetas",
+          "description": "Filas como una cuadrícula de tarjetas - ideal para imágenes o resúmenes."
+        },
+        "MAP": {
+          "label": "Mapa",
+          "description": "Filas ubicadas en un mapa, a partir de una columna de ubicación."
+        },
+        "KANBAN": {
+          "label": "Kanban",
+          "description": "Filas agrupadas en columnas según un campo de estado."
+        },
+        "CALENDAR": {
+          "label": "Calendario",
+          "description": "Filas ubicadas en un calendario según una columna de fecha."
+        },
+        "GANTT": {
+          "label": "Gantt",
+          "description": "Filas como barras en una línea de tiempo, a partir de columnas de fecha de inicio y fin."
+        },
+        "TREE": {
+          "label": "Árbol",
+          "description": "Una jerarquía - cada fila bajo su fila padre, como árbol u organigrama."
+        },
+        "EXTERNALFRAME": {
+          "label": "Marco externo",
+          "description": "Inserta una página o aplicación externa - sin origen de datos."
+        },
+        "MASTER_DETAIL": {
+          "label": "Maestro-detalle",
+          "description": "Un registro nuevo con sus filas de detalle - un pedido y sus artículos."
+        },
+        "CUSTOM": {
+          "label": "Personalizado",
+          "description": "Una página en blanco: coloca cualquier widget, vincúlalo a variables y conéctalo con código."
+        },
+        "SETTINGS": {
+          "label": "Parámetros",
+          "description": "Una tabla de parámetros - una fila por parámetro (clave, valor, título, descripción), editada en el lugar como la configuración de TotalBase."
+        }
+      },
+      "formViewModes": {
+        "READ": {
+          "label": "Lectura",
+          "description": "Se abre en solo lectura. Editar y Nuevo según los permisos (predeterminado)."
+        },
+        "UPDATE": {
+          "label": "Edición",
+          "description": "Abre el registro cargado ya en modo de edición - sin paso de solo lectura."
+        },
+        "CREATE": {
+          "label": "Creación",
+          "description": "Siempre un formulario en blanco para registros nuevos - sin explorar ni editar los existentes."
+        },
+        "SINGLE": {
+          "label": "Registro único",
+          "description": "La única fila de la tabla, abierta para editar - se crea al primer guardado si no hay ninguna. Sin Nuevo, búsqueda, navegación, copia ni eliminación."
+        }
+      },
+      "openWith": {
+        "NEW_RECORD": {
+          "label": "Registro nuevo",
+          "description": "Abre un registro nuevo de inmediato, con los valores predeterminados de la tabla (predeterminado)."
+        },
+        "WAIT": {
+          "label": "Esperar a Nuevo",
+          "description": "Se abre con un botón Nuevo - cada clic inicia un registro."
+        }
+      },
+      "editPresentations": {
+        "DRAWER": {
+          "label": "Panel inferior",
+          "description": "Se desliza desde abajo y cubre casi toda la pantalla - para un formulario pesado: un editor de texto, pestañas, un detalle."
+        },
+        "MODAL": {
+          "label": "Modal",
+          "description": "Diálogo centrado - ideal para formularios cortos con pocos campos."
+        },
+        "SIDEBAR": {
+          "label": "Barra lateral",
+          "description": "Se desliza desde un lado, junto a la lista - los campos en una columna; ideal para la mayoría de los formularios (predeterminado)."
+        },
+        "PAGE": {
+          "label": "Página",
+          "description": "Su propia URL - ideal para formularios largos con muchos campos, como las páginas de Configuración."
+        }
+      },
+      "editSizes": {
+        "default": {
+          "label": "Predeterminado"
+        },
+        "sm": {
+          "label": "Pequeño"
+        },
+        "md": {
+          "label": "Mediano"
+        },
+        "lg": {
+          "label": "Grande"
+        },
+        "xl": {
+          "label": "Muy grande"
+        }
+      },
+      "editSides": {
+        "left": {
+          "label": "Izquierda"
+        },
+        "right": {
+          "label": "Derecha"
+        },
+        "top": {
+          "label": "Arriba"
+        },
+        "bottom": {
+          "label": "Abajo"
+        }
+      },
+      "pageContentAligns": {
+        "left": {
+          "label": "Izquierda"
+        },
+        "center": {
+          "label": "Centro"
+        },
+        "right": {
+          "label": "Derecha"
+        }
+      },
+      "pageContentWidths": {
+        "narrow": {
+          "label": "Estrecho"
+        },
+        "wide": {
+          "label": "Ancho"
+        },
+        "full": {
+          "label": "Ancho completo"
+        }
+      },
+      "columnSync": {
+        "auto_show": {
+          "label": "Mostrar columnas nuevas automáticamente",
+          "description": "Una columna que se agregue después a la tabla se suma a esta vista automáticamente, visible de inmediato."
+        },
+        "auto_hide": {
+          "label": "Ocultar columnas nuevas automáticamente",
+          "description": "Una columna que se agregue después a la tabla se suma a esta vista oculta - se lee, pero no se muestra, hasta que alguien la muestre (predeterminado)."
+        },
+        "locked": {
+          "label": "Limitar a las columnas seleccionadas",
+          "description": "Una columna que se agregue después a la tabla queda fuera de esta vista - Agregar columnas… aún puede incluirla."
+        }
+      },
+      "densities": {
+        "normal": {
+          "label": "Normal"
+        },
+        "compact": {
+          "label": "Compacta"
+        },
+        "tiny": {
+          "label": "Muy compacta"
+        }
+      },
+      "featureDescriptions": {
+        "TABLE": {
+          "search": "Cuadro de búsqueda de texto libre sobre la cuadrícula.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro, columnas y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "density": "Selector de densidad de filas (cómoda, compacta, etc.).",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "columnsToggle": "Permite a quien la ve mostrar, ocultar y reordenar columnas.",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "print": "Vista para imprimir de la cuadrícula.",
+          "refresh": "Botón manual \"Actualizar\" sobre la cuadrícula.",
+          "rowEdit": "Toca o haz clic en cualquier parte de una fila para abrir su formulario de edición - la fila se resalta al pasar el puntero.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "FORM": {
+          "search": "Barra lateral para buscar y cargar otro registro.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir.",
+          "recordSaveCancel": "Los botones Guardar y Cancelar del propio formulario - desactívalos cuando la página guarde con sus propios botones."
+        },
+        "CARDS": {
+          "search": "Cuadro de búsqueda de texto libre sobre la cuadrícula.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro, columnas y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre la cuadrícula.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir.",
+          "cardDensity": "Selector del tamaño de las tarjetas - normal, compacto (imagen y título), muy compacto (solo la imagen)."
+        },
+        "MAP": {
+          "search": "Cuadro de búsqueda de texto libre sobre el mapa.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre el mapa.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "KANBAN": {
+          "search": "Cuadro de búsqueda de texto libre sobre el tablero.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre el tablero.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "CALENDAR": {
+          "search": "Cuadro de búsqueda de texto libre sobre el calendario.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre el calendario.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "GANTT": {
+          "search": "Cuadro de búsqueda de texto libre sobre la línea de tiempo.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre la línea de tiempo.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "TREE": {
+          "search": "Cuadro de búsqueda de texto libre sobre el árbol - una coincidencia cuyo padre no coincide se muestra en la raíz.",
+          "savedViews": "Botón de marcador - instantáneas con nombre y reutilizables de filtro y orden.",
+          "history": "Botón de actividad de toda la tabla, junto a Vistas guardadas - cada cambio en sus filas.",
+          "filter": "Panel de filtro avanzado (campo, operador, valor).",
+          "import": "Importa filas en bloque desde un archivo.",
+          "export": "Descarga las filas actuales como CSV.",
+          "refresh": "Botón manual \"Actualizar\" sobre el árbol.",
+          "recordClone": "Clona el registro que se está editando en un nuevo borrador.",
+          "recordSaveAndNew": "Guarda el registro y luego reinicia el formulario para otro.",
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordNavigation": "Solo en un FORM: pasa al registro anterior o siguiente sin salir."
+        },
+        "EXTERNALFRAME": {
+          "openInNewTab": "Botón del encabezado que abre la página en una pestaña nueva del navegador - también la salida cuando un sitio no permite insertarse.",
+          "fullscreen": "Botón del encabezado que muestra la página a pantalla completa."
+        },
+        "MASTER_DETAIL": {
+          "recordCopy": "Copia los valores del registro como texto - \"Campo: valor\", uno por línea.",
+          "recordPrint": "Vista para imprimir del registro que se está editando.",
+          "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
+          "recordSaveCancel": "Los botones Guardar y Cancelar del propio formulario - desactívalos cuando la página guarde con sus propios botones."
+        }
+      },
+      "featureLabels": {
+        "search": "Buscar",
+        "savedViews": "Vistas guardadas",
+        "history": "Actividad",
+        "density": "Densidad",
+        "cardDensity": "Tamaño de tarjeta",
+        "filter": "Filtro",
+        "columnsToggle": "Columnas",
+        "import": "Importar",
+        "export": "Exportar",
+        "print": "Imprimir",
+        "refresh": "Actualizar",
+        "rowEdit": "Editar fila",
+        "recordClone": "Clonar",
+        "recordSaveAndNew": "Guardar y nuevo",
+        "recordCopy": "Copiar",
+        "recordPrint": "Imprimir",
+        "recordHistory": "Actividad",
+        "recordNavigation": "Anterior/Siguiente",
+        "recordSaveCancel": "Guardar y Cancelar",
+        "openInNewTab": "Abrir en una pestaña nueva",
+        "fullscreen": "Pantalla completa"
+      },
+      "autoRefresh": {
+        "off": "Desactivado",
+        "custom": "Personalizado…"
+      },
+      "designerViews": {
+        "design": "Diseño",
+        "variables": "Variables",
+        "code": "Código"
+      },
+      "notices": {
+        "columnSync": "Controla lo que esta VISTA lee, no quién puede verlo. Cualquiera con acceso a la tabla por la API o la Consola SQL sigue viendo cada columna que puede leer - usa Permisos para restringir de verdad una columna.",
+        "baseWhere": "Filtra qué FILAS muestra esta VISTA, no quién puede verlas. Cualquiera con acceso a la tabla por la API o la Consola SQL sigue viendo cada fila sin importar este filtro - usa Permisos para restringir de verdad las filas."
+      },
+      "newRecordLabel": "Nuevo: {name}"
+    },
+    "tree": {
+      "allTypes": "Todos los tipos",
+      "newDataView": "Nuevo DataView",
+      "searchAria": "Buscar DataViews",
+      "searchPlaceholder": "Buscar...",
+      "filterByType": "Filtrar por tipo",
+      "filteredBy": "Filtrado por {type}",
+      "loadError": "No se pudieron cargar los DataViews",
+      "notInMenuSuffix": ", no está en el menú de la App",
+      "notInMenu": "No está en el menú de la App - solo insertado en otros formularios",
+      "empty": "No se encontraron DataViews.",
+      "brokenReferences": "Nombra algo que ya no existe: {what}",
+      "sourceGone": "su origen ya no existe"
+    },
+    "treeView": {
+      "label": "Árbol",
+      "displays": {
+        "tree": "Árbol",
+        "org": "Organigrama"
+      },
+      "expandAll": "Expandir todo",
+      "collapseAll": "Contraer todo",
+      "dropAtRoot": "Suelta aquí para llevarlo al primer nivel",
+      "addChild": "Agregar bajo {name}",
+      "actions": "Acciones de {name}",
+      "moveError": "No se pudo mover la fila",
+      "zoomOut": "Alejar",
+      "zoomIn": "Acercar",
+      "zoomReset": "Tamaño real",
+      "fitWidth": "Ajustar al ancho",
+      "cantMoveUnder": "No se puede mover «{name}» debajo de «{target}», que está debajo de «{name}»."
+    },
+    "appHome": {
+      "title": "Elige algo del menú",
+      "description": "Allí aparece cada DataView y Dashboard publicado que puedes abrir."
+    },
+    "landing": {
+      "title": "Selecciona un DataView",
+      "description": "Elige un DataView de la barra lateral o crea uno nuevo."
+    },
+    "frame": {
+      "emptyTitle": "No hay ninguna página para mostrar",
+      "emptyDescription": "Este marco externo no tiene una URL https válida."
+    },
+    "search": {
+      "title": "Buscar un registro",
+      "placeholder": "Buscar…",
+      "empty": "No se encontraron registros"
+    },
+    "export": {
+      "truncatedTitle": "Se exportan las primeras {count} filas coincidentes",
+      "truncatedDescription": "Hay más filas - acota el filtro para obtener el resto.",
+      "error": "No se pudo exportar",
+      "excel": "Excel (.xlsx)",
+      "thisPage": "Esta página",
+      "allRows": "Todas las filas coincidentes (hasta {count})",
+      "slowWarning": "Exportar tantas filas puede tardar unos segundos.",
+      "helpTitle": "Exporta la página actual o cada fila que coincida con tu búsqueda o filtro.",
+      "helpDescription": "Elige un formato y qué columnas incluir - las columnas visibles están seleccionadas de forma predeterminada."
+    },
+    "import": {
+      "skip": "Omitir",
+      "chooseFile": "Elige un archivo CSV…",
+      "columnsDescription": "Qué columna del CSV completa qué campo - las columnas sin coincidencia quedan en Omitir.",
+      "slowWarning": "Importar tantas filas puede tardar unos segundos.",
+      "preview": "Vista previa ({count} fila(s) en total)",
+      "nothingImported": "No se importó nada",
+      "imported": "{count} fila(s) importada(s)",
+      "helpTitle": "Importa filas desde un archivo CSV.",
+      "helpDescription": "Solo crea filas nuevas, todas juntas: si una fila falla, no se crea ninguna. Una fila del CSV nunca se compara con una existente, así que importar de nuevo el mismo archivo crea duplicados."
+    },
+    "savedViews": {
+      "deleteError": "No se pudo eliminar la vista guardada",
+      "captureError": "No se pudo guardar la vista",
+      "saved": "Vista guardada",
+      "saveError": "No se pudo guardar la vista",
+      "saveCurrent": "Guardar la vista actual…",
+      "nameDescription": "Guarda la vista, el filtro, las columnas y su orden, el orden de filas y la densidad actuales.",
+      "sharedWith": "Compartida con {count} persona | Compartida con {count} personas",
+      "share": "Compartir esta vista",
+      "delete": "Eliminar la vista guardada",
+      "default": "Predeterminada",
+      "mine": "Mis vistas",
+      "sharedGroup": "Compartidas",
+      "sharedBy": "Compartida por {name}",
+      "layouts": "Tipo de vista",
+      "selector": "Vista: {name}",
+      "replaceQuestion": "Ya existe «{name}». ¿Reemplazarla con lo que ves ahora?",
+      "replace": "Reemplazar",
+      "removeQuestion": "¿Eliminar «{name}»?"
+    },
+    "shareView": {
+      "loadError": "No se pudo cargar con quién está compartida",
+      "shareError": "No se pudo compartir esta vista",
+      "removeError": "No se pudo quitar a esa persona",
+      "linkCopied": "Enlace copiado",
+      "copyError": "No se pudo copiar el enlace",
+      "title": "Compartir “{name}”",
+      "helpDescription": "Quien la recibe la ve en Compartidas y puede abrirla; solo tú la reemplazas o la eliminas.",
+      "copyLink": "Copiar enlace",
+      "linkNote": "Cualquiera con el enlace puede aplicar esta vista una vez - no se agrega a su propia lista.",
+      "roles": "Roles",
+      "people": "Personas",
+      "addAnyone": "Agregar roles o personas",
+      "nobody": "Todavía no la compartiste con nadie.",
+      "withAccess": "Quién la tiene",
+      "role": "Rol",
+      "stopSharing": "Dejar de compartir"
+    },
+    "layouts": {
+      "openRecord": "Abrir {name}",
+      "selectCard": "Seleccionar tarjeta",
+      "noRows": "No se encontraron filas",
+      "capWhere": {
+        "map": "filas en el mapa",
+        "board": "filas en el tablero",
+        "calendar": "filas coincidentes en este rango",
+        "timeline": "filas en la línea de tiempo",
+        "tree": "filas en el árbol"
+      },
+      "skipped": {
+        "map": "{count} fila(s) no tienen ubicación y no se muestran.",
+        "calendar": "{count} fila(s) no tienen fecha y no se muestran.",
+        "timeline": "{count} fila(s) no tienen un rango de inicio y fin válido y no se muestran."
+      },
+      "unassigned": "Sin asignar",
+      "moveCardError": "No se pudo mover la tarjeta",
+      "noGroupColumn": "Todavía no hay una columna de agrupación configurada - abre Configuración para elegir una columna de clave foránea por la que agrupar.",
+      "rescheduleError": "No se pudo reprogramar el evento",
+      "noDateColumn": "Todavía no hay una columna de fecha configurada - abre Configuración para elegir una columna de fecha o marca de tiempo con la que ubicar las filas.",
+      "moveBarError": "No se pudo mover la barra",
+      "resizeBarError": "No se pudo cambiar el tamaño de la barra",
+      "noRangeColumns": "Todavía no hay columnas de fecha de inicio y fin configuradas - abre Configuración para elegir ambas.",
+      "noParentColumn": "Todavía no hay columna padre - abre Configuración para elegir la clave foránea de la tabla a sí misma.",
+      "expandLane": "Expandir {name}",
+      "collapse": "Contraer",
+      "noCards": "Sin tarjetas"
+    },
+    "calendar": {
+      "patterns": {
+        "day": "EEEE, d 'de' MMMM 'de' yyyy",
+        "weekStart": "d",
+        "weekEnd": "d 'de' MMMM 'de' yyyy",
+        "weekCrossStart": "d 'de' MMM",
+        "weekCrossEnd": "d 'de' MMM 'de' yyyy",
+        "date": "d 'de' MMMM 'de' yyyy",
+        "month": "MMMM 'de' yyyy",
+        "dayHeading": "EEEE d 'de' MMMM"
+      },
+      "views": {
+        "agenda": "Agenda",
+        "day": "Día",
+        "week": "Semana",
+        "month": "Mes"
+      },
+      "today": "Hoy",
+      "viewAria": "Vista del calendario",
+      "more": "+{count} más",
+      "addToCalendar": "Agregar al calendario",
+      "noEvents": "No hay eventos en este rango."
+    },
+    "gantt": {
+      "patterns": {
+        "dayStart": "d MMM"
+      },
+      "task": "Tarea",
+      "noTasks": "No hay tareas en este rango."
+    },
+    "grid": {
+      "notAvailable": "DataView no disponible",
+      "notAvailableHelp": "No existe, no está publicado o no tienes acceso a él.",
+      "addItem": "Agregar ítem",
+      "invalidFilterJson": "El filtro no es un JSON válido - corrige primero la condición (panel Filtro).",
+      "viewApplied": "Vista \"{name}\" aplicada",
+      "linkFilter": "Filtro del enlace",
+      "removeLinkFilter": "Quitar el filtro del enlace",
+      "linkFilterInvalid": "El filtro de este enlace no es válido - la lista no se muestra.",
+      "openPointOnMap": "Abrir {point} en un mapa",
+      "viewLinkStale": "Este enlace de vista ya no es válido",
+      "viewLinkError": "No se pudo aplicar la vista compartida",
+      "rowDeleted": "Fila eliminada",
+      "deleteRowError": "No se pudo eliminar la fila",
+      "rowsDeleted": "{count} fila(s) eliminada(s)",
+      "rowsDeletedPartial": "{deleted} de {total} filas eliminadas; las demás siguen seleccionadas",
+      "deleteRowsError": "No se pudieron eliminar todas las filas seleccionadas",
+      "copied": "Copiado al portapapeles",
+      "copyError": "No se pudo copiar al portapapeles",
+      "selectAll": "Seleccionar todas las filas",
+      "selectRow": "Seleccionar fila",
+      "densityMenu": "Densidad: {density}",
+      "filterActive": "Filtro (activo)",
+      "columnsHidden": "Columnas ({count} ocultas)",
+      "refreshAuto": "Actualizar (auto {interval})",
+      "compact": "Compacta",
+      "toolbarOptions": "Opciones de la barra de herramientas",
+      "activeFilter": "Filtro activo",
+      "defaultColumns": "Predeterminadas",
+      "moveUp": "Subir {name}",
+      "moveDown": "Bajar {name}",
+      "columnsHelpTitle": "Muestra u oculta columnas y cambia su orden con las flechas.",
+      "columnsHelpDescription": "Esto solo cambia lo que TÚ ves - se guarda en este navegador, no se comparte con otras personas.",
+      "condition": "Condición",
+      "conditionDescription": "Filtra las filas obtenidas del recurso de origen - la misma gramática where[...] que acepta la propia Data API.",
+      "saveFilterAsView": "Guardar como vista…",
+      "filterHelpTitle": "Define qué filas muestra este DataView.",
+      "filterHelpDescription": "Crea una condición o escríbela directamente como JSON. Para volver a aplicarla después, guarda la vista completa con el botón de marcador junto a la búsqueda.",
+      "deleteRowTitle": "Eliminar fila",
+      "deleteRowBody": "¿Eliminar esta fila? Se elimina directamente de la tabla de origen y no se puede deshacer.",
+      "deleteRowsTitle": "Eliminar las filas seleccionadas",
+      "deleteRowsBody": "¿Eliminar {count} fila(s)? Se eliminan directamente de la tabla de origen y no se puede deshacer.",
+      "fileDownloadError": "No se pudo descargar el archivo",
+      "fileView": "Ver {name}",
+      "viewMenu": "Vista: {view}"
+    },
+    "settingsView": {
+      "search": "Buscar parámetros",
+      "loadError": "No se pudieron cargar los parámetros",
+      "empty": "Todavía no hay parámetros",
+      "noMatch": "Ningún parámetro coincide con la búsqueda",
+      "modified": "Modificado",
+      "locked": "No puedes cambiar este",
+      "invalidJson": "Todavía no es un JSON válido",
+      "saved": "{n} parámetro guardado | {n} parámetros guardados"
+    },
+    "inlineLines": {
+      "cell": "{column}, renglón {line}",
+      "remove": "Quitar el renglón {line}",
+      "keep": "Conservar el renglón {line}",
+      "empty": "Todavía no hay renglones."
+    },
+    "customActions": {
+      "done": "{label}: listo",
+      "failed": "{label} falló",
+      "workflowFailed": "El workflow falló."
+    },
+    "totals": {
+      "sum": "Suma: {value}",
+      "avg": "Promedio: {value}",
+      "min": "Mín.: {value}",
+      "max": "Máx.: {value}",
+      "count": "Cantidad: {value}",
+      "selectionSum": "{label}: {value}",
+      "whenSaved": "Total: al guardar"
+    },
+    "bulkEdit": {
+      "title": "Editar {n} registros",
+      "description": "Solo cambian los campos que agregues aquí, con el mismo valor en cada fila. Todas o ninguna.",
+      "emptyTitle": "Todavía no hay campos",
+      "emptyDescription": "Agrega los campos a cambiar; el resto queda como está.",
+      "removeField": "Quitar {name}",
+      "leaveEmpty": "Dejar vacío",
+      "addField": "Agregar campo",
+      "applyTo": "Aplicar a {n}",
+      "done": "{n} registros actualizados",
+      "failed": "No se cambió nada",
+      "applying": "Aplicando a {n} filas…",
+      "rowGone": "Alguna fila ya no existe o no la puedes editar.",
+      "atCap": "Máximo {n} registros",
+      "chosen": "{n} registros seleccionados",
+      "edit": "Editar"
+    },
+    "kiosk": {
+      "menu": "Opciones del kiosco",
+      "fullscreen": "Pantalla completa",
+      "exitFullscreen": "Salir de pantalla completa",
+      "exitKiosk": "Salir de la vista kiosco",
+      "openKiosk": "Vista kiosco",
+      "offlineTitle": "Sin conexión",
+      "offlineDescription": "Esta pantalla vuelve a funcionar en cuanto vuelva la conexión.",
+      "unreachableTitle": "No se puede contactar al servidor"
+    },
+    "widgetJson": {
+      "addItem": "Agregar elemento",
+      "addProperty": "Agregar propiedad",
+      "advanced": "Avanzado",
+      "eachItem": "Cada elemento: su tipo y luego su valor.",
+      "eachProperty": "Cada propiedad: su nombre, su tipo y luego su valor.",
+      "noItems": "Aún no hay elementos - agrega uno abajo.",
+      "noProperties": "Aún no hay propiedades - agrega una abajo.",
+      "property": "Propiedad",
+      "removeItem": "Quitar elemento",
+      "removeProperty": "Quitar propiedad",
+      "simple": "Simple",
+      "tooComplex": "El valor actual es demasiado complejo para el editor simple (objetos/arrays anidados, un array mixto o un valor escalar en la raíz) - edítalo directamente en Avanzado, o vacíalo primero.",
+      "typeBoolean": "Booleano",
+      "typeNull": "Nulo",
+      "typeNumber": "Número",
+      "typeString": "Texto"
+    },
+    "widgetDataView": {
+      "everyRow": "Todas las filas.",
+      "everyRowReadOnly": "Todas las filas - solo lectura.",
+      "linkedRows": "Filas cuyo {column} es la clave del registro.",
+      "linkedRowsReadOnly": "Filas cuyo {column} es la clave del registro - solo lectura.",
+      "noRecordDescription": "Vinculado por necesita el registro de la página - vacíalo para mostrar todas las filas.",
+      "noRecordTitle": "Esta página no tiene registro",
+      "notAvailableDescription": "Su DataView no está publicado, o no puedes abrirlo.",
+      "notAvailableTitle": "No disponible",
+      "pickDataView": "Elige su DataView en el inspector.",
+      "saveFirstDescription": "Sus filas se muestran una vez que exista.",
+      "saveFirstTitle": "Guarda primero el registro",
+      "title": "DataView",
+      "titleNamed": "DataView · {name}"
+    },
+    "widgetCamera": {
+      "again": "Sacar otra",
+      "capture": "Capturar",
+      "cropTitle": "Recortar la foto",
+      "remove": "Quitar la foto",
+      "retake": "Sacar otra foto",
+      "switchCamera": "Cambiar de cámara",
+      "takePhoto": "Sacar foto",
+      "title": "Sacar una foto",
+      "uploadFailed": "No se pudo guardar la foto",
+      "use": "Usar la foto",
+      "useCameraApp": "Abrir la app de cámara",
+      "zoom": "Zoom",
+      "fileStem": "foto"
+    },
+    "widgetSignature": {
+      "clear": "Borrar",
+      "pad": "Área de firma - firma con el dedo, un lápiz o el mouse",
+      "ink": "Color de la tinta",
+      "inkColor": "Tinta {color}",
+      "alt": "Firma",
+      "none": "Sin firmar",
+      "unavailable": "No se puede mostrar la firma",
+      "uploadFailed": "No se pudo guardar la firma",
+      "fileStem": "firma"
+    },
+    "widgetScanner": {
+      "close": "Cerrar",
+      "fieldLabel": "Código",
+      "openCamera": "Leer con la cámara",
+      "photoFallback": "Sacar una foto del código",
+      "photoNoCode": "No se encontró un código en la foto - prueba de nuevo más cerca y con foco.",
+      "pointAtCode": "Apunta la cámara al código.",
+      "read": "Leído: {value}",
+      "title": "Leer un código"
+    },
+    "widgetForm": {
+      "atLeast": "Al menos {value}",
+      "atLeastChars": "Al menos {value} carácter | Al menos {value} caracteres",
+      "atMost": "Como máximo {value}",
+      "atMostChars": "Como máximo {value} carácter | Como máximo {value} caracteres",
+      "invalidFormat": "Formato no válido",
+      "lessThan": "Menos de {value}",
+      "lessThanChars": "Menos de {value} carácter | Menos de {value} caracteres",
+      "moreThan": "Más de {value}",
+      "moreThanChars": "Más de {value} carácter | Más de {value} caracteres"
+    },
+    "rangeInput": {
+      "order": "Desde es posterior a Hasta - no puede ser.",
+      "from": "Desde",
+      "to": "Hasta",
+      "inclusive": "Incluye los dos extremos - vacío, sin límite de ese lado.",
+      "toExcluded": "Hasta queda excluido - vacío, sin límite de ese lado."
+    },
+    "widgetFileUpload": {
+      "dropzone": "Suelta un archivo aquí o elige uno",
+      "loadFailed": "No se pudo cargar este archivo - puede que se haya eliminado o que no tengas acceso.",
+      "none": "Sin archivo",
+      "openFile": "Abrir archivo",
+      "removeFile": "Quitar archivo",
+      "replace": "Elegir otra imagen",
+      "uploadFailed": "No se pudo subir el archivo"
+    },
+    "widgetQrCode": {
+      "label": "Código QR",
+      "empty": "Sin código",
+      "failed": "No se pudo generar el código",
+      "download": "Descargar",
+      "print": "Imprimir"
+    },
+    "widgetFrame": {
+      "externalPage": "Página externa",
+      "noUrlDescription": "Un valor que necesita la dirección de este marco está vacío.",
+      "noUrlTitle": "No hay URL para este registro",
+      "noUrlYet": "Aún no hay URL - defínela en el inspector.",
+      "openInNewTab": "Abrir en una pestaña nueva"
+    },
+    "widgetTable": {
+      "sampleDescription": "Su descripción",
+      "sampleOption": "Opción {n}",
+      "searchPlaceholder": "Buscar…"
+    },
+    "widgetSelectSearch": {
+      "open": "Buscar {name}",
+      "description": "Busca por cualquier columna; elige una fila con un clic, o con ↑ ↓ y Enter.",
+      "noRows": "Nada coincide"
+    },
+    "widgetLocation": {
+      "again": "De nuevo",
+      "locating": "Ubicando…",
+      "mark": "Marcar posición",
+      "myLocation": "Mi ubicación",
+      "none": "Sin posición",
+      "problems": {
+        "denied": "Se denegó el acceso a la ubicación - permítelo para este sitio para usarla.",
+        "insecure": "La ubicación necesita HTTPS.",
+        "timeout": "No hubo posición a tiempo - prueba de nuevo al aire libre.",
+        "unavailable": "La posición no está disponible ahora mismo.",
+        "unsupported": "Este navegador no tiene acceso a la ubicación."
+      }
+    },
+    "widgetInputDate": {
+      "openCalendar": "Abrir el calendario",
+      "time": "Hora"
+    },
+    "widgetColorSelect": {
+      "custom": "Personalizado",
+      "palette": "Paleta"
+    },
+    "widgetResult": {
+      "ready": "Listo"
+    },
+    "widgetRenderer": {
+      "chooseRows": "Elige sus Filas - una variable de Recurso."
+    }
+  }
+}

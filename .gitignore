@@ -1,0 +1,36 @@
+# Env
+.env
+.env.*.local
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.output/
+.nuxt/
+.nitro/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+
+# Test / coverage
+coverage/
+
+# Local dev data
+.data/
+
+# Playwright artifacts
+e2e/test-results/
+e2e/playwright-report/

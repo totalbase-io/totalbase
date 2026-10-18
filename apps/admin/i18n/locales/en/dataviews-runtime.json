@@ -1,0 +1,856 @@
+{
+  "dataviews": {
+    "recordMenu": {
+      "clone": "Clone",
+      "copy": "Copy",
+      "print": "Print",
+      "activity": "Activity"
+    },
+    "record": {
+      "copyError": "Could not copy to the clipboard",
+      "printNewLabel": "New record (unsaved)",
+      "printLabel": "Record: {pk}",
+      "printField": "Field",
+      "noLongerExists": "The record no longer exists.",
+      "rangeOrder": "From is after To.",
+      "deleteConfirm": "Delete this record? This cannot be undone.",
+      "deleted": "Deleted.",
+      "singlePrimaryKey": "A record needs a table with a single-column primary key.",
+      "saveAndNew": "Save & New",
+      "saveShortcut": "Save ({shortcut})",
+      "actions": "Record actions",
+      "saved": "Saved",
+      "titleNew": "New · {name}",
+      "titleView": "View · {name}",
+      "titleEdit": "Edit · {name}",
+      "descriptionCreate": "Fill in the fields and save.",
+      "descriptionView": "Read-only.",
+      "descriptionEdit": "Edit the fields and save.",
+      "previous": "Previous",
+      "startOne": "Start one to fill in {name}."
+    },
+    "print": {
+      "pageOf": "Page {page} of {pages}",
+      "paper": {
+        "a4": "a4",
+        "letter": "letter"
+      },
+      "orientations": {
+        "portrait": "portrait",
+        "landscape": "landscape"
+      },
+      "truncatedTitle": "Printing the first {count} matching rows",
+      "error": "Could not print",
+      "slowWarning": "Generating and printing this many rows can take a few seconds.",
+      "header": "Print header",
+      "headerDescription": "Title, description and active filter at the top of the page.",
+      "footer": "Print footer",
+      "footerDescription": "Printed date/time and page number at the bottom of the page.",
+      "paperSize": "Paper size",
+      "orientation": "Orientation",
+      "fontSize": "Font size",
+      "helpTitle": "Print a simple PDF of the current page, or every matching row.",
+      "helpDescription": "Pick the paper size, font size, orientation and columns, then Print."
+    },
+    "history": {
+      "loadError": "Could not load history",
+      "actions": {
+        "CREATE": "Created",
+        "UPDATE": "Updated",
+        "DELETE": "Deleted",
+        "PRINT": "Printed",
+        "EXPORT": "Exported",
+        "IMPORT": "Imported"
+      },
+      "customFilter": "Custom filter applied",
+      "system": "System",
+      "valueRemoved": "Value (removed)",
+      "none": "(none)",
+      "empty": "(empty)",
+      "title": "Activity - {name}",
+      "descriptionTable": "Every recorded change across every row, most recent first - including deleted rows.",
+      "descriptionRow": "Every recorded change to this row, most recent first.",
+      "noneTable": "No recorded history for this table yet.",
+      "noneRow": "No recorded history for this row yet.",
+      "rowCount": "{count} row | {count} rows",
+      "viewChanges": "View changes",
+      "firstChange": "First change",
+      "fieldCount": "{count} field | {count} fields",
+      "rows": "Rows",
+      "format": "Format",
+      "record": "Record:",
+      "deletedRecord": "{id} (deleted)",
+      "firstChangeNote": "This is the first recorded change for this row - showing its full state at this point, not a diff from something earlier.",
+      "failed": "Failed",
+      "change": "change",
+      "changes": "changes",
+      "back": "Back to the activity",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "meta": {
+      "types": {
+        "TABLE": {
+          "label": "Table",
+          "description": "A sortable, searchable grid over the rows."
+        },
+        "FORM": {
+          "label": "Form",
+          "description": "One record at a time, laid out as a form."
+        },
+        "CARDS": {
+          "label": "Cards",
+          "description": "Rows as a grid of cards - good for images or summaries."
+        },
+        "MAP": {
+          "label": "Map",
+          "description": "Rows plotted on a map, from a location column."
+        },
+        "KANBAN": {
+          "label": "Kanban",
+          "description": "Rows grouped into columns by a status field."
+        },
+        "CALENDAR": {
+          "label": "Calendar",
+          "description": "Rows placed on a calendar by a date column."
+        },
+        "GANTT": {
+          "label": "Gantt",
+          "description": "Rows as timeline bars, from start/end date columns."
+        },
+        "TREE": {
+          "label": "Tree",
+          "description": "A hierarchy - rows under their parent row, as a tree or an org chart."
+        },
+        "EXTERNALFRAME": {
+          "label": "External frame",
+          "description": "Embed an external page or app - no data source."
+        },
+        "MASTER_DETAIL": {
+          "label": "Master-detail",
+          "description": "A new record with its detail rows - an order and its items."
+        },
+        "CUSTOM": {
+          "label": "Custom",
+          "description": "A blank page: place any widget, bind it to variables, wire it with code."
+        },
+        "SETTINGS": {
+          "label": "Settings",
+          "description": "A parameter table - one row per setting (key, value, title, description), edited in place like TotalBase's own Settings."
+        }
+      },
+      "formViewModes": {
+        "READ": {
+          "label": "Read",
+          "description": "Opens read-only. Edit/New available per permissions (default)."
+        },
+        "UPDATE": {
+          "label": "Update",
+          "description": "Opens the loaded record already in edit mode - no read-only step."
+        },
+        "CREATE": {
+          "label": "Create",
+          "description": "Always a blank form for new records - no browsing or editing existing ones."
+        },
+        "SINGLE": {
+          "label": "Single record",
+          "description": "The table's one row, opened to edit - created on the first save when there is none. No New, search, browsing, copy or delete."
+        }
+      },
+      "openWith": {
+        "NEW_RECORD": {
+          "label": "New record",
+          "description": "Opens a new record right away, from the table's defaults (default)."
+        },
+        "WAIT": {
+          "label": "Wait for New",
+          "description": "Opens on a New button - each click starts a record."
+        }
+      },
+      "editPresentations": {
+        "DRAWER": {
+          "label": "Drawer",
+          "description": "Slides up from the bottom, covering most of the screen - for a heavy form: a rich text editor, tabs, a detail."
+        },
+        "MODAL": {
+          "label": "Modal",
+          "description": "Centered dialog - best for short forms with few fields."
+        },
+        "SIDEBAR": {
+          "label": "Sidebar",
+          "description": "Slides in from the side, beside the list - the fields in one column; best for most forms (default)."
+        },
+        "PAGE": {
+          "label": "Page",
+          "description": "Its own dedicated URL - best for long forms with many fields, like the Settings pages."
+        }
+      },
+      "editSizes": {
+        "default": {
+          "label": "Default"
+        },
+        "sm": {
+          "label": "Small"
+        },
+        "md": {
+          "label": "Medium"
+        },
+        "lg": {
+          "label": "Large"
+        },
+        "xl": {
+          "label": "Extra large"
+        }
+      },
+      "editSides": {
+        "left": {
+          "label": "Left"
+        },
+        "right": {
+          "label": "Right"
+        },
+        "top": {
+          "label": "Top"
+        },
+        "bottom": {
+          "label": "Bottom"
+        }
+      },
+      "pageContentAligns": {
+        "left": {
+          "label": "Left"
+        },
+        "center": {
+          "label": "Center"
+        },
+        "right": {
+          "label": "Right"
+        }
+      },
+      "pageContentWidths": {
+        "narrow": {
+          "label": "Narrow"
+        },
+        "wide": {
+          "label": "Wide"
+        },
+        "full": {
+          "label": "Full width"
+        }
+      },
+      "columnSync": {
+        "auto_show": {
+          "label": "Auto-show new columns",
+          "description": "A column added to the table later joins this view automatically, visible right away."
+        },
+        "auto_hide": {
+          "label": "Auto-hide new columns",
+          "description": "A column added to the table later joins this view hidden - read, not shown, until someone shows it (default)."
+        },
+        "locked": {
+          "label": "Lock to selected columns",
+          "description": "A column added to the table later stays out of this view - Add columns… can still bring it in."
+        }
+      },
+      "densities": {
+        "normal": {
+          "label": "Normal"
+        },
+        "compact": {
+          "label": "Compact"
+        },
+        "tiny": {
+          "label": "Very compact"
+        }
+      },
+      "featureDescriptions": {
+        "TABLE": {
+          "search": "Free-text search box above the grid.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/columns/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "density": "Row density switcher (comfortable/compact/etc).",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "columnsToggle": "Let viewers show/hide and reorder columns.",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "print": "Print-friendly view of the grid.",
+          "refresh": "Manual \"Refresh\" button above the grid.",
+          "rowEdit": "Click anywhere on a row to open its edit form - the row highlights on hover with a pointer cursor.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "FORM": {
+          "search": "Sidebar to look up and load another record.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it.",
+          "recordSaveCancel": "The form's own Save and Cancel buttons - turn off when the page saves through its own buttons."
+        },
+        "CARDS": {
+          "search": "Free-text search box above the grid.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/columns/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the grid.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it.",
+          "cardDensity": "Card size switcher - normal, compact (image and title), very compact (the image alone)."
+        },
+        "MAP": {
+          "search": "Free-text search box above the map.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the map.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "KANBAN": {
+          "search": "Free-text search box above the board.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the board.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "CALENDAR": {
+          "search": "Free-text search box above the calendar.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the calendar.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "GANTT": {
+          "search": "Free-text search box above the timeline.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the timeline.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "TREE": {
+          "search": "Free-text search box above the tree - a match whose parent doesn't match shows at the root.",
+          "savedViews": "Bookmark button - named, reusable snapshots of filter/sort.",
+          "history": "Table-wide Activity button, next to Saved views - every change to its rows.",
+          "filter": "Advanced filter panel (field/operator/value).",
+          "import": "Bulk-import rows from a file.",
+          "export": "Download the current rows as CSV.",
+          "refresh": "Manual \"Refresh\" button above the tree.",
+          "recordClone": "Clone the record being edited into a new draft.",
+          "recordSaveAndNew": "Save the record, then reset the form for another one.",
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordNavigation": "A FORM only: step to the previous/next record without leaving it."
+        },
+        "EXTERNALFRAME": {
+          "openInNewTab": "Header button that opens the page in a new browser tab - also the way out when a site refuses to be embedded.",
+          "fullscreen": "Header button that shows the page fullscreen."
+        },
+        "MASTER_DETAIL": {
+          "recordCopy": "Copy the record's values as text - \"Field: value\", one per line.",
+          "recordPrint": "Print-friendly view of the single record being edited.",
+          "recordHistory": "A record's Activity - who created and changed it, and what.",
+          "recordSaveCancel": "The form's own Save and Cancel buttons - turn off when the page saves through its own buttons."
+        }
+      },
+      "featureLabels": {
+        "search": "Search",
+        "savedViews": "Saved views",
+        "history": "Activity",
+        "density": "Density",
+        "cardDensity": "Card size",
+        "filter": "Filter",
+        "columnsToggle": "Columns",
+        "import": "Import",
+        "export": "Export",
+        "print": "Print",
+        "refresh": "Refresh",
+        "rowEdit": "Row edit",
+        "recordClone": "Clone",
+        "recordSaveAndNew": "Save & New",
+        "recordCopy": "Copy",
+        "recordPrint": "Print",
+        "recordHistory": "Activity",
+        "recordNavigation": "Previous/Next",
+        "recordSaveCancel": "Save and Cancel",
+        "openInNewTab": "Open in new tab",
+        "fullscreen": "Fullscreen"
+      },
+      "autoRefresh": {
+        "off": "Off",
+        "custom": "Custom…"
+      },
+      "designerViews": {
+        "design": "Design",
+        "variables": "Variables",
+        "code": "Code"
+      },
+      "notices": {
+        "columnSync": "Controls what this VIEW reads, not who can see it. Anyone with access to the table via the API or SQL Console still sees every column they may read - use Permissions to actually restrict a column.",
+        "baseWhere": "Filters which ROWS this VIEW shows, not who can see them. Anyone with access to the table via the API or SQL Console still sees every row regardless of this filter - use Permissions to actually restrict rows."
+      },
+      "newRecordLabel": "New {name}"
+    },
+    "tree": {
+      "allTypes": "All types",
+      "newDataView": "New DataView",
+      "searchAria": "Search DataViews",
+      "searchPlaceholder": "Search...",
+      "filterByType": "Filter by type",
+      "filteredBy": "Filtered by {type}",
+      "loadError": "Could not load DataViews",
+      "notInMenuSuffix": ", not in the App menu",
+      "notInMenu": "Not in the App menu - embedded in other forms only",
+      "empty": "No DataViews found.",
+      "brokenReferences": "Names what is gone: {what}",
+      "sourceGone": "its source no longer exists"
+    },
+    "treeView": {
+      "label": "Tree",
+      "displays": {
+        "tree": "Tree",
+        "org": "Org chart"
+      },
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "dropAtRoot": "Drop here to move it to the top level",
+      "addChild": "Add under {name}",
+      "actions": "Actions for {name}",
+      "moveError": "Could not move the row",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "zoomReset": "Actual size",
+      "fitWidth": "Fit to width",
+      "cantMoveUnder": "“{name}” can't go under “{target}” - it is below “{name}”."
+    },
+    "appHome": {
+      "title": "Pick something from the menu",
+      "description": "Every published DataView and Dashboard you can open is listed there."
+    },
+    "landing": {
+      "title": "Select a DataView",
+      "description": "Choose a DataView from the sidebar, or create a new one."
+    },
+    "frame": {
+      "emptyTitle": "No page to show",
+      "emptyDescription": "This external frame has no valid https URL."
+    },
+    "search": {
+      "title": "Find a record",
+      "placeholder": "Search…",
+      "empty": "No records found"
+    },
+    "export": {
+      "truncatedTitle": "Exporting the first {count} matching rows",
+      "truncatedDescription": "There are more rows than that - narrow the filter to get the rest.",
+      "error": "Could not export",
+      "excel": "Excel (.xlsx)",
+      "thisPage": "This page",
+      "allRows": "All matching rows (up to {count})",
+      "slowWarning": "Exporting this many rows can take a few seconds.",
+      "helpTitle": "Export the current page, or every row that matches your search/filter.",
+      "helpDescription": "Pick a format and which columns to include - visible columns are selected by default."
+    },
+    "import": {
+      "skip": "Skip",
+      "chooseFile": "Choose a CSV file…",
+      "columnsDescription": "Which CSV column fills which field - unmatched columns default to Skip.",
+      "slowWarning": "Importing this many rows can take a few seconds.",
+      "preview": "Preview ({count} row(s) total)",
+      "nothingImported": "Nothing was imported",
+      "imported": "{count} row(s) imported",
+      "helpTitle": "Import rows from a CSV file.",
+      "helpDescription": "Only creates new rows, all together: if one row fails, none are created. A CSV row is never matched against an existing one, so re-importing the same file creates duplicates."
+    },
+    "savedViews": {
+      "deleteError": "Could not delete saved view",
+      "captureError": "Could not save the view",
+      "saved": "View saved",
+      "saveError": "Could not save view",
+      "saveCurrent": "Save current view…",
+      "nameDescription": "Keeps the current view, filter, columns and their order, sort and density.",
+      "sharedWith": "Shared with {count} person | Shared with {count} people",
+      "share": "Share this view",
+      "delete": "Delete saved view",
+      "default": "Default",
+      "mine": "My views",
+      "sharedGroup": "Shared",
+      "sharedBy": "Shared by {name}",
+      "layouts": "View type",
+      "selector": "View: {name}",
+      "replaceQuestion": "“{name}” already exists. Replace it with what's on screen?",
+      "replace": "Replace",
+      "removeQuestion": "Delete “{name}”?"
+    },
+    "shareView": {
+      "loadError": "Could not load who this is shared with",
+      "shareError": "Could not share this view",
+      "removeError": "Could not remove that recipient",
+      "linkCopied": "Link copied",
+      "copyError": "Could not copy the link",
+      "title": "Share “{name}”",
+      "helpDescription": "Whoever gets it sees it under Shared and can open it; only you replace or delete it.",
+      "copyLink": "Copy link",
+      "linkNote": "Anyone with the link can apply this view once - it isn't added to their own list.",
+      "roles": "Roles",
+      "people": "People",
+      "addAnyone": "Add roles or people",
+      "nobody": "Not shared with anyone yet.",
+      "withAccess": "Who has it",
+      "role": "Role",
+      "stopSharing": "Stop sharing"
+    },
+    "layouts": {
+      "openRecord": "Open {name}",
+      "selectCard": "Select card",
+      "noRows": "No rows found",
+      "capWhere": {
+        "map": "rows on the map",
+        "board": "rows on the board",
+        "calendar": "matching rows in this range",
+        "timeline": "rows on the timeline",
+        "tree": "rows in the tree"
+      },
+      "skipped": {
+        "map": "{count} row(s) have no location and aren't shown.",
+        "calendar": "{count} row(s) have no date and aren't shown.",
+        "timeline": "{count} row(s) have no valid start/end range and aren't shown."
+      },
+      "unassigned": "Unassigned",
+      "moveCardError": "Could not move card",
+      "noGroupColumn": "No group column configured yet - open Settings to pick a Foreign Key column to group by.",
+      "rescheduleError": "Could not reschedule event",
+      "noDateColumn": "No date column configured yet - open Settings to pick a date/timestamp column to place rows by.",
+      "moveBarError": "Could not move bar",
+      "resizeBarError": "Could not resize bar",
+      "noRangeColumns": "No start/end date columns configured yet - open Settings to pick both.",
+      "noParentColumn": "No parent column configured yet - open Settings to pick the foreign key of the table to itself.",
+      "expandLane": "Expand {name}",
+      "collapse": "Collapse",
+      "noCards": "No cards"
+    },
+    "calendar": {
+      "patterns": {
+        "day": "EEEE, MMMM d, yyyy",
+        "weekStart": "MMMM d",
+        "weekEnd": "d, yyyy",
+        "weekCrossStart": "MMM d",
+        "weekCrossEnd": "MMM d, yyyy",
+        "date": "MMMM d, yyyy",
+        "month": "MMMM yyyy",
+        "dayHeading": "EEEE, MMMM d"
+      },
+      "views": {
+        "agenda": "Agenda",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month"
+      },
+      "today": "Today",
+      "viewAria": "Calendar view",
+      "more": "+{count} more",
+      "addToCalendar": "Add to calendar",
+      "noEvents": "No events in range."
+    },
+    "gantt": {
+      "patterns": {
+        "dayStart": "MMM d"
+      },
+      "task": "Task",
+      "noTasks": "No tasks in range."
+    },
+    "grid": {
+      "notAvailable": "DataView not available",
+      "notAvailableHelp": "It doesn't exist, isn't published or you don't have access to it.",
+      "addItem": "Add item",
+      "invalidFilterJson": "The filter isn't valid JSON - fix the condition (Filter panel) first.",
+      "viewApplied": "Applied view \"{name}\"",
+      "linkFilter": "Filter from a link",
+      "removeLinkFilter": "Remove the link's filter",
+      "linkFilterInvalid": "This link's filter isn't valid - the list isn't shown.",
+      "openPointOnMap": "Open {point} on a map",
+      "viewLinkStale": "This view link is no longer valid",
+      "viewLinkError": "Could not apply the shared view",
+      "rowDeleted": "Row deleted",
+      "deleteRowError": "Could not delete row",
+      "rowsDeleted": "{count} row(s) deleted",
+      "rowsDeletedPartial": "{deleted} of {total} rows deleted - the others stay selected",
+      "deleteRowsError": "Could not delete every selected row",
+      "copied": "Copied to clipboard",
+      "copyError": "Could not copy to clipboard",
+      "selectAll": "Select all rows",
+      "selectRow": "Select row",
+      "densityMenu": "Density: {density}",
+      "filterActive": "Filter (active)",
+      "columnsHidden": "Columns ({count} hidden)",
+      "refreshAuto": "Refresh (auto {interval})",
+      "compact": "Compact",
+      "toolbarOptions": "Toolbar options",
+      "activeFilter": "Active filter",
+      "defaultColumns": "Default",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "columnsHelpTitle": "Show or hide columns, and drag their order with the arrows.",
+      "columnsHelpDescription": "This only changes what YOU see - it's saved on this browser, not shared with other viewers.",
+      "condition": "Condition",
+      "conditionDescription": "Filters the rows fetched from the source resource - the same where[...] grammar the Data API itself accepts.",
+      "saveFilterAsView": "Save as view…",
+      "filterHelpTitle": "Define which rows this DataView shows.",
+      "filterHelpDescription": "Build a condition, or write it as JSON directly. To reapply it later, save the whole view from the bookmark button next to search.",
+      "deleteRowTitle": "Delete row",
+      "deleteRowBody": "Delete this row? This deletes the row directly from the source table and cannot be undone.",
+      "deleteRowsTitle": "Delete selected rows",
+      "deleteRowsBody": "Delete {count} row(s)? This deletes them directly from the source table and cannot be undone.",
+      "fileDownloadError": "Could not download the file",
+      "fileView": "View {name}",
+      "viewMenu": "View: {view}"
+    },
+    "settingsView": {
+      "search": "Search settings",
+      "loadError": "Could not load the settings",
+      "empty": "No settings yet",
+      "noMatch": "No setting matches the search",
+      "modified": "Modified",
+      "locked": "You can't change this one",
+      "invalidJson": "Not valid JSON yet",
+      "saved": "{n} setting saved | {n} settings saved"
+    },
+    "inlineLines": {
+      "cell": "{column}, line {line}",
+      "remove": "Remove line {line}",
+      "keep": "Keep line {line}",
+      "empty": "No lines yet."
+    },
+    "customActions": {
+      "done": "{label}: done",
+      "failed": "{label} failed",
+      "workflowFailed": "The workflow failed."
+    },
+    "totals": {
+      "sum": "Sum: {value}",
+      "avg": "Average: {value}",
+      "min": "Min: {value}",
+      "max": "Max: {value}",
+      "count": "Count: {value}",
+      "selectionSum": "{label}: {value}",
+      "whenSaved": "Total: when saved"
+    },
+    "bulkEdit": {
+      "title": "Edit {n} rows",
+      "description": "Only the fields added here change - the same values in every row. All of them or none.",
+      "emptyTitle": "No fields yet",
+      "emptyDescription": "Add the fields to change - the rest stay as they are.",
+      "removeField": "Remove {name}",
+      "leaveEmpty": "Leave empty",
+      "addField": "Add field",
+      "applyTo": "Apply to {n}",
+      "done": "{n} rows updated",
+      "failed": "Nothing was changed",
+      "applying": "Applying to {n} rows…",
+      "rowGone": "A row is gone, or you can't edit it.",
+      "atCap": "At most {n} rows",
+      "chosen": "{n} rows chosen",
+      "edit": "Edit"
+    },
+    "kiosk": {
+      "menu": "Kiosk options",
+      "fullscreen": "Full screen",
+      "exitFullscreen": "Exit full screen",
+      "exitKiosk": "Exit kiosk view",
+      "openKiosk": "Kiosk view",
+      "offlineTitle": "No connection",
+      "offlineDescription": "This screen works again as soon as the connection is back.",
+      "unreachableTitle": "The server can't be reached"
+    },
+    "widgetJson": {
+      "addItem": "Add item",
+      "addProperty": "Add property",
+      "advanced": "Advanced",
+      "eachItem": "Each item: its type, then its value.",
+      "eachProperty": "Each property: its name, its type, then its value.",
+      "noItems": "No items yet - add one below.",
+      "noProperties": "No properties yet - add one below.",
+      "property": "Property",
+      "removeItem": "Remove item",
+      "removeProperty": "Remove property",
+      "simple": "Simple",
+      "tooComplex": "Current value is too complex for the simple editor (nested objects/arrays, a mixed array, or a bare scalar root) - edit it directly in Advanced, or clear it first.",
+      "typeBoolean": "Boolean",
+      "typeNull": "Null",
+      "typeNumber": "Number",
+      "typeString": "String"
+    },
+    "widgetDataView": {
+      "everyRow": "Every row.",
+      "everyRowReadOnly": "Every row - read only.",
+      "linkedRows": "Rows whose {column} is the record's key.",
+      "linkedRowsReadOnly": "Rows whose {column} is the record's key - read only.",
+      "noRecordDescription": "Linked by needs the page's record - clear it to show every row.",
+      "noRecordTitle": "This page has no record",
+      "notAvailableDescription": "Its DataView isn't published, or you can't open it.",
+      "notAvailableTitle": "Not available",
+      "pickDataView": "Pick its DataView in the inspector.",
+      "saveFirstDescription": "Its rows show once it exists.",
+      "saveFirstTitle": "Save the record first",
+      "title": "DataView",
+      "titleNamed": "DataView · {name}"
+    },
+    "widgetCamera": {
+      "again": "Take another",
+      "capture": "Capture",
+      "cropTitle": "Crop the photo",
+      "remove": "Remove photo",
+      "retake": "Retake photo",
+      "switchCamera": "Switch camera",
+      "takePhoto": "Take photo",
+      "title": "Take a photo",
+      "uploadFailed": "Could not save the photo",
+      "use": "Use photo",
+      "useCameraApp": "Open the camera app",
+      "zoom": "Zoom",
+      "fileStem": "photo"
+    },
+    "widgetSignature": {
+      "clear": "Clear",
+      "pad": "Signature pad - sign with a finger, a pen or the mouse",
+      "ink": "Ink color",
+      "inkColor": "Ink {color}",
+      "alt": "Signature",
+      "none": "Not signed",
+      "unavailable": "The signature can't be shown",
+      "uploadFailed": "Could not store the signature",
+      "fileStem": "signature"
+    },
+    "widgetScanner": {
+      "close": "Close",
+      "fieldLabel": "Code",
+      "openCamera": "Scan with the camera",
+      "photoFallback": "Take a photo of the code",
+      "photoNoCode": "No code was found in the photo - try again closer and in focus.",
+      "pointAtCode": "Point the camera at the code.",
+      "read": "Read: {value}",
+      "title": "Scan a code"
+    },
+    "widgetForm": {
+      "atLeast": "At least {value}",
+      "atLeastChars": "At least {value} character | At least {value} characters",
+      "atMost": "At most {value}",
+      "atMostChars": "At most {value} character | At most {value} characters",
+      "invalidFormat": "Invalid format",
+      "lessThan": "Less than {value}",
+      "lessThanChars": "Less than {value} character | Less than {value} characters",
+      "moreThan": "More than {value}",
+      "moreThanChars": "More than {value} character | More than {value} characters"
+    },
+    "rangeInput": {
+      "order": "From is after To - it can't be.",
+      "from": "From",
+      "to": "To",
+      "inclusive": "Both ends included - empty, no limit on that side.",
+      "toExcluded": "To is excluded - empty, no limit on that side."
+    },
+    "widgetFileUpload": {
+      "dropzone": "Drop a file here, or click to browse",
+      "loadFailed": "Couldn't load this file - it may have been deleted, or you may not have access.",
+      "none": "No file",
+      "openFile": "Open file",
+      "removeFile": "Remove file",
+      "replace": "Pick another image",
+      "uploadFailed": "Could not upload file"
+    },
+    "widgetQrCode": {
+      "label": "QR code",
+      "empty": "No code",
+      "failed": "Couldn't draw this code",
+      "download": "Download",
+      "print": "Print"
+    },
+    "widgetFrame": {
+      "externalPage": "External page",
+      "noUrlDescription": "A value this frame's address needs is empty.",
+      "noUrlTitle": "No URL for this record",
+      "noUrlYet": "No URL yet - set it in the inspector.",
+      "openInNewTab": "Open in new tab"
+    },
+    "widgetTable": {
+      "sampleDescription": "Its description",
+      "sampleOption": "Option {n}",
+      "searchPlaceholder": "Search…"
+    },
+    "widgetSelectSearch": {
+      "open": "Search {name}",
+      "description": "Search by any column; pick a row with a click, or with ↑ ↓ and Enter.",
+      "noRows": "Nothing matches"
+    },
+    "widgetLocation": {
+      "again": "Again",
+      "locating": "Locating…",
+      "mark": "Mark position",
+      "myLocation": "My location",
+      "none": "No position",
+      "problems": {
+        "denied": "Location access was denied - allow it for this site to use it.",
+        "insecure": "The location needs HTTPS.",
+        "timeout": "No position in time - try again outdoors.",
+        "unavailable": "The position is unavailable right now.",
+        "unsupported": "This browser has no location access."
+      }
+    },
+    "widgetInputDate": {
+      "openCalendar": "Open the calendar",
+      "time": "Time"
+    },
+    "widgetColorSelect": {
+      "custom": "Custom",
+      "palette": "Palette"
+    },
+    "widgetResult": {
+      "ready": "Ready"
+    },
+    "widgetRenderer": {
+      "chooseRows": "Choose its Rows - a Resource variable."
+    }
+  }
+}

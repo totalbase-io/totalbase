@@ -1,0 +1,797 @@
+{
+  "workflows": {
+    "limits": {
+      "thisStep": "This step",
+      "templatePath": "Step {name} has a template path longer than {max} characters.",
+      "depth": "Step {name} has a configuration nested more than {max} levels deep.",
+      "fields": "Step {name} has an object with more than {max} fields.",
+      "configurationSize": "Step {name} has a configuration larger than {max} KiB.",
+      "operations": "A workflow holds at most {max} steps, Start included.",
+      "connections": "A workflow holds at most {max} connections.",
+      "definitionSize": "This workflow is larger than 1 MiB."
+    },
+    "runBlocker": {
+      "publish": "Publish this workflow before running it.",
+      "ownTrigger": "A webhook or database-event workflow runs from its own trigger - use Test run to try the draft.",
+      "enable": "Enable this workflow before running it."
+    },
+    "triggers": {
+      "manual": {
+        "title": "Manual",
+        "description": "Run this workflow on demand from the editor or a future manual action.",
+        "configDescription": "No further configuration."
+      },
+      "dataEvent": {
+        "title": "Database event",
+        "description": "Run when a table is created, updated, or deleted.",
+        "configDescription": "Table and events that admit a run."
+      },
+      "cron": {
+        "title": "Schedule",
+        "description": "Run on a recurring schedule.",
+        "configDescription": "Cron expression, time zone, and execution user."
+      },
+      "webhook": {
+        "title": "Webhook",
+        "description": "Run when an external request calls a dedicated endpoint.",
+        "configDescription": "Response mode, access, and execution user."
+      }
+    },
+    "catalog": {
+      "groups": {
+        "data": "Data",
+        "control": "Control",
+        "code": "Code",
+        "integration": "Integration",
+        "communication": "Communication",
+        "files": "Files",
+        "documents": "Documents",
+        "composition": "Composition"
+      },
+      "operations": {
+        "read-records": {
+          "label": "Read records",
+          "description": "Query a resource"
+        },
+        "create-records": {
+          "label": "Create records",
+          "description": "Insert one or more records"
+        },
+        "update-records": {
+          "label": "Update records",
+          "description": "Modify a selection"
+        },
+        "delete-records": {
+          "label": "Delete records",
+          "description": "Delete a selection"
+        },
+        "condition": {
+          "label": "Condition",
+          "description": "Branch on a filter"
+        },
+        "for-each": {
+          "label": "For each item",
+          "description": "Run a block per list item"
+        },
+        "select-case": {
+          "label": "Select case",
+          "description": "Choose among branches"
+        },
+        "finish-error": {
+          "label": "Finish with error",
+          "description": "Stop with a defined error"
+        },
+        "finish-result": {
+          "label": "Finish with result",
+          "description": "Stop with an explicit result"
+        },
+        "validate-data": {
+          "label": "Validate data",
+          "description": "Check fields, types, conditions"
+        },
+        "execute-function": {
+          "label": "Execute function",
+          "description": "Invoke a PostgreSQL function"
+        },
+        "execute-javascript": {
+          "label": "Execute JavaScript",
+          "description": "Custom logic/transformation"
+        },
+        "execute-sql": {
+          "label": "Execute SQL",
+          "description": "Run a statement as a chosen user (audit only - no permission checks)"
+        },
+        "http-request": {
+          "label": "HTTP request",
+          "description": "Call an external API"
+        },
+        "soap-request": {
+          "label": "SOAP request",
+          "description": "Call a SOAP web service"
+        },
+        "sign": {
+          "label": "Sign",
+          "description": "Sign data with a stored certificate"
+        },
+        "send-email": {
+          "label": "Send email",
+          "description": "Send a message"
+        },
+        "read-file": {
+          "label": "Read file",
+          "description": "Read an existing Asset"
+        },
+        "create-file": {
+          "label": "Create file",
+          "description": "Store generated content"
+        },
+        "parse-file": {
+          "label": "Parse CSV / JSON",
+          "description": "Convert content into data"
+        },
+        "generate-file": {
+          "label": "Generate CSV / JSON",
+          "description": "Serialize data for export"
+        },
+        "generate-pdf-template": {
+          "label": "Generate PDF from template",
+          "description": "Fill a saved pdfme template"
+        },
+        "generate-pdf": {
+          "label": "Generate PDF",
+          "description": "Build a PDF from a custom layout"
+        },
+        "execute-workflow": {
+          "label": "Execute another workflow",
+          "description": "Reuse a process"
+        },
+        "wait-resume": {
+          "label": "Wait",
+          "description": "Pause for a fixed time"
+        },
+        "process-batches": {
+          "label": "Process in batches",
+          "description": "Split a collection into fixed-size batches"
+        }
+      }
+    },
+    "triggerFields": {
+      "fieldTypes": {
+        "text": "Text",
+        "number": "Number",
+        "boolean": "Yes / no",
+        "date": "Date"
+      },
+      "forEachRow": "For each row",
+      "forEachRowDescription": "One run per affected row - {path}.",
+      "forEachStatement": "For each statement",
+      "forEachStatementDescription": "One run per write, with the list of rows - {path}.",
+      "filterInvalid": "Must be a JSON filter object.",
+      "table": "Table",
+      "tableDescription": "The table whose changes admit a run.",
+      "events": "Events",
+      "eventsDescription": "At least one event that triggers this workflow.",
+      "eventCreate": "Create",
+      "eventUpdate": "Update",
+      "eventDelete": "Delete",
+      "forEach": "For each",
+      "forEachDescription": "Like a PostgreSQL trigger's FOR EACH ROW / FOR EACH STATEMENT: a bulk write of 500 rows starts 500 runs, or one run with the 500 rows.",
+      "filter": "Filter",
+      "filterDescription": "Optional - only rows matching it (the resulting row; the deleted one on Delete). The one filter grammar, e.g. {example}.",
+      "changedFields": "Changed fields",
+      "changedFieldsDescription": "Optional, Update only - runs only when one of these columns changed.",
+      "oldFilter": "Filter on the row before",
+      "oldFilterDescription": "Optional, Update only - the row before the write must match it, e.g. {example} with Filter status PAID: runs on PENDING -> PAID.",
+      "executeAs": "Execute as",
+      "executeAsDataEvent": "The data change that admits a run has its own author, but the workflow itself always runs as this account - not as whoever made the change.",
+      "executeAsManual": "Empty: whoever runs it. A user chosen here: every run executes as them, while the caller is still recorded as who started it - invoking it stays gated by its roles.",
+      "inputForm": "Input form",
+      "inputFormDescription": "Optional - the fields a caller fills in (Run shows them as a form). A run's input is checked against them: required ones present, each of its type. None: any input is taken.",
+      "inputFieldName": "Input field {n} name",
+      "inputFieldLabel": "Input field {n} label",
+      "inputFieldType": "Input field {n} type",
+      "removeInputField": "Remove input field {n}",
+      "inputFieldsHelp": "Each field: its name - the key the workflow reads in its Start data - a label and a type.",
+      "addField": "Add a field",
+      "confirmation": "Confirmation",
+      "confirmationDescription": "Optional - asked before Run starts it, e.g. 'This sends an email to every customer.'",
+      "timezone": "Time zone",
+      "timezoneDescription": "IANA time zone used to interpret the schedule.",
+      "executeAsCron": "A scheduled run has no authenticated caller - a specific user is required.",
+      "method": "Method",
+      "methodDescription": "The HTTP method the external caller must use to invoke this endpoint.",
+      "response": "Response",
+      "responseDescription": "Synchronous waits for the workflow result. Asynchronous accepts the request and continues in the background.",
+      "sync": "Synchronous",
+      "async": "Asynchronous",
+      "waitTime": "Wait time",
+      "waitTimeDescription": "Seconds to wait for a result before applying the timeout action - never more than Settings › Workflows › Maximum synchronous wait.",
+      "onTimeout": "On timeout",
+      "onTimeoutDescription": "What happens when the wait time elapses without a result.",
+      "continueInBackground": "Continue in background",
+      "requestCancellation": "Request cancellation",
+      "access": "Access",
+      "accessDescription": "Authenticated requires a valid identity with invocation permission. Public requires an explicit execution user.",
+      "public": "Public",
+      "authenticated": "Authenticated",
+      "executeAsWebhookPublic": "Required - a public webhook has an anonymous initiator and must use a specific execution user.",
+      "executeAsWebhookAuthenticated": "Optional - defaults to the authenticated caller when left unset."
+    },
+    "cron": {
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "custom": "Custom",
+      "previewFailed": "Could not compute a preview for this schedule.",
+      "minuteOfHour": "Minute of every hour",
+      "time": "Time",
+      "daysOfWeek": "Days of week",
+      "months": "Months",
+      "monthsDescription": "Leave every month selected to run each month.",
+      "dayOfMonth": "Day of month",
+      "expression": "Cron expression",
+      "expressionDescription": "5 fields: minute hour day-of-month month day-of-week. Months JAN-DEC and weekdays SUN-SAT may be named, e.g. {example}",
+      "invalid": "Invalid cron expression.",
+      "lastOccurrence": "Last occurrence:",
+      "nextRunsIn": "Next runs ({timezone}):",
+      "nextRunsNone": "Next runs: —"
+    },
+    "conditionModal": {
+      "condition": "Condition",
+      "configureTheBranchThisNode": "Configure the branch this node evaluates.",
+      "input": "Input",
+      "anyJsonValueTheFilter": "Any JSON value the filter below evaluates. Reference another step's result with {c0} (Start included, as {c1}).",
+      "filter": "Filter",
+      "evaluatedAgainstTheInputAbove": "Evaluated against the input above. Uses the same filter grammar as row filters and Data API where[...] - a value can also use {c0}."
+    },
+    "createFileModal": {
+      "createFile": "Create file",
+      "storeGeneratedContentAsA": "Store generated content as a new Asset.",
+      "contentType": "Content type",
+      "forExampleTextPlain": "For example: text/plain",
+      "folder": "Folder",
+      "whereTheFileIsStored": "Where the file is stored. None: the root.",
+      "encoding": "Encoding",
+      "base64BinaryContentFromAnother": "Base64: binary content from another step, e.g. a PDF.",
+      "content": "Content",
+      "theAssetSContentText": "The Asset's content - text, or base64 when Encoding says so. Reference another step's result with {c0} (Start included, as {c1}).",
+      "encodingText": "Text"
+    },
+    "createRecordsModal": {
+      "createRecords": "Create records",
+      "insertOneOrMoreRecords": "Insert one or more records into a resource using the same rules as an ordinary Data API request.",
+      "resource": "Resource",
+      "onlyActiveTableResourcesWritable": "Only active TABLE resources writable (POST) by the executing principal.",
+      "records": "Records",
+      "aJsonArrayOneObject": "A JSON array - one object per record to insert. Reference another step's result with {c0} (Start included, as {c1}), array items with {c2}.",
+      "emitDatabaseEvents": "Emit database events",
+      "letThisStepSInserts": "Let this step's inserts count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+    },
+    "deleteRecordsModal": {
+      "deleteRecords": "Delete records",
+      "deleteASelectionUsingThe": "Delete a selection using the same rules as an ordinary Data API request.",
+      "resource": "Resource",
+      "onlyActiveTableResourcesWritable": "Only active TABLE resources writable (DELETE) by the executing principal.",
+      "filterWhere": "Filter (where)",
+      "whichRowsToDeleteRequired": "Which rows to delete. Required unless the setting 'Require a filter for bulk delete' is off - then empty matches every row. A filter value can reference another step's result with {c0} (Start included, as {c1}).",
+      "emitDatabaseEvents": "Emit database events",
+      "letThisStepSDeletions": "Let this step's deletions count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+    },
+    "editor": {
+      "notConfigured": "Not configured",
+      "configured": "Configured",
+      "noEvents": "no events",
+      "filtered": "Filtered",
+      "noFilter": "No filter",
+      "filteredLower": "filtered",
+      "limitN": "limit {n}",
+      "recordsCount": "{n} record | {n} records",
+      "notConfiguredLower": "not configured",
+      "allRows": "all rows",
+      "linesCount": "{n} line(s)",
+      "batchesOf": "Batches of {n}",
+      "itemsCount": "{n} item(s)",
+      "casesCount": "{n} case | {n} cases",
+      "defaultLower": "default",
+      "start": "Start",
+      "saveFailed": "Could not save workflow",
+      "deleteFailed": "Could not delete workflow",
+      "nothingToPublish": "Nothing to publish",
+      "alreadyLive": "v{version} is already live.",
+      "published": "Workflow published",
+      "publishFailed": "Could not publish workflow",
+      "updateFailed": "Could not update workflow",
+      "loadVersionFailed": "Could not load version",
+      "restored": "Restored v{version} into the draft",
+      "restoredDescription": "Nothing is published yet - publish to make it live.",
+      "restoreFailed": "Could not restore",
+      "copyCreated": "Created \"{name}\"",
+      "copyCreatedDescription": "An unpublished copy - publish it when ready.",
+      "copyFailed": "Could not create the copy",
+      "calledBy": "Called by {n}",
+      "callerLive": "live",
+      "callerDraftOnly": "draft only",
+      "run": "Run",
+      "autoDisabled": "Auto-disabled",
+      "publishBeforeEnabling": "Publish this workflow before enabling it.",
+      "autoDisabledTooltip": "Auto-disabled after {n} consecutive failed runs.",
+      "settingsUpdateFailed": "Could not update the workflow settings",
+      "accessUpdateFailed": "Could not update workflow access",
+      "stepNotSaved": "Step not saved",
+      "workflow": "Workflow",
+      "visualEditor": "Visual editor",
+      "publishAs": "Publish as v{version}?",
+      "publishDescription": "Saves the canvas as-is, then makes it the version every new run of this workflow uses.",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+      "zoomOut": "Zoom out",
+      "deleteTitle": "Delete this workflow?",
+      "deleteDescription": "Its design, every version and its run history are removed. This can't be undone. Records it already created in your own tables are NOT deleted.",
+      "disabledHint": "Disabled - no trigger admits a run. Enable it in Settings › General.",
+      "runTest": "Test",
+      "runTestDescription": "The draft as it is. Its effects are real.",
+      "runProduction": "Production",
+      "runProductionDescription": "The published version (v{version})."
+    },
+    "executeFunctionModal": {
+      "executeFunction": "Execute function",
+      "invokeAPostgresqlFunctionExposed": "Invoke a PostgreSQL function exposed by a resource.",
+      "function": "Function",
+      "onlyActiveFunctionResourcesInvokable": "Only active FUNCTION resources invokable (POST) by the executing principal.",
+      "arguments": "Arguments",
+      "aJsonObjectArgumentNames": "A JSON object - argument names mapped to their values. Reference another step's result with {c0} (Start included, as {c1})."
+    },
+    "executeJavascriptModal": {
+      "executeJavascript": "Execute JavaScript",
+      "customLogicTransformationRunAs": "Custom logic/transformation, run as its own step.",
+      "code": "Code",
+      "runsInAnIsolatedSandbox": "Runs in an isolated sandbox with `trigger` and `results` (prior steps' data) available - no filesystem/network/process access. Must return plain JSON data."
+    },
+    "executeSqlModal": {
+      "executeSql": "Execute SQL",
+      "runsARawStatementNo": "Runs a raw statement - no permission checks, only audit attribution.",
+      "noPermissionChecks": "No permission checks",
+      "thisStatementRunsDirectlyIt": "This statement runs directly - it does not go through role/permission enforcement like the Data API or other steps. Anyone who can edit this workflow can add or change it.",
+      "executeAs": "Execute as",
+      "recordedForAuditPurposesOnly": "Recorded for audit purposes only - it does not restrict what the statement can do. Empty, the run's own user.",
+      "statement": "Statement"
+    },
+    "executeWorkflowModal": {
+      "executeAnotherWorkflow": "Execute another workflow",
+      "reuseAProcess": "Reuse a process.",
+      "workflow": "Workflow",
+      "input": "Input",
+      "passedAsTheInvokedWorkflow": "Passed as the invoked workflow's own trigger data. Reference another step's result with {c0} (Start included, as {c1})."
+    },
+    "finishErrorModal": {
+      "finishWithError": "Finish with error",
+      "stopTheRunWithA": "Stop the run with a defined error - a terminal step, nothing runs after it.",
+      "message": "Message",
+      "referenceAnotherStepSResult": "Reference another step's result with {c0} (Start included, as {c1}).",
+      "code": "Code",
+      "optionalAShortMachineReadable": "Optional - a short machine-readable error code. For example: INVALID_ORDER"
+    },
+    "finishResultModal": {
+      "finishWithResult": "Finish with result",
+      "stopTheRunWithAn": "Stop the run with an explicit result - a terminal step, nothing runs after it.",
+      "result": "Result",
+      "anyJsonValueReferenceAnother": "Any JSON value. Reference another step's result with {c0} (Start included, as {c1}).",
+      "format": "Format"
+    },
+    "forEachModal": {
+      "forEachItem": "For each item",
+      "runTheBodyOncePer": "Run the body once per element of a list.",
+      "items": "Items",
+      "mustResolveToAJson": "Must resolve to a JSON array at run time. Reference another step's result with {c0} (Start included, as {c1}).",
+      "wireThisStepSItem": "Wire this step's \"Item\" output to the first step of the body, and \"Done\" to whatever runs after the loop finishes. Inside the body, reference the current element with {c0} (e.g. {c1})."
+    },
+    "generateFileModal": {
+      "generateCsvJson": "Generate CSV / JSON",
+      "serializeDataForExport": "Serialize data for export.",
+      "format": "Format",
+      "data": "Data",
+      "aJsonArrayObjectTo": "A JSON array/object to serialize (CSV format expects an array of objects). Reference another step's result with {c0} (Start included, as {c1})."
+    },
+    "generatePdfModal": {
+      "generatePdf": "Generate PDF",
+      "buildAPdfFromA": "Build a PDF from a custom pdfme design.",
+      "design": "Design",
+      "aPdfmeDesignObjectBasepdf": "A pdfme design object (basePdf + schemas) - the same shape a PDF Template stores.",
+      "format": "Format",
+      "data": "Data",
+      "aJsonObjectValuesFor": "A JSON object - values for the design's placeholders."
+    },
+    "generatePdfTemplateModal": {
+      "generatePdfFromTemplate": "Generate PDF from template",
+      "fillASavedPdfmeTemplate": "Fill a saved pdfme template's placeholders.",
+      "template": "Template",
+      "aPdfTemplateFromThe": "A PDF template from the Templates module.",
+      "data": "Data",
+      "aJsonObjectValuesFor": "A JSON object - values for the template's placeholders.",
+      "format": "Format"
+    },
+    "httpRequestModal": {
+      "httpRequest": "HTTP request",
+      "callAnExternalApi": "Call an external API.",
+      "method": "Method",
+      "url": "URL",
+      "anHttpOrHttpsUrl": "An http or https URL. Reference another step's result with {c0} (Start included, as {c1}). Private, loopback and link-local addresses are refused unless listed in Settings > Workflows.",
+      "headers": "Headers",
+      "aJsonObjectHeaderNames": "A JSON object - header names mapped to their values. A value can use {c0} too.",
+      "secretHeaders": "Secret headers",
+      "headersWhoseValueIsA": "Headers whose value is a secret from Settings > Secrets - read when the step runs, never stored in the workflow or its history (an Authorization token, an API key).",
+      "addASecretHeader": "Add a secret header",
+      "body": "Body",
+      "sentAsTheRequestBody": "Sent as the request body (ignored for GET/DELETE/HEAD/OPTIONS). Any JSON value - a string that's exactly one {c0} expression resolves to the real typed value.",
+      "secretHeaderName": "Secret header {n} name",
+      "secretHeaderSecret": "Secret header {n} secret",
+      "removeSecretHeader": "Remove secret header {n}"
+    },
+    "soapRequestModal": {
+      "soapRequest": "SOAP request",
+      "callASoapWebService": "Call one operation of a SOAP web service.",
+      "url": "Endpoint URL",
+      "theServiceEndpoint": "The service's endpoint (not its WSDL), an http or https URL. {c0} is supported. Private, loopback and link-local addresses are refused unless listed in Settings > Workflows.",
+      "version": "SOAP version",
+      "operation": "Operation",
+      "theOperationsElementName": "The operation's element name, as the WSDL names it - FECAESolicitar, getPersona.",
+      "namespace": "Namespace",
+      "theOperationsXmlNamespace": "The operation's XML namespace, from the WSDL's targetNamespace.",
+      "soapAction": "SOAPAction",
+      "theSoapActionHeader": "The SOAPAction the WSDL declares for the operation. Leave it empty when the WSDL declares an empty one.",
+      "body": "Body",
+      "aJsonObjectTheParameters": "A JSON object - the operation's parameters, turned into XML by the server. A key is an element name, an array repeats the element, null leaves it out. A value can use {c0}.",
+      "arrays": "List elements",
+      "elementsAlwaysReadAsAList": "Element names of the response always read as a list, comma-separated - so a step reads the same shape whether the service answered one or many.",
+      "soapHeaders": "SOAP headers",
+      "aJsonObjectSentInTheEnvelopesHeader": "A JSON object sent in the envelope's Header, the same way as the body. A value can use {c0}.",
+      "httpHeaders": "HTTP headers",
+      "aJsonObjectHttpHeaderNames": "A JSON object - HTTP header names mapped to their values. A value can use {c0}.",
+      "secretHeaders": "Secret headers",
+      "httpHeadersWhoseValueIsA": "HTTP headers whose value is a secret from Settings > Secrets - read when the step runs, never stored in the workflow or its history.",
+      "addASecretHeader": "Add a secret header",
+      "secretHeaderName": "Secret header {n} name",
+      "secretHeaderSecret": "Secret header {n} secret",
+      "removeSecretHeader": "Remove secret header {n}"
+    },
+    "signModal": {
+      "sign": "Sign",
+      "signDataWithAStoredCertificate": "Sign a text with a certificate and its private key from Settings > Secrets.",
+      "format": "Format",
+      "cmsDescription": "CMS / PKCS#7 SignedData: the text attached, the certificate included, SHA-256, DER in base64 - what openssl cms -sign produces and a WSAA login takes.",
+      "data": "Data",
+      "theTextToSign": "The text to sign, usually built by an earlier step: {c0}.",
+      "certificate": "Certificate",
+      "aSecretHoldingThePemCertificate": "The secret holding the certificate, in PEM (-----BEGIN CERTIFICATE-----).",
+      "privateKey": "Private key",
+      "aSecretHoldingThePemKey": "The secret holding the certificate's private key, in PEM. An RSA key.",
+      "passphrase": "Passphrase",
+      "onlyWhenTheKeyIsEncrypted": "Only when the private key is encrypted: the secret holding its passphrase."
+    },
+    "json": {
+      "mustBeObject": "Must be a JSON object.",
+      "invalid": "Invalid JSON."
+    },
+    "parseFileModal": {
+      "parseCsvJson": "Parse CSV / JSON",
+      "convertAFileSContent": "Convert a File's content into data.",
+      "file": "File",
+      "aFileIdReferenceAnother": "A File id. Reference another step's result with {c0} (e.g. {c1}).",
+      "browse": "Browse",
+      "format": "Format"
+    },
+    "processBatchesModal": {
+      "processInBatches": "Process in batches",
+      "splitACollectionIntoFixed": "Split a collection into fixed-size batches.",
+      "batchSize": "Batch size",
+      "source": "Source",
+      "mustResolveToAJson": "Must resolve to a JSON array - split into batches of the configured size. Reference another step's result with {c0} (Start included, as {c1}).",
+      "wireThisStepSBatch": "Wire this step's \"Batch\" output to the first step of the body, and \"Done\" to whatever runs after every batch finishes. Inside the body, reference the current batch with {c0} (e.g. {c1})."
+    },
+    "readFileModal": {
+      "readFile": "Read file",
+      "readAnExistingFile": "Read an existing File.",
+      "file": "File",
+      "aFileIdReferenceAnother": "A File id. Reference another step's result with {c0} (e.g. {c1}).",
+      "browse": "Browse"
+    },
+    "readRecordsModal": {
+      "readRecords": "Read records",
+      "queryAResourceUsingThe": "Query a resource using the same rules as an ordinary Data API request.",
+      "resource": "Resource",
+      "onlyActiveTableViewResources": "Only active TABLE/VIEW resources readable by the executing principal.",
+      "query": "Query",
+      "fieldsFilterSearchGroupingOrdering": "Fields, filter, search, grouping, ordering, limit/offset. A filter value can reference another step's result with {c0} (Start included, as {c1})."
+    },
+    "selectCaseModal": {
+      "selectCase": "Select case",
+      "branchOnTheFirstMatching": "Branch on the first matching case, in order.",
+      "input": "Input",
+      "anyJsonValueEachCase": "Any JSON value each case's filter below evaluates. Reference another step's result with {c0} (Start included, as {c1}).",
+      "addCase": "Add case",
+      "caseName": "Case name",
+      "filter": "Filter",
+      "defaultBranch": "Default branch",
+      "catchesAnyInputThatMatched": "Catches any input that matched no case above. Without it, an unmatched input fails this step (follows its Error output, if wired).",
+      "evaluatedInOrderTheFirst": "Evaluated in order - the first case whose filter matches wins. Reorder with the arrows. Each case has a name (for example: high_value) that later steps branch on.",
+      "cases": "Cases",
+      "caseNamePattern": "Lowercase letters, digits, underscore - must start with a letter.",
+      "reservedName": "Reserved name.",
+      "duplicateName": "Duplicate case name.",
+      "filterEmpty": "Filter cannot be empty."
+    },
+    "sendEmailModal": {
+      "sendEmail": "Send email",
+      "sendAMessage": "Send a message.",
+      "to": "To",
+      "commaSeparatedRecipientAddressesReferenc": "Comma-separated recipient addresses. Reference another step's result with {c0} (Start included, as {c1}).",
+      "cc": "Cc",
+      "bcc": "Bcc",
+      "replyTo": "Reply-to",
+      "commaSeparatedAddresses": "Comma-separated addresses.",
+      "whereRepliesToThisMessage": "Where replies to this message should go, if different from the sender.",
+      "content": "Content",
+      "template": "Template",
+      "anEmailTemplateFromTemplates": "An email template from Templates. The workflow's executor needs READ on it.",
+      "data": "Data",
+      "aJsonObjectWithA": "A JSON object with a value for every {c0} the template's subject and message use (nested fields as {c1}). A missing one fails the step. Values may reference another step's result with {c2}.",
+      "format": "Format",
+      "subject": "Subject",
+      "bodyType": "Body type",
+      "attachments": "Attachments",
+      "fileIdsOrAnotherStep": "File ids, or another step's result with {c0} (e.g. {c1}). The executor needs READ on each file; at most 10, 20 MB together.",
+      "browse": "Browse",
+      "bodyText": "Text",
+      "bodyBoth": "Both",
+      "writeMessage": "Write a message",
+      "useTemplate": "Use a template",
+      "textBody": "Text body",
+      "body": "Body",
+      "textBodyDescription": "Plain-text fallback for clients that cannot render HTML.",
+      "htmlBody": "HTML body"
+    },
+    "updateRecordsModal": {
+      "updateRecords": "Update records",
+      "modifyASelectionUsingThe": "Modify a selection using the same rules as an ordinary Data API request.",
+      "resource": "Resource",
+      "onlyActiveTableResourcesWritable": "Only active TABLE resources writable (PATCH) by the executing principal.",
+      "filterWhere": "Filter (where)",
+      "whichRowsToUpdateRequired": "Which rows to update. Required unless the setting 'Require a filter for bulk update' is off - then empty matches every row. A filter value can reference another step's result with {c0} (Start included, as {c1}).",
+      "set": "Set",
+      "aJsonObjectColumnNames": "A JSON object - column names mapped to their new values. Reference another step's result with {c0} (Start included, as {c1}).",
+      "emitDatabaseEvents": "Emit database events",
+      "letThisStepSUpdates": "Let this step's updates count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+    },
+    "validateDataModal": {
+      "validateData": "Validate data",
+      "checkAValueAgainstRules": "Check a value against rules - continues on Success, or fails with every broken rule's message.",
+      "input": "Input",
+      "anyJsonValueTheRules": "Any JSON value the rules below check. Reference another step's result with {c0} (Start included, as {c1}).",
+      "filter": "Filter",
+      "mustMatchTheInputA": "Must match the input. A value can also use {c0}.",
+      "message": "Message",
+      "reportedWhenThisRuleFails": "Reported when this rule fails. Empty reports 'Rule N failed.'",
+      "addRule": "Add rule",
+      "eachRuleIsAFilter": "Each rule is a filter over the input - the same grammar as row filters and Data API where[...]. Every rule must hold; each one that doesn't reports its message.",
+      "rules": "Rules",
+      "ruleN": "Rule {n}",
+      "removeRuleN": "Remove rule {n}"
+    },
+    "waitResumeModal": {
+      "waitResume": "Wait / Resume",
+      "suspendTheRunForA": "Suspend the run for a fixed time before continuing.",
+      "waitTime": "Wait time",
+      "secondsToSuspendBeforeThe": "Seconds to suspend before the next step runs."
+    },
+    "workflowHistoryFields": {
+      "executionHistory": "Execution history",
+      "offARunIsKept": "Off: a run is kept only 24 hours after it finishes, for a workflow whose runs needn't be kept.",
+      "keepExecutionHistory": "Keep execution history",
+      "historyLevel": "History level",
+      "summaryRecordsExecutedStepsDetailed": "Summary records executed steps; Detailed also retains permitted inputs and results.",
+      "levels": {
+        "summary": "SUMMARY",
+        "detailed": "DETAILED"
+      }
+    },
+    "workflowInvokeRolesField": {
+      "rolesThatMayInvokeThis": "Roles that may invoke this workflow",
+      "administratorsCanAlwaysInvokeAny": "Administrators can always invoke any workflow. With no role allowed, only they can.",
+      "onlyMattersForManualCron": "Only matters for Manual/Cron/Webhook triggers",
+      "aDataEventTriggerNever": "A Data event trigger never checks this - it always runs as its own configured user, regardless of who caused the underlying mutation."
+    },
+    "workflowRunModal": {
+      "triggerInput": "Trigger input",
+      "anyJsonValueTheRun": "Any JSON value - the run reads it as {c0}, as a Manual trigger's caller would send it.",
+      "format": "Format",
+      "running": "Running…",
+      "theRunDidNotStart": "The run did not start",
+      "runResult": "Run result",
+      "openInLogs": "Open in Runs",
+      "runIt": "Run it",
+      "theRunRecordedNoSteps": "The run recorded no steps.",
+      "steps": "Steps",
+      "testRunTitle": "Test run",
+      "runTitle": "Run",
+      "testDescription": "Runs the saved draft as you - a real run: its writes and side effects happen. Marked TEST; nothing is published or enabled.",
+      "scheduledDescription": "Runs the published version{version} now, exactly as its schedule would: as its execution user, with the schedule data ({path}, started_at, timezone) as input.",
+      "productionDescription": "Runs the published version{version} in production, as you.",
+      "draftNotSavedReason": "The draft could not be saved, so it was not run: {reason}",
+      "draftNotSaved": "The draft could not be saved, so it was not run.",
+      "couldNotStart": "The run could not start.",
+      "runTest": "Run test"
+    },
+    "workflowRunStepDetail": {
+      "started": "Started",
+      "finished": "Finished",
+      "output": "Output",
+      "input": "Input",
+      "result": "Result",
+      "error": "Error"
+    },
+    "workflowRunSummaryCard": {
+      "handledErrors": "Handled errors",
+      "summaryHistory": "Summary history",
+      "started": "Started",
+      "finished": "Finished",
+      "duration": "Duration",
+      "result": "Result"
+    },
+    "workflowStepCard": {
+      "stepActions": "Step actions",
+      "deleteStepsTitle": "Delete steps",
+      "deleteStepTitle": "Delete step",
+      "deleteWithDownstream": "Delete \"{title}\" and {n} downstream step? | Delete \"{title}\" and {n} downstream steps?",
+      "deleteOne": "Delete \"{title}\"?",
+      "removesFollowing": "This removes every step that follows it in the tree.",
+      "removesStep": "This removes the step from the workflow.",
+      "cannotUndo": "This can't be undone.",
+      "deleteNSteps": "Delete {n} steps"
+    },
+    "workflowStepKeyField": {
+      "stepId": "Step ID",
+      "shortIdOtherStepsUse": "Short id other steps use to reference this one's output later. Letters, numbers, underscores only. For example: read_brands",
+      "required": "Required.",
+      "reservedStart": "\"start\" is reserved for the trigger step.",
+      "reservedItem": "\"item\" is reserved for the current loop item in {expression} expressions.",
+      "reservedError": "\"error\" is reserved for the handled error in {expression} expressions.",
+      "alreadyUsed": "Already used by another step."
+    },
+    "workflowTree": {
+      "outputs": {
+        "true": "True",
+        "false": "False",
+        "item": "Item",
+        "batch": "Batch",
+        "done": "Done",
+        "default": "Default",
+        "error": "Error",
+        "success": "Success",
+        "addStep": "Add step"
+      },
+      "limitReached": "A workflow holds at most {max} steps"
+    },
+    "wizard": {
+      "identity": {
+        "title": "Identification",
+        "description": "Name, description, and slug."
+      },
+      "trigger": {
+        "title": "Triggering event",
+        "description": "What admits a run of this workflow."
+      },
+      "triggerConfig": {
+        "title": "Configuration",
+        "description": "Pick a triggering event first."
+      },
+      "access": {
+        "title": "Access",
+        "description": "Which roles may invoke this workflow."
+      },
+      "audit": {
+        "title": "Run retention",
+        "description": "Execution history preference."
+      }
+    },
+    "newModal": {
+      "createFailed": "Could not create workflow",
+      "title": "New workflow",
+      "description": "The workflow is created before opening its visual editor.",
+      "notActivatedTitle": "Creating never activates this workflow",
+      "notActivatedDescription": "Publish it from the editor once its design is ready."
+    },
+    "tree": {
+      "noTrigger": "No trigger",
+      "newWorkflow": "New workflow",
+      "searchAria": "Search workflows",
+      "searchPlaceholder": "Search...",
+      "loadFailed": "Could not load workflows",
+      "empty": "No workflows found."
+    },
+    "index": {
+      "title": "Select a workflow",
+      "description": "Choose a workflow from the sidebar, or create a new one."
+    },
+    "settings": {
+      "sections": {
+        "nav": "Workflow settings",
+        "general": "General",
+        "trigger": "Trigger",
+        "security": "Security",
+        "runs": "Runs",
+        "versions": "Versions"
+      },
+      "design": "Workflow design",
+      "appliesAtOnce": "Changes on this tab apply at once - no Publish needed.",
+      "appliesOnPublish": "The trigger is versioned: a change reaches production on the next Publish.",
+      "enabledHelp": "Off, no trigger admits a run - the schedule, the data events and the webhook are silent; Test run still works.",
+      "retention": "Run retention"
+    },
+    "runs": {
+      "noun": "run",
+      "nounPlural": "runs",
+      "noRuns": "No runs yet",
+      "draft": "Draft",
+      "loadError": "Could not load the run",
+      "runDetail": "Run",
+      "stepDetail": "Step",
+      "backToRun": "Back to run",
+      "auditEntries": "Audit entries",
+      "cancelRun": "Cancel run",
+      "steps": "Steps",
+      "noSteps": "No step history retained for this run.",
+      "summaryHistory": "This run kept Summary history - no input or result per step, so there is no detail to open. Set Detailed history (Settings › General) before running it to see this.",
+      "cancelRequested": "Cancel requested",
+      "cancelRequestedDescription": "The run stops after the step in progress.",
+      "cancelFailed": "Could not cancel the run",
+      "openInRuns": "Open in Runs",
+      "columns": {
+        "trigger": "Trigger",
+        "mode": "Mode",
+        "version": "Version",
+        "started": "Started",
+        "duration": "Duration",
+        "initiator": "Started by",
+        "error": "Error"
+      },
+      "filters": {
+        "all": "All",
+        "period": "Period"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "RUNNING": "Running",
+        "SUCCEEDED": "Succeeded",
+        "FAILED": "Failed",
+        "CANCELLED": "Cancelled",
+        "INTERRUPTED": "Interrupted"
+      },
+      "trigger": {
+        "MANUAL": "Manual",
+        "CRON": "Schedule",
+        "WEBHOOK": "Webhook",
+        "DATA_EVENT": "Data event"
+      },
+      "mode": {
+        "PRODUCTION": "Production",
+        "TEST": "Test"
+      },
+      "period": {
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "all": "All time"
+      },
+      "initiator": {
+        "apiKey": "API token",
+        "cron": "Schedule",
+        "webhook": "Webhook",
+        "publicWebhook": "Public webhook",
+        "dataEvent": "Data event",
+        "workflow": "Another workflow",
+        "system": "System"
+      }
+    }
+  }
+}

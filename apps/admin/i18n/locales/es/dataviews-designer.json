@@ -1,0 +1,3088 @@
+{
+  "designer": {
+    "affectedDataViewsModal": {
+      "clearAll": "Quitar todo",
+      "description": "Sus borradores ya lo muestran; sus espectadores siguen viendo la versión publicada hasta que se publique de nuevo.",
+      "leaveUnpublished": "Dejar sin publicar",
+      "live": "En vivo: v{version}",
+      "otherChanges": "Tiene otros cambios sin publicar - publícalo desde su propia página.",
+      "publishError": "No se pudo publicar",
+      "publishNow": "Publicar ahora",
+      "published": "{n} DataView publicado | {n} DataViews publicados",
+      "selectAll": "Seleccionar todo",
+      "title": "DataViews publicados a los que llega este cambio"
+    },
+    "bindingButton": {
+      "bindLabel": "Vincular {label}",
+      "boundTooltip": "{label} está vinculado - haz clic para editar",
+      "cannotBind": "{label} no se puede vincular aquí.",
+      "collapseRelated": "Contraer las columnas relacionadas de {column}",
+      "errorResult": "Error: {error}",
+      "exampleHint": "p. ej.",
+      "examples": "Ejemplos",
+      "examplesDescription": "Haz clic en una fila para insertarla en el cursor o la selección. El resultado se calcula en vivo con un registro de ejemplo fijo.",
+      "examplesTitle": "Ejemplos de fórmulas",
+      "expandRelated": "Expandir las columnas relacionadas de {column}",
+      "fields": "Campos",
+      "format": "Formato",
+      "functions": "Funciones",
+      "iconHint": "{signature} - por ahora solo iconos de Lucide",
+      "loadColumnsError": "No se pudieron cargar las columnas.",
+      "modalDescription": "Una fórmula evaluada con los valores de los campos de este registro - si está vacía o no se puede interpretar, se usa el valor fijo de {label} indicado arriba.",
+      "noMatch": "Ningún ejemplo coincide con \"{search}\".",
+      "removeBinding": "Quitar vínculo",
+      "sampleRecord": "Registro de ejemplo usado",
+      "searchExamples": "Buscar ejemplos...",
+      "types": {
+        "boolean": "Booleano",
+        "date": "Fecha",
+        "format": "Formato",
+        "numeric": "Numérico",
+        "text": "Texto"
+      },
+      "unboundTooltip": "Vincular {label} a una fórmula"
+    },
+    "cameraFeed": {
+      "problems": {
+        "denied": "Se negó el permiso de cámara - permítelo en el navegador para usarla.",
+        "failed": "No se pudo abrir la cámara.",
+        "insecure": "El navegador solo abre la cámara con HTTPS (o en localhost).",
+        "missing": "No se encontró una cámara en este equipo.",
+        "unsupported": "Este navegador no tiene acceso a la cámara."
+      },
+      "unavailable": "Cámara no disponible"
+    },
+    "catalog": {
+      "groups": {
+        "action": "Acciones",
+        "container": "Diseño",
+        "display": "Visualización",
+        "embed": "Inserción",
+        "form": "Formulario",
+        "input": "Entradas",
+        "overlay": "Superposiciones"
+      },
+      "sharedProps": {
+        "accept": {
+          "description": "Tipos de archivo que se aceptan, p. ej. image/*,.pdf",
+          "label": "Tipos aceptados"
+        },
+        "actions": {
+          "description": "Botones de icono al final de cada fila - Acción pulsada indica cuál por su Nombre; cada uno puede desactivarse u ocultarse con una fórmula por fila.",
+          "label": "Acciones de fila"
+        },
+        "align": {
+          "description": "Su texto y sus botones, de izquierda a derecha.",
+          "label": "Alinear contenido"
+        },
+        "alt": {
+          "label": "Texto alternativo"
+        },
+        "arrow": {
+          "description": "Una pequeña flecha que apunta a lo que lo abrió.",
+          "label": "Flecha"
+        },
+        "autoresize": {
+          "description": "Se hace más alto a medida que crece el texto, en lugar de desplazarse.",
+          "label": "Crecer con el texto"
+        },
+        "avatar": {
+          "description": "La URL de la imagen de su avatar - vacía muestra las iniciales del nombre.",
+          "label": "Imagen"
+        },
+        "background": {
+          "description": "El color de su caja - el del tema, claro y oscuro.",
+          "label": "Fondo"
+        },
+        "block": {
+          "description": "Su entrada ocupa todo el campo - ajusta el ancho del campo y la entrada lo sigue.",
+          "label": "Ancho completo"
+        },
+        "border": {
+          "description": "Una línea alrededor de su caja.",
+          "label": "Borde"
+        },
+        "calendar": {
+          "description": "Un botón de calendario junto al campo - sus días se detienen en los límites del CHECK de la columna; la hora de un timestamp debajo. Se puede seguir escribiendo.",
+          "label": "Calendario"
+        },
+        "clear": {
+          "description": "Una ✕ que vacía el valor.",
+          "label": "Botón de borrar"
+        },
+        "clearable": {
+          "description": "Una ✕ que vacía el valor.",
+          "label": "Botón de borrar"
+        },
+        "close": {
+          "description": "Una ✕ en su esquina que lo cierra.",
+          "label": "Botón de cerrar"
+        },
+        "color": {
+          "description": "Uno de los colores del tema - primary, error, success...",
+          "label": "Color"
+        },
+        "colorKey": {
+          "description": "El color del icono de cada opción, uno de los del tema (primary, success, warning...) - un campo, o una fórmula: {'{'}{'{'}balance{'}'}{'}'} < 0 ? \"error\" : \"success\".",
+          "label": "Campo de color"
+        },
+        "column": {
+          "description": "Una columna del registro de la página: su entrada edita record.data.<column>. El NOT NULL de PostgreSQL lo hace obligatorio, y es de solo lectura donde el usuario no puede escribirla.",
+          "label": "Vinculado por"
+        },
+        "columnSettings": {
+          "description": "El título, el formato y el aspecto de cada columna - lo que no se define viene de la columna de su recurso. En el orden de sus Filas; una oculta sigue llegando en la fila de Fila pulsada.",
+          "label": "Columnas"
+        },
+        "columns": {
+          "description": "Opciones por fila - el resto pasa debajo. Dos por fila en un teléfono.",
+          "label": "Columnas"
+        },
+        "computedColumns": {
+          "description": "Una fórmula por fila - {'{'}{'{'}quantity{'}'}{'}'} * {'{'}{'{'}unit_price{'}'}{'}'} - que se muestra tras los campos de sus Filas; su aspecto, en Columnas. Un total que debe cuadrar corresponde a PostgreSQL.",
+          "label": "Columnas calculadas"
+        },
+        "contentType": {
+          "label": "Tipo de contenido"
+        },
+        "createItem": {
+          "description": "Opciones de un Recurso: escribir un valor que no está en la lista ofrece Crear - una fila nueva de su tabla con ese valor en su Campo de etiqueta, guardada como el usuario (con su permiso CREATE) y luego elegida. PostgreSQL decide si la fila es válida.",
+          "label": "Crear desde la búsqueda"
+        },
+        "cssClass": {
+          "description": "Clases de Tailwind en su caja, además de las de la pestaña Estilo - espaciado, texto, disposición.",
+          "label": "Clases CSS"
+        },
+        "dashboard": {
+          "description": "Un Dashboard publicado. Quién lo ve lo decide el propio Dashboard: un usuario sin acceso ve que no está disponible.",
+          "label": "Dashboard"
+        },
+        "data": {
+          "label": "Filas"
+        },
+        "dataview": {
+          "description": "Un DataView publicado sobre la tabla de detalle: su cuadrícula muestra las filas y su formulario de registro edita cada una.",
+          "label": "DataView"
+        },
+        "defaultOpen": {
+          "description": "Empieza expandido.",
+          "label": "Abierto al inicio"
+        },
+        "description": {
+          "label": "Descripción"
+        },
+        "descriptionKey": {
+          "description": "Se muestra atenuado bajo la etiqueta - un campo, o una fórmula sobre sus campos.",
+          "label": "Campo de descripción"
+        },
+        "disabled": {
+          "description": "Se muestra atenuado - no se puede usar.",
+          "label": "Desactivado"
+        },
+        "disabledKey": {
+          "description": "Desactiva una opción - un campo true/false, o una fórmula sobre sus campos y la página: {'{'}{'{'}id{'}'}{'}'} == 5 && !{'{'}{'{'}vars.customer.data.active{'}'}{'}'}.",
+          "label": "Campo de desactivación"
+        },
+        "dismissible": {
+          "description": "Se cierra cuando el usuario hace clic fuera.",
+          "label": "Cerrar al hacer clic fuera"
+        },
+        "empty": {
+          "label": "Texto vacío"
+        },
+        "error": {
+          "label": "Error"
+        },
+        "expandable": {
+          "description": "Un botón que lo agranda a casi toda la pantalla.",
+          "label": "Botón de expandir"
+        },
+        "fillHeight": {
+          "description": "Toma el alto que le queda a la página, para que todo quepa en pantalla - las filas de un Detalle, un editor. Su propio alto pasa a ser el mínimo que ocupa.",
+          "label": "Ocupar el alto"
+        },
+        "filter": {
+          "description": "Un cuadro de búsqueda sobre las opciones.",
+          "label": "Cuadro de filtro"
+        },
+        "fullscreen": {
+          "description": "Cubre toda la pantalla.",
+          "label": "Pantalla completa"
+        },
+        "granularity": {
+          "description": "La de un timestamp: al minuto si no se define. Una columna date siempre es al día.",
+          "label": "Precisión"
+        },
+        "help": {
+          "label": "Ayuda"
+        },
+        "highlight": {
+          "description": "Con contorno en su color, para llamar la atención.",
+          "label": "Resaltar"
+        },
+        "hint": {
+          "label": "Pista"
+        },
+        "htmlAttrs": {
+          "description": "Atributos adicionales en el widget, p. ej. data-test o title.",
+          "label": "Atributos HTML"
+        },
+        "icon": {
+          "description": "Un icono al inicio.",
+          "label": "Icono"
+        },
+        "iconKey": {
+          "description": "El icono de cada opción, p. ej. i-lucide-banknote - un campo, o una fórmula sobre sus campos.",
+          "label": "Campo de icono"
+        },
+        "iconSize": {
+          "description": "El icono de cada opción - de sm a 2xl; vacío mantiene el de Nuxt UI.",
+          "label": "Tamaño del icono"
+        },
+        "indicator": {
+          "description": "Dónde va su punto - hidden muestra en su lugar el icono de cada opción, como las tarjetas.",
+          "label": "Indicador"
+        },
+        "inset": {
+          "description": "Flota con un margen respecto al borde de la pantalla.",
+          "label": "Separado del borde"
+        },
+        "items": {
+          "description": "Su etiqueta puede ser una fórmula - \"Items (\" + {'{'}{'{'}vars.items.count{'}'}{'}'} + \")\"; una desactivada hasta elegir un cliente, otra visible solo para algunos.",
+          "label": "Opciones"
+        },
+        "keepActive": {
+          "label": "Oculto, sigue activo",
+          "description": "Oculto por Visible, sigue en la página sin verse - sus métodos y lo que escucha siguen funcionando: un escáner que escucha la página, un modal que se abre por código."
+        },
+        "label": {
+          "label": "Etiqueta"
+        },
+        "labelKey": {
+          "description": "El campo que se muestra de cada opción - o una fórmula sobre sus campos, p. ej. {'{'}{'{'}sku{'}'}{'}'} + \" - \" + {'{'}{'{'}name{'}'}{'}'}; su Recurso debe leerlos.",
+          "label": "Campo de etiqueta"
+        },
+        "legend": {
+          "label": "Leyenda"
+        },
+        "length": {
+          "label": "Longitud"
+        },
+        "level": {
+          "label": "Nivel"
+        },
+        "loading": {
+          "description": "Muestra un indicador de carga mientras algo está ocupado.",
+          "label": "Cargando"
+        },
+        "loadingAuto": {
+          "description": "Su botón de envío muestra un indicador de carga mientras se ejecuta el manejador de envío.",
+          "label": "Ocupado al enviar"
+        },
+        "margin": {
+          "label": "Margen"
+        },
+        "marginBottom": {
+          "label": "Margen inferior"
+        },
+        "marginLeft": {
+          "label": "Margen izquierdo"
+        },
+        "marginRight": {
+          "label": "Margen derecho"
+        },
+        "marginTop": {
+          "label": "Margen superior"
+        },
+        "mask": {
+          "description": "Oculta lo que se escribe, como una contraseña.",
+          "label": "Máscara"
+        },
+        "max": {
+          "label": "Máximo"
+        },
+        "maxLength": {
+          "label": "Longitud máxima"
+        },
+        "maxrows": {
+          "label": "Máximo de filas"
+        },
+        "min": {
+          "label": "Mínimo"
+        },
+        "mode": {
+          "label": "Se abre con"
+        },
+        "modelValue": {
+          "description": "Una variable Valor que lee y escribe - o una fórmula (el vínculo): se muestra de solo lectura y no se escribe en ningún sitio, p. ej. {'{'}{'{'}controls.selectCustomer.item.tax_id{'}'}{'}'}.",
+          "label": "Valor"
+        },
+        "multiple": {
+          "description": "Elige varias opciones - su valor es una lista.",
+          "label": "Múltiple"
+        },
+        "name": {
+          "description": "La clave de su valor en los datos del formulario - por convención, la columna en la que se guarda. Vacío: su columna o, si no tiene, la variable de la entrada.",
+          "label": "Nombre"
+        },
+        "newLabel": {
+          "label": "Botón Nuevo"
+        },
+        "openInNewTab": {
+          "description": "Un botón encima que abre la misma página en una pestaña nueva.",
+          "label": "Abrir en una pestaña nueva"
+        },
+        "orientation": {
+          "description": "Dispuesto en una fila o en una columna.",
+          "label": "Orientación"
+        },
+        "padding": {
+          "label": "Relleno"
+        },
+        "paddingBottom": {
+          "label": "Relleno inferior"
+        },
+        "paddingLeft": {
+          "label": "Relleno izquierdo"
+        },
+        "paddingRight": {
+          "label": "Relleno derecho"
+        },
+        "paddingTop": {
+          "label": "Relleno superior"
+        },
+        "pager": {
+          "description": "Pagina el Recurso de sus Filas en el servidor - su límite es el tamaño de página; con Contar el total, también el total.",
+          "label": "Paginador"
+        },
+        "paging": {
+          "description": "Desactivado: todas las filas a la vez - las líneas de un registro.",
+          "label": "Páginas"
+        },
+        "editInline": {
+          "label": "Editar en la grilla",
+          "description": "Vinculado por una columna: sus filas se editan en el lugar (Tab pasa de celda en celda; Tab después de la última agrega una) y se guardan con el registro de la página, en una transacción. Apagado: cada fila en su propio formulario."
+        },
+        "pattern": {
+          "description": "Una expresión regular (JavaScript) que todo el valor debe cumplir - se comprueba mientras el usuario escribe, junto con el propio CHECK de la columna. PostgreSQL sigue decidiendo al guardar; un valor vacío queda en manos de Obligatorio.",
+          "label": "Patrón"
+        },
+        "patternMessage": {
+          "description": "Se muestra bajo el campo cuando el valor no coincide. Vacío: Formato no válido.",
+          "label": "Mensaje del patrón"
+        },
+        "radius": {
+          "description": "Las esquinas redondeadas de su caja.",
+          "label": "Radio"
+        },
+        "range": {
+          "description": "Elige una fecha de inicio y una de fin.",
+          "label": "Rango de fechas"
+        },
+        "readOnly": {
+          "description": "Aquí no hay Nuevo, edición ni borrado - las líneas de una factura emitida: {'{'}{'{'}vars.record.data.status{'}'}{'}'} == \"ISSUED\".",
+          "label": "Solo lectura"
+        },
+        "readonly": {
+          "description": "Se muestra, pero no se puede cambiar.",
+          "label": "Solo lectura"
+        },
+        "required": {
+          "description": "Necesita un valor antes de enviar el formulario - una columna NOT NULL ya lo exige.",
+          "label": "Obligatorio"
+        },
+        "rowColorKey": {
+          "description": "Tiñe cada fila - un campo con un color de la paleta (red, green...), o una fórmula: {'{'}{'{'}vencida{'}'}{'}'} ? \"red\" : \"\".",
+          "label": "Color de fila"
+        },
+        "rows": {
+          "label": "Filas"
+        },
+        "scrollable": {
+          "description": "Se desplaza todo el modal, no solo su cuerpo.",
+          "label": "Desplazar todo el modal"
+        },
+        "search": {
+          "description": "Un cuadro de búsqueda sobre el Recurso de sus Filas - el servidor busca en sus campos de texto.",
+          "label": "Búsqueda"
+        },
+        "searchBlock": {
+          "description": "El cuadro de búsqueda tan ancho como la tabla - en un modal o una barra lateral.",
+          "label": "Búsqueda a todo el ancho"
+        },
+        "searchWindow": {
+          "label": "Ventana de búsqueda",
+          "description": "Opciones de un Recurso: una 🔍 al lado las abre como tabla - los campos de su Recurso como columnas, buscadas y paginadas en el servidor - para elegir una por cualquiera de ellos. Para listas largas."
+        },
+        "searchWindowAs": {
+          "label": "Ventana de búsqueda como",
+          "description": "Dónde se abre la ventana de búsqueda - un panel lateral (por defecto, con lugar para una lista larga) o un modal. Pantalla completa en un teléfono."
+        },
+        "shadow": {
+          "description": "Despega su caja de la página.",
+          "label": "Sombra"
+        },
+        "side": {
+          "label": "Lado"
+        },
+        "size": {
+          "description": "De xs a xl - por defecto, md.",
+          "label": "Tamaño"
+        },
+        "square": {
+          "description": "Tan ancho como alto - para un icono solo.",
+          "label": "Cuadrado"
+        },
+        "src": {
+          "label": "Imagen"
+        },
+        "startExpanded": {
+          "description": "Se abre a casi toda la pantalla - para contenido que necesita espacio.",
+          "label": "Abrir expandido"
+        },
+        "status": {
+          "description": "Muestra el valor como número junto a la barra.",
+          "label": "Mostrar el valor"
+        },
+        "step": {
+          "label": "Paso"
+        },
+        "sticky": {
+          "description": "Los títulos de las columnas siguen a la vista al desplazarse.",
+          "label": "Cabecera fija"
+        },
+        "text": {
+          "label": "Iniciales"
+        },
+        "title": {
+          "description": "Lo que muestra el marco, para lectores de pantalla.",
+          "label": "Título"
+        },
+        "tooltip": {
+          "description": "Muestra el valor sobre el control mientras se arrastra.",
+          "label": "Tooltip"
+        },
+        "trailingIcon": {
+          "description": "Un icono al final.",
+          "label": "Icono final"
+        },
+        "type": {
+          "description": "La entrada propia del navegador para él - datetime-local muestra un timestamp con zona horaria en la del usuario.",
+          "label": "Tipo"
+        },
+        "url": {
+          "description": "https://… - un valor va donde hay un token: https://tracking.example/shipments/{'{'}{'{'}vars.record.data.tracking_id{'}'}{'}'}. El sitio en sí es fijo (tokens solo después de la / que lo sigue), cada valor se codifica para URL y los valores se envían a ese sitio.",
+          "label": "URL"
+        },
+        "validate": {
+          "description": "Una función de Código (dataview, {'{'} data {'}'}) que devuelve {'{'} errors: [{'{'} field, message {'}'}] {'}'} - puede ser async.",
+          "label": "Validar"
+        },
+        "valueKey": {
+          "description": "El campo de cada opción que se guarda - su clave primaria por defecto.",
+          "label": "Campo de valor"
+        },
+        "variables": {
+          "description": "Una fórmula por variable, p. ej. {'{'}{'{'}vars.record.data.id{'}'}{'}'} - las que se fijan se ocultan de su barra; el resto las elige el usuario.",
+          "label": "Variables"
+        },
+        "variant": {
+          "description": "Su estilo: relleno, con contorno, suave...",
+          "label": "Variante"
+        },
+        "verticalAlign": {
+          "description": "Dónde se ubica en su fila, junto a un widget más alto. Con estirar, una Card o un Box toma el alto de la fila, parejo con el de al lado.",
+          "label": "Alineación vertical"
+        },
+        "visible": {
+          "description": "Apagado - o una fórmula que da false - sale de la página: no ocupa lugar, y sus métodos (dataview.controls.<nombre>.open()) y lo que escucha (el lector USB de un Escáner) se detienen. Oculto, sigue activo lo mantiene funcionando sin verse.",
+          "label": "Visible"
+        },
+        "searchWindowSize": {
+          "label": "Tamaño de la ventana de búsqueda",
+          "description": "Su ancho - sin definir, el propio de Nuxt UI (un panel o un modal estrechos); de sm a xl como los tamaños del formulario de registro, xl para una tabla ancha. Pantalla completa en un teléfono desde md."
+        }
+      },
+      "snippetGroups": {
+        "controls": "Controles",
+        "data": "Datos",
+        "feedback": "Avisos",
+        "navigation": "Navegación",
+        "record": "Registro"
+      },
+      "snippets": {
+        "clearForm": {
+          "description": "Quita los mensajes que dejó su validación.",
+          "label": "Borrar los errores de un formulario",
+          "params": {
+            "form": {
+              "label": "Formulario"
+            }
+          }
+        },
+        "confirmThen": {
+          "description": "Se detiene salvo que el usuario confirme - entonces ejecuta otro snippet.",
+          "label": "Pedir confirmación y luego…",
+          "params": {
+            "button": {
+              "description": "Opcional - si no, \"OK\".",
+              "label": "Botón de confirmar"
+            },
+            "message": {
+              "label": "Pregunta"
+            },
+            "then": {
+              "label": "Después"
+            },
+            "title": {
+              "description": "Opcional - el encabezado del diálogo.",
+              "label": "Título"
+            }
+          }
+        },
+        "copyToClipboard": {
+          "description": "El valor del evento o un texto fijo, con una notificación.",
+          "label": "Copiar al portapapeles",
+          "params": {
+            "from": {
+              "label": "Qué",
+              "options": {
+                "event": "El valor del evento",
+                "text": "Un texto fijo"
+              }
+            },
+            "value": {
+              "description": "Cuando Qué es un texto fijo.",
+              "label": "Texto fijo"
+            }
+          }
+        },
+        "filterResource": {
+          "description": "Un filtro en tiempo de ejecución sobre una columna, combinado con AND con su where diseñado - un valor vacío lo quita.",
+          "label": "Filtrar un Recurso por un valor",
+          "params": {
+            "column": {
+              "label": "Columna"
+            },
+            "from": {
+              "label": "Valor",
+              "options": {
+                "event": "El valor del evento",
+                "variable": "Una variable Valor"
+              }
+            },
+            "operator": {
+              "label": "Coincidencia",
+              "options": {
+                "_eq": "Igual",
+                "_gte": "Desde (mayor o igual)",
+                "_ilike": "Contiene (sin distinguir mayúsculas)",
+                "_lte": "Hasta (menor o igual)"
+              }
+            },
+            "resource": {
+              "label": "Recurso"
+            },
+            "variable": {
+              "description": "Cuando Valor es una variable Valor.",
+              "label": "Variable Valor"
+            }
+          }
+        },
+        "focusInput": {
+          "description": "Pone el cursor en ella - tras abrir un modal, o cuando falla una comprobación.",
+          "label": "Enfocar una entrada",
+          "params": {
+            "input": {
+              "label": "Entrada"
+            }
+          }
+        },
+        "notify": {
+          "description": "Un mensaje en la esquina.",
+          "label": "Mostrar una notificación",
+          "params": {
+            "color": {
+              "label": "Color",
+              "options": {
+                "error": "Error",
+                "info": "Información",
+                "success": "Éxito",
+                "warning": "Advertencia"
+              }
+            },
+            "message": {
+              "label": "Mensaje"
+            }
+          }
+        },
+        "openDataView": {
+          "description": "Va a él - con la clave de este registro como su ?pk=, que abre ese registro allí.",
+          "label": "Abrir otro DataView",
+          "params": {
+            "dataview": {
+              "label": "DataView"
+            },
+            "newTab": {
+              "label": "En una pestaña nueva"
+            },
+            "withRecord": {
+              "description": "Solo en una página con registro.",
+              "label": "Pasar la clave de este registro (pk)"
+            }
+          }
+        },
+        "openLink": {
+          "description": "Una URL, aquí o en una pestaña nueva.",
+          "label": "Abrir un enlace",
+          "params": {
+            "newTab": {
+              "label": "En una pestaña nueva"
+            },
+            "url": {
+              "label": "URL"
+            }
+          }
+        },
+        "recordAction": {
+          "description": "Nuevo, deshacer los cambios, eliminar (pregunta antes), clonar o volver a leer el registro.",
+          "label": "Una acción del registro",
+          "params": {
+            "action": {
+              "label": "Acción",
+              "options": {
+                "cancel": "Deshacer los cambios",
+                "clone": "Copiarlo en uno nuevo",
+                "delete": "Eliminarlo",
+                "new": "Empezar uno nuevo",
+                "refresh": "Volver a leerlo, conservando los cambios",
+                "reload": "Volver a leerlo, descartando los cambios"
+              }
+            }
+          }
+        },
+        "refreshData": {
+          "description": "Vuelve a leer un Recurso - todos los widgets vinculados a él se actualizan.",
+          "label": "Actualizar datos",
+          "params": {
+            "resource": {
+              "label": "Recurso"
+            }
+          }
+        },
+        "runCall": {
+          "description": "Ejecuta una Llamada y luego abre su archivo o avisa al usuario; un fallo muestra su mensaje.",
+          "label": "Ejecutar un workflow o una función",
+          "params": {
+            "call": {
+              "label": "Llamada"
+            },
+            "input": {
+              "label": "Entrada",
+              "options": {
+                "designed": "Su entrada diseñada",
+                "event": "El evento - el submit de un formulario, {'{'} data {'}'}",
+                "record": "El registro de la página - {'{'} data: record.data {'}'}"
+              }
+            },
+            "openFile": {
+              "description": "Una impresión o un PDF: {'{'} asset {'}'} o {'{'} mimeType, content {'}'}.",
+              "label": "Abrir el resultado como archivo"
+            },
+            "success": {
+              "description": "Opcional.",
+              "label": "Mensaje si tiene éxito"
+            }
+          }
+        },
+        "saveRecord": {
+          "description": "Lo guarda; si PostgreSQL lo rechaza, el usuario ve por qué y el registro queda como estaba.",
+          "label": "Guardar el registro",
+          "params": {
+            "success": {
+              "description": "Opcional.",
+              "label": "Mensaje al guardar"
+            },
+            "then": {
+              "label": "Después",
+              "options": {
+                "close": "Cerrarlo",
+                "new": "Empezar uno nuevo",
+                "stay": "Quedarse en él"
+              }
+            }
+          }
+        },
+        "searchResource": {
+          "description": "El valor del evento (lo escrito) como búsqueda del Recurso.",
+          "label": "Buscar en un Recurso",
+          "params": {
+            "resource": {
+              "label": "Recurso"
+            }
+          }
+        },
+        "setRecordColumn": {
+          "description": "Pone un valor en una de las columnas del registro - el del evento, o uno fijo. Se guarda con el registro.",
+          "label": "Asignar una columna del registro",
+          "params": {
+            "column": {
+              "label": "Columna"
+            },
+            "from": {
+              "label": "Origen",
+              "options": {
+                "event": "El valor del evento",
+                "text": "Un valor fijo"
+              }
+            },
+            "value": {
+              "description": "Cuando Origen es un valor fijo.",
+              "label": "Valor fijo"
+            }
+          }
+        },
+        "setVariable": {
+          "description": "Pone un valor en una variable Valor - el del evento, o uno fijo.",
+          "label": "Asignar una variable",
+          "params": {
+            "from": {
+              "label": "Origen",
+              "options": {
+                "event": "El valor del evento",
+                "text": "Un valor fijo"
+              }
+            },
+            "value": {
+              "description": "Cuando Origen es un valor fijo.",
+              "label": "Valor fijo"
+            },
+            "variable": {
+              "label": "Valor"
+            }
+          }
+        },
+        "submitForm": {
+          "description": "Lo valida y emite su submit - como lo haría su botón de envío.",
+          "label": "Enviar un formulario",
+          "params": {
+            "form": {
+              "label": "Formulario"
+            }
+          }
+        },
+        "toggleOverlay": {
+          "description": "Por el nombre que tiene en el formulario de diseño.",
+          "label": "Abrir o cerrar un modal o panel lateral",
+          "params": {
+            "action": {
+              "label": "Acción",
+              "options": {
+                "close": "Cerrarlo",
+                "open": "Abrirlo"
+              }
+            },
+            "overlay": {
+              "label": "Modal o panel lateral"
+            }
+          }
+        },
+        "useSelectedRow": {
+          "description": "En el select de una Tabla: pone uno de los campos de la fila en una variable Valor.",
+          "label": "Usar la fila seleccionada",
+          "params": {
+            "field": {
+              "description": "Un campo que lee el Recurso de la Tabla - id, nombre…",
+              "label": "Campo de la fila"
+            },
+            "variable": {
+              "label": "Valor"
+            }
+          }
+        }
+      },
+      "valueTypes": {
+        "array": {
+          "description": "Una lista de valores.",
+          "label": "Lista"
+        },
+        "boolean": {
+          "description": "true o false.",
+          "label": "Booleano"
+        },
+        "date": {
+          "description": "Un día del calendario, YYYY-MM-DD.",
+          "label": "Fecha"
+        },
+        "date_range": {
+          "description": "Un periodo del calendario (este mes, el año pasado…) o dos fechas.",
+          "label": "Rango de fechas"
+        },
+        "json": {
+          "description": "Cualquier valor JSON.",
+          "label": "JSON"
+        },
+        "number": {
+          "description": "Un número finito.",
+          "label": "Número"
+        },
+        "point": {
+          "description": "Un punto del mapa, {'{'} lng, lat {'}'}.",
+          "label": "Punto"
+        },
+        "text": {
+          "description": "Una cadena.",
+          "label": "Texto"
+        },
+        "time": {
+          "description": "Una hora del día, HH:MM o HH:MM:SS.",
+          "label": "Hora"
+        },
+        "time_range": {
+          "description": "Dos horas del día.",
+          "label": "Rango de horas"
+        },
+        "timestamp": {
+          "description": "Un instante, ISO 8601.",
+          "label": "Fecha y hora"
+        }
+      },
+      "variables": {
+        "CALL": {
+          "description": "Una función, un workflow MANUAL o una escritura en una tabla, ejecutada a demanda como el usuario.",
+          "emits": {
+            "before:execute": "Antes de ejecutar",
+            "complete": "Terminado",
+            "error": "Fallido",
+            "success": "Correcto"
+          },
+          "expose": {
+            "clear": "Vacía data y error.",
+            "execute": "La ejecuta - con input, en lugar de la entrada diseñada; se resuelve con el resultado y se rechaza si falla.",
+            "setInput": "Reemplaza la entrada diseñada."
+          },
+          "label": "Llamada",
+          "props": {
+            "input": {
+              "description": "El cuerpo de la solicitud: {'{'} \"data\": {'{'}...{'}'} {'}'}; una actualización o eliminación en una tabla también indica su fila - \"pk\" o \"where\". Los valores pueden usar {'{'}{'{'}vars.*{'}'}{'}'}.",
+              "label": "Entrada"
+            },
+            "target": {
+              "description": "Una función, un workflow MANUAL o una tabla en la que crear, actualizar o eliminar filas.",
+              "label": "Destino"
+            }
+          },
+          "state": {
+            "data": {
+              "description": "El último resultado.",
+              "label": "Resultado"
+            },
+            "error": {
+              "description": "El último fallo, como el {'{'} errors: [{'{'} code, message {'}'}] {'}'} de la API, o null.",
+              "label": "Error"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Estado"
+            }
+          }
+        },
+        "RECORD": {
+          "description": "Una fila de la tabla de origen del DataView - cargada, editada y guardada a través de la Data API como el usuario.",
+          "emits": {
+            "before:save": "Antes de guardar",
+            "load": "Cargado",
+            "save": "Guardado"
+          },
+          "expose": {
+            "cancel": "Descarta los cambios.",
+            "clone": "Un registro nuevo con sus valores - sin su clave ni sus columnas generadas.",
+            "close": "Cierra la página o el panel en el que está abierto.",
+            "delete": "Lo elimina, tras una confirmación; se resuelve indicando si lo hizo.",
+            "edit": "Sale del modo view.",
+            "new": "Empieza un registro nuevo, con values.",
+            "open": "Abre otra fila por su clave - de solo lectura con view, hasta edit().",
+            "refresh": "Lo vuelve a leer, conservando las ediciones - aparece lo que recalculó un trigger (el rowsChanged de un Detalle).",
+            "reload": "Lo vuelve a leer, descartando las ediciones.",
+            "save": "Lo guarda, asignando antes values; se resuelve con false si no lo hizo - el registro queda entonces como estaba.",
+            "set": "Asigna el valor de una columna."
+          },
+          "label": "Registro",
+          "state": {
+            "data": {
+              "description": "Los valores de la fila, con las ediciones - data.<column>.",
+              "label": "Datos"
+            },
+            "dirty": {
+              "description": "true mientras tenga cambios sin guardar.",
+              "label": "Cambios sin guardar"
+            },
+            "error": {
+              "description": "El último fallo, como el {'{'} errors: [{'{'} code, message {'}'}] {'}'} de la API, o null.",
+              "label": "Error"
+            },
+            "mode": {
+              "description": "create · edit · view",
+              "label": "Modo"
+            },
+            "pk": {
+              "description": "El valor de la clave primaria - null en un registro nuevo.",
+              "label": "Clave"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Estado"
+            }
+          }
+        },
+        "RESOURCE": {
+          "description": "Datos de solo lectura de una tabla o vista, a través de la Data API y los permisos del usuario.",
+          "emits": {
+            "before:load": "Antes de cargar",
+            "error": "Error",
+            "load": "Cargado",
+            "update:data": "Datos cambiados"
+          },
+          "expose": {
+            "clear": "Vacía data.",
+            "clearFilter": "Quita el filtro en tiempo de ejecución.",
+            "execute": "Igual que refresh().",
+            "find": "La fila cuya column es igual a value, leída aparte - data queda como está; null si no hay ninguna.",
+            "refresh": "Vuelve a ejecutar la consulta; se resuelve con data.",
+            "setFilter": "Un filtro en tiempo de ejecución, combinado con AND con el where diseñado.",
+            "setOrder": "El orden de la consulta.",
+            "setPage": "La página, desde 1.",
+            "setSearch": "La búsqueda de la consulta."
+          },
+          "label": "Recurso",
+          "props": {
+            "count": {
+              "label": "Contar el total"
+            },
+            "immediate": {
+              "label": "Cargar al abrir"
+            },
+            "mode": {
+              "description": "Filas, o una fila (o null).",
+              "label": "Modo"
+            },
+            "query": {
+              "description": "Campos (obligatorio), where, search, group by, agregados, orden y límite.",
+              "label": "Consulta"
+            },
+            "resource": {
+              "description": "Una tabla o vista expuesta para GET.",
+              "label": "Recurso"
+            },
+            "watch": {
+              "label": "Recargar cuando cambien sus variables"
+            }
+          },
+          "state": {
+            "count": {
+              "description": "El total, cuando Contar el total está activado.",
+              "label": "Total"
+            },
+            "data": {
+              "description": "Las filas (list) o la fila (record).",
+              "label": "Datos"
+            },
+            "error": {
+              "description": "El último error, o null.",
+              "label": "Error"
+            },
+            "limit": {
+              "description": "El límite de su consulta - null si no tiene.",
+              "label": "Tamaño de página"
+            },
+            "page": {
+              "description": "La página que leyó, desde 1 - setPage() la cambia; una búsqueda o un filtro nuevo vuelve a 1.",
+              "label": "Página"
+            },
+            "search": {
+              "description": "Lo que fijó setSearch() (el cuadro de búsqueda de una Tabla) - null si no hay, y entonces se usa la búsqueda propia de la consulta.",
+              "label": "Búsqueda"
+            },
+            "status": {
+              "description": "idle · pending · success · error",
+              "label": "Estado"
+            }
+          }
+        },
+        "VALUE": {
+          "description": "Estado de la página - lo que el usuario eligió o escribió, o lo que fijó el código.",
+          "emits": {
+            "update:value": "Valor cambiado"
+          },
+          "expose": {
+            "reset": "Vuelve al valor por defecto.",
+            "set": "Asigna el valor, convertido al tipo de la variable."
+          },
+          "label": "Valor",
+          "props": {
+            "default": {
+              "description": "Una constante, una fórmula, un parámetro de URL o un campo del usuario ($USER).",
+              "label": "Valor por defecto"
+            },
+            "type": {
+              "label": "Tipo"
+            }
+          },
+          "state": {
+            "value": {
+              "description": "El valor actual, del tipo de la variable.",
+              "label": "Valor"
+            }
+          }
+        }
+      },
+      "widgetState": {
+        "item": {
+          "description": "La fila completa de la opción elegida - sus campos como .campo; null si no hay ninguna (o hay varias).",
+          "label": "Elemento"
+        },
+        "row": {
+          "description": "La última fila pulsada - sus campos como .campo; null hasta que se pulse una.",
+          "label": "Fila"
+        },
+        "value": {
+          "description": "Lo que contiene ahora.",
+          "label": "Valor"
+        }
+      },
+      "widgets": {
+        "TBox": {
+          "description": "Un área simple que agrupa widgets - sin marco propio: su aspecto es su Estilo (relleno, borde, fondo, radio).",
+          "label": "Caja",
+          "props": {
+            "fillHeight": {
+              "description": "Toma el alto que le queda a la página o al panel - lo que contiene se desplaza dentro (el cuerpo de una Tarjeta, entre su cabecera y su pie). Un widget dentro con Ocupar el alto lo llena."
+            }
+          },
+          "slots": {
+            "default": "Contenido"
+          }
+        },
+        "TCamera": {
+          "description": "Saca una foto con la cámara del equipo, la recorta y la comprime, y la guarda como archivo - para una columna de archivo, como la foto de una persona.",
+          "emits": {
+            "update:modelValue": "Foto cambiada"
+          },
+          "label": "Cámara",
+          "props": {
+            "aspect": {
+              "description": "original deja la foto como se encuadró. Una proporción la recorta a esa forma (1:1 cuadrada, 3:4 vertical).",
+              "label": "Recorte"
+            },
+            "facing": {
+              "description": "environment: la cámara trasera. user: la frontal. Quien la usa puede cambiarla.",
+              "label": "Cámara"
+            },
+            "label": {
+              "description": "El texto del botón - vacío: Sacar foto.",
+              "label": "Botón"
+            },
+            "maxSize": {
+              "description": "En píxeles - una foto más grande se reduce a esa medida (por defecto 1600).",
+              "label": "Lado mayor"
+            },
+            "quality": {
+              "description": "Calidad JPEG de 0.1 a 1 (por defecto 0.85) - menor, un archivo más pequeño.",
+              "label": "Calidad"
+            },
+            "icon": {
+              "label": "Ícono",
+              "description": "El ícono del botón - sin valor: una cámara."
+            }
+          }
+        },
+        "TColorSelect": {
+          "description": "Un color de la paleta o cualquier color hex.",
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Color"
+        },
+        "TDashboard": {
+          "description": "Un Dashboard publicado, con sus variables fijadas desde la página - por ejemplo, las cifras de un cliente.",
+          "label": "Dashboard"
+        },
+        "TDataView": {
+          "label": "DataView",
+          "description": "Otro DataView dentro de la página - su cuadrícula, tarjetas, mapa, tablero, calendario o cronograma, su Nuevo y su formulario de registro. Enlazado por una columna: las filas que pertenecen al registro de la página (los ítems de un pedido, el historial de una persona); sin ella: todas las filas que su propio filtro permite.",
+          "props": {
+            "dataview": {
+              "label": "DataView",
+              "description": "Un DataView publicado. Los permisos de sus usuarios deciden qué leen y escriben en él."
+            },
+            "column": {
+              "label": "Enlazado por",
+              "description": "Las filas que pertenecen al registro de la página: solo aquellas cuya columna apunta a él, una fila nueva nace enlazada, y no se muestra nada hasta que el registro se guarda. Vacío: todas las filas."
+            },
+            "view": {
+              "label": "Vista",
+              "description": "Cuál de las vistas del DataView muestra - vacío: la que abre por defecto."
+            },
+            "columns": {
+              "label": "Columnas",
+              "description": "Cada una de sus columnas, visible u oculta aquí - su formato es el del DataView. Vacío: como las muestra el DataView."
+            },
+            "newLabel": {
+              "label": "Botón Nuevo"
+            },
+            "paging": {
+              "label": "Páginas",
+              "description": "Apagado: todas las filas a la vez - los ítems de un registro."
+            },
+            "editInline": {
+              "label": "Editar en la grilla",
+              "description": "Vinculado por una columna: sus filas se editan en el lugar (Tab pasa de celda en celda; Tab después de la última agrega una) y se guardan con el registro de la página, en una transacción. Apagado: cada fila en su propio formulario."
+            },
+            "readOnly": {
+              "label": "Solo lectura",
+              "description": "Aquí solo se lee, diga lo que diga Permitir - los ítems de una factura emitida: {'{'}{'{'}vars.record.data.status{'}'}{'}'} == \"ISSUED\"."
+            },
+            "allow": {
+              "label": "Permitir",
+              "description": "Qué deja hacer además de leer - solo menos que sus permisos y que lo que permite la DataView que muestra, nunca más. Vacío: las tres."
+            },
+            "toolbarMode": {
+              "label": "Barra",
+              "description": "ninguna: solo Nuevo; compacta: buscador y un menú; completa: cada acción un botón. En un celular siempre es compacta."
+            },
+            "tools": {
+              "label": "Funciones de la barra",
+              "description": "Cada función de su barra, encendida o apagada aquí - solo puede apagar lo que el DataView tiene encendido."
+            }
+          },
+          "emits": {
+            "rowsChanged": "Filas cambiadas",
+            "rowSelected": "Fila seleccionada",
+            "rowOpened": "Fila abierta"
+          }
+        },
+        "TDrawer": {
+          "description": "Un panel que sube desde abajo - el panel inferior propio de TotalBase, para trabajar en algo con espacio.",
+          "emits": {
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Panel inferior",
+          "props": {
+            "size": {
+              "description": "Su ancho, de sm a xl - lg por defecto, como todo panel inferior de TotalBase."
+            }
+          },
+          "slots": {
+            "body": "Cuerpo",
+            "footer": "Pie"
+          }
+        },
+        "TFrame": {
+          "description": "La página de otro sitio en un marco aislado (sandbox) - su URL puede tomar valores de la página, p. ej. el número de seguimiento del registro.",
+          "label": "Marco"
+        },
+        "THeading": {
+          "description": "El título de una sección.",
+          "label": "Encabezado",
+          "props": {
+            "label": {
+              "label": "Texto"
+            }
+          }
+        },
+        "TJson": {
+          "description": "Datos estructurados, editados como un árbol.",
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "JSON"
+        },
+        "TRangeInput": {
+          "description": "Un rango de PostgreSQL - desde y hasta, con las entradas de fecha o número de su tipo; vacío, sin valor.",
+          "emits": {
+            "update:modelValue": "Rango cambiado"
+          },
+          "label": "Rango"
+        },
+        "TLeafletMap": {
+          "description": "Un punto elegido en un mapa de OpenStreetMap.",
+          "emits": {
+            "update:modelValue": "Punto cambiado"
+          },
+          "label": "Mapa (Leaflet)"
+        },
+        "TScanner": {
+          "description": "Lee un código QR, un PDF417 (un DNI) o un código de barras - con la cámara del equipo o un lector USB en modo teclado - y emite lo que leyó.",
+          "emits": {
+            "error": "Error",
+            "scan": "Leído",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Lector",
+          "props": {
+            "beep": {
+              "description": "Un tono corto en cada lectura.",
+              "label": "Sonido"
+            },
+            "camera": {
+              "description": "Un botón que abre la cámara para leer un código. El navegador solo lo permite con HTTPS (o en localhost).",
+              "label": "Cámara"
+            },
+            "continuous": {
+              "description": "La cámara queda abierta después de leer, para el siguiente.",
+              "label": "Seguir leyendo"
+            },
+            "formats": {
+              "description": "Los códigos que lee la cámara, separados por coma - vacío: todos (qr_code, pdf417, code_128, ean_13...).",
+              "label": "Formatos"
+            },
+            "input": {
+              "description": "Un campo donde escribe un lector USB (o una persona) - Enter lo lee.",
+              "label": "Campo de texto"
+            },
+            "label": {
+              "description": "El texto del botón de cámara - vacío: solo el ícono.",
+              "label": "Botón de cámara"
+            },
+            "listen": {
+              "description": "field: lo que se escribe en su campo. page: la ráfaga de teclas de un lector en cualquier parte de la página, sin nada con foco - para un kiosco.",
+              "label": "Lector USB"
+            },
+            "modelValue": {
+              "description": "Una variable Value que guarda el último código leído (o una columna del registro que completa).",
+              "label": "Valor"
+            },
+            "vibrate": {
+              "description": "Una vibración corta en cada lectura, si el equipo puede.",
+              "label": "Vibración"
+            },
+            "icon": {
+              "label": "Ícono",
+              "description": "El ícono del botón de cámara - sin valor: un código de barras."
+            }
+          }
+        },
+        "TText": {
+          "description": "Un párrafo - su contenido puede ser una fórmula.",
+          "label": "Texto",
+          "props": {
+            "label": {
+              "label": "Texto"
+            }
+          }
+        },
+        "UAccordion": {
+          "description": "Secciones que se expanden de una (o varias) en una.",
+          "emits": {
+            "update:modelValue": "Sección abierta / cerrada"
+          },
+          "label": "Acordeón",
+          "props": {
+            "items": {
+              "description": "Su etiqueta puede ser una fórmula; una puede desactivarse u ocultarse con una fórmula sobre la página.",
+              "label": "Secciones"
+            },
+            "modelValue": {
+              "description": "Una variable Valor con la clave de la sección abierta - una lista de ellas con Apertura: multiple. Cámbiala desde Código para abrir una.",
+              "label": "Secciones abiertas"
+            },
+            "type": {
+              "label": "Apertura"
+            }
+          },
+          "slots": {
+            "body": "Cuerpo de la sección"
+          }
+        },
+        "UAlert": {
+          "description": "Un mensaje con título y descripción.",
+          "emits": {
+            "update:open": "Cerrado"
+          },
+          "label": "Alerta",
+          "slots": {
+            "actions": "Acciones"
+          }
+        },
+        "UAvatar": {
+          "description": "Una imagen, iniciales o un icono en un círculo.",
+          "label": "Avatar"
+        },
+        "UBadge": {
+          "description": "Una etiqueta corta.",
+          "label": "Insignia"
+        },
+        "UButton": {
+          "description": "Ejecuta una función de Código al hacer clic.",
+          "emits": {
+            "click": "Clic"
+          },
+          "label": "Botón",
+          "props": {
+            "block": {
+              "description": "Ocupa el ancho de su contenedor."
+            },
+            "type": {
+              "description": "Submit envía el formulario en el que está."
+            }
+          }
+        },
+        "UCard": {
+          "description": "Una sección enmarcada con cabecera y pie.",
+          "label": "Tarjeta",
+          "props": {
+            "fillHeight": {
+              "description": "Toma el alto que le queda a la página o al panel - lo que contiene se desplaza dentro (el cuerpo de una Tarjeta, entre su cabecera y su pie). Un widget dentro con Ocupar el alto lo llena."
+            }
+          },
+          "slots": {
+            "default": "Cuerpo",
+            "footer": "Pie",
+            "header": "Cabecera"
+          }
+        },
+        "UCheckbox": {
+          "description": "Un valor sí/no.",
+          "emits": {
+            "change": "Cambio"
+          },
+          "label": "Casilla"
+        },
+        "UCheckboxGroup": {
+          "description": "Elige cualquier número de opciones, todas visibles.",
+          "emits": {
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Grupo de casillas"
+        },
+        "UCollapsible": {
+          "description": "Un activador que muestra u oculta su contenido.",
+          "emits": {
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Plegable",
+          "slots": {
+            "content": "Contenido",
+            "default": "Activador"
+          }
+        },
+        "UDropdownMenu": {
+          "description": "Un menú de acciones bajo su activador - cada elemento ejecuta una función de Código.",
+          "emits": {
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Menú desplegable",
+          "props": {
+            "items": {
+              "description": "Cada uno ejecuta su función de Código - Anular desactivado una vez pagado, Eliminar solo para algunos: una fórmula sobre la página.",
+              "label": "Elementos"
+            }
+          },
+          "slots": {
+            "default": "Activador"
+          }
+        },
+        "UEditor": {
+          "description": "Un editor de texto enriquecido - contenido Markdown, HTML o JSON.",
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Texto enriquecido"
+        },
+        "UEmpty": {
+          "description": "Un icono, un título y una descripción para \"aún no hay nada aquí\".",
+          "label": "Estado vacío",
+          "slots": {
+            "actions": "Acciones"
+          }
+        },
+        "UFileUpload": {
+          "description": "Un único archivo o imagen subido.",
+          "emits": {
+            "update:modelValue": "Archivo cambiado"
+          },
+          "label": "Subida de archivo",
+          "props": {
+            "aspect": {
+              "description": "Con Mostrar la imagen: original mantiene la forma de la imagen; una proporción la enmarca (3:4 vertical - una foto carnet).",
+              "label": "Forma de la imagen"
+            },
+            "height": {
+              "description": "En píxeles, sea cual sea la pantalla: el del área vacía - para igualarla con las cards vecinas - y, con Mostrar la imagen, el de la imagen (con una forma su ancho la sigue, centrada; sin ella ocupa el campo; cubre el marco).",
+              "label": "Alto"
+            },
+            "preview": {
+              "description": "Una imagen se muestra a lo ancho del campo en lugar de su nombre - al tocarla se elige otra. En solo lectura, es solo la imagen.",
+              "label": "Mostrar la imagen"
+            },
+            "label": {
+              "label": "Etiqueta",
+              "description": "El texto del campo vacío - el del área, o el de la variante botón. Sin valor: Suelta un archivo aquí o elige uno."
+            },
+            "description": {
+              "label": "Descripción",
+              "description": "Una línea debajo del texto del área."
+            },
+            "buttonLabel": {
+              "label": "Botón",
+              "description": "Variante área: un botón debajo de su texto (Cargar archivo), para quien no sabe que el área se puede tocar."
+            }
+          }
+        },
+        "UForm": {
+          "description": "Agrupa campos: comprueba los obligatorios y emite submit con {'{'} data {'}'} - los valores de los campos por nombre.",
+          "emits": {
+            "error": "Errores",
+            "submit": "Envío"
+          },
+          "label": "Formulario",
+          "slots": {
+            "default": "Campos"
+          }
+        },
+        "UFormField": {
+          "description": "Un campo con etiqueta alrededor de una entrada: etiqueta, ayuda, obligatorio.",
+          "label": "Campo de formulario",
+          "props": {
+            "column": {
+              "label": "Columna"
+            },
+            "labelWidth": {
+              "description": "Horizontal: la etiqueta toma esta parte del campo y el input el resto - con el mismo valor en campos vecinos, sus valores quedan alineados. En un celular se apila, con la etiqueta arriba.",
+              "label": "Ancho de la etiqueta"
+            }
+          },
+          "slots": {
+            "default": "Entrada"
+          }
+        },
+        "UIcon": {
+          "description": "Un solo icono.",
+          "label": "Icono",
+          "props": {
+            "name": {
+              "description": "El icono que se muestra.",
+              "label": "Icono"
+            }
+          }
+        },
+        "UInput": {
+          "description": "Un campo de texto de una línea.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Campo de texto"
+        },
+        "UInputDate": {
+          "description": "Una fecha, una fecha y hora, o un rango de fechas.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Fecha"
+        },
+        "UInputMenu": {
+          "description": "Escribe para encontrar una opción.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "clear": "Vaciado",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Autocompletar"
+        },
+        "UInputNumber": {
+          "description": "Un número, con botones para aumentar y disminuir.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Número"
+        },
+        "UInputRating": {
+          "description": "Una valoración con estrellas sobre un máximo fijo.",
+          "emits": {
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Valoración",
+          "props": {
+            "length": {
+              "label": "Estrellas"
+            }
+          }
+        },
+        "UInputTags": {
+          "description": "Una lista libre de valores de texto cortos.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Etiquetas"
+        },
+        "UInputTime": {
+          "description": "Una hora del día, o un rango de horas.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Hora",
+          "props": {
+            "range": {
+              "description": "Elige una hora de inicio y una de fin.",
+              "label": "Rango de horas"
+            }
+          }
+        },
+        "UListbox": {
+          "description": "Una lista visible y filtrable para elegir.",
+          "emits": {
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Lista"
+        },
+        "UModal": {
+          "description": "Un diálogo sobre la página.",
+          "emits": {
+            "after:leave": "Cerrado (tras su animación)",
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Modal",
+          "props": {
+            "size": {
+              "description": "Su ancho, de sm a xl - sin definir, el propio de Nuxt UI."
+            }
+          },
+          "slots": {
+            "body": "Cuerpo",
+            "footer": "Pie",
+            "header": "Cabecera"
+          }
+        },
+        "UPinInput": {
+          "description": "Un código corto con un número fijo de caracteres.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "complete": "Completado",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Entrada de PIN"
+        },
+        "UPopover": {
+          "description": "Un panel pequeño anclado a su activador.",
+          "emits": {
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Ventana emergente",
+          "slots": {
+            "content": "Contenido",
+            "default": "Activador"
+          }
+        },
+        "UProgress": {
+          "description": "Una barra de progreso.",
+          "label": "Progreso"
+        },
+        "URadioGroup": {
+          "description": "Elige una entre pocas opciones, todas visibles.",
+          "emits": {
+            "change": "Cambio"
+          },
+          "label": "Grupo de opciones",
+          "props": {
+            "iconKey": {
+              "description": "El icono de cada opción, p. ej. i-lucide-banknote - un campo, o una fórmula sobre sus campos. Se muestra sobre su etiqueta cuando Indicador es hidden."
+            }
+          }
+        },
+        "UScrollArea": {
+          "description": "Una caja con alto propio que desplaza lo que contiene - su aspecto, desde la pestaña Estilo.",
+          "label": "Área desplazable",
+          "slots": {
+            "default": "Contenido"
+          }
+        },
+        "USelect": {
+          "description": "Elige de una lista corta - sin búsqueda.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Selector"
+        },
+        "USelectMenu": {
+          "description": "Elige de una lista, con búsqueda.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "clear": "Vaciado",
+            "create": "Fila creada",
+            "focus": "Foco",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Menú de selección"
+        },
+        "USeparator": {
+          "description": "Una línea entre secciones, con una etiqueta opcional.",
+          "label": "Separador",
+          "props": {
+            "type": {
+              "label": "Línea"
+            }
+          }
+        },
+        "USlideover": {
+          "description": "Un panel que se desliza desde un borde.",
+          "emits": {
+            "after:leave": "Cerrado (tras su animación)",
+            "update:open": "Abierto / cerrado"
+          },
+          "label": "Panel lateral",
+          "props": {
+            "size": {
+              "description": "Su ancho, de sm a xl - sin definir, el propio de Nuxt UI."
+            }
+          },
+          "slots": {
+            "body": "Cuerpo",
+            "footer": "Pie",
+            "header": "Cabecera"
+          }
+        },
+        "USlider": {
+          "description": "Un número elegido dentro de un rango acotado.",
+          "emits": {
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Control deslizante"
+        },
+        "USplitter": {
+          "description": "Paneles lado a lado, o uno sobre otro - el usuario arrastra lo que hay entre ellos; cada panel se desplaza por su cuenta.",
+          "label": "Divisor",
+          "props": {
+            "disabled": {
+              "description": "Los paneles mantienen sus tamaños - no hay nada que arrastrar.",
+              "label": "Bloqueado"
+            },
+            "items": {
+              "description": "Uno por panel - su etiqueta lo nombra en el lienzo; su tamaño y su mínimo en % del total, con los tamaños sumando 100 (cambiar uno reparte el resto); Plegable deja que el usuario lo cierre arrastrando.",
+              "label": "Paneles"
+            }
+          },
+          "slots": {
+            "panel": "Panel"
+          }
+        },
+        "USwitch": {
+          "description": "Un valor de encendido/apagado.",
+          "emits": {
+            "change": "Cambio"
+          },
+          "label": "Interruptor"
+        },
+        "UTable": {
+          "description": "Filas de un Recurso - sus columnas son los campos del Recurso.",
+          "emits": {
+            "action": "Acción pulsada",
+            "searchEnter": "Enter en la búsqueda",
+            "select": "Fila pulsada"
+          },
+          "label": "Tabla",
+          "slots": {
+            "empty": "Vacío"
+          }
+        },
+        "UTabs": {
+          "description": "Secciones de una en una, bajo una tira de pestañas.",
+          "emits": {
+            "update:modelValue": "Pestaña cambiada"
+          },
+          "label": "Pestañas",
+          "props": {
+            "items": {
+              "label": "Pestañas"
+            },
+            "modelValue": {
+              "description": "Una variable Valor con la clave de la pestaña abierta - cámbiala desde Código para cambiar de pestaña; vacía abre la primera.",
+              "label": "Pestaña abierta"
+            }
+          },
+          "slots": {
+            "content": "Contenido de la pestaña"
+          }
+        },
+        "UTextarea": {
+          "description": "Texto de varias líneas.",
+          "emits": {
+            "blur": "Pérdida de foco",
+            "change": "Cambio",
+            "update:modelValue": "Valor cambiado"
+          },
+          "label": "Área de texto"
+        },
+        "UTooltip": {
+          "description": "Una pista que se muestra sobre su contenido al pasar el cursor.",
+          "label": "Tooltip",
+          "props": {
+            "text": {
+              "label": "Texto"
+            }
+          },
+          "slots": {
+            "default": "Contenido"
+          }
+        },
+        "UUser": {
+          "description": "Un nombre y una descripción junto a un avatar.",
+          "emits": {
+            "click": "Clic"
+          },
+          "label": "Usuario"
+        },
+        "TSignature": {
+          "label": "Firma",
+          "description": "Un área para firmar con el dedo o el mouse - se guarda como archivo PNG, su valor es el id del archivo, como el de la Cámara. Borrar empieza de nuevo; algunos colores de tinta. En un modal detrás de un botón, con la firma mostrada en la página por una Firma (o Cámara) de solo lectura sobre la misma columna.",
+          "props": {
+            "height": {
+              "label": "Alto",
+              "description": "El alto del área en píxeles (180 por defecto) - toma el ancho del campo."
+            },
+            "colors": {
+              "label": "Colores de tinta",
+              "description": "Algunos colores para elegir la tinta - apagado: solo negro."
+            },
+            "readonly": {
+              "label": "Solo lectura",
+              "description": "La firma se muestra, nunca se cambia - sin área ni Borrar."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Firmado"
+          }
+        },
+        "TImage": {
+          "label": "Imagen",
+          "description": "Una imagen - subida aquí, un archivo del registro ({'{'}{'{'}vars.record.data.foto{'}'}{'}'}) o una URL; con su epígrafe, un ícono o un texto cuando no hay, y Clic para usarla como botón.",
+          "props": {
+            "src": {
+              "label": "Imagen",
+              "description": "El id de un archivo o una URL https. Subida aquí es un archivo público - la ve cualquiera que abra la página. Una fórmula: una columna de archivo del registro, {'{'}{'{'}vars.record.data.foto{'}'}{'}'}."
+            },
+            "alt": {
+              "label": "Texto alternativo",
+              "description": "Qué muestra, para un lector de pantalla - y si no carga."
+            },
+            "caption": {
+              "label": "Epígrafe",
+              "description": "Una línea debajo."
+            },
+            "aspect": {
+              "label": "Forma",
+              "description": "original mantiene la forma de la imagen; una proporción la enmarca."
+            },
+            "fit": {
+              "label": "Ajuste",
+              "description": "En un marco: contain la muestra entera; cover lo llena, recortando."
+            },
+            "height": {
+              "label": "Alto",
+              "description": "En píxeles - sin valor: lo deciden su ancho y su forma."
+            },
+            "maxWidth": {
+              "label": "Ancho máximo",
+              "description": "En píxeles - sin valor: el ancho del campo."
+            },
+            "emptyIcon": {
+              "label": "Ícono si no hay imagen",
+              "description": "Se muestra cuando no hay imagen - sin valor: un ícono de imagen."
+            },
+            "emptyText": {
+              "label": "Texto si no hay imagen",
+              "description": "Una línea junto a ese ícono."
+            },
+            "corners": {
+              "label": "Esquinas",
+              "description": "Qué tan redondeadas las esquinas de la imagen - full: un círculo (o una píldora). El Radio de la pestaña Estilo redondea su caja."
+            }
+          },
+          "emits": {
+            "click": "Clic"
+          }
+        },
+        "TResult": {
+          "description": "Un panel grande con un resultado a simple vista - un color, un ícono, un título y una descripción, con un tono y una vibración - que muestra el Código de la página con dataview.controls.<nombre>.show(); vuelve solo a la espera después de Volver tras segundos.",
+          "emits": {
+            "reset": "Vuelve a la espera"
+          },
+          "label": "Resultado",
+          "props": {
+            "idleTitle": {
+              "label": "Título en espera",
+              "description": "Lo que dice mientras espera un resultado - sin valor: Listo."
+            },
+            "idleDescription": {
+              "label": "Descripción en espera",
+              "description": "Una línea debajo mientras espera - p. ej. Escaneá tu código."
+            },
+            "idleIcon": {
+              "label": "Ícono en espera",
+              "description": "Su ícono mientras espera - sin valor: un marco de escaneo."
+            },
+            "idleColor": {
+              "label": "Color en espera",
+              "description": "Su color mientras espera - uno de los colores del tema."
+            },
+            "resetAfter": {
+              "label": "Volver tras",
+              "description": "Segundos que queda un resultado antes de volver a la espera - 0: hasta el siguiente o reset(). show({ resetAfter }) puede cambiarlo para un resultado."
+            },
+            "variant": {
+              "label": "Variante",
+              "description": "Cómo llena el panel un resultado: solid, outline, soft o subtle. En espera, siempre soft."
+            },
+            "size": {
+              "label": "Tamaño",
+              "description": "Su ícono y su texto, de md a xl."
+            },
+            "sound": {
+              "label": "Sonido",
+              "description": "Un tono con cada resultado - uno ascendente para éxito, uno grave para error y advertencia; show({ sound }) puede elegirlo."
+            },
+            "vibrate": {
+              "label": "Vibración",
+              "description": "Una vibración con cada resultado, si el equipo puede - más larga para un error."
+            }
+          }
+        }
+      },
+      "propSections": {
+        "search": "Búsqueda"
+      }
+    },
+    "codeReferenceSlideover": {
+      "description": "Lo que contiene el dataview de un handler.",
+      "insert": "Insertar",
+      "title": "Referencia"
+    },
+    "customCanvasArea": {
+      "dropHere": "Suelta widgets aquí",
+      "dropHereIn": "{label} - suelta widgets aquí"
+    },
+    "customCanvasItem": {
+      "focus": "Enfocar",
+      "focusTooltip": "Enfocar - editarlo solo",
+      "rows": "{rows} filas",
+      "widgetActions": "Acciones del widget",
+      "widgetCount": "{n} widget | {n} widgets",
+      "hiddenFormulaTag": "Oculto · fórmula",
+      "hiddenOffTag": "Oculto",
+      "hiddenOff": "Visible está apagado - nunca se muestra"
+    },
+    "customCodeReference": {
+      "controls": {
+        "description": "Un widget colocado con un Nombre.",
+        "entries": {
+          "form": "Un Form: validar y enviar, solo validar, limpiar sus errores; sus datos como {data}.",
+          "open": "Un Modal, un Slideover, un Popover; el foco de una entrada.",
+          "result": "Un Resultado: mostrar un resultado - un color, un ícono, un título, una descripción -, volver a la espera ya.",
+          "locate": "Un campo de mapa o una Ubicación: la posición del dispositivo en su valor."
+        },
+        "title": "Controles - {code}"
+      },
+      "handlers": {
+        "description": "Una función que llama la página o un widget - elígela en una pestaña Eventos o en Eventos de la página.",
+        "entries": {
+          "handler": "Puede ser async - se espera. event: lo que ocurrió (un valor, un elemento, una fila). Un handler que lanza un error muestra su mensaje a quien ve la página; la página sigue funcionando.",
+          "onLoad": "Se ejecuta una vez que la página cargó su registro y sus Recursos inmediatos."
+        },
+        "title": "Handlers"
+      },
+      "page": {
+        "entries": {
+          "confirm": "El diálogo propio de la página - true al confirmar. Un texto, o {shape}.",
+          "format": "Con los formatos y la zona horaria de la instancia.",
+          "notify": "Una notificación - success, info, warning, error, neutral.",
+          "openDataView": "Abre otro DataView.",
+          "openFile": "Muestra el archivo de un Call (un PDF, una imagen) para imprimir o descargar.",
+          "params": "Los parámetros de URL de la página.",
+          "device": "La posición del dispositivo - {'{'} lng, lat, accuracy {'}'}; rechaza con reason: insecure, unsupported, denied, unavailable, timeout."
+        },
+        "title": "Página"
+      },
+      "record": {
+        "description": "La fila de la página, cuando el DataView tiene una tabla de origen.",
+        "entries": {
+          "canEdit": "Si quien ve la página puede escribir la columna ahora.",
+          "data": "Sus valores (con las ediciones), su clave, create / edit / view, cambios sin guardar.",
+          "other": "Otro registro, de solo lectura hasta edit() con view.",
+          "refresh": "Lo vuelve a leer - refresh conserva las ediciones en curso (totales que recalculó un trigger), reload las descarta.",
+          "save": "Guarda, con los valores asignados antes - un solo paso. Se resuelve con false cuando no guardó; el formulario muestra el motivo de PostgreSQL.",
+          "set": "Cambia un valor."
+        },
+        "title": "El registro - {code}"
+      },
+      "variables": {
+        "description": "Definidas en la pestaña Variables.",
+        "entries": {
+          "call": "Una función, un workflow o una escritura en una tabla. Se resuelve con su resultado; un fallo trae los {errors} de la API.",
+          "resource": "Filas leídas de la Data API, con los permisos de quien ve la página.",
+          "value": "Estado de la página."
+        },
+        "title": "Variables - {code}"
+      }
+    },
+    "customDesigner": {
+      "accessItsTable": "su tabla",
+      "accessWarning": "Falla para {reasons}: no pueden leerlo - Roles › Permisos.",
+      "addFieldError": "No se pudo agregar el campo",
+      "addFields": {
+        "addColumn": "Agregar {column}",
+        "allOnPage": "Todas las columnas están en la página",
+        "description": "Las columnas del registro que aún no están en la página - se agregan al final de la página.",
+        "descriptionIn": "Las columnas del registro que aún no están en la página - se agregan al final de {widget}.",
+        "labelOf": "Etiqueta de {column}",
+        "title": "Agregar campos"
+      },
+      "addFieldsEllipsis": "Agregar campos…",
+      "addFieldsError": "No se pudieron agregar los campos",
+      "addWidget": "Agregar widget",
+      "addWidgetDescription": "Se coloca al final del área visible.",
+      "addWidgetError": "No se pudo agregar {widget}",
+      "breadcrumbFocus": "{widget} (enfoque)",
+      "breadcrumbPage": "Página",
+      "changeInputError": "No se pudo cambiar la entrada",
+      "codeHelp": "JavaScript de esta página - los handlers reciben {args} y pueden ser async. Activo para quienes la ven una vez publicada.",
+      "deleteConfirm": "¿Eliminar este widget y el widget que contiene? | ¿Eliminar este widget y los {n} widgets que contiene?",
+      "deleteError": "No se pudo eliminar el widget",
+      "duplicateError": "No se pudo duplicar el widget",
+      "fieldSetup": {
+        "add": "Agregar campo",
+        "column": "Columna",
+        "createVariable": "Guardar su valor en una nueva variable",
+        "createVariableHelp": "Un Valor de tipo {type} que lee el formulario, y el código como {code}.",
+        "description": "Un campo con etiqueta alrededor de una entrada.",
+        "edits": "Edita",
+        "sourceColumn": "Una columna del registro",
+        "sourceColumnHelp": "Se guarda con {code}; PostgreSQL indica si es obligatorio.",
+        "sourceValue": "Un valor de la página",
+        "sourceValueHelp": "Se guarda en un Valor - para filtros y todo lo que no se guarda tal cual.",
+        "title": "Nuevo campo de formulario",
+        "variable": "Variable",
+        "variableHelp": "Letras, dígitos y _, empezando por una letra minúscula."
+      },
+      "hideProperties": "Ocultar propiedades",
+      "hideWidgets": "Ocultar widgets",
+      "input": "Entrada",
+      "inputHelp": "El widget que edita el valor del campo - cambiarlo conserva la variable a la que está vinculado.",
+      "inputFromColumn": "La entrada de su columna - la sigue (Base de datos › la columna › Entrada) mientras no se elija otra acá.",
+      "useColumnInput": "Usar la de la columna ({input})",
+      "insertSnippet": "Insertar fragmento",
+      "invalidName": "Un nombre es un identificador de código: letras, dígitos y _, sin empezar por un dígito.",
+      "layOutIn": "Distribuir en {n} columna | Distribuir en {n} columnas",
+      "nameHelp": "Opcional - cómo lo alcanza el código: {example}.",
+      "noSelectionDescription": "Haz clic en un widget del lienzo para editarlo.",
+      "noSelectionTitle": "Ningún widget seleccionado",
+      "pageEvents": {
+        "button": "Eventos de la página",
+        "declared": "En tu código - ir a él",
+        "notDeclared": "Aún no está en tu código - agregarlo",
+        "onLoad": "{name} - una vez cargadas las variables",
+        "page": "La página",
+        "record": "El registro"
+      },
+      "pageFooter": "Pie de la página",
+      "pageFooterHelp": "fijo debajo de la página: botones, menús, texto, insignias y cajas. Vacío, no hay pie.",
+      "pageHeader": "Encabezado de la página",
+      "pageHeaderHelp": "los botones y menús de aquí se muestran en el encabezado de la página, junto a su título.",
+      "reference": "Referencia",
+      "reloadError": "No se pudieron recargar los widgets",
+      "renameInCode": "El Código todavía dice \"{name}\" - cámbiale el nombre ahí también.",
+      "saveVariablesError": "No se pudieron guardar las variables",
+      "saveWidgetError": "No se pudo guardar el widget",
+      "showProperties": "Mostrar propiedades",
+      "showWidgets": "Mostrar widgets",
+      "thePage": "La página",
+      "undoColumns": "Deshacer la distribución en columnas",
+      "widgetActions": "Acciones del widget",
+      "tabWidgets": "Widgets",
+      "tabStructure": "Estructura",
+      "hiddenMarked": "Widgets ocultos atenuados y marcados - verlos como en la App",
+      "hiddenAsApp": "Widgets ocultos como en la App - atenuarlos y marcarlos",
+      "resourceWidened": "{name} ahora lee todas las columnas de su tabla: la ventana de búsqueda las muestra y busca en ellas. Quita las que no necesites en Variables.",
+      "openSaveError": "No se pudo guardar cómo se abre el formulario",
+      "pageOptions": "Página"
+    },
+    "customPage": {
+      "codeError": "El código de la página no compila",
+      "emptyDescription": "Coloca widgets en ella en el formulario de Diseño.",
+      "emptyTitle": "Esta página está vacía",
+      "print": "Imprimir"
+    },
+    "dataViewCalendarSettings": {
+      "colorHelp": "Opcional - si está vacío, se usa el color fijo de abajo.",
+      "date": "Fecha",
+      "dateHelp": "Obligatorio - una columna de fecha/marca de tiempo. Las filas se ubican en el día que indica esta columna.",
+      "defaultEventColor": "Color predeterminado del evento",
+      "defaultView": "Vista predeterminada",
+      "eventDescription": "Descripción del evento",
+      "eventDescriptionHelp": "Opcional - se muestra al abrir el evento.",
+      "eventTitle": "Título del evento",
+      "eventTitleHelp": "Obligatorio - el encabezado de la etiqueta del evento.",
+      "heading": "Configuración del calendario",
+      "monday": "Lunes",
+      "noDateColumns": "No hay columnas visibles de fecha/marca de tiempo - un DataView CALENDAR necesita una para ubicar las filas.",
+      "sunday": "Domingo",
+      "views": {
+        "agenda": "Agenda",
+        "day": "Día",
+        "month": "Mes",
+        "week": "Semana"
+      },
+      "weekStartsOn": "La semana empieza el"
+    },
+    "dataViewCardSettings": {
+      "cardDescription": "Descripción de la tarjeta",
+      "cardDescriptionHelp": "Opcional - se muestra bajo el título.",
+      "cardImage": "Imagen de la tarjeta",
+      "cardImageHelp": "Opcional - una columna, o una fórmula que combina varias o se ramifica según un valor.",
+      "cardTitle": "Título de la tarjeta",
+      "cardTitleHelp": "Obligatorio - el encabezado de la tarjeta.",
+      "center": "Centro",
+      "contain": "Imagen completa",
+      "cover": "Llenar la forma",
+      "default": "Predeterminada (16:9)",
+      "heading": "Configuración de las tarjetas",
+      "imageAspect": "Forma de la imagen",
+      "imageAspectHelp": "3:4 para una foto carnet.",
+      "imageFit": "Ajuste de la imagen",
+      "imageFitHelp": "Llenar recorta los bordes; completa la muestra entera.",
+      "imagePosition": "Recortar desde",
+      "imagePositionHelp": "Arriba conserva la cara en un retrato.",
+      "original": "Original",
+      "top": "Arriba"
+    },
+    "dataViewAddColumns": {
+      "title": "Agregar columnas",
+      "intro": "Las columnas de la tabla y, bajo cada clave foránea, las de la tabla a la que apunta (de solo lectura). Las que ya están en este DataView aparecen marcadas.",
+      "search": "Buscar columnas",
+      "all": "Todas",
+      "hidden": "Oculta",
+      "noMatch": "Ninguna columna coincide.",
+      "unavailable": "Su tabla no está expuesta para lectura: no se pueden agregar sus columnas.",
+      "addCount": "Agregar {n}"
+    },
+    "dataViewColumnsSettings": {
+      "addColumns": "Agregar columnas…",
+      "addError": "No se pudieron agregar las columnas",
+      "columnName": "Nombre de columna",
+      "copyButton": "Botón de copiar",
+      "copyButtonDescription": "Un botón en la celda copia su valor.",
+      "empty": "Aún no hay columnas - usa el diseño de formulario en el encabezado para agregar algunas.",
+      "heading": "Columnas",
+      "intro": "Lo que este DataView lee y cómo lo muestra su grilla: orden, visible u oculta, encabezado, widget de celda y orden predeterminado. Una columna oculta se lee pero no se muestra - un diseño o una fórmula pueden usarla, y un espectador puede mostrarla. Una columna que no está aquí nunca se lee. Se guarda sobre la marcha.",
+      "moveDown": "Bajar",
+      "moveUp": "Subir",
+      "notSecurity": "No es seguridad: cada espectador sigue obteniendo solo las columnas y filas que sus roles permiten (Roles › Permisos).",
+      "keyOnlyFor": "{roles} ven su clave, no la fila: su READ sobre esta tabla no incluye {paths} (Roles › Permisos).",
+      "notSeenBy": "No la ven {roles}: su READ sobre esta tabla no incluye {column} (Roles › Permisos).",
+      "primaryKeyTooltip": "Clave primaria - siempre se lee: editar y eliminar una fila la necesitan. Se puede ocultar, no quitar.",
+      "related": "Relacionada",
+      "relatedTooltip": "Una columna de la tabla a la que apunta su clave foránea - de solo lectura, se ordena, filtra y busca por su ruta.",
+      "remove": "Quitar del DataView",
+      "removeError": "No se pudo quitar la columna",
+      "removeHelp": "Deja de leerse. Agregar columnas… la trae de vuelta.",
+      "removePrimaryKey": "La clave primaria se queda: editar y eliminar una fila la necesitan. Desmárcala para ocultarla.",
+      "saveError": "No se pudo guardar la columna",
+      "saveOrderError": "No se pudo guardar el orden predeterminado",
+      "settingsOf": "Configuración de {name}",
+      "showColumn": "Mostrar {name}",
+      "showColumnUnnamed": "Mostrar columna",
+      "sort": "Orden",
+      "sortHint": {
+        "asc": "Orden ascendente{priority} - haz clic para descendente",
+        "desc": "Orden descendente{priority} - haz clic para quitarlo",
+        "none": "Sin ordenar - haz clic para ordenar de forma ascendente",
+        "priority": " (prioridad {priority})"
+      },
+      "sync": {
+        "added": "{n} columna nueva | {n} columnas nuevas",
+        "error": "No se pudieron sincronizar las columnas",
+        "inSync": "Ya está sincronizado",
+        "inSyncDescription": "No se encontraron columnas nuevas ni renombradas.",
+        "orphaned": "{n} campo apunta a columnas eliminadas | {n} campos apuntan a columnas eliminadas",
+        "orphanedDescription": "Esa columna ya no existe en la tabla - quita el campo manualmente del lienzo del diseño de formulario si ya no se necesita.",
+        "renamed": "{n} renombrada | {n} renombradas",
+        "synced": "Columnas sincronizadas"
+      },
+      "syncColumns": "Sincronizar columnas",
+      "syncTooltip": "Concilia las columnas con las columnas reales y actuales de la tabla",
+      "truncate": "Truncar",
+      "truncateDescription": "Una línea, terminada en … - el valor completo al pasar el cursor.",
+      "widget": "Widget",
+      "total": "Total",
+      "totalDescription": "Al pie de la grilla: sobre todas las filas que dejan sus filtros, no solo la página. Lo calcula PostgreSQL, con el formato de esta columna.",
+      "totalOf": "Total de {name}",
+      "totals": {
+        "sum": "Suma",
+        "avg": "Promedio",
+        "min": "Mínimo",
+        "max": "Máximo",
+        "count": "Cantidad"
+      },
+      "panel": {
+        "properties": "Propiedades",
+        "fromColumn": "De la columna",
+        "visible": "Visible",
+        "order": "Orden"
+      },
+      "removeOf": "¿Quitar {name} del DataView?"
+    },
+    "dataViewFormulaField": {
+      "notSet": "Sin definir."
+    },
+    "dataViewFrameSettings": {
+      "noPreview": "Aún no hay vista previa",
+      "noPreviewHelp": "Ingresa una URL https arriba.",
+      "previewHelp": "Lo que ven los usuarios bajo la cabecera.",
+      "urlError": "Ingresa una URL https:// absoluta de otro sitio, sin nombre de usuario ni contraseña.",
+      "urlHelp": "La página https que se inserta - la misma para todos. No es un secreto: cualquiera que pueda abrir este DataView puede verla. El sitio debe permitir ser insertado; muchos lo rechazan y muestran un marco en blanco."
+    },
+    "dataViewGanttSettings": {
+      "barDescription": "Descripción de la barra",
+      "barDescriptionHelp": "Opcional - se muestra en la información emergente de la barra.",
+      "barTitle": "Título de la barra",
+      "barTitleHelp": "Obligatorio - el encabezado de la barra.",
+      "colorHelp": "Opcional - si está vacío, se usa el color fijo de abajo.",
+      "dateHelp": "Obligatorio - una columna de fecha/marca de tiempo.",
+      "defaultBarColor": "Color predeterminado de la barra",
+      "defaultZoom": "Zoom predeterminado",
+      "endDate": "Fecha de fin",
+      "fewDates": "Hay menos de dos columnas visibles de fecha/marca de tiempo - un DataView GANTT necesita un Inicio y un Fin para dibujar una barra.",
+      "groupBy": "Agrupar por",
+      "groupByHelp": "Opcional - una columna de clave foránea. Cada fila de su tabla relacionada se convierte en un carril; déjala sin asignar para una única línea de tiempo plana.",
+      "heading": "Configuración del Gantt",
+      "laneOrderHelp": "Sube o baja los carriles para reordenar los de la línea de tiempo. Un carril que la tabla relacionada haya ganado desde el último guardado se agrega al final automáticamente.",
+      "noLanes": "Aún no hay carriles.",
+      "progress": "Progreso",
+      "progressHelp": "Opcional - una columna numérica de 0 a 100. La barra se llena hasta ese valor.",
+      "startDate": "Fecha de inicio",
+      "zoom": {
+        "day": "Día",
+        "month": "Mes",
+        "week": "Semana"
+      }
+    },
+    "dataViewTreeSettings": {
+      "heading": "Árbol",
+      "icon": "Ícono",
+      "iconHelp": "Un nombre de ícono (i-lucide-folder) para cada nodo."
+    },
+    "dataViewKanbanSettings": {
+      "cardDescription": "Descripción de la tarjeta",
+      "cardDescriptionHelp": "Opcional - se muestra bajo el título.",
+      "cardImage": "Imagen de la tarjeta",
+      "cardImageHelp": "Opcional - se muestra en la parte superior de cada tarjeta. Se asume que es una URL o una columna de carga de archivos.",
+      "cardTitle": "Título de la tarjeta",
+      "cardTitleHelp": "Obligatorio - el encabezado de la tarjeta.",
+      "groupBy": "Agrupar por",
+      "groupByHelp": "Obligatorio - una clave foránea, una columna por fila de su tabla relacionada, o una columna con lista CHECK, una columna por valor en el orden del CHECK (con la etiqueta, el color y el ícono de las opciones de su presentación).",
+      "heading": "Configuración del Kanban",
+      "laneOrderHelp": "Sube o baja los carriles para reordenar los del tablero. Un carril que la tabla relacionada haya ganado desde el último guardado se agrega al final automáticamente.",
+      "noLanes": "Aún no hay carriles - elige una columna Agrupar por arriba.",
+      "noGroupColumns": "No hay ninguna clave foránea ni columna con lista CHECK visible - un DataView KANBAN necesita una para agrupar los registros en columnas.",
+      "readOnly": "Solo ver",
+      "readOnlyHelp": "Las tarjetas no se mueven entre columnas - otro proceso cambia la columna (una función, un workflow)."
+    },
+    "dataViewLaneColumns": {
+      "laneColorColumn": "Columna de color de carriles",
+      "laneColorColumnHelp": "Opcional - una columna de la tabla relacionada con un color (un nombre de la paleta o hex) que marca cada carril.",
+      "laneOrderColumn": "Columna de orden de carriles",
+      "laneOrderColumnHelp": "Opcional - una columna numérica de la tabla relacionada (p. ej., su posición). Vacía: carriles por nombre. Mover un carril abajo sigue teniendo prioridad."
+    },
+    "dataViewLaneOrder": {
+      "laneOrder": "Orden de carriles",
+      "moveDown": "Bajar",
+      "moveUp": "Subir"
+    },
+    "dataViewMapSettings": {
+      "colorHelp": "Opcional - si está vacío, se usa el color fijo de abajo.",
+      "defaultPinColor": "Color predeterminado del marcador",
+      "defaultPinIcon": "Icono predeterminado del marcador",
+      "heading": "Configuración del mapa",
+      "iconHelp": "Opcional - si está vacío, se usa el icono fijo de abajo.",
+      "initialView": "Vista inicial",
+      "initialViewHelp": "Desplaza y acerca el mapa hasta donde debe abrirse siempre - fijo, no se ajusta automáticamente a las filas.",
+      "latitude": "Latitud",
+      "location": "Ubicación",
+      "locationHelp": "Obligatorio - una columna de coordenadas (point).",
+      "locationModes": {
+        "pair": {
+          "description": "Dos columnas numéricas.",
+          "label": "Latitud y longitud"
+        },
+        "point": {
+          "description": "Una columna de coordenadas (point).",
+          "label": "Una columna de punto"
+        }
+      },
+      "longitude": "Longitud",
+      "numericHelp": "Obligatorio - una columna numérica.",
+      "popupDescription": "Descripción en la ventana emergente",
+      "popupDescriptionHelp": "Opcional - se muestra bajo el nombre en la ventana emergente.",
+      "popupName": "Nombre en la ventana emergente",
+      "popupNameHelp": "Obligatorio - el encabezado de la ventana emergente."
+    },
+    "dataViewPreviewDrawer": {
+      "description": "Cómo lo verán los usuarios una vez publicado - datos reales, solo lectura.",
+      "device": "Dispositivo",
+      "devices": {
+        "desktop": "Escritorio",
+        "phone": "Teléfono",
+        "tablet": "Tableta"
+      },
+      "frameTitle": {
+        "phone": "{name} en un teléfono",
+        "tablet": "{name} en una tableta"
+      },
+      "loadError": "No se pudo cargar el borrador.",
+      "publishAs": "¿Publicar como v{version}?",
+      "publishNote": "A partir de ahora, los espectadores verán este borrador.",
+      "readOnlyBadge": "Vista previa – solo lectura",
+      "title": "Vista previa · {name}"
+    },
+    "dataViewRecordTableSettings": {
+      "chooseDescription": "Opcional. La página obtiene un registro de ella - {record} - y campos de formulario vinculados a sus columnas; el {pk} de una URL abre esa fila. Una vez elegida, no se puede cambiar.",
+      "heading": "Registro",
+      "recordTable": "Tabla del registro",
+      "setDescription": "El registro de la página - {record} - y aquello a lo que se vinculan sus campos de formulario. Se establece una sola vez: esos campos apuntan a sus columnas.",
+      "setError": "No se pudo establecer la tabla del registro",
+      "useTable": "Usar esta tabla"
+    },
+    "dataViewScopeSettings": {
+      "columnSet": "Conjunto de columnas",
+      "filter": "Filtro",
+      "heading": "Alcance",
+      "invalidJson": "JSON no válido",
+      "query": "Consulta",
+      "queryDescription": "Lo que este DataView pide a la Data API: fields de Columnas, where del Filtro, order_by del orden predeterminado. Encima se aplican los permisos de cada espectador.",
+      "recordsNote": "Lo que trae esta consulta, leído con tus permisos - los permisos propios de un espectador pueden reducirlo aún más.",
+      "recordsTitle": "{name} - registros",
+      "showRecords": "Mostrar registros"
+    },
+    "dataViewVersionPreview": {
+      "noPreview": "Este diseño no tiene vista previa.",
+      "opensAsPage": "En la App, esto se abre como su propia página."
+    },
+    "dataViewWizardCalendarStep": {
+      "colorColumn": "Columna de color",
+      "colorColumnHelp": "Opcional - color del evento por fila. Si no se asigna, se usa el color fijo de abajo.",
+      "date": "Fecha",
+      "dateHelp": "Obligatorio - una columna de fecha/marca de tiempo. Las filas se ubican en el día que indica esta columna.",
+      "defaultColorHelp": "Se usa para todas las filas cuando no se asigna una Columna de color arriba.",
+      "defaultEventColor": "Color predeterminado del evento",
+      "defaultView": "Vista predeterminada",
+      "eventDescription": "Descripción del evento",
+      "eventDescriptionHelp": "Opcional - se muestra al abrir el evento.",
+      "eventTitle": "Título del evento",
+      "eventTitleHelp": "Obligatorio - el encabezado de la etiqueta del evento.",
+      "monday": "Lunes",
+      "noDateColumns": "No hay columnas visibles de fecha/marca de tiempo - un DataView CALENDAR necesita una para ubicar las filas.",
+      "sunday": "Domingo",
+      "views": {
+        "agenda": "Agenda",
+        "day": "Día",
+        "month": "Mes",
+        "week": "Semana"
+      },
+      "weekStartsOn": "La semana empieza el"
+    },
+    "dataViewWizardCardStep": {
+      "descriptionHelp": "Opcional - se muestra bajo el título.",
+      "image": "Imagen",
+      "imageHelp": "Opcional - se muestra en la parte superior de cada tarjeta. Se asume que es una URL o una columna de carga de archivos.",
+      "title": "Título",
+      "titleHelp": "Obligatorio - el encabezado de la tarjeta."
+    },
+    "dataViewWizardColumns": {
+      "columnName": "Nombre de la columna",
+      "helpText": "Texto de ayuda (opcional)",
+      "helpTextOf": "Texto de ayuda de {column}",
+      "include": "Incluir {column}",
+      "intro": "Las columnas seleccionadas pasan a ser las columnas de la cuadrícula y los campos del formulario - Etiqueta y Widget van a ambos, Texto de ayuda al campo del formulario. Después cada uno se edita por separado: las columnas en Configuración, los campos en Diseño del formulario.",
+      "labelOf": "Etiqueta de {column}",
+      "loadError": "No se pudieron cargar las columnas",
+      "primaryKeyTooltip": "Clave primaria - siempre se lee: editar y eliminar una fila la necesitan. Desmarcada, queda oculta.",
+      "show": "Mostrar {column}",
+      "widget": "Widget"
+    },
+    "dataViewWizardGanttStep": {
+      "barDescription": "Descripción de la barra",
+      "barDescriptionHelp": "Opcional - se muestra en la información emergente de la barra.",
+      "barTitle": "Título de la barra",
+      "barTitleHelp": "Obligatorio - el encabezado de la barra.",
+      "colorColumn": "Columna de color",
+      "colorColumnHelp": "Opcional - color de la barra por fila. Si no se asigna, se usa el color fijo de abajo.",
+      "dateHelp": "Obligatorio - una columna de fecha/marca de tiempo.",
+      "defaultBarColor": "Color predeterminado de la barra",
+      "defaultColorHelp": "Se usa para todas las filas cuando no se asigna una Columna de color arriba.",
+      "defaultZoom": "Zoom predeterminado",
+      "defaultZoomHelp": "Con qué escala de la línea de tiempo se abre este DataView - se puede cambiar después desde la barra de herramientas.",
+      "endDate": "Fecha de fin",
+      "fewDates": "Hay menos de dos columnas visibles de fecha/marca de tiempo - un DataView GANTT necesita un Inicio y un Fin para dibujar una barra.",
+      "groupBy": "Agrupar por",
+      "groupByHelp": "Opcional - una columna de clave foránea. Cada fila de su tabla relacionada se convierte en un carril; déjala sin asignar para una única línea de tiempo plana.",
+      "startDate": "Fecha de inicio",
+      "zoom": {
+        "day": "Día",
+        "month": "Mes",
+        "week": "Semana"
+      }
+    },
+    "dataViewWizardTreeStep": {
+      "noParent": "Esta tabla no tiene una clave foránea a sí misma",
+      "noParentHelp": "Un árbol necesita una columna con el padre de cada fila - una clave foránea de la tabla a su propia clave primaria. Agrégala en Base de datos > Tablas y vuelve.",
+      "parent": "Padre",
+      "parentHelp": "La clave foránea de la tabla a sí misma - la fila bajo la que está cada una.",
+      "order": "Orden",
+      "orderHelp": "Una columna numérica que ordena las filas bajo un mismo padre - se renumera al arrastrar una. Ninguna: por título.",
+      "cycleGuard": "Proteger contra ciclos",
+      "cycleGuardHelp": "Agrega un trigger a la tabla que rechaza una fila puesta bajo sí misma o bajo uno de sus descendientes - para cualquiera que escriba, no solo este DataView.",
+      "title": "Título",
+      "titleHelp": "Lo que muestra cada nodo.",
+      "description": "Descripción",
+      "descriptionHelp": "Una segunda línea, junto al título en el árbol y debajo en el organigrama.",
+      "image": "Imagen",
+      "imageHelp": "Un avatar para cada nodo - una foto en un organigrama.",
+      "color": "Color",
+      "colorHelp": "Un nombre de color de la paleta o un color CSS - una marca en cada nodo.",
+      "display": "Se abre como",
+      "displayHelp": "Quien lo ve puede cambiarlo, y la elección se recuerda en su navegador.",
+      "expandLevel": "Niveles abiertos",
+      "expandLevelHelp": "Cuántos niveles se abren al cargar - 0 muestra solo el primer nivel."
+    },
+    "dataViewWizardKanbanStep": {
+      "cardDescription": "Descripción de la tarjeta",
+      "cardDescriptionHelp": "Opcional - se muestra bajo el título.",
+      "cardImage": "Imagen de la tarjeta",
+      "cardImageHelp": "Opcional - se muestra en la parte superior de cada tarjeta. Se asume que es una URL o una columna de carga de archivos.",
+      "cardTitle": "Título de la tarjeta",
+      "cardTitleHelp": "Obligatorio - el encabezado de la tarjeta.",
+      "groupBy": "Agrupar por",
+      "groupByHelp": "Obligatorio - una clave foránea, un carril por fila de su tabla relacionada, o una columna con lista CHECK, un carril por valor.",
+      "noForeignKeys": "No hay una clave foránea ni una columna con lista CHECK visibles - un DataView KANBAN necesita una para agrupar los registros en carriles."
+    },
+    "dataViewWizardMapStep": {
+      "colorColumn": "Columna de color",
+      "colorColumnHelp": "Opcional - color del marcador por fila. Si no se asigna, se usa el color fijo de abajo.",
+      "defaultPinColor": "Color predeterminado del marcador",
+      "defaultPinIcon": "Icono predeterminado del marcador",
+      "defaultsHelp": "Se usan para todas las filas cuando no se asigna una columna de Icono/Color arriba.",
+      "descriptionHelp": "Opcional - se muestra bajo el nombre en la ventana emergente.",
+      "iconColumn": "Columna de icono",
+      "iconColumnHelp": "Opcional - icono del marcador por fila. Si no se asigna, se usa el icono fijo de abajo.",
+      "initialView": "Vista inicial",
+      "initialViewHelp": "Desplaza y acerca el mapa hasta donde debe abrirse siempre - fijo, no se ajusta automáticamente a las filas.",
+      "latitude": "Latitud",
+      "location": "Ubicación",
+      "locationHelp": "Obligatorio - una columna de coordenadas (point).",
+      "locationModes": {
+        "pair": {
+          "description": "Dos columnas numéricas.",
+          "label": "Latitud y longitud"
+        },
+        "point": {
+          "description": "Una columna de coordenadas (point).",
+          "label": "Una columna de punto"
+        }
+      },
+      "longitude": "Longitud",
+      "nameHelp": "Obligatorio - el encabezado de la ventana emergente al hacer clic en un marcador.",
+      "noNumeric": "No hay columnas numéricas visibles - un DataView MAP necesita al menos dos (Latitud/Longitud) para ubicar algo.",
+      "numericHelp": "Obligatorio - una columna numérica."
+    },
+    "dataViewWizardModal": {
+      "byColumn": "Por su columna \"{column}\"",
+      "columnSet": "Conjunto de columnas",
+      "columnsIntro": "Elige qué columnas de {resource} usa esta vista.",
+      "createError": "No se pudo crear el DataView",
+      "cycleGuardError": "El DataView se creó, pero no se pudo agregar la protección contra ciclos",
+      "created": "DataView creado",
+      "detailColumnsIntro": "Las columnas de {resource} que muestra cada fila - en la cuadrícula del Detalle y en el formulario que edita una fila. Están todas elegidas; desmarca las que no quieras. Lo que quede fuera se puede agregar después: las columnas en Configuración, los campos en Diseño del formulario.",
+      "detailTable": "Tabla de detalle",
+      "detailTableHelp": "Sus filas son el detalle del registro - se muestran en un control Detalle, y cada una se edita en un modal que puedes diseñar después.",
+      "formModeHelp": "En qué modo se abre el formulario de este DataView - se puede cambiar después desde Editar DataView.",
+      "manyColumns": "Este DataView tiene más de {count} columnas visibles - una Página suele acomodar mejor un formulario de este tamaño que {presentation}.",
+      "masterTable": "Tabla maestra",
+      "masterTableHelp": "La tabla en la que se crea cada registro nuevo - una factura, un pedido.",
+      "mode": "Modo",
+      "modeHelp": "Cómo se abre el formulario de edición desde la cuadrícula - se puede cambiar después en Configuración.",
+      "noFormFeatures": "Este diseño aún no tiene funciones de formulario.",
+      "noRelatedTables": "No hay tablas relacionadas",
+      "noRelatedTablesHelp": "Ninguna tabla tiene una clave foránea hacia la tabla maestra - una tabla de detalle necesita una (por ejemplo {example}).",
+      "noTableFeatures": "Este diseño aún no tiene funciones de tabla.",
+      "position": "Posición",
+      "previewIntro": "Lo que {resource} aporta a este DataView - las columnas seleccionadas, siempre con la clave primaria. Un filtro y un orden predeterminado se definen después, en Configuración.",
+      "previewNote": "Lo que leerá este DataView, con tus permisos - los permisos propios de quien lo vea pueden restringirlo más.",
+      "recordTable": "Tabla del registro",
+      "recordTableHelp": "Opcional. La página obtiene un registro de ella - {variable} - y campos de formulario vinculados a sus columnas; el {param} de una URL abre esa fila. Sin ella, la página no edita ningún registro.",
+      "recordsTitle": "{name} - registros",
+      "showRecords": "Mostrar registros",
+      "size": "Tamaño",
+      "steps": {
+        "calendarLayout": {
+          "description": "Qué columna de fecha ubica las filas, y el contenido/color de cada evento.",
+          "title": "Diseño del calendario"
+        },
+        "cardLayout": {
+          "description": "Qué columnas se muestran en cada tarjeta.",
+          "title": "Diseño de tarjeta"
+        },
+        "columns": {
+          "description": "Qué columnas usa esta vista - todas, salvo las que desmarques.",
+          "title": "Columnas"
+        },
+        "detail": {
+          "description": "La tabla que contiene las filas de detalle de cada registro.",
+          "title": "Detalle"
+        },
+        "detailColumns": {
+          "description": "Qué columnas muestra cada fila de detalle.",
+          "title": "Columnas del detalle"
+        },
+        "formFeatures": {
+          "description": "Comportamiento del formulario de edición y acciones del registro.",
+          "title": "Funciones del formulario"
+        },
+        "frame": {
+          "description": "La página https que se inserta, y sus botones de cabecera.",
+          "title": "Marco"
+        },
+        "ganttLayout": {
+          "description": "Columnas de fecha de inicio/fin de cada barra, una columna de agrupación opcional, y el contenido/color de cada barra.",
+          "title": "Diseño del Gantt"
+        },
+        "treeLayout": {
+          "title": "Diseño del árbol",
+          "description": "La columna padre, el orden de cada nivel y lo que muestra cada nodo."
+        },
+        "identity": {
+          "description": "Nombre, descripción, slug, icono y color.",
+          "title": "Identidad"
+        },
+        "kanbanLayout": {
+          "description": "Qué columna FK agrupa los registros en carriles, y el contenido de cada tarjeta.",
+          "title": "Diseño del Kanban"
+        },
+        "mapLayout": {
+          "description": "Posición, ventana emergente e icono/color del marcador de cada fila.",
+          "title": "Diseño del mapa"
+        },
+        "master": {
+          "description": "La tabla en la que se crea cada registro nuevo, y sus columnas.",
+          "title": "Maestro"
+        },
+        "preview": {
+          "description": "La consulta que leerá este DataView, y sus registros.",
+          "title": "Vista previa"
+        },
+        "record": {
+          "description": "Una tabla como su registro - opcional.",
+          "title": "Registro"
+        },
+        "source": {
+          "description": "La tabla o vista sobre la que se construye este DataView.",
+          "title": "Origen"
+        },
+        "tableFeatures": {
+          "description": "Controles de la barra de herramientas y de la lista del DataView.",
+          "title": "Funciones de la tabla"
+        },
+        "type": {
+          "description": "¿Qué tipo de vista vas a crear?",
+          "title": "Tipo"
+        },
+        "settingsLayout": {
+          "title": "Parámetros",
+          "description": "Qué columnas tienen cada parámetro - propuestas según sus nombres."
+        },
+        "general": {
+          "description": "Su nombre y cómo lo muestra la App.",
+          "title": "General"
+        },
+        "data": {
+          "description": "La tabla o vista que lee, sus columnas y la consulta.",
+          "title": "Datos"
+        },
+        "views": {
+          "description": "Cómo se ve la lista: su diseño y lo que comparten todas las vistas.",
+          "title": "Vistas"
+        },
+        "form": {
+          "description": "Cómo se abre un registro, y sus acciones.",
+          "title": "Formulario"
+        },
+        "actions": {
+          "description": "Qué puede hacer quien la usa: Permitir y los botones de la barra.",
+          "title": "Acciones"
+        },
+        "security": {
+          "description": "Los roles que la abren.",
+          "title": "Seguridad"
+        }
+      },
+      "tableOrView": "Tabla o vista",
+      "tableOrViewHelp": "Solo los recursos TABLE/VIEW activos pueden respaldar un DataView - las funciones quedan fuera de alcance por ahora.",
+      "title": "Nuevo DataView",
+      "typeGroups": {
+        "rows": {
+          "title": "Ver y trabajar con muchas filas",
+          "note": "Se pueden combinar después en la misma DataView."
+        },
+        "record": {
+          "title": "Cargar o editar un registro"
+        },
+        "pages": {
+          "title": "Páginas a medida"
+        }
+      },
+      "needs": {
+        "date": "Necesita una columna de fecha",
+        "range": "Necesita inicio y fin",
+        "location": "Necesita una ubicación",
+        "status": "Necesita una columna de estado",
+        "parent": "Necesita una columna que apunte a la misma tabla"
+      },
+      "recommended": "Recomendado",
+      "moreOptions": "Más opciones",
+      "rolesError": "El DataView se creó, pero no se pudieron asignar sus roles"
+    },
+    "designPage": {
+      "descriptionWithSource": "Diseño · {source}",
+      "externalFrame": "Un marco externo no tiene página que diseñar.",
+      "previewTooltip": "Vista previa del borrador con datos reales",
+      "publishConfirm": "¿Publicar como v{version}?",
+      "publishConfirmDescription": "Desde ahora, quienes la vean verán el borrador actual.",
+      "publishError": "No se pudo publicar",
+      "published": "Publicado como v{version}",
+      "title": "Diseño"
+    },
+    "designerClassListEditor": {
+      "addClass": "Agregar clase",
+      "classN": "Clase {n}",
+      "description": "Clases de Tailwind en su caja, además de las opciones de arriba - mt-6, text-lg, font-semibold, gap-2... Las habituales de espaciado, texto, borde y diseño siempre funcionan.",
+      "label": "Clases CSS",
+      "removeClass": "Quitar clase"
+    },
+    "designerHtmlAttrsEditor": {
+      "addAttribute": "Agregar atributo",
+      "attribute": "Atributo",
+      "attributeName": "Nombre del atributo {n}",
+      "attributeValue": "Valor del atributo {n}",
+      "description": "Cualquier otro atributo HTML o prop de Nuxt UI, por su nombre literal - si también se define aquí, siempre prevalece la opción de arriba.",
+      "label": "Atributos personalizados",
+      "removeAttribute": "Quitar atributo"
+    },
+    "displayFormatField": {
+      "currencyCode": "Moneda {code}",
+      "description": "Vacío: el predeterminado de su tipo. Números como #,##0.00, \"$ \"#,##0.00 o CURRENCY:USD; fechas como dd/MM/yyyy.",
+      "format": "Formato",
+      "numberPresets": {
+        "accounting": "Contabilidad ((1,234.57))",
+        "currency": "Moneda ($1,234.57)",
+        "integer": "Entero (1,234)",
+        "number": "Número (1,234.57)",
+        "percentage": "Porcentaje (12.34%)"
+      },
+      "presets": "Formatos predefinidos"
+    },
+    "featuresSettings": {
+      "autoRefresh": "Actualización automática",
+      "autoRefreshDescription": "Actualiza la cuadrícula automáticamente cada cierto intervalo - quien la ve puede cambiarlo con su propio parámetro de URL ?refresh=. Un intervalo personalizado se escribe como 45s o 2h.",
+      "contentAlign": "Alineación del contenido",
+      "contentAlignDescription": "Dónde se ubica el formulario en una página más ancha que él.",
+      "contentWidth": "Ancho del contenido",
+      "contentWidthCustomDescription": "Cuánto se ensanchan el contenido de la página y su pie fijo. Por defecto: Settings > DataViews > Ancho de página.",
+      "contentWidthDescription": "Cuánto se ensancha el formulario en su página. Por defecto: Settings > DataViews > Ancho de página.",
+      "customInterval": "Intervalo personalizado",
+      "defaultDensity": "Densidad predeterminada",
+      "defaultPageSize": "Tamaño de página predeterminado",
+      "defaultToolbar": "Barra de herramientas por defecto",
+      "defaultToolbarHelp": "Para quien no eligió la suya. Un celular o tablet siempre la ve compacta.",
+      "editModeDescription": "Cómo se abre el formulario de edición desde la cuadrícula - también en la barra de herramientas del formulario de diseño.",
+      "firstTimeViewer": "Con lo que empieza quien la ve por primera vez (o quien nunca personalizó nada).",
+      "fitToScreen": "Ajustar a la pantalla",
+      "fitToScreenDescription": "El formulario ocupa la página en lugar de desplazarla - la fila con un widget con Llenar altura toma la altura restante y se desplaza por dentro. Se ignora en un teléfono o una tableta.",
+      "formFeatures": "Funciones del formulario",
+      "formFeaturesDescription": "Comportamiento del formulario de edición y acciones del registro.",
+      "formModeDescription": "Cómo se abre el formulario de este DataView.",
+      "instanceDefault": "Por defecto",
+      "mode": "Modo",
+      "newButtonLabel": "Etiqueta del botón Nuevo",
+      "newButtonLabelDescription": "El botón de la pantalla inicial. Vacío: Nuevo {name}.",
+      "onOpen": "Al abrir",
+      "onOpenDescription": "Lo que muestra este DataView al abrirlo.",
+      "position": "Posición",
+      "runtimeDefault": "Predeterminado del runtime ({value})",
+      "size": "Tamaño",
+      "tableFeatures": "Funciones de la tabla",
+      "tableFeaturesDescription": "Barra de herramientas y controles de lista del DataView.",
+      "toolbarCompact": "Compacta",
+      "toolbarFull": "Completa",
+      "toolbarInstance": "La de la instancia (Configuración > DataViews)",
+      "listMargin": "Margen de la lista",
+      "listMarginHelp": "El espacio alrededor de la lista - Por defecto: una tabla, sin margen (Settings > DataViews > Margen de las tablas); el resto de las listas, normal.",
+      "listMargins": {
+        "none": "Sin margen",
+        "compact": "Compacto",
+        "normal": "Normal"
+      },
+      "toolbar": "Barra de herramientas",
+      "toolbarDescription": "Común a todas las vistas - el diseño y los controles propios de cada una están en su tab, abajo.",
+      "kiosk": "Kiosco",
+      "kioskDescription": "Solo la página, a pantalla completa - sin menú ni encabezado de página - para un tótem o un teléfono usado como lector. Un botón en la esquina entra en pantalla completa; un administrador sale de la vista kiosco desde ahí."
+    },
+    "formatPattern": {
+      "presetAccounting": "Contable ((12.345,67))",
+      "presetCurrency": "Moneda ($12.345,67)",
+      "presetInteger": "Entero (12.345)",
+      "presetNumber": "Número (12.345,67)",
+      "presetPercentage": "Porcentaje (12,34%)"
+    },
+    "inspector": {
+      "advanced": "Avanzado",
+      "bindOptionsFirst": "{description} Vincula sus Opciones a una variable Recurso para elegir entre sus campos.",
+      "bindRowsFirst": "Vincula primero sus Filas a una variable Recurso.",
+      "computedReadOnly": "{label} - calculado, solo lectura",
+      "createFunction": "Crear función",
+      "createHandler": "Crear manejador",
+      "dashboardNoVariables": "Este Dashboard no tiene variables.",
+      "default": "Predeterminado",
+      "formulaFor": "Fórmula para {name}",
+      "invalidJson": "JSON no válido.",
+      "invalidRegex": "No es una expresión regular válida.",
+      "newVariableOfKind": "Nueva variable {kind}",
+      "noEvents": "Sin eventos",
+      "noLinkingColumn": "Ninguna columna de {detail} apunta a {table}.",
+      "noRecordTable": "Esta página no tiene tabla de registro.",
+      "noRecordTableColumn": "Esta página no tiene tabla de registro - una página la tiene cuando se crea con una Tabla de registro.",
+      "openInCode": "Abrir en Código",
+      "perOption": "{label} - por opción",
+      "perRow": "{label} - por fila",
+      "pickDashboardFirst": "Elige primero su Dashboard.",
+      "receives": "Recibe {signature}.",
+      "receivesEvent": "Recibe (dataview, event) - event: {payload}",
+      "rolesWithoutDashboard": "{roles} abre esta página pero no puede ver este Dashboard - otórgale acceso en la Configuración del Dashboard. | {roles} abren esta página pero no pueden ver este Dashboard - otórgales acceso en la Configuración del Dashboard.",
+      "style": {
+        "accented": "Acentuado",
+        "alignment": "Alineación",
+        "appearance": "Apariencia",
+        "background": "Fondo",
+        "border": "Borde",
+        "bottom": "Abajo en su fila",
+        "center": "Centro",
+        "content": "Contenido",
+        "elevated": "Elevado",
+        "full": "Completo",
+        "inItsRow": "En su fila",
+        "largeShadow": "Sombra grande",
+        "left": "Izquierda",
+        "mediumShadow": "Sombra mediana",
+        "middle": "En el medio de su fila",
+        "muted": "Atenuado",
+        "pill": "Píldora o círculo",
+        "primary": "Primario",
+        "primarySoft": "Primario, suave",
+        "radius": "Radio",
+        "right": "Derecha",
+        "rounded": "Redondeado",
+        "shadow": "Sombra",
+        "slightlyRounded": "Levemente redondeado",
+        "smallShadow": "Sombra pequeña",
+        "spacing": "Espaciado",
+        "stretch": "El alto de su fila (una Card o un Box)",
+        "top": "Arriba en su fila",
+        "veryRounded": "Muy redondeado"
+      },
+      "stylesApplied": "{n} estilo aplicado | {n} estilos aplicados",
+      "tabs": {
+        "events": "Eventos",
+        "props": "Propiedades",
+        "style": "Estilo",
+        "column": "De la columna"
+      },
+      "variableOfKind": "Una variable {kind}.",
+      "inheritedValue": "Heredado de la columna: {value}",
+      "inheritedUse": "Usar el de la columna",
+      "inheritedNone": "Sin {label}",
+      "inheritedStateNone": "Ninguno - no se muestra; la columna no cambia.",
+      "inheritedStateOwn": "Propio",
+      "inheritedStateInherited": "Heredado de la columna",
+      "inheritedStateEmpty": "La columna no define uno",
+      "inheritedEdit": "Editar en la tabla",
+      "pickDataViewFirst": "Elige primero su DataView.",
+      "autoRefreshTool": "Auto-refresco",
+      "allow": {
+        "create": "Crear",
+        "update": "Editar",
+        "delete": "Borrar"
+      },
+      "uploadImage": "Subir una imagen - un archivo público, la ve cualquiera que abra la página",
+      "uploadImageFailed": "No se pudo subir la imagen",
+      "unknownField": "«{field}» no es un campo que lea su Recurso: cada opción se vería vacía. Una fórmula va en la ƒ de al lado.",
+      "inheritedStateSame": "Igual a la de la columna"
+    },
+    "palette": {
+      "search": "Buscar widgets…"
+    },
+    "richTextEditor": {
+      "backToVisual": "Volver al editor visual",
+      "htmlSource": "Código HTML"
+    },
+    "settingsPage": {
+      "copyError": "No se pudo crear la copia",
+      "created": "Se creó \"{name}\"",
+      "createdDescription": "Una copia sin publicar - publícala cuando esté lista.",
+      "deleteDescription": "Se eliminan su diseño, todas sus versiones y los estados guardados de sus espectadores. Esto no se puede deshacer. Los datos de su tabla de origen NO se modifican.",
+      "deleteError": "No se pudo eliminar el DataView",
+      "deleteTitle": "¿Eliminar este DataView?",
+      "designTooltip": "Lienzo, campos, vinculaciones, eventos y código",
+      "formDesign": "Diseño de formulario",
+      "frame": "Marco",
+      "general": "General",
+      "loadVersionError": "No se pudo cargar la versión",
+      "openDataView": "Abrir DataView",
+      "page": "Página",
+      "pageDesign": "Diseño de página",
+      "previewTooltip": "Vista previa del borrador con datos reales",
+      "publishAs": "¿Publicar como v{version}?",
+      "publishError": "No se pudo publicar",
+      "publishNote": "A partir de ahora, los espectadores verán el borrador actual.",
+      "published": "Publicado como v{version}",
+      "restoreError": "No se pudo restaurar",
+      "restored": "v{version} restaurada en el borrador",
+      "restoredDescription": "Aún no se ha publicado nada - publica para ponerlo en vivo.",
+      "saveError": "No se pudo guardar el DataView",
+      "security": "Seguridad",
+      "sections": {
+        "general": "General",
+        "data": "Datos",
+        "views": "Vistas",
+        "form": "Formulario",
+        "page": "Página",
+        "layout": "Diseño",
+        "nav": "Secciones de la configuración",
+        "invalid": "Hay algo por completar aquí",
+        "actions": "Acciones",
+        "security": "Seguridad",
+        "versions": "Versiones"
+      },
+      "allow": "Permitir",
+      "allowDescription": "Qué pueden hacer sus usuarios además de leer - solo menos que sus permisos, nunca más: un listado histórico sin Nuevo mientras el mismo rol crea desde otro lugar. La Data API sigue aceptando lo que el rol puede hacer."
+    },
+    "snippetModal": {
+      "description": "Código simple, escrito por ti - léelo y cámbialo después.",
+      "emptyFunction": "Función vacía",
+      "emptyFunctionDescription": "Una función con un comentario que indica lo que recibe - escribes su cuerpo en el Código.",
+      "insert": "Insertar",
+      "insertSnippet": "Insertar fragmento",
+      "theCode": "El código"
+    },
+    "snippetParamsForm": {
+      "kinds": {
+        "call": "Llamada",
+        "resource": "Recurso",
+        "value": "Valor"
+      },
+      "noControl": "Ningún widget de esta página tiene un nombre que pueda hacer esto - dale uno en su inspector (Nombre).",
+      "noVariable": "Esta página todavía no tiene una variable {kind} - crea una en Variables."
+    },
+    "styleBoxModel": {
+      "allSidesAria": "{ring} todos los lados",
+      "allSidesTitle": "{ring} - todos los lados",
+      "rings": {
+        "margin": "margen",
+        "padding": "relleno"
+      },
+      "sideAria": "{ring} {side}",
+      "sideTitle": "{ring} - {side}",
+      "sides": {
+        "bottom": "abajo",
+        "left": "izquierda",
+        "right": "derecha",
+        "top": "arriba"
+      }
+    },
+    "useCustomCanvasContext": {
+      "columns": "{n} columna | {n} columnas",
+      "rename": "Renombrar",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "wrapCard": "Envolver en una Card",
+      "wrapBox": "Envolver en un Box"
+    },
+    "useWidgetRuntime": {
+      "cancelledInPreview": "Cancelado en la vista previa.",
+      "deleteNamesRow": "Una eliminación de tabla indica su fila: \"pk\" o \"where\" en la entrada.",
+      "functionNotAvailable": "La función no está disponible.",
+      "notAFile": "El resultado no es un archivo.",
+      "nothingToClose": "No hay nada que cerrar aquí.",
+      "ok": "Aceptar",
+      "resourceNotAvailable": "El recurso no está disponible.",
+      "runCreate": "¿Ejecutar la creación en {name} de verdad? Puede escribir datos.",
+      "runDelete": "¿Ejecutar la eliminación en {name} de verdad? Puede escribir datos.",
+      "runFunction": "¿Ejecutar la función {name} de verdad? Puede escribir datos.",
+      "runIt": "Ejecutar",
+      "runUpdate": "¿Ejecutar la actualización en {name} de verdad? Puede escribir datos.",
+      "runWorkflow": "¿Ejecutar el workflow {name} de verdad? Puede escribir datos.",
+      "tableNotAvailable": "La tabla no está disponible.",
+      "updateNamesRow": "Una actualización de tabla indica su fila: \"pk\" o \"where\" en la entrada.",
+      "workflowFailed": "El workflow falló."
+    },
+    "variablesPanel": {
+      "action": "Acción",
+      "actionDescription": "A través de la Data API, como el usuario que la ve: se aplican sus permisos, filtros de filas y comprobaciones del payload, y la escritura queda auditada.",
+      "callTypes": {
+        "function": "Una función",
+        "table": "Una escritura en una tabla",
+        "workflow": "Un workflow (MANUAL)"
+      },
+      "confirmDelete": "{name} lo usa {users}. ¿Eliminarla de todos modos?",
+      "defaultDescription": "Lo que contiene cuando se abre la página.",
+      "defaultFormula": "Fórmula predeterminada",
+      "defaultSources": {
+        "constant": "Constante",
+        "formula": "Fórmula",
+        "param": "Parámetro de URL",
+        "user": "Usuario actual ($USER)"
+      },
+      "defaultValue": "Valor predeterminado",
+      "function": "Función",
+      "inputDescription": "El cuerpo de la petición, tal como lo recibe la API: {body}; una actualización o eliminación en una tabla indica su fila con {pk} o {where}. Los valores pueden usar {formula}. El código puede pasar otro: {code}, p. ej. el evento submit de un formulario.",
+      "inputError": "Un objeto, p. ej. {example}.",
+      "invalidJson": "No es un JSON válido.",
+      "invalidValue": "Valor no válido para el tipo {type}.",
+      "modes": {
+        "list": "Lista - filas",
+        "record": "Registro - una fila"
+      },
+      "nameDescription": "Cómo la leen el código y las fórmulas: {code}, {formula}.",
+      "nameTaken": "Ya existe una variable llamada {name}",
+      "newVariable": "Nueva variable",
+      "noVariables": "Todavía no hay variables.",
+      "noneSelected": {
+        "description": "Las variables guardan los datos y el estado de la página - crea una y luego vincula widgets a ella.",
+        "title": "Ninguna variable seleccionada"
+      },
+      "notes": {
+        "noLimit": "La consulta no tiene límite: aquí, todos los registros que coinciden; en la página, la página predeterminada de la Data API (Configuración › API).",
+        "variablesLeftOut": "Se omitieron las condiciones que leen una variable de la página - aquí no tienen valor."
+      },
+      "queryValues": "Los valores pueden usar {formula}.",
+      "recordHelp": "El ?pk= de una URL abre esa fila; sin él, empieza uno nuevo. Los campos de formulario vinculados a una columna lo editan; el código lo alcanza como dataview.vars.record - data, mode, dirty, save(values?), new(), reload(), delete()… - y las fórmulas como {formula}.",
+      "recordsTitle": "{name} - registros",
+      "runs": "Ejecuta",
+      "showRecords": "Mostrar registros",
+      "table": "Tabla",
+      "tableActions": {
+        "create": "Crear una fila",
+        "delete": "Eliminar filas",
+        "update": "Actualizar filas"
+      },
+      "tableDescription": "Tablas expuestas para {method}.",
+      "unused": "Nada la usa todavía.",
+      "usedBy": "Usada por",
+      "userField": "Campo de $USER",
+      "workflow": "Workflow",
+      "workflowDescription": "Solo workflows MANUAL - se ejecutan como el usuario que los llama.",
+      "search": "Buscar variables",
+      "unusedHint": "No la usa nada - quizá sobra"
+    },
+    "widgetItemsEditor": {
+      "addItem": "Agregar elemento",
+      "createFunction": "Crear función",
+      "defaultColor": "Predeterminado",
+      "disabled": "Deshabilitado",
+      "function": "Función",
+      "itemDisabled": "Elemento {n} deshabilitado",
+      "itemLabel": "Etiqueta del elemento {n}",
+      "itemVisible": "Elemento {n} visible",
+      "moveDown": "Bajar",
+      "moveUp": "Subir",
+      "removeItem": "Quitar elemento",
+      "visible": "Visible",
+      "size": "Tamaño %",
+      "minSize": "Mín. %",
+      "collapsible": "Plegable",
+      "itemSize": "Tamaño del elemento {n}",
+      "itemMinSize": "Tamaño mínimo del elemento {n}",
+      "sizeSum": "Los tamaños suman {sum}% de 100"
+    },
+    "widgetJsonEditor": {
+      "invalid": "JSON no válido - aún no se guardó."
+    },
+    "publishWarning": "Publicada - hay algo para revisar",
+    "layoutViews": {
+      "heading": "Vistas",
+      "description": "Las vistas entre las que se cambia desde la barra, en este orden - arrástralas por su asa. Se abre con la principal, o con la última que usó cada persona.",
+      "default": "Abre con esta",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "unavailable": {
+        "MAP": "Necesita una columna point o dos columnas numéricas (latitud, longitud).",
+        "KANBAN": "Necesita una clave foránea o una columna con lista CHECK para agrupar las tarjetas.",
+        "CALENDAR": "Necesita una columna de fecha.",
+        "GANTT": "Necesita dos columnas de fecha (inicio, fin).",
+        "TREE": "Necesita una clave foránea de la tabla a sí misma (un padre)."
+      },
+      "tabs": "Vistas",
+      "offer": "Ofrecer esta vista",
+      "offerHelp": "Se cambia a ella desde la barra de herramientas.",
+      "offerDefault": "Siempre ofrecida - el DataView abre con ella.",
+      "offered": "Activa",
+      "position": "Posición en la barra",
+      "positionValue": "{position} de {total}",
+      "moveEarlier": "Mover antes",
+      "moveLater": "Mover después",
+      "turnOn": "Ofrece esta vista para configurarla.",
+      "controls": "Controles de esta vista",
+      "sharedDefault": "Compartido por las vistas Tabla y Tarjetas."
+    },
+    "settingsLayout": {
+      "keyColumn": "Clave",
+      "keyColumnHelp": "Obligatoria - el identificador de cada parámetro, nunca se muestra (por ejemplo, clave).",
+      "valueColumn": "Valor",
+      "valueColumnHelp": "Obligatoria - lo que se edita. Una columna jsonb elige el control según el tipo del valor: un número, un switch, una fecha, texto.",
+      "titleColumn": "Título",
+      "titleColumnHelp": "Obligatoria - el nombre que muestra cada parámetro.",
+      "descriptionColumn": "Descripción",
+      "descriptionColumnHelp": "Obligatoria - la ayuda bajo su título.",
+      "groupColumn": "Grupo",
+      "groupColumnHelp": "Opcional - una sección por grupo, encabezada por su nombre. Sin grupo: una sola sección.",
+      "orderColumn": "Orden",
+      "orderColumnHelp": "Opcional - los parámetros en ese orden. Sin orden: por título.",
+      "heading": "Parámetros",
+      "suggest": "Esta tabla parece una lista de parámetros (una clave y un valor) - el tipo Settings la edita como la configuración de TotalBase.",
+      "useSettings": "Usar Settings"
+    },
+    "customDesignerTree": {
+      "title": "Estructura de la página",
+      "search": "Buscar widgets",
+      "filters": "Filtros",
+      "show": "Mostrar solo",
+      "filter": {
+        "hidden": "Ocultos",
+        "formula": "Con fórmula",
+        "error": "Con error"
+      },
+      "page": "Página",
+      "pageHeader": "Encabezado de la página",
+      "pageFooter": "Pie de la página",
+      "empty": "Vacío",
+      "collapse": "Contraer",
+      "expand": "Expandir",
+      "overlay": "Superpuesto",
+      "hiddenOff": "Visible está apagado - nunca se muestra",
+      "hiddenFormula": "Se muestra cuando: {formula}",
+      "formulas": "Fórmulas: {props}",
+      "events": "Eventos: {events}",
+      "eventsLabel": "Eventos",
+      "actions": "Acciones",
+      "addIn": "Agregar un widget en {area}",
+      "cantDrop": "Ese lugar no acepta este widget",
+      "openInCanvas": "Abrir en el lienzo"
+    },
+    "actionsSettings": {
+      "toolbarDescription": "Los botones arriba de la lista - todas las vistas los tienen.",
+      "requiresCreate": "Requiere Permitir › Crear."
+    },
+    "presentationSettings": {
+      "heading": "Presentación",
+      "description": "Cómo se ve la lista, en cualquier vista: con qué arranca quien la abre por primera vez, la barra, el margen y la actualización."
+    },
+    "formSettings": {
+      "howItOpens": "Cómo se abre",
+      "howItOpensDescription": "Dónde se abre un registro desde la lista, y el ancho de la página de un registro.",
+      "design": "Diseñar el formulario",
+      "recordActions": "Acciones del registro",
+      "recordActionsDescription": "Lo que ofrece el ⋮ del registro."
+    },
+    "viewsAccordion": {
+      "needsSetup": "Falta configurar",
+      "main": "Principal",
+      "offered": "Ofrecida",
+      "notOffered": "No ofrecida",
+      "makeMain": "Hacer principal",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "offer": "Ofrecer {view}",
+      "actions": "Acciones de {view}"
+    },
+    "customActions": {
+      "title": "Acciones propias",
+      "description": "Una función o un workflow MANUAL que corre sobre una fila, el registro o una selección, desde sus menús, sin una página. Cada una se muestra solo a quien puede ejecutarla.",
+      "new": "Nueva acción",
+      "emptyTitle": "Sin acciones propias",
+      "emptyDescription": "Emitir o anular una factura, enviar un recordatorio a los clientes seleccionados.",
+      "missingTarget": "No disponible",
+      "moveUp": "Subir {name}",
+      "moveDown": "Bajar {name}",
+      "edit": "Editar {name}",
+      "remove": "Quitar {name}",
+      "places": {
+        "row": "Menú de la fila",
+        "record": "Menú del registro",
+        "selection": "Barra de selección"
+      },
+      "kinds": {
+        "function": "Función",
+        "workflow": "Workflow"
+      },
+      "colors": {
+        "neutral": "Neutro",
+        "primary": "Principal",
+        "success": "Éxito",
+        "warning": "Advertencia",
+        "error": "Peligro"
+      },
+      "newTitle": "Nueva acción",
+      "editTitle": "{name}",
+      "panelDescription": "Qué corre, dónde se muestra y cuándo.",
+      "label": "Etiqueta",
+      "labelHelp": "Lo que dice el menú: 32 caracteres como máximo.",
+      "runs": "Corre",
+      "function": "Función",
+      "functionHelp": "Una función expuesta para llamadas. Quien la ve necesita EXECUTE sobre ella.",
+      "workflow": "Workflow",
+      "workflowHelp": "Un workflow MANUAL publicado. Quien la ve necesita poder ejecutarlo.",
+      "argsHelp": "Lo que recibe cada argumento: una columna de la fila entre llaves dobles, las claves de la selección como ids entre llaves dobles, o un texto fijo. La clave de la fila: {key}.",
+      "workflowDefault": "No declara campos de entrada: recibe la clave de la fila como id, y la de una selección como ids.",
+      "where": "Se muestra en",
+      "whereHelp": "El menú de la fila, el menú del formulario del registro, la barra que aparece al seleccionar filas.",
+      "when": "Cuándo",
+      "whenHelp": "Solo en las filas que cumplen este filtro, según PostgreSQL. Vacío: siempre. La acción de una selección se muestra siempre.",
+      "whereObject": "Un filtro es un objeto.",
+      "whereJson": "No es un JSON válido.",
+      "confirm": "Preguntar antes",
+      "confirmHelp": "Una confirmación antes de correrla.",
+      "confirmText": "Pregunta",
+      "confirmTextHelp": "Una columna de la fila entre llaves dobles muestra su valor.",
+      "danger": "Destructiva: su botón en rojo"
+    }
+  }
+}

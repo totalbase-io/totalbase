@@ -1,0 +1,1383 @@
+{
+  "settings": {
+    "appMenuEditor": {
+      "saveError": "No se pudo guardar el menú",
+      "displayError": "No se pudo cambiar la presentación",
+      "tree": "Árbol",
+      "sidebar": "Barra lateral",
+      "display": "Presentación: {mode}",
+      "newGroup": "Nuevo grupo",
+      "newSubgroup": "Nuevo subgrupo",
+      "description": "Agrupa y ordena lo que muestra la App. Cada persona solo ve las entradas que puede abrir; un grupo vacío se oculta.",
+      "emptyTitle": "Todavía no hay nada publicado",
+      "emptyDescription": "Aquí aparecen los DataViews y Dashboards publicados.",
+      "groupName": "Nombre del grupo",
+      "groupIcon": "Icono del grupo",
+      "deleteGroup": "Eliminar grupo",
+      "dropAtEnd": "Suelta aquí para ponerlo al final del menú",
+      "sortByName": "Ordenar por nombre…",
+      "sortByType": "Ordenar por tipo…",
+      "sortByNameTitle": "Ordenar por nombre",
+      "sortByTypeTitle": "Ordenar por tipo",
+      "sortByNameDescription": "Ordena todo el menú por nombre, también dentro de cada grupo y subgrupo, con los grupos primero. Reemplaza el orden actual.",
+      "sortByTypeDescription": "Ordena todo el menú por tipo y luego por nombre, también dentro de cada grupo y subgrupo, con los grupos primero, por nombre. Reemplaza el orden actual.",
+      "ascending": "A → Z",
+      "descending": "Z → A",
+      "direction": "Dirección",
+      "sort": "Ordenar",
+      "show": "Mostrar",
+      "showItem": "Mostrar {name} en el menú",
+      "hiddenTitle": "Ocultos",
+      "hiddenDescription": "Publicados, pero fuera del menú y de las listas del App. Siguen funcionando donde están embebidos y se abren por su link.",
+      "hideError": "No se pudo ocultar",
+      "showError": "No se pudo mostrar",
+      "descriptionHelp": "La descripción de la propia DataView - el menú la muestra al pasar el mouse.",
+      "groupIconOpen": "Icono abierto",
+      "groupIconOpenHelp": "Mientras el grupo está abierto. Vacío: su icono en los dos estados - una carpeta que se abre si no tiene.",
+      "labelError": "No se pudo guardar la etiqueta",
+      "labelHelp": "Vacía: su nombre, {name}. Se aplica al instante, sin publicar.",
+      "editItem": "Editar {name}",
+      "editGroupTitle": "Editar grupo",
+      "deleteGroupHelp": "Sus opciones y subgrupos pasan al nivel de arriba - no se borra nada.",
+      "editItemTitle": "{name} en el menú",
+      "openSettings": "Abrir configuración",
+      "removeFromMenu": "Quitar del menú",
+      "removeFromMenuHelp": "Sigue existiendo, fuera del menú (Ocultos, abajo) - borrarla está en su configuración.",
+      "groupsOpen": "Grupos al abrir la App",
+      "groupsOpenCurrent": "Solo el de la página actual",
+      "groupsOpenAll": "Todos abiertos",
+      "groupsClosedAll": "Todos cerrados",
+      "openState": "Al iniciar",
+      "openStateHelp": "Cómo empieza este grupo en el menú en árbol - el que contiene la página actual se abre siempre.",
+      "openStateDefault": "Según el menú",
+      "openStateOpen": "Abierto",
+      "openStateClosed": "Cerrado",
+      "searchBox": "Cuadro de búsqueda",
+      "searchBoxHelp": "Sobre el menú: por la etiqueta, el nombre completo, la descripción o el grupo de una entrada. Automático: cuando una persona ve más de 15 entradas. \"/\" lo trae desde cualquier pantalla.",
+      "searchAuto": "Automático",
+      "searchAlways": "Siempre",
+      "searchNever": "Nunca"
+    },
+    "authProviders": {
+      "title": "Proveedores",
+      "description": "Google, GitHub o cualquier proveedor OIDC con el que los usuarios de tu app pueden iniciar sesión.",
+      "noRole": "Sin rol",
+      "disable": "Desactivar",
+      "enable": "Activar",
+      "steps": {
+        "provider": "Proveedor",
+        "providerDescription": "Con quién inician sesión tus usuarios.",
+        "config": "Configuración",
+        "configDescription": "Nombre y campos propios del proveedor.",
+        "credentials": "Credenciales y acceso",
+        "credentialsDescription": "ID/secreto de cliente, redirecciones, rol predeterminado."
+      },
+      "fillField": "Completa el campo de arriba para continuar",
+      "disabled": "Proveedor desactivado",
+      "enabled": "Proveedor activado",
+      "updateError": "No se pudo actualizar el proveedor",
+      "noMatch": "Ningún proveedor coincide con “{query}”",
+      "emptyTitle": "Todavía no hay proveedores de autenticación",
+      "emptyDescription": "Permite que los usuarios de tu app inicien sesión con Google, GitHub, Microsoft, Okta o cualquier proveedor OIDC. TotalBase gestiona el intercambio OAuth; tu app enlaza aquí y recibe un token de sesión.",
+      "newProvider": "Nuevo proveedor",
+      "nameRequired": "El nombre es obligatorio",
+      "clientRequired": "El ID y el secreto de cliente son obligatorios",
+      "redirectRequired": "Agrega al menos una URL de redirección permitida",
+      "issuerRequired": "El emisor es obligatorio para un proveedor OIDC",
+      "updated": "Proveedor actualizado",
+      "created": "Proveedor creado",
+      "saveError": "No se pudo guardar el proveedor",
+      "deleteTitle": "¿Eliminar el proveedor? | ¿Eliminar {n} proveedores?",
+      "deleted": "Proveedor eliminado | {n} proveedores eliminados",
+      "deleteFailures": "{n} fallaron.",
+      "refresh": "Actualizar proveedores",
+      "searchByNameOrType": "Buscar por nombre o tipo...",
+      "selectAll": "Seleccionar todos los proveedores",
+      "provider": "Proveedor",
+      "redirectCount": "{n} URL de redirección | {n} URL de redirección",
+      "updatedOn": "Actualizado {date}",
+      "disableNamed": "Desactivar {name}",
+      "enableNamed": "Activar {name}",
+      "count": "{n} proveedor | {n} proveedores",
+      "enabledCount": "{n} activos",
+      "noExtraConfig": "{provider} no necesita configuración adicional: continúa con las credenciales.",
+      "editProvider": "Editar proveedor",
+      "issuer": "Emisor",
+      "issuerDescription": "Su documento de descubrimiento OpenID debe estar accesible en {issuer}/.well-known/openid-configuration.",
+      "copyRedirectUri": "Copiar URI de redirección",
+      "redirectUri": "URI de redirección",
+      "redirectUriDescription": "Registra esta URL exacta como URI de redirección autorizada del proveedor (p. ej. en Google Cloud Console o en la configuración de tu OAuth App de GitHub).",
+      "deleteBody": "Esto elimina de forma permanente los siguientes proveedores. Los usuarios que iniciaron sesión con alguno conservan su cuenta: solo se elimina su identidad vinculada a ese proveedor, así que tendrán que iniciar sesión de otra forma. Esta acción no se puede deshacer.",
+      "clientId": "ID de cliente",
+      "clientSecret": "Secreto de cliente",
+      "clientSecretDescription": "Hace referencia a un secreto creado en Configuración > Secretos; el valor en texto plano nunca se muestra aquí.",
+      "noSecrets": "Todavía no hay secretos: crea uno antes en Configuración → Secretos.",
+      "allowedRedirects": "URL de redirección permitidas",
+      "allowedRedirectsDescription": "Adónde puede volver la app de quien llama después del inicio de sesión, p. ej. https://app.example.com/callback. Una entrada que termina en /* coincide con todo lo que está bajo ese prefijo.",
+      "defaultRole": "Rol predeterminado",
+      "defaultRoleDescription": "Se asigna solo en el primer inicio de sesión de un usuario nuevo a través de este proveedor; nunca cambia los roles de un usuario existente.",
+      "known": {
+        "microsoft": {
+          "fields": {
+            "tenantId": {
+              "label": "ID de inquilino (tenant)",
+              "description": "Usa \"common\" para aceptar cualquier cuenta de Microsoft, o el GUID de un inquilino concreto para limitarlo a una organización."
+            }
+          }
+        },
+        "okta": {
+          "fields": {
+            "domain": {
+              "label": "Dominio de Okta",
+              "description": "p. ej. your-domain.okta.com"
+            }
+          }
+        },
+        "auth0": {
+          "fields": {
+            "domain": {
+              "label": "Dominio de Auth0",
+              "description": "p. ej. your-tenant.auth0.com"
+            }
+          }
+        },
+        "oidc_custom": {
+          "label": "Proveedor OIDC personalizado",
+          "fields": {
+            "issuer": {
+              "label": "Emisor",
+              "description": "p. ej. https://issuer.example.com - su documento de descubrimiento OpenID debe estar accesible en {'{'}issuer{'}'}/.well-known/openid-configuration."
+            }
+          }
+        }
+      },
+      "showOnSignIn": "Mostrar en el inicio de sesión",
+      "showOnSignInDescription": "Un botón en la página de inicio de sesión del portal: se entra al admin o a la App con este proveedor. Su propio callback no necesita una URL de redirección permitida."
+    },
+    "maintenance": {
+      "title": "Mantenimiento",
+      "description": "Tamaño y estado de vacuum de cada tabla, según las estadísticas propias de PostgreSQL.",
+      "never": "nunca",
+      "partitioned": "Particionada",
+      "materializedView": "Vista materializada",
+      "columns": {
+        "table": "Tabla",
+        "size": "Tamaño",
+        "rows": "Filas",
+        "dead": "Filas muertas"
+      },
+      "lastVacuum": "Último vacuum",
+      "lastAnalyze": "Último analyze",
+      "lastAutovacuum": "Último autovacuum",
+      "lastAutoanalyze": "Último autoanalyze",
+      "status": {
+        "queued": "En cola",
+        "running": "En curso",
+        "done": "Hecho",
+        "cancelled": "Cancelado",
+        "failed": "Falló"
+      },
+      "ownedByReason": "propiedad de {owner}",
+      "plans": {
+        "vacuumDead": "Hacer vacuum de las tablas con filas muertas",
+        "vacuumDeadNote": "{n} tabla no tiene filas muertas y queda fuera. El recuento proviene de las estadísticas de PostgreSQL, que vuelven a empezar de cero si se restablecen. | {n} tablas no tienen filas muertas y quedan fuera. El recuento proviene de las estadísticas de PostgreSQL, que vuelven a empezar de cero si se restablecen.",
+        "analyzeNever": "Analizar las tablas nunca analizadas",
+        "analyzeNeverNote": "Da al planificador de consultas estimaciones de filas para las tablas que todavía no las tienen.",
+        "rebuildInvalid": "Reconstruir los índices no válidos",
+        "reindexNote": "Reconstruye {size} de índices, uno a la vez; cada uno necesita aproximadamente su propio tamaño en espacio libre en disco mientras se reconstruye.",
+        "selection": "{operation} de {n} tabla seleccionada | {operation} de {n} tablas seleccionadas"
+      },
+      "queued": "{operation} en cola",
+      "queueError": "No se pudo poner en cola {operation}",
+      "selected": "{n} seleccionadas",
+      "runMaintenance": "Ejecutar mantenimiento",
+      "needsAttention": "Requieren atención {n}",
+      "searchTables": "Buscar tablas...",
+      "noneNeedsAttention": "Ninguna tabla requiere atención",
+      "noTablesMatch": "Ninguna tabla coincide",
+      "selectAll": "Seleccionar todas las tablas",
+      "ownedByLocked": "Propiedad de {owner}: el rol de TotalBase no puede mantenerla",
+      "count": "{n} tabla | {n} tablas",
+      "ownedBy": "Propiedad de {owner}",
+      "cantMaintainTitle": "El rol de TotalBase no puede mantener esta tabla",
+      "cantMaintainDescription": "Pertenece a {owner}. Solo su propietario puede ejecutar VACUUM, ANALYZE o REINDEX sobre ella; o, en PostgreSQL 17+, un rol con MAINTAIN concedido sobre ella.",
+      "operationsHelp": "Vacuum recupera las filas muertas y actualiza las estadísticas del planificador; Analyze solo actualiza las estadísticas; Reindex reconstruye cada índice de forma concurrente. Se ejecutan en segundo plano sin bloquear la tabla.",
+      "total": "Total",
+      "indexes": "Índices",
+      "rowsAndMaintenance": "Filas y mantenimiento",
+      "estimatedRows": "Filas estimadas",
+      "notAnalyzedYet": "todavía sin analizar",
+      "liveDead": "Vivas / muertas",
+      "noIndexes": "Sin índices.",
+      "primary": "Primario",
+      "unique": "Único",
+      "invalid": "No válido",
+      "rebuildIndex": "Reconstruir este índice de forma concurrente",
+      "rebuildInvalidIndex": "Reconstruir este índice no válido de forma concurrente",
+      "reindexNamed": "Reindexar {name}",
+      "scans": "{n} lectura | {n} lecturas",
+      "neverUsed": "sin usar desde que se restablecieron las estadísticas"
+    },
+    "maintenanceBatch": {
+      "inProgress": "{operation} en curso",
+      "stopped": "{operation} detenido",
+      "finished": "{operation} terminado",
+      "startError": "No se pudo iniciar el lote.",
+      "stopError": "No se pudo detener el lote",
+      "summaryDone": "{n} hechos",
+      "summaryFailed": "{n} fallidos",
+      "summaryCancelled": "{n} cancelados",
+      "status": {
+        "pending": "En espera",
+        "running": "En curso",
+        "done": "Hecho",
+        "failed": "Falló",
+        "cancelled": "Cancelado"
+      },
+      "previewTargets": "objetivo, uno a la vez en segundo plano. Las tablas siguen pudiendo leerse y escribirse en todo momento. | objetivos, uno a la vez en segundo plano. Las tablas siguen pudiendo leerse y escribirse en todo momento.",
+      "skipped": "Omitido: el rol de TotalBase no puede mantenerlo: | Omitidos: el rol de TotalBase no puede mantenerlos:",
+      "progress": "{done} de {total}",
+      "start": "Iniciar {n}",
+      "stop": "Detener",
+      "stopPending": "Los {n} que todavía no empezaron se cancelarán.",
+      "stopReindex": "El índice que se está reconstruyendo termina primero: detenerlo a mitad dejaría un índice no válido.",
+      "stopTable": "La tabla en curso también se detiene; nada queda a medias.",
+      "stopBatch": "Detener lote"
+    },
+    "pages": {
+      "limits": {
+        "title": "Límites"
+      },
+      "asyncExecutions": {
+        "title": "Ejecuciones",
+        "description": "Las colas respaldadas en PostgreSQL que TotalBase procesa en segundo plano: las ejecuciones y los eventos de datos que inician los workflows DATA_EVENT."
+      },
+      "connector": {
+        "title": "Conector",
+        "description": "Cómo se conecta TotalBase a PostgreSQL y cómo sigue los cambios de tu esquema."
+      },
+      "transactions": {
+        "title": "Transacciones",
+        "description": "Transacciones de varias operaciones y repetición por Idempotency-Key para las escrituras de la Data API."
+      }
+    },
+    "groupForm": {
+      "on": "Activado",
+      "off": "Desactivado",
+      "none": "ninguno",
+      "empty": "vacío",
+      "browserTimezone": "Zona horaria del navegador de quien mira",
+      "unknownRole": "Rol desconocido ({id})",
+      "saveError": "No se pudo guardar la configuración",
+      "saved": "Configuración guardada | {n} configuraciones guardadas",
+      "modified": "Modificado",
+      "unsaved": "Sin guardar",
+      "unsavedCount": "{n} cambio sin guardar | {n} cambios sin guardar",
+      "noEffectWhileOff": "Sin efecto mientras “{setting}” esté desactivado.",
+      "noSecrets": "Todavía no hay secretos: crea uno en {link}.",
+      "secretsLink": "Configuración › Secretos",
+      "restartPending": "Guardado: el servidor sigue funcionando con {value} hasta que se reinicie.",
+      "defaultValue": "Predeterminado: {value} ·",
+      "restoreDefault": "Restaurar valor predeterminado",
+      "seeAlso": "Ver:",
+      "docsOpenapi": "Docs › OpenAPI"
+    },
+    "appMenu": {
+      "arrangeMenu": "Organizar menú",
+      "loadError": "No se pudo cargar el menú",
+      "nothingPublished": "Todavía no hay nada publicado para ti.",
+      "resetGroups": "Restablecer grupos del menú",
+      "search": "Buscar en el menú",
+      "clearSearch": "Limpiar búsqueda",
+      "noMatch": "Sin resultados para «{query}»"
+    },
+    "panel": {
+      "running": "En curso",
+      "page": "Página",
+      "searchSettings": "Buscar en la configuración",
+      "clearSearch": "Borrar búsqueda",
+      "noMatch": "Ninguna configuración coincide con “{query}”"
+    },
+    "secrets": {
+      "title": "Secretos",
+      "description": "Credenciales cifradas, de solo escritura, referenciadas por clave.",
+      "noMatch": "Ningún secreto coincide con “{query}”",
+      "emptyTitle": "Todavía no hay secretos",
+      "emptyDescription": "Guarda una credencial una sola vez - una contraseña SMTP, un secreto de cliente OAuth - y haz referencia a ella por su clave. Los valores se pueden reemplazar, nunca volver a leer.",
+      "newSecret": "Nuevo secreto",
+      "keyValueRequired": "La clave y el valor son obligatorios",
+      "replaced": "Secreto reemplazado",
+      "created": "Secreto creado",
+      "saveError": "No se pudo guardar el secreto",
+      "replace": "Reemplazar",
+      "deleteTitle": "¿Eliminar el secreto? | ¿Eliminar {n} secretos?",
+      "deleted": "Secreto eliminado | {n} secretos eliminados",
+      "partiallyDeleted": "{done} de {total} eliminados",
+      "deleteFailures": "{n} fallaron - lo más probable es que sigan referenciados en otro lugar.",
+      "refresh": "Actualizar secretos",
+      "searchByKey": "Buscar por clave...",
+      "selectAll": "Seleccionar todos los secretos",
+      "key": "Clave",
+      "select": "Seleccionar {key}",
+      "dates": "Actualizado {updated} · Creado {created}",
+      "actionsFor": "Acciones de {key}",
+      "count": "{n} secreto | {n} secretos",
+      "countOf": " de {total}",
+      "replaceTitle": "Reemplazar secreto: {key}",
+      "keyDescription": "En minúsculas, letras/números con separadores '.', '_' o '-', p. ej. 'afip-bearer-token' o 'mail.password'.",
+      "valueDescription": "No se vuelve a mostrar después de guardar.",
+      "showValue": "Mostrar valor",
+      "hideValue": "Ocultar valor",
+      "generator": {
+        "title": "Generar un valor",
+        "kind": "Tipo",
+        "size": "Tamaño",
+        "generate": "Generar",
+        "bytes": "{n} bytes",
+        "characters": "{n} caracteres",
+        "length": "{n} caracteres",
+        "copied": "Valor copiado",
+        "copyFailed": "No se pudo copiar: selecciónalo y cópialo a mano",
+        "copyValue": "Copiar el valor",
+        "copyNow": "Cópialo ahora: después de guardar no se vuelve a mostrar.",
+        "kinds": {
+          "BASE64URL": "Token aleatorio (base64url)",
+          "HEX": "Hexadecimal",
+          "ALPHANUMERIC": "Alfanumérico (A–Z a–z 0–9)",
+          "UUID": "UUID v4"
+        }
+      },
+      "deleteBody": "Si algún proveedor de autenticación u otra referencia todavía apunta a uno de estos secretos, se rechazará su eliminación: elimina o cambia antes esa referencia. Esta acción no se puede deshacer."
+    },
+    "smtp": {
+      "connectionWorks": "La conexión funciona",
+      "connectionWorksDescription": "El servidor SMTP aceptó la conexión y las credenciales.",
+      "connectionFailed": "Falló la conexión",
+      "unreachable": "No se pudo conectar con el servidor SMTP.",
+      "testSent": "Correo de prueba enviado",
+      "checkInbox": "Revisa la bandeja de entrada de {to}.",
+      "sendFailed": "No se pudo enviar el correo de prueba.",
+      "testConnection": "Probar conexión",
+      "sendTestEmail": "Enviar correo de prueba",
+      "sendTo": "Enviar a",
+      "sendToDescription": "Usa la configuración guardada; guarda antes cualquier cambio.",
+      "send": "Enviar"
+    },
+    "metadata": {
+      "groups": {
+        "api": {
+          "label": "Límites",
+          "description": "Límites y valores predeterminados que se aplican a cada solicitud a través de la API genérica de tablas de TotalBase."
+        },
+        "query": {
+          "label": "Funciones de consulta",
+          "description": "Funciones del lenguaje de consulta que pueden usar quienes llaman a la Data API."
+        },
+        "api_keys": {
+          "label": "Tokens",
+          "description": "Valores predeterminados que se aplican cuando se emite un token de API personal sin valores explícitos propios."
+        },
+        "files": {
+          "label": "Archivos",
+          "description": "Límites de subida y configuración de la transformación de imágenes al vuelo del explorador de Archivos."
+        },
+        "audit": {
+          "label": "Auditoría",
+          "description": "Qué se registra en el registro de auditoría y durante cuánto tiempo se conserva."
+        },
+        "system": {
+          "label": "General",
+          "description": "El nombre y el logo de esta instancia, su dirección pública y cómo muestra las fechas y horas."
+        },
+        "auth": {
+          "label": "Autenticación",
+          "description": "Registro de cuentas, duración de las sesiones y política de contraseñas de los usuarios de TotalBase."
+        },
+        "smtp": {
+          "label": "SMTP",
+          "description": "El servidor de correo para los correos del sistema y los pasos \"Enviar correo\" de los Workflows."
+        },
+        "security": {
+          "label": "Red",
+          "description": "Limitación de solicitudes, CORS y confianza en el proxy inverso para la API pública."
+        },
+        "pool": {
+          "label": "Pool de conexiones",
+          "description": "Las conexiones a PostgreSQL que TotalBase mantiene abiertas. Se aplica tras reiniciar el servidor."
+        },
+        "catalog": {
+          "label": "Sincronización del esquema",
+          "description": "Cómo mantiene TotalBase sus recursos al día con tu esquema de PostgreSQL."
+        },
+        "openapi": {
+          "label": "OpenAPI",
+          "description": "El documento de la Data API generado a partir de tu esquema, permisos y workflows."
+        },
+        "sql_console": {
+          "label": "Consola SQL",
+          "description": "Si los administradores pueden ejecutar SQL directo, cuánto de un resultado se muestra y cuánto tiempo se conserva su historial."
+        },
+        "dataviews": {
+          "label": "DataViews",
+          "description": "La barra de herramientas con que abre cada DataView de lista, cuánto se ensanchan sus páginas y los límites de filas para exportar, imprimir y los diseños MAP, KANBAN, CALENDAR y GANTT."
+        },
+        "workflows": {
+          "label": "Workflows",
+          "description": "Límites de ejecución y retención del historial del motor de Workflows."
+        },
+        "dashboards": {
+          "label": "Dashboards",
+          "description": "Límites de las consultas SQL de solo lectura detrás de los widgets de los dashboards, e inserción de dashboards en otros sitios."
+        },
+        "maps": {
+          "label": "Mapas",
+          "description": "Los mosaicos que dibuja todo mapa: DataViews MAP, campos de mapa y mapas de dashboards."
+        },
+        "app": {
+          "label": "App",
+          "description": "Cómo muestra la App su menú de DataViews y Dashboards publicados."
+        },
+        "transactions": {
+          "label": "Transacciones",
+          "description": "Varias operaciones de la Data API confirmadas o revertidas como una sola transacción de PostgreSQL."
+        },
+        "idempotency": {
+          "label": "Idempotencia",
+          "description": "Repetición por Idempotency-Key, para que una escritura reintentada se ejecute una sola vez."
+        },
+        "async_executions": {
+          "label": "Ejecuciones",
+          "description": "La cola respaldada en PostgreSQL que ejecuta en segundo plano, con reintentos."
+        },
+        "outbox": {
+          "label": "Eventos de datos",
+          "description": "El outbox de cambios de datos confirmados que inicia los workflows DATA_EVENT: reintentos y retención."
+        },
+        "appearance": {
+          "label": "Apariencia",
+          "description": "Cómo ve todo el mundo esta instancia: su color, su página de inicio de sesión y el CSS que quieras añadir. Es público: todo llega al navegador antes de iniciar sesión."
+        },
+        "mcp": {
+          "label": "MCP",
+          "description": "El servidor MCP con el que un agente de IA construye y opera esta instancia - servido en la propia dirección de la instancia, /mcp, con el token de un administrador."
+        }
+      },
+      "sections": {
+        "pagination": "Paginación",
+        "queryComplexity": "Complejidad de las consultas",
+        "writes": "Escrituras",
+        "requests": "Solicitudes",
+        "queryFeatures": "Funciones de consulta",
+        "uploads": "Subidas",
+        "storage": "Almacenamiento",
+        "imageTransformations": "Transformaciones de imagen",
+        "accountsSessions": "Cuentas y sesiones",
+        "signInProtection": "Protección del inicio de sesión",
+        "emailLinks": "Enlaces de correo",
+        "notices": "Avisos",
+        "instance": "Instancia",
+        "dateTime": "Fecha y hora",
+        "language": "Idioma",
+        "rateLimiting": "Limitación de solicitudes",
+        "cors": "CORS",
+        "reverseProxy": "Proxy inverso",
+        "accessReview": "Revisión de accesos",
+        "dataEvents": "Eventos de datos",
+        "exportPrint": "Exportar e imprimir",
+        "layoutCaps": "Límites de los diseños",
+        "maps": "Mapas",
+        "embedding": "Inserción",
+        "runs": "Ejecuciones",
+        "history": "Historial",
+        "httpRequest": "Solicitud HTTP",
+        "signIn": "Inicio de sesión",
+        "customCss": "CSS personalizado",
+        "tools": "Herramientas",
+        "agent": "Agente",
+        "toolbar": "Barra de herramientas",
+        "pageWidth": "Ancho de página",
+        "color": "Color"
+      },
+      "units": {
+        "bytes": "bytes",
+        "ms": "ms",
+        "days": "días",
+        "px": "px",
+        "seconds": "segundos",
+        "hours": "horas",
+        "minutes": "minutos",
+        "attempts": "intentos",
+        "connections": "conexiones",
+        "rows": "filas",
+        "points": "puntos",
+        "cards": "tarjetas",
+        "events": "eventos",
+        "bars": "barras",
+        "failures": "fallos",
+        "workflows": "workflows"
+      },
+      "keys": {
+        "api__default_limit": {
+          "label": "Tamaño de página predeterminado",
+          "description": "Filas que devuelve una solicitud de lista que no indica su propio límite."
+        },
+        "api__max_limit": {
+          "label": "Tamaño de página máximo",
+          "description": "El mayor límite que puede pedir quien llama, pida lo que pida."
+        },
+        "api__max_offset": {
+          "label": "Desplazamiento máximo",
+          "description": "Limita hasta qué profundidad puede avanzar la paginación por desplazamiento en un conjunto de resultados."
+        },
+        "api__max_relation_depth": {
+          "label": "Profundidad máxima de relaciones",
+          "description": "Cuántos niveles de recursos relacionados puede expandir una sola solicitud (?expand=a.b.c)."
+        },
+        "api__max_filter_depth": {
+          "label": "Profundidad máxima de filtros",
+          "description": "Cuánto puede anidarse una expresión de filtro (grupos and/or)."
+        },
+        "api__require_where_for_update": {
+          "label": "Exigir un filtro en la actualización masiva",
+          "description": "Bloquea un UPDATE masivo sin cláusula WHERE - por la Data API o por el paso Actualizar registros de un workflow - para evitar actualizar todas las filas por accidente."
+        },
+        "api__require_where_for_delete": {
+          "label": "Exigir un filtro en la eliminación masiva",
+          "description": "Bloquea un DELETE masivo sin cláusula WHERE - por la Data API o por el paso Eliminar registros de un workflow - para evitar eliminar todas las filas por accidente."
+        },
+        "api__bulk_max_items": {
+          "label": "Máximo de elementos masivos",
+          "description": "La mayor cantidad de filas que puede tocar a la vez una sola solicitud masiva de creación/actualización/eliminación."
+        },
+        "api__max_body_bytes": {
+          "label": "Tamaño máximo del cuerpo de la solicitud",
+          "description": "Las solicitudes con un cuerpo mayor se rechazan antes de analizarse."
+        },
+        "api__max_query_string_bytes": {
+          "label": "Tamaño máximo de la query string",
+          "description": "Las solicitudes con una query string más larga se rechazan antes de analizarse. Subirlo por encima del valor con el que arrancó el servidor requiere reiniciarlo."
+        },
+        "api__max_query_parameters": {
+          "label": "Máximo de parámetros de consulta",
+          "description": "La mayor cantidad de parámetros de query string que puede enviar una sola solicitud."
+        },
+        "api__max_query_nodes": {
+          "label": "Máximo de nodos de consulta",
+          "description": "Limita la complejidad total (nodos de filtro/orden/expansión combinados) de una sola solicitud."
+        },
+        "api__nested_write_max_depth": {
+          "label": "Profundidad máxima de escritura anidada",
+          "description": "Cuántos niveles de registros hijos puede anidar un solo CREATE (padre → hijo → nieto)."
+        },
+        "api__nested_write_max_records": {
+          "label": "Máximo de registros en escritura anidada",
+          "description": "La mayor cantidad de registros que puede insertar una sola creación anidada, sumando todos los niveles."
+        },
+        "api__request_timeout_ms": {
+          "label": "Tiempo de espera de la solicitud",
+          "description": "Lo máximo que puede ejecutarse el SQL de una sola solicitud de la Data API: pasado ese tiempo PostgreSQL lo cancela y quien llama recibe QUERY_CANCELED."
+        },
+        "api__allow_count": {
+          "label": "Permitir count",
+          "description": "Permite que una solicitud de lista pida el número total de filas que coinciden (count=true): una consulta extra sobre todo el conjunto filtrado."
+        },
+        "query__allow_regex": {
+          "label": "Permitir expresiones regulares",
+          "description": "Permite usar _regex en los filtros. Una expresión regular no puede usar un índice común, así que recorre cada fila a la que se aplica."
+        },
+        "query__allow_contains": {
+          "label": "Permitir operadores de contención",
+          "description": "Permite usar _contains, _contained_by y _overlap en arrays y jsonb: rápido con un índice GIN, un recorrido completo sin él."
+        },
+        "query__allow_having": {
+          "label": "Permitir having",
+          "description": "Permite que las consultas agrupadas filtren por sus agregados (having), después de agrupar todas las filas que coinciden."
+        },
+        "api_keys__default_ttl_days": {
+          "label": "Vencimiento predeterminado",
+          "description": "Cuánto tiempo es válido un token de API recién emitido si la solicitud no fija su propio vencimiento."
+        },
+        "api_keys__rotation_warning_days": {
+          "label": "Aviso de rotación",
+          "description": "Con cuánta antelación a su vencimiento se marca un token de API como \"vence pronto\" en el administrador."
+        },
+        "api_keys__purge_after_days": {
+          "label": "Conservar tokens finalizados",
+          "description": "Los tokens revocados y vencidos siguen listados durante este tiempo tras finalizar; después se eliminan. Un token desactivado se conserva: puede volver a activarse. 0 los conserva para siempre."
+        },
+        "files__enabled": {
+          "label": "Activar Archivos",
+          "description": "Activa o desactiva la subida y el almacenamiento del explorador de Archivos."
+        },
+        "files__max_file_size_bytes": {
+          "label": "Tamaño máximo de archivo",
+          "description": "El mayor tamaño permitido para un solo archivo subido."
+        },
+        "files__allowed_mime_types": {
+          "label": "Tipos de archivo permitidos",
+          "description": "Tipos MIME aceptados al subir. Se admiten comodines como text/* e image/*."
+        },
+        "files__default_visibility_public": {
+          "label": "Público de forma predeterminada",
+          "description": "Si un archivo recién subido empieza como público cuando el formulario de subida no elige otra cosa."
+        },
+        "files__storage_provider": {
+          "label": "Proveedor de almacenamiento",
+          "description": "Dónde se guardan los archivos subidos. El almacenamiento local es el único proveedor disponible en esta primera versión.",
+          "options": {
+            "local": "Disco local"
+          }
+        },
+        "files__storage_local_path": {
+          "label": "Ruta de almacenamiento local",
+          "description": "Directorio del sistema de archivos en el que se escriben los archivos cuando el proveedor de almacenamiento es local."
+        },
+        "files__transforms__enabled": {
+          "label": "Activar transformaciones de imagen",
+          "description": "Activa o desactiva el redimensionado/la conversión de formato de imágenes al vuelo."
+        },
+        "files__transforms__max_width": {
+          "label": "Ancho máximo de salida",
+          "description": "El mayor ancho permitido para una imagen transformada al vuelo."
+        },
+        "files__transforms__max_height": {
+          "label": "Alto máximo de salida",
+          "description": "El mayor alto permitido para una imagen transformada al vuelo."
+        },
+        "files__transforms__max_pixels": {
+          "label": "Máximo total de píxeles",
+          "description": "Limita ancho × alto en conjunto, además de los límites individuales de ancho y alto."
+        },
+        "files__transforms__max_concurrent": {
+          "label": "Máximo de transformaciones simultáneas",
+          "description": "Cuántas transformaciones de imagen pueden ejecutarse al mismo tiempo."
+        },
+        "files__transforms__timeout_ms": {
+          "label": "Tiempo de espera de la transformación",
+          "description": "Una transformación que tarda más que esto se aborta."
+        },
+        "files__transforms__cache_ttl_seconds": {
+          "label": "Duración de la caché de transformaciones",
+          "description": "Cuánto tiempo pueden los navegadores guardar en caché una imagen transformada, y cuánto se conserva su copia almacenada antes de que la limpieza horaria la elimine (la siguiente solicitud la regenera)."
+        },
+        "files__transforms__max_operations": {
+          "label": "Máximo de operaciones por transformación",
+          "description": "La mayor cantidad de operaciones encadenadas (redimensionar, recortar, formato, ...) que puede pedir una sola solicitud de transformación."
+        },
+        "files__transforms__presets_json": {
+          "label": "Presets con nombre (JSON)",
+          "description": "Un objeto JSON con presets de transformación con nombre, p. ej. {'{'}\"thumbnail\":{'{'}\"width\":150,\"height\":150,\"fit\":\"cover\",\"format\":\"webp\",\"quality\":80{'}'}{'}'}."
+        },
+        "audit__enabled": {
+          "label": "Activar la auditoría",
+          "description": "Activa o desactiva el registro de auditoría en todo el sistema."
+        },
+        "audit__retention_days": {
+          "label": "Período de retención",
+          "description": "Las entradas del registro de auditoría más antiguas que esto se eliminan automáticamente, cada hora. 0 las conserva para siempre."
+        },
+        "audit__store_sql": {
+          "label": "Guardar sentencias SQL",
+          "description": "Si el registro de auditoría conserva la sentencia SQL real ejecutada en cada escritura."
+        },
+        "audit__store_sql_params": {
+          "label": "Guardar parámetros SQL",
+          "description": "Si el registro de auditoría conserva también los valores de los parámetros, no solo la forma de la sentencia."
+        },
+        "auth__registration_enabled": {
+          "label": "Permitir el autorregistro",
+          "description": "Permite que un usuario nuevo cree su propia cuenta en lugar de necesitar la invitación de un administrador."
+        },
+        "auth__registration_default_role": {
+          "label": "Rol predeterminado del autorregistro",
+          "description": "Se asigna a cada cuenta creada por autorregistro. Ninguno: una cuenta nueva no tiene roles hasta que alguien le asigne uno."
+        },
+        "auth__email_verification_required": {
+          "label": "Exigir verificación del correo electrónico",
+          "description": "Una cuenta recién registrada no puede iniciar sesión hasta que se verifique su dirección de correo electrónico."
+        },
+        "auth__password_min_length": {
+          "label": "Longitud mínima de la contraseña",
+          "description": "La contraseña más corta que TotalBase acepta cuando un usuario define o cambia la suya."
+        },
+        "auth__session_ttl_hours": {
+          "label": "Duración de la sesión",
+          "description": "Cuánto tiempo sigue siendo válida una sesión iniciada antes de tener que iniciar sesión de nuevo."
+        },
+        "auth__password_reset_ttl_minutes": {
+          "label": "Duración del enlace de restablecimiento de contraseña",
+          "description": "Cuánto tiempo sigue siendo válido un enlace de \"restablece tu contraseña\" después de enviarse."
+        },
+        "auth__email_verification_ttl_hours": {
+          "label": "Duración del enlace de verificación de correo",
+          "description": "Cuánto tiempo sigue siendo válido un enlace de \"verifica tu correo electrónico\" después de enviarse."
+        },
+        "auth__invitation_ttl_hours": {
+          "label": "Duración de la invitación",
+          "description": "Cuánto tiempo sigue siendo válido un enlace de invitación enviado por un administrador antes de vencer."
+        },
+        "auth__max_sessions_per_user": {
+          "label": "Máximo de sesiones por usuario",
+          "description": "La mayor cantidad de dispositivos/navegadores en los que un mismo usuario puede tener la sesión iniciada a la vez."
+        },
+        "auth__session_retention_days": {
+          "label": "Conservar las sesiones terminadas",
+          "description": "Las sesiones revocadas y vencidas siguen listadas (Sesiones → Revocadas / Vencidas) durante este tiempo después de terminar, y luego se eliminan. 0 las conserva para siempre."
+        },
+        "auth__lockout_max_attempts": {
+          "label": "Bloquear tras inicios de sesión fallidos",
+          "description": "Contraseñas incorrectas consecutivas que bloquean la cuenta durante un tiempo. La persona ve el habitual \"correo electrónico o contraseña no válidos\" en cualquier caso; un administrador puede desbloquearla antes. 0 desactiva el bloqueo."
+        },
+        "auth__lockout_duration_minutes": {
+          "label": "Duración del bloqueo",
+          "description": "Cuánto tiempo sigue bloqueada una cuenta bloqueada. Un restablecimiento de contraseña o el desbloqueo de un administrador lo termina antes."
+        },
+        "auth__links__invitation": {
+          "label": "Enlace de invitación",
+          "description": "Adónde apunta el enlace de un correo de invitación. TotalBase completa {'{'}{'{'}public_url{'}'}{'}'} y {'{'}{'{'}token{'}'}{'}'}: apúntalo a una página de tu propia app si es ella quien gestiona las invitaciones."
+        },
+        "auth__links__password_reset": {
+          "label": "Enlace de restablecimiento de contraseña",
+          "description": "Adónde apunta el enlace de un correo de restablecimiento de contraseña. Los mismos marcadores {'{'}{'{'}public_url{'}'}{'}'} y {'{'}{'{'}token{'}'}{'}'}."
+        },
+        "auth__links__email_verification": {
+          "label": "Enlace de verificación de correo",
+          "description": "Adónde apunta un enlace de verificación de correo electrónico. Los mismos marcadores {'{'}{'{'}public_url{'}'}{'}'} y {'{'}{'{'}token{'}'}{'}'}."
+        },
+        "auth__password_changed_email_enabled": {
+          "label": "Aviso de contraseña cambiada",
+          "description": "Envía un correo al titular de la cuenta cada vez que se cambia o restablece su contraseña: un aviso de seguridad."
+        },
+        "auth__email_changed_email_enabled": {
+          "label": "Aviso de correo cambiado",
+          "description": "Envía un correo a la dirección anterior cada vez que un administrador cambia el correo electrónico de un usuario: un aviso de seguridad."
+        },
+        "auth__welcome_email_enabled": {
+          "label": "Correo de bienvenida",
+          "description": "Envía un mensaje de bienvenida cuando una cuenta invitada o registrada está lista para usarse."
+        },
+        "system__public_url": {
+          "label": "URL pública",
+          "description": "La dirección final por la que se llega a esta instancia, p. ej. https://totalbase.example.com: con ella se construyen los enlaces de invitación, restablecimiento de contraseña y OAuth. Déjala vacía para usar la variable de entorno TOTALBASE_PUBLIC_URL."
+        },
+        "system__instance_name": {
+          "label": "Nombre de la instancia",
+          "description": "Cómo se nombra esta instancia en los correos que envía."
+        },
+        "system__logo": {
+          "label": "Logo",
+          "description": "Tu marca en lugar de la de TotalBase, junto al nombre de la instancia - en la barra lateral, en la página de inicio de sesión y en las páginas públicas - a la altura de la marca, así que sirve una imagen ancha o cuadrada. Una imagen pública de Archivos; PNG o SVG con transparencia queda mejor."
+        },
+        "system__timezone": {
+          "label": "Zona horaria",
+          "description": "La zona de la organización: los valores timestamptz se muestran en ella, y los informes y filtros como \"este mes\" cuentan los días en ella, para cada usuario que no eligió la suya. Vacía = la zona horaria del navegador de cada persona."
+        },
+        "system__timezone_user_choice": {
+          "label": "Los usuarios pueden elegir su propia zona horaria",
+          "description": "Desactivado: todos trabajan en la Zona horaria de arriba; la elección propia de un usuario se conserva, sin usarse, hasta que esto se vuelva a activar. Necesita una Zona horaria definida: sin ella, decide el navegador de cada persona."
+        },
+        "system__date_format": {
+          "label": "Formato de fecha predeterminado",
+          "description": "Patrón de date-fns (p. ej. dd/MM/yyyy) en el que se muestran las fechas, para cada usuario que no eligió el suyo. Vacío = el formato del navegador."
+        },
+        "system__time_format": {
+          "label": "Formato de hora predeterminado",
+          "description": "Patrón de date-fns (p. ej. HH:mm) en el que se muestran las horas, para cada usuario que no eligió el suyo. Vacío = el formato del navegador."
+        },
+        "system__datetime_format": {
+          "label": "Formato de fecha y hora predeterminado",
+          "description": "Patrón de date-fns (p. ej. dd/MM/yyyy HH:mm) en el que se muestran las fechas con hora, para los usuarios que no eligieron ni un formato de fecha ni uno de hora. Vacío = el formato del navegador."
+        },
+        "system__language": {
+          "label": "Idioma predeterminado",
+          "description": "El idioma de la interfaz para los usuarios que no eligieron uno en Mi cuenta, y de las páginas sin un usuario con sesión iniciada: inicio de sesión, restablecimiento de contraseña, dashboards insertados. Los datos y los mensajes de PostgreSQL nunca se traducen."
+        },
+        "smtp__host": {
+          "label": "Host SMTP",
+          "description": "Nombre de host del servidor de correo saliente. Vacío significa que SMTP no está configurado: los envíos fallan hasta que se defina."
+        },
+        "smtp__port": {
+          "label": "Puerto SMTP",
+          "description": "Puerto al que conectarse en el host SMTP: normalmente 587 (STARTTLS) o 465 (TLS implícito)."
+        },
+        "smtp__secure": {
+          "label": "Usar TLS implícito",
+          "description": "Conectarse por TLS desde el principio (estilo puerto 465) en lugar de pasar a TLS con STARTTLS."
+        },
+        "smtp__username": {
+          "label": "Usuario SMTP",
+          "description": "Usuario con el que autenticarse en el servidor SMTP. Déjalo vacío para un servidor que no requiere autenticación."
+        },
+        "smtp__password_secret_key": {
+          "label": "Contraseña SMTP (clave del secreto)",
+          "description": "La clave de una entrada de Configuración → Secretos que guarda la contraseña SMTP: nunca se guarda aquí en texto plano. Déjala vacía para un servidor que no requiere autenticación."
+        },
+        "smtp__from": {
+          "label": "Dirección del remitente",
+          "description": "La dirección From (de sobre y de cabecera) con la que se envía el correo saliente."
+        },
+        "security__rate_limit_enabled": {
+          "label": "Activar la limitación de solicitudes",
+          "description": "Activa o desactiva la limitación de la tasa de solicitudes de la API pública."
+        },
+        "security__rate_limit_per_minute": {
+          "label": "Solicitudes por minuto",
+          "description": "La mayor cantidad de solicitudes que puede hacer quien llama en una ventana de un minuto antes de ser limitado."
+        },
+        "security__cors_enabled": {
+          "label": "Activar CORS",
+          "description": "Permite solicitudes del navegador a la API desde los orígenes listados abajo."
+        },
+        "security__cors_origins": {
+          "label": "Orígenes permitidos",
+          "description": "Orígenes (p. ej. https://app.example.com) que pueden llamar a la API directamente desde un navegador."
+        },
+        "security__trust_proxy": {
+          "label": "Confiar en las cabeceras del proxy inverso",
+          "description": "Lee la IP real de quien llama de X-Forwarded-For: actívalo solo detrás de un proxy que controles. Se aplica tras reiniciar."
+        },
+        "auth__access_review_interval_days": {
+          "label": "Intervalo de revisión de accesos",
+          "description": "Cada cuánto deberían revisarse los miembros del rol Administradores: el rol muestra una revisión pendiente cuando la última es más antigua que esto. 0 desactiva el recordatorio."
+        },
+        "transactions__enabled": {
+          "label": "Activar transacciones",
+          "description": "Permite POST /api/transactions: un rol sigue necesitando su propio permiso transactions.execute para usarlo."
+        },
+        "transactions__max_operations": {
+          "label": "Máximo de operaciones",
+          "description": "La mayor cantidad de operaciones que puede contener una sola solicitud de transacción."
+        },
+        "transactions__timeout_ms": {
+          "label": "Tiempo de espera de sentencia",
+          "description": "Cuánto puede ejecutarse una sentencia de una transacción antes de que PostgreSQL la cancele (y se revierta toda la transacción). 0 usa el tiempo de espera de solicitud de la Data API."
+        },
+        "idempotency__enabled": {
+          "label": "Activar claves de idempotencia",
+          "description": "Respeta la cabecera Idempotency-Key en las escrituras: un reintento con la misma clave repite la primera respuesta en lugar de ejecutarse otra vez."
+        },
+        "idempotency__ttl_hours": {
+          "label": "Duración de la clave",
+          "description": "Cuánto tiempo se conservan una clave y su respuesta guardada: un reintento posterior se ejecuta como una solicitud nueva."
+        },
+        "idempotency__max_response_bytes": {
+          "label": "Respuesta guardada máxima",
+          "description": "Las respuestas más grandes no se guardan para repetirlas: la escritura se ejecuta igualmente una sola vez, pero un reintento recibe un error en lugar del cuerpo original."
+        },
+        "async_executions__enabled": {
+          "label": "Activar el worker",
+          "description": "Desactiva el procesamiento en segundo plano: las ejecuciones en cola esperan hasta que se vuelva a activar."
+        },
+        "async_executions__max_retries": {
+          "label": "Máximo de reintentos",
+          "description": "Cuántas veces se reintenta una ejecución fallida, cuando su fallo es reintentable, antes de marcarla como fallida."
+        },
+        "async_executions__retry_delay_seconds": {
+          "label": "Espera entre reintentos",
+          "description": "Cuánto espera una ejecución fallida antes de su siguiente intento."
+        },
+        "async_executions__stale_timeout_ms": {
+          "label": "Tiempo de abandono",
+          "description": "Una ejecución que sigue en curso pasado este tiempo se considera abandonada por un worker caído y se vuelve a tomar."
+        },
+        "async_executions__poll_interval_ms": {
+          "label": "Intervalo de sondeo",
+          "description": "Cada cuánto revisa el worker la cola en busca de trabajo nuevo."
+        },
+        "async_executions__retention_days": {
+          "label": "Conservar ejecuciones terminadas",
+          "description": "Las ejecuciones completadas, fallidas y canceladas siguen consultables por su id durante este tiempo tras terminar; después se eliminan. 0 las conserva para siempre."
+        },
+        "outbox__retention_days": {
+          "label": "Retención de eventos procesados",
+          "description": "Los eventos de datos ya entregados a sus workflows se eliminan pasado este tiempo. Los eventos fallidos que agotaron sus intentos se conservan."
+        },
+        "outbox__max_attempts": {
+          "label": "Máximo de intentos",
+          "description": "Cuántas veces se despacha un evento de datos antes de quedar como fallido."
+        },
+        "outbox__retry_delay_seconds": {
+          "label": "Espera entre reintentos",
+          "description": "La espera antes de reintentar un evento de datos fallido: se duplica tras cada intento adicional."
+        },
+        "outbox__lease_seconds": {
+          "label": "Reserva de procesamiento",
+          "description": "Cuánto tiempo se retiene un evento de datos que se está entregando a sus workflows antes de considerarlo abandonado (su proceso se detuvo) y reintentarlo. Mantenlo por encima de la ejecución de workflow más larga."
+        },
+        "pool__max": {
+          "label": "Máximo de conexiones",
+          "description": "La mayor cantidad de conexiones abiertas a la vez. Mantenlo por debajo del max_connections de la base de datos, que se comparte con todos los demás clientes. Se aplica tras reiniciar."
+        },
+        "pool__idle_timeout_ms": {
+          "label": "Tiempo de inactividad",
+          "description": "Una conexión sin usar se cierra pasado este tiempo. Se aplica tras reiniciar."
+        },
+        "pool__connection_timeout_ms": {
+          "label": "Tiempo de espera de conexión",
+          "description": "Cuánto espera una solicitud una conexión libre (o que se abra una nueva) antes de fallar. Se aplica tras reiniciar."
+        },
+        "pool__max_lifetime_ms": {
+          "label": "Duración máxima de una conexión",
+          "description": "Una conexión se reemplaza pasado este tiempo, por ocupada que esté: permite que un balanceador de carga o un failover redistribuyan. 0 = nunca. Se aplica tras reiniciar."
+        },
+        "catalog__watch_interval_seconds": {
+          "label": "Detectar cambios en el esquema",
+          "description": "Cada cuánto comprueba TotalBase si el esquema cambió fuera de él (psql, una herramienta de migraciones), y sincroniza al momento cuando cambió. 0 = desactivado."
+        },
+        "catalog__refresh_interval_minutes": {
+          "label": "Sincronización programada",
+          "description": "Cada cuánto vuelve a leer TotalBase el esquema completo, encuentre o no cambios la comprobación: la red de seguridad para lo que esta no ve. 0 = desactivado."
+        },
+        "catalog__auto_refresh_after_ddl": {
+          "label": "Sincronizar tras ejecutar en la Consola SQL",
+          "description": "Vuelve a leer el esquema después de cada ejecución de la Consola SQL, para que una tabla que crea o elimina aparezca al instante. El editor de tablas siempre sincroniza."
+        },
+        "catalog__track_comments": {
+          "label": "Sincronizar descripciones con COMMENT ON",
+          "description": "Completa la descripción vacía de un recurso con el COMMENT ON de PostgreSQL, y un comentario vacío con la descripción, en cada sincronización."
+        },
+        "openapi__enabled": {
+          "label": "Publicar el documento OpenAPI",
+          "description": "Sirve /api/openapi.json a quienes llaman a la API, mostrando lo que sus propios roles pueden alcanzar. Desactivado = 404; los administradores lo siguen viendo en Docs."
+        },
+        "openapi__include_examples": {
+          "label": "Incluir valores de ejemplo",
+          "description": "Agrega un valor de muestra a cada columna y argumento, para las herramientas que muestran o generan solicitudes a partir del documento."
+        },
+        "openapi__cache_enabled": {
+          "label": "Cachear los documentos generados",
+          "description": "Conserva el documento de cada conjunto de roles hasta que cambien el esquema, los permisos, los workflows o la configuración, en lugar de regenerarlo en cada solicitud."
+        },
+        "sql_console__enabled": {
+          "label": "Activar la Consola SQL",
+          "description": "Permite a los administradores ejecutar SQL directo desde la consola. Desactivado = la consola no puede ejecutar ni explicar; su historial sigue pudiendo leerse."
+        },
+        "sql_console__token_access": {
+          "label": "Permitir tokens de API",
+          "description": "Permite que el token de acceso personal de un administrador ejecute SQL: el agente del servidor MCP, un script. Desactivado = solo un administrador con sesión iniciada. Solo se cambia desde aquí, nunca con un token."
+        },
+        "sql_console__max_rows": {
+          "label": "Límite de filas del resultado",
+          "description": "La mayor cantidad de filas que una consulta muestra en la consola: la consulta se ejecuta completa igualmente; las filas de más quedan fuera del resultado."
+        },
+        "sql_console__history_retention_days": {
+          "label": "Retención del historial",
+          "description": "Cuánto tiempo permanece una consulta en el historial de la Consola SQL antes de eliminarse automáticamente."
+        },
+        "dataviews__export_max_rows": {
+          "label": "Límite de filas de exportación",
+          "description": "La mayor cantidad de filas que obtiene el alcance \"Todas las filas que coinciden\" al exportar un DataView (CSV/Excel). Las filas que coinciden por encima de esto se descartan sin más, con un aviso para quien hizo la exportación."
+        },
+        "dataviews__export_warning_threshold": {
+          "label": "Umbral de aviso de exportación",
+          "description": "Cantidad de filas a partir de la cual exportar \"Todas las filas que coinciden\" muestra un aviso de \"esto puede tardar unos segundos\" antes de ejecutarse. También se usa para el mismo aviso al importar un archivo grande."
+        },
+        "dataviews__print_max_rows": {
+          "label": "Límite de filas de impresión",
+          "description": "La mayor cantidad de filas que obtiene el alcance \"Todas las filas que coinciden\" al imprimir un DataView a PDF. Las filas que coinciden por encima de esto se descartan sin más, con un aviso para quien hizo la impresión."
+        },
+        "dataviews__print_warning_threshold": {
+          "label": "Umbral de aviso de impresión",
+          "description": "Cantidad de filas a partir de la cual imprimir \"Todas las filas que coinciden\" muestra un aviso de \"esto puede tardar unos segundos\" antes de ejecutarse."
+        },
+        "dataviews__map_max_points": {
+          "label": "Límite de puntos del mapa",
+          "description": "La mayor cantidad de filas que un DataView MAP dibuja a la vez (no tiene paginación: todos los marcadores relevantes se cargan de entrada). Las filas que coinciden por encima de esto no se obtienen, y se muestra un aviso en el mapa."
+        },
+        "dataviews__kanban_max_cards": {
+          "label": "Límite de tarjetas del Kanban",
+          "description": "La mayor cantidad de filas que un DataView KANBAN carga a la vez, sumando todas las columnas (no tiene paginación: todas las tarjetas relevantes se cargan de entrada). Las filas que coinciden por encima de esto no se obtienen, y se muestra un aviso en el tablero."
+        },
+        "dataviews__calendar_max_events": {
+          "label": "Límite de eventos del calendario",
+          "description": "La mayor cantidad de filas que un DataView CALENDAR carga a la vez para el rango de fechas visible (ya obtiene por mes, no todo el historial: es un respaldo defensivo para un mes inusualmente cargado). Las filas que coinciden por encima de esto no se obtienen, y se muestra un aviso en el calendario."
+        },
+        "dataviews__gantt_max_bars": {
+          "label": "Límite de barras del Gantt",
+          "description": "La mayor cantidad de filas que un DataView GANTT carga a la vez, sumando todas las filas del diagrama (no tiene paginación: todas las barras relevantes se cargan de entrada). Las filas que coinciden por encima de esto no se obtienen, y se muestra un aviso en la línea de tiempo."
+        },
+        "dataviews__tree_max_nodes": {
+          "label": "Tope de nodos del árbol",
+          "description": "Las filas que carga como máximo una DataView TREE: toda la jerarquía, todos los niveles (no tiene paginado). Las filas que pasen de este número no se cargan y el árbol lo avisa."
+        },
+        "dataviews__bulk_edit_max_rows": {
+          "label": "Máximo de registros en edición masiva",
+          "description": "Cuántas filas puede elegir y editar juntas un usuario: como máximo 100, la página más grande que ofrece una grilla. Bájalo para que las ediciones masivas sean más chicas."
+        },
+        "dataviews__save_max_operations": {
+          "label": "Tope del guardado de un registro",
+          "description": "Las escrituras que hace como máximo un guardado de un registro y sus renglones: la cabecera y cada renglón agregado, cambiado o quitado, todo en una transacción. Un guardado que lo supere se rechaza entero."
+        },
+        "maps__tiles": {
+          "label": "Mosaicos del mapa",
+          "description": "Lo que dibuja cada mapa debajo: DataViews MAP, campos de mapa y mapas de dashboards. Mapbox necesita un token público abajo; sin él, los mapas siguen con OpenStreetMap."
+        },
+        "maps__mapbox_token": {
+          "label": "Token público de Mapbox",
+          "description": "Un token público (pk.…) de tu cuenta de Mapbox, restringido allí a la URL de esta instancia: se envía al navegador de cada persona. Un token secreto (sk.…) se rechaza."
+        },
+        "maps__default_view": {
+          "label": "Vista predeterminada del mapa",
+          "description": "Dónde se abre un campo de mapa vacío: latitud, longitud, zoom (por ejemplo -24.79, -65.41, 12 para Salta). Vacío: el mundo entero."
+        },
+        "maps__mapbox_style": {
+          "label": "Estilo de Mapbox",
+          "description": "username/style_id: mapbox/streets-v12, mapbox/satellite-streets-v12, mapbox/light-v11 o un estilo propio de Mapbox Studio."
+        },
+        "app__menu_mode": {
+          "label": "Presentación del menú",
+          "description": "Árbol: una jerarquía de grupos plegables. Barra lateral: el mismo menú plano, cada grupo como un encabezado de sección.",
+          "options": {
+            "TREE": "Árbol",
+            "SIDEBAR": "Barra lateral"
+          }
+        },
+        "dashboards__query_timeout_ms": {
+          "label": "Tiempo de espera de la consulta del widget",
+          "description": "Tiempo máximo que puede ejecutarse el SQL de un widget de dashboard (siempre se ejecuta en una transacción de solo lectura) antes de que PostgreSQL lo cancele."
+        },
+        "dashboards__query_max_rows": {
+          "label": "Límite de filas de la consulta del widget",
+          "description": "La mayor cantidad de filas que devuelve el SQL de un widget de dashboard: las filas de más se cortan, no se paginan."
+        },
+        "dashboards__max_concurrent_queries": {
+          "label": "Consultas de widgets a la vez",
+          "description": "Cuántas consultas de widgets de un mismo tablero se ejecutan al mismo tiempo - el resto espera su turno, así un tablero grande nunca toma todas las conexiones que necesita la Data API."
+        },
+        "dashboards__cache_seconds": {
+          "label": "Caché de resultados de widgets",
+          "description": "Cuánto se reutiliza el resultado de un widget publicado para las mismas variables, quien mira y zona horaria - salvo que su tablero se actualice más seguido. Actualizar la saltea. 0 la apaga."
+        },
+        "dashboards__embed_secret_key": {
+          "label": "Secreto de inserción",
+          "description": "La entrada de Configuración → Secretos con la que el backend de tu sitio firma los tokens de inserción (HS256): nunca llega a un navegador. Vacío: ningún dashboard puede insertarse. Para rotarlo, crea un secreto nuevo y elígelo aquí; los tokens firmados con el anterior dejan de funcionar."
+        },
+        "dashboards__embed_max_ttl_minutes": {
+          "label": "Token de inserción más largo",
+          "description": "Se rechaza un token cuyo vencimiento (exp) está más lejos que esto: mantén los tokens de inserción de corta duración y firma uno nuevo por cada vista de página."
+        },
+        "dashboards__embed_allowed_origins": {
+          "label": "Sitios que pueden insertar",
+          "description": "Orígenes autorizados a enmarcar un dashboard insertado (https://app.example.com): se envían como frame-ancestors de Content-Security-Policy. Vacío: ningún sitio puede enmarcarlo."
+        },
+        "workflows__max_sync_wait_ms": {
+          "label": "Espera síncrona máxima",
+          "description": "Lo máximo que el modo de respuesta síncrona de un disparador WEBHOOK mantiene abierta la conexión esperando a que termine la ejecución, sea cual sea el tiempo de espera configurado en cada workflow."
+        },
+        "workflows__max_run_duration_ms": {
+          "label": "Duración máxima de una ejecución",
+          "description": "Una ejecución que sigue en curso pasado esto se fuerza a fallar: el plazo de admisión propio del motor, independiente del tiempo de espera de cada paso."
+        },
+        "workflows__max_operations_per_run": {
+          "label": "Máximo de operaciones por ejecución",
+          "description": "Limita el número total de pasos (incluidas las iteraciones de bucles) que puede ejecutar una sola ejecución antes de forzarla a fallar, para atrapar un diseño desbocado o con un bucle accidental."
+        },
+        "workflows__max_iteration_items": {
+          "label": "Máximo de elementos por iteración",
+          "description": "La mayor cantidad de elementos que puede contener la colección de un paso Para cada: una colección más larga hace fallar el paso en lugar de iterar parcialmente."
+        },
+        "workflows__max_runtime_value_bytes": {
+          "label": "Tamaño máximo de un valor de enlace",
+          "description": "Limita el tamaño de cualquier valor de enlace resuelto (datos del disparador, el resultado de un paso, un elemento de iteración): un valor mayor hace fallar el paso que intentó resolverlo."
+        },
+        "workflows__max_history_payload_bytes": {
+          "label": "Tamaño máximo de los datos del historial",
+          "description": "Limita cuánto de la entrada/el resultado de un paso se conserva en el historial DETAILED: lo que exceda se trunca antes de guardarse."
+        },
+        "workflows__history_summary_retention_days": {
+          "label": "Retención del historial resumido",
+          "description": "Cuánto tiempo se conserva el historial de una ejecución de nivel SUMMARY (estado y tiempos, sin datos) antes de eliminarse."
+        },
+        "workflows__history_detailed_retention_days": {
+          "label": "Retención del historial detallado",
+          "description": "Cuánto tiempo se conserva el historial de una ejecución de nivel DETAILED (incluidos los datos de los pasos, ocultados/recortados) antes de eliminarse: menos que la retención resumida de forma predeterminada, ya que contiene datos más sensibles."
+        },
+        "workflows__auto_disable_after_consecutive_failures": {
+          "label": "Desactivar tras fallos consecutivos",
+          "description": "Un workflow que falla esta cantidad de ejecuciones seguidas (con cualquier tipo de disparador) se desactiva automáticamente: sobre todo útil para un workflow CRON, que de otro modo seguiría reintentando para siempre sin nadie externo que lo note."
+        },
+        "workflows__max_chain_depth": {
+          "label": "Profundidad máxima de cadena",
+          "description": "Cuántos workflows puede contener una cadena causal: un workflow cuya escritura inicia otro (eventos de datos) o que llama a otro (Ejecutar workflow). Un bucle (A → A, A → B → A) se rechaza a cualquier profundidad."
+        },
+        "workflows__http_max_request_bytes": {
+          "label": "Cuerpo máximo de la solicitud HTTP",
+          "description": "El mayor cuerpo que puede enviar un paso de solicitud HTTP. Uno mayor hace fallar el paso antes de enviar nada."
+        },
+        "workflows__http_max_response_bytes": {
+          "label": "Cuerpo máximo de la respuesta HTTP",
+          "description": "La mayor respuesta que lee un paso de solicitud HTTP. La transferencia se corta cuando lo supera, y el paso falla."
+        },
+        "workflows__http_allowed_hosts": {
+          "label": "Hosts permitidos de la solicitud HTTP",
+          "description": "Nombres de host (api.internal.example), direcciones IP o rangos CIDR (10.0.0.0/8) que un paso de solicitud HTTP puede alcanzar aunque sean privados, de loopback o link-local. Cualquier otro destino de ese tipo se rechaza."
+        },
+        "appearance__primary_color": {
+          "label": "Color primario",
+          "description": "El acento de cada botón, enlace y resaltado. Basta un color: sus tonos más claros y más oscuros se derivan para el modo claro y el oscuro. Vacío mantiene el azul de TotalBase."
+        },
+        "appearance__neutral_color": {
+          "label": "Color neutro",
+          "description": "Los grises del texto, los bordes y los fondos, en modo claro y oscuro. Slate, el de TotalBase, tira a azul - también en modo oscuro.",
+          "options": {
+            "slate": "Slate",
+            "gray": "Gray",
+            "zinc": "Zinc",
+            "neutral": "Neutral",
+            "stone": "Stone"
+          },
+          "optionDescriptions": {
+            "slate": "Gris azulado.",
+            "gray": "Un toque de azul.",
+            "zinc": "Gris frío, casi puro.",
+            "neutral": "Gris puro.",
+            "stone": "Gris cálido."
+          }
+        },
+        "appearance__login_layout": {
+          "label": "Página de inicio de sesión",
+          "description": "Qué rodea a la tarjeta de inicio de sesión. Simple, Panel de la empresa e Imagen muestran tu marca (Ajustes › General: tu logo y tu nombre) y solo un \"Funciona con TotalBase\" chico al pie; en el celular son la tarjeta bajo tu marca (Imagen conserva su foto de fondo).",
+          "options": {
+            "SPLIT": "Predeterminada (TotalBase)",
+            "SIMPLE": "Simple",
+            "PANEL": "Panel de la empresa",
+            "IMAGE": "Imagen"
+          },
+          "optionDescriptions": {
+            "SPLIT": "El panel propio de TotalBase (su titular, introducción y funciones) junto a la tarjeta.",
+            "SIMPLE": "Tu logo y tu nombre grandes y centrados, tu titular debajo y la tarjeta abajo.",
+            "PANEL": "Un panel lateral con tu logo, nombre, titular e introducción, sobre la imagen de fondo si hay o sobre tu color principal, junto a la tarjeta. Nada de TotalBase.",
+            "IMAGE": "Tu imagen a toda página con tu titular e introducción encima, y la tarjeta con tu logo y nombre: a la izquierda, al centro o a la derecha (Posición de la tarjeta)."
+          }
+        },
+        "appearance__login_card_position": {
+          "label": "Posición de la tarjeta",
+          "description": "Dónde va la tarjeta del diseño Imagen en una pantalla ancha; tu titular e introducción ocupan el otro lado.",
+          "options": {
+            "LEFT": "Izquierda",
+            "CENTER": "Centro",
+            "RIGHT": "Derecha"
+          },
+          "optionDescriptions": {
+            "LEFT": "La tarjeta a la izquierda, tus textos a la derecha.",
+            "CENTER": "La tarjeta al medio, tu titular arriba.",
+            "RIGHT": "Tus textos a la izquierda, la tarjeta a la derecha."
+          }
+        },
+        "appearance__login_background": {
+          "label": "Imagen de fondo",
+          "description": "El fondo del diseño Imagen y el del Panel de la empresa: una imagen pública de Archivos, mostrada cubriéndolo. Una foto de 1920 px o más se mantiene nítida en una pantalla grande."
+        },
+        "appearance__login_headline": {
+          "label": "Titular",
+          "description": "Tus palabras en la página de inicio de sesión: bajo tu nombre (Simple), en el Panel de la empresa y sobre el fondo del diseño Imagen. Hasta 120 caracteres."
+        },
+        "appearance__login_intro": {
+          "label": "Introducción",
+          "description": "Debajo del titular, en el Panel de la empresa y en el diseño Imagen, en una pantalla ancha. Hasta 300 caracteres."
+        },
+        "appearance__custom_css": {
+          "label": "CSS personalizado",
+          "description": "CSS plano aplicado al final en todas las páginas: admin, App, inicio de sesión, embeds. Estable para construir encima: los tokens de Nuxt UI (--ui-primary, --ui-color-primary-*, --ui-bg, --ui-text, --ui-border, --ui-radius, --font-sans), .dark y html[data-surface=\"app\"] (admin, app, auth, embed) para apuntar a una superficie, [data-shell=\"rail\"], \"panel\", \"header\" o \"main\" para una parte del shell, y [data-shell=\"list\"] con [data-dataview-type=\"TABLE\"] (CARDS, KANBAN, CALENDAR, GANTT, MAP) para la lista de una DataView. El resto puede cambiar entre versiones. Sin {'@'}import. Si una regla oculta la interfaz, abre cualquier página con ?safe-css para cargarla sin ella."
+        },
+        "mcp__enabled": {
+          "label": "Habilitar MCP",
+          "description": "Sirve el servidor MCP en la dirección de esta instancia, /mcp, para un agente con el token de un administrador. Apagado: /mcp no responde y el binario stdio no arranca."
+        },
+        "mcp__mode": {
+          "label": "Modo",
+          "description": "Qué puede hacer un agente - además de cada permiso que TotalBase verifica de todos modos.",
+          "options": {
+            "READ_ONLY": "Solo lectura",
+            "STANDARD": "Estándar",
+            "FULL": "Completo"
+          },
+          "optionDescriptions": {
+            "READ_ONLY": "Solo herramientas que leen: describir, listar, consultar, obtener.",
+            "STANDARD": "Construye y cambia todo, pero nunca borra ni revoca - una llamada destructiva se rechaza.",
+            "FULL": "Todo, incluidos los borrados - cada uno sigue pidiendo confirm=true."
+          }
+        },
+        "mcp__tools_schema": {
+          "label": "Tablas y esquema",
+          "description": "Crear y cambiar tablas, esquemas, la presentación de columnas y filas, la exposición de recursos; describirlos."
+        },
+        "mcp__tools_records": {
+          "label": "Registros",
+          "description": "Leer y escribir filas de cualquier tabla expuesta - de la aplicación y de TotalBase - y llamar funciones."
+        },
+        "mcp__tools_access": {
+          "label": "Permisos",
+          "description": "Otorgar, revocar y leer permisos; capacidades; permisos predeterminados."
+        },
+        "mcp__tools_users": {
+          "label": "Usuarios",
+          "description": "Crear usuarios con contraseña o invitación, cambiar sus roles, enviar enlaces."
+        },
+        "mcp__tools_screens": {
+          "label": "DataViews y páginas",
+          "description": "Crear, cambiar, publicar y eliminar DataViews, páginas CUSTOM y el menú de la App."
+        },
+        "mcp__tools_dashboards": {
+          "label": "Dashboards",
+          "description": "Crear, cambiar, publicar y eliminar dashboards y sus widgets."
+        },
+        "mcp__tools_workflows": {
+          "label": "Workflows",
+          "description": "Crear, guardar, ejecutar, publicar, activar y eliminar workflows."
+        },
+        "mcp__tools_templates": {
+          "label": "Plantillas",
+          "description": "Crear, cambiar y probar plantillas de email y PDF."
+        },
+        "mcp__tools_sql": {
+          "label": "SQL",
+          "description": "SQL directo y sus planes - también requiere Permitir tokens de API en la Consola SQL."
+        },
+        "mcp__instructions": {
+          "label": "Instrucciones del proyecto",
+          "description": "Se le dicen a cada agente junto con la orientación del propio servidor - las convenciones de este proyecto: nombres, idioma, su dominio, qué no tocar nunca."
+        },
+        "mcp__rate_limit_per_minute": {
+          "label": "Pedidos por minuto",
+          "description": "La mayor cantidad de pedidos MCP que hace un token en un minuto - cada llamada a una herramienta es uno. Sus propias llamadas a las APIs no cuentan para el límite de Red."
+        },
+        "mcp__allowed_hosts": {
+          "label": "Hosts permitidos",
+          "description": "El Host que puede nombrar un pedido a /mcp - rechaza una página que engaña a un navegador para llamarlo (DNS rebinding). Vacío: el host de la URL pública y localhost."
+        },
+        "dataviews__toolbar_mode": {
+          "label": "Barra de herramientas",
+          "description": "Cómo abre la barra de herramientas de una DataView de lista para quien no eligió - salvo que la DataView fije la suya. Compacta pasa la búsqueda y el menú al encabezado de la página y guarda importar, exportar, imprimir, historial y columnas en el menú. Un celular o tablet siempre la ve compacta.",
+          "options": {
+            "auto": "Automática",
+            "full": "Completa",
+            "compact": "Compacta"
+          },
+          "optionDescriptions": {
+            "auto": "Compacta para CARDS, completa para los demás tipos.",
+            "full": "Todas las acciones en una fila de herramientas.",
+            "compact": "La búsqueda y el menú en el encabezado de la página."
+          }
+        },
+        "dataviews__record_content_width": {
+          "label": "Ancho de las páginas de registro",
+          "description": "Cuánto se ensancha el contenido de una página de registro - un FORM, un MASTER_DETAIL, el registro de una lista abierto en su propia página - salvo que la DataView fije el suyo.",
+          "options": {
+            "narrow": "Angosto",
+            "wide": "Ancho",
+            "full": "Todo el ancho"
+          },
+          "optionDescriptions": {
+            "narrow": "Una columna cómoda de leer - un formulario de pocos campos, una pantalla de un solo paso.",
+            "wide": "Lugar para dos o tres columnas de campos.",
+            "full": "Toda la página."
+          }
+        },
+        "dataviews__custom_content_width": {
+          "label": "Ancho de las páginas CUSTOM",
+          "description": "Cuánto se ensanchan el contenido de una página CUSTOM y su pie fijo - salvo que la DataView fije el suyo.",
+          "options": {
+            "narrow": "Angosto",
+            "wide": "Ancho",
+            "full": "Todo el ancho"
+          },
+          "optionDescriptions": {
+            "narrow": "Una columna cómoda de leer - un formulario de pocos campos, una pantalla de un solo paso.",
+            "wide": "Lugar para dos o tres columnas de campos.",
+            "full": "Toda la página."
+          }
+        },
+        "dataviews__content_align": {
+          "label": "Alineación del contenido",
+          "description": "Dónde se ubica una página más angosta que la pantalla - salvo que la DataView fije la suya.",
+          "options": {
+            "left": "Izquierda",
+            "center": "Centro",
+            "right": "Derecha"
+          }
+        },
+        "dataviews__table_margin": {
+          "label": "Margen de las tablas",
+          "description": "El espacio alrededor de la grilla de una TABLE en la App, salvo que la DataView fije el suyo. Las tarjetas, mapas, tableros, calendarios y líneas de tiempo conservan el margen normal; las páginas de registro, formularios, páginas y dashboards, el suyo.",
+          "options": {
+            "none": "Sin margen",
+            "compact": "Compacto",
+            "normal": "Normal"
+          },
+          "optionDescriptions": {
+            "none": "La tabla ocupa la página, justo debajo de su encabezado.",
+            "compact": "Un margen angosto.",
+            "normal": "El margen habitual de la página."
+          }
+        },
+        "app__menu_groups_open": {
+          "label": "Grupos al abrir la App",
+          "description": "Cómo empiezan los grupos del menú en árbol - un grupo puede definir el suyo. El que contiene la página se abre siempre; lo que cada persona abre y cierra se recuerda en su dispositivo.",
+          "options": {
+            "CURRENT": "Solo el de la página actual",
+            "OPEN": "Todos abiertos",
+            "CLOSED": "Todos cerrados"
+          }
+        },
+        "app__menu_search": {
+          "label": "Cuadro de búsqueda",
+          "description": "Un buscador sobre el menú: por la etiqueta de una entrada, su nombre completo, su descripción o su grupo. Automático: cuando una persona ve más de 15 entradas.",
+          "options": {
+            "AUTO": "Automático",
+            "ALWAYS": "Siempre",
+            "NEVER": "Nunca"
+          }
+        }
+      }
+    },
+    "appearance": {
+      "preview": "Vista previa",
+      "stopPreview": "Quitar vista previa",
+      "uploadImage": "Subir imagen",
+      "replaceImage": "Reemplazar imagen",
+      "uploadFailed": "No se pudo subir la imagen",
+      "defaultColor": "Usar el predeterminado",
+      "examples": {
+        "button": "Ejemplos",
+        "fontSize": "Tamaño de fuente",
+        "fontFamily": "Tipo de fuente",
+        "radius": "Radio de las esquinas",
+        "backgroundColors": "Colores de fondo",
+        "textColors": "Colores del texto",
+        "rail": "Color de la barra lateral",
+        "panel": "Color del panel lateral",
+        "headers": "Fondo de las cabeceras",
+        "appOnly": "Solo la App",
+        "signInOnly": "Solo las páginas de inicio de sesión"
+      },
+      "themes": {
+        "hint": "Un tema como punto de partida: reemplaza el CSS de abajo, que sigue siendo tuyo para editar.",
+        "default": "Predeterminado",
+        "navy": "Azul marino",
+        "slate": "Pizarra",
+        "graphite": "Grafito",
+        "forest": "Bosque",
+        "ocean": "Océano",
+        "plum": "Ciruela",
+        "paper": "Papel"
+      }
+    },
+    "mcp": {
+      "connection": "Conexión",
+      "on": "Activo",
+      "off": "Apagado",
+      "address": "Dirección",
+      "addressHelp": "Donde se conecta un agente - la URL pública de esta instancia y /mcp, el mismo puerto que la API.",
+      "token": "Token",
+      "tokenHelp": "Un token de acceso personal del plano Admin de un administrador - el agente puede hacer exactamente lo que ese administrador puede, auditado a su nombre.",
+      "createToken": "Crear un token",
+      "claudeCode": "Claude Code",
+      "claudeCodeHelp": "Ejecútalo en la carpeta del proyecto, con el token en TOTALBASE_TOKEN.",
+      "mcpJson": ".mcp.json",
+      "mcpJsonHelp": "O este archivo en la carpeta del proyecto - el token se lee de TOTALBASE_TOKEN.",
+      "copy": "Copiar",
+      "copied": "Copiado"
+    }
+  }
+}

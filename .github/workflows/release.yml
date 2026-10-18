@@ -1,6 +1,6 @@
 # Builds and publishes the Docker images of a release, when a version tag reaches the public repository
-# (scripts/publish-public.sh): the server and the MCP server, for amd64 and arm64, on Docker Hub (totalbase/…) and GitHub's
-# registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release; any other pre-release
+# (scripts/publish-public.sh): one image, the server (the MCP server included, at /mcp), for amd64 and arm64, on Docker Hub
+# (totalbase/totalbase) and GitHub's registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release; any other pre-release
 # (a test of this workflow) only its version.
 name: Release
 
@@ -20,10 +20,9 @@ jobs:
     strategy:
       matrix:
         include:
+          # One image: the server - the Data API, the admin, the App and the MCP server at /mcp.
           - target: server
             image: totalbase
-          - target: mcp
-            image: totalbase-mcp
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3

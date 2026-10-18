@@ -43,7 +43,8 @@ export const LAZY_AREA_BY_KEY: Readonly<Record<string, LazyLocaleArea>> = {
  *   filterOperators.ts) and every grid shows them;
  * - `/settings` reads `users` for the token and link helpers its API
  *   tokens page shares with Users; the DataView, Dashboard and Workflow
- *   editors read it for their object access (roles) tab.
+ *   editors read it for their object access (roles) tab, and a table's page for
+ *   its Create DataView window's roles (QuickDataViewModal.vue).
  *
  * The audit log's grid and entry (AuditLogGrid) keep their texts in the
  * eager `audit` keys - a user's Activity tab and My account show them.
@@ -62,8 +63,8 @@ export const LOCALE_AREAS_BY_ROUTE: readonly (readonly [prefix: string, areas: r
   ['/tokens', ['users']],
   ['/sessions', ['users']],
   ['/settings', ['settings', 'users']],
-  ['/database', ['database']],
-  ['/resources', ['database']],
+  ['/database', ['database', 'users']],
+  ['/resources', ['database', 'users']],
   ['/sql-console', ['database']],
   ['/dataviews', ['dataviews-designer', 'database', 'dashboards', 'users']],
   ['/dashboards', ['dashboards', 'database', 'users']],

@@ -43,10 +43,10 @@ TotalBase connects to a PostgreSQL database, new or existing, and gives you on t
   <tr>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/build-with-ai-kanban-dark.webp">
-        <img src=".github/readme/build-with-ai-kanban-light.webp" alt="A kanban board of work orders, colored by priority">
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/type-table-dark.webp">
+        <img src=".github/readme/type-table-light.webp" alt="Work orders as a table in the App, statuses and priorities in their colors">
       </picture>
-      <p align="center"><sub>A kanban of work orders, in the App</sub></p>
+      <p align="center"><sub>Work orders in the App - also a kanban, a calendar or a map</sub></p>
     </td>
     <td width="50%">
       <picture>

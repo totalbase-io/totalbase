@@ -4,7 +4,7 @@ TotalBase stands between a database and the people and programs that reach it, s
 
 ## Reporting a vulnerability
 
-**Don't open a public issue.** Report it privately through GitHub: the repository's **Security** tab, **Report a vulnerability**. Include:
+**Don't open a public issue.** Report it privately through GitHub - the repository's **Security** tab, **Report a vulnerability** - or by email to **security@totalbase.io**. Include:
 
 - what an attacker can do, and what they need first (an account, a role, a token, nothing);
 - the steps or the request that shows it, and the version or commit;

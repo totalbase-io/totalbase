@@ -5,26 +5,120 @@
 <h1 align="center">TotalBase</h1>
 
 <p align="center">
-  From your PostgreSQL database to APIs, screens, dashboards and automations.<br>
-  PostgreSQL stays the authority.
+  <strong>From your PostgreSQL database to APIs, screens, dashboards and automations.</strong><br>
+  Built by hand, or by describing it to an AI agent. PostgreSQL stays the authority.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-0084d1"></a>
+  <img alt="PostgreSQL 15 to 18" src="https://img.shields.io/badge/PostgreSQL-15%20to%2018-336791">
+  <img alt="Status: beta" src="https://img.shields.io/badge/status-beta-f59e0b">
+</p>
+
+<p align="center">
+  <a href="https://totalbase.io">Website</a> ·
+  <a href="https://docs.totalbase.io">Documentation</a> ·
+  <a href="https://docs.totalbase.io/getting-started/installation">Installation</a> ·
+  <a href="https://docs.totalbase.io/getting-started/quickstart-with-ai">Quickstart with AI</a>
+</p>
+
+<p align="center">
+  <img src=".github/readme/build.webp" alt="An AI agent builds a field service application through TotalBase's MCP server: each call on the left, the admin filling up on the right" width="900">
+  <br>
+  <sub>A field service application - tables, rules, roles, screens, dashboards and workflows - built through the MCP server: 354 calls, in under a minute.</sub>
 </p>
 
 ---
 
-TotalBase connects to a PostgreSQL database, new or existing, and gives you, on top of it:
+TotalBase connects to a PostgreSQL database, new or existing, and gives you on top of it:
 
 - **A REST Data API** over the tables, views and functions you choose to expose: filters, relations, aggregates, nested writes and transactions, with a generated OpenAPI document.
-- **Users, roles and permissions** down to individual rows and fields: row filters, field grants and payload checks, compiled into the SQL PostgreSQL runs.
-- **DataViews**: screens over your data - tables, cards, kanban boards, calendars, Gantt charts, maps, trees, forms and custom pages - that end users open in the App, on a desktop, a tablet or a phone.
+- **Users, roles and permissions** down to rows and fields - row filters, field grants and payload checks, compiled into the SQL PostgreSQL runs.
+- **DataViews**: screens over your data - tables, cards, kanban boards, calendars, Gantt charts, maps, trees and org charts, forms and custom pages - that people use in the App on a desktop, a tablet or a phone.
 - **Dashboards** built from SQL queries, which you can also embed in another site.
-- **Workflows** started by a data change, a schedule, a webhook or a person.
-- **An audit log** of every write, and an **MCP server** so an AI agent can build and run all of the above under the same permissions as a person.
+- **Workflows** started by a data change, a schedule, a webhook or a person: emails, PDFs, HTTP calls, code.
+- **An audit log** of every write, and an **MCP server** so an AI agent builds and runs all of the above under the same permissions as a person.
 
-TotalBase doesn't replace or hide PostgreSQL. Your tables stay ordinary PostgreSQL tables, constraints, triggers and functions keep deciding, and anything you change with `psql` or a migration tool shows up in TotalBase too.
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/build-with-ai-kanban-dark.webp">
+        <img src=".github/readme/build-with-ai-kanban-light.webp" alt="A kanban board of work orders, colored by priority">
+      </picture>
+      <p align="center"><sub>A kanban of work orders, in the App</sub></p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/build-with-ai-dashboard-dark.webp">
+        <img src=".github/readme/build-with-ai-dashboard-light.webp" alt="An operations dashboard: KPIs, charts and a table of overdue orders">
+      </picture>
+      <p align="center"><sub>A dashboard from SQL queries</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/workflow-editor-dark.webp">
+        <img src=".github/readme/workflow-editor-light.webp" alt="The workflow editor: steps from a trigger to an email">
+      </picture>
+      <p align="center"><sub>A workflow, step by step</sub></p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/type-tree-org-dark.webp">
+        <img src=".github/readme/type-tree-org-light.webp" alt="An org chart of technicians with their photos">
+      </picture>
+      <p align="center"><sub>An org chart, from a table that points at itself</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/mobile-work-order-dark.webp">
+    <img src=".github/readme/mobile-work-order-light.webp" alt="A technician's work order on a phone" width="230">
+  </picture>
+  &nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/mobile-map-dark.webp">
+    <img src=".github/readme/mobile-map-light.webp" alt="A map of the sites, on a phone" width="230">
+  </picture>
+  &nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/mobile-dashboard-dark.webp">
+    <img src=".github/readme/mobile-dashboard-light.webp" alt="A dashboard on a phone" width="230">
+  </picture>
+  <br>
+  <sub>Made for every screen: the same App on a phone, with nothing to build twice.</sub>
+</p>
+
+## Two ways to build
+
+**By hand**, in the admin: create a table, give its statuses colors, make a screen of it in one step, choose who opens it, and see the App as one of them before anyone does. [Quickstart by hand](https://docs.totalbase.io/getting-started/quickstart-by-hand).
+
+**With an AI agent**: connect Claude Code, or any MCP client, and describe what you need.
+
+```text
+Build a field service application: customers and their sites, work orders by status and priority,
+technicians who see only their own orders, a kanban for dispatchers and a dashboard of the overdue ones.
+```
+
+The agent creates the tables and their rules, the roles and permissions, the screens and the dashboard, and checks its own work for what would still stop a role (`check_app`). [Quickstart with AI](https://docs.totalbase.io/getting-started/quickstart-with-ai).
+
+Either way the result is the same: ordinary PostgreSQL tables and objects you open and change in the admin - not generated code to maintain.
+
+## Why TotalBase
+
+- **PostgreSQL decides.** Constraints, triggers, functions and types keep deciding; TotalBase shows their messages instead of re-implementing them. Anything you change with `psql` or a migration tool shows up in TotalBase too.
+- **Nothing is exposed until you say so.** A new table is hidden; every read and write needs a grant, down to the row and the field.
+- **One instance, one port, no extra infrastructure.** No Redis, no queue, no second database: the API, the admin, the App, the workflows and the MCP server run in one container.
 
 ## Status
 
-**Beta** (`0.1.0-beta.1`). It runs, it's tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the release notes.
+**Beta, on its way.** TotalBase runs and is tested on PostgreSQL 15 to 18; its data model is final from the first beta, `0.1.0-beta.1`, on: a beta database upgrades in place. APIs may still change before 1.0, and every change will be in the release notes.
+
+Until the beta's images are on Docker Hub, build the image from source (below) and use `totalbase:local` wherever this page says `totalbase/totalbase:beta`.
 
 ## Requirements
 
@@ -35,6 +129,23 @@ TotalBase doesn't replace or hide PostgreSQL. Your tables stay ordinary PostgreS
 ## Quick start
 
 TotalBase runs as one container, on one port: the admin at `/admin/`, the Data API at `/api/`, the MCP server at `/mcp`.
+
+**Against a PostgreSQL you already run**, the connection is all it needs:
+
+```bash
+docker run -d --name totalbase -p 3050:3050 \
+  -v totalbase-data:/var/lib/totalbase \
+  -e POSTGRES_HOST=your-server -e POSTGRES_DB=acme \
+  -e POSTGRES_USER=totalbase -e POSTGRES_PASSWORD=... \
+  totalbase/totalbase:beta
+
+docker logs totalbase   # the link that creates the first administrator
+```
+
+Open the link and create your administrator. The first start generates the master key, which encrypts stored secrets, into the data volume (`/var/lib/totalbase/master.key`); keep a copy outside the database - a full recovery needs both a PostgreSQL backup and the key.
+
+<details>
+<summary><strong>From scratch, with PostgreSQL included</strong> (Docker Compose)</summary>
 
 ```yaml
 # docker-compose.yml - PostgreSQL 18 and TotalBase together
@@ -82,9 +193,11 @@ CREATE DATABASE acme OWNER totalbase;
 EOSQL
 ```
 
-Put the two passwords in an `.env` file beside it and run `docker compose up -d`. `docker compose logs totalbase` shows the link that creates the first administrator. Against a PostgreSQL you already run, keep only the `totalbase` service and point `POSTGRES_HOST` at it.
+Put the two passwords in an `.env` file beside it, run `docker compose up -d`, and `docker compose logs totalbase` shows the link that creates the first administrator.
 
-The first start generates the master key, which encrypts stored secrets, into `/var/lib/totalbase/master.key` (or set your own, at least 32 characters, in `TOTALBASE_MASTER_KEY`). Keep a copy outside the database: a full recovery needs both a PostgreSQL backup and the key.
+</details>
+
+Every setting, TLS behind a proxy and backups: [Installation](https://docs.totalbase.io/getting-started/installation) and [Operations](https://docs.totalbase.io/operations/deployment).
 
 ## Building from source
 
@@ -98,7 +211,9 @@ For development, `pnpm dev` runs the server and the admin together on one origin
 
 ## Contributing
 
-Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: it has the project's rules, and a contribution needs the [Contributor License Agreement](CLA.md), signed once from the pull request. Security problems go privately, as [SECURITY.md](SECURITY.md) says - never in a public issue.
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: it has the project's rules, and a contribution needs the [Contributor License Agreement](CLA.md), signed once from the pull request.
+
+Security problems go privately to **security@totalbase.io**, as [SECURITY.md](SECURITY.md) says - never in a public issue. Anything else: **hello@totalbase.io**.
 
 ## License
 

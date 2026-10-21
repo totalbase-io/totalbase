@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Database } from "@totalbase/database";
 import { loadMigrationFiles } from "@totalbase/migrations";
 import { DATABASE_FILE, FILES_FILE, MANIFEST_FILE, parseManifest, type BackupManifest } from "./manifest.js";
-import { pgTool, runCommand } from "./process.js";
+import { pgTool, pipeCommands, runCommand } from "./process.js";
 
 export interface RestoreOptions {
   /** The backup's archive - a `.tar` downloaded from Settings › PostgreSQL › Backups, or taken from its destination. */
@@ -68,9 +68,16 @@ export async function restoreBackup(options: RestoreOptions): Promise<BackupMani
       if (present.length > 0) throw new Error(`The files directory ${manifest.filesPath} isn't empty - restore into an empty one.`);
     }
 
-    log("Restoring the database (pg_restore, one transaction)");
+    log("Restoring the database (pg_restore into psql, one transaction)");
     // Owned by the role restoring it: never an ALTER OWNER to a role that may not exist here, nor SUPERUSER.
-    await runCommand(pgTool("pg_restore", options.pgBinDir), ["--no-owner", "--exit-on-error", "--single-transaction", "--no-password", `--dbname=${options.clientEnv["PGDATABASE"] ?? ""}`, join(work, DATABASE_FILE)], options.clientEnv);
+    // pg_restore 18 opens its script with `SET transaction_timeout = 0`, a setting PostgreSQL 17 introduced: into
+    // 15 or 16 that one line is dropped on its way to psql, which runs the rest in one transaction, all or nothing.
+    await pipeCommands(
+      { command: pgTool("pg_restore", options.pgBinDir), args: ["--no-owner", "--file=-", join(work, DATABASE_FILE)] },
+      { command: pgTool("psql", options.pgBinDir), args: ["--no-psqlrc", "--quiet", "--no-password", "--single-transaction", "--set=ON_ERROR_STOP=1", `--dbname=${options.clientEnv["PGDATABASE"] ?? ""}`] },
+      options.clientEnv,
+      target < 170_000 ? ["SET transaction_timeout = 0;"] : [],
+    );
 
     // The dump was taken while this backup ran: it is the one restored, the rest that were under way never finished.
     await database.query(

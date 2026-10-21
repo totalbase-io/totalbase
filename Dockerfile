@@ -45,7 +45,7 @@ RUN cd packages/workflows && node -e "require('isolated-vm')" \
 
 # --- runtime: the server ------------------------------------------------------
 FROM node:${NODE_VERSION}-bookworm-slim AS server
-# PostgreSQL 18's client tools from PostgreSQL's own repository (PGDG) - pg_dump and pg_restore for the built-in
+# PostgreSQL 18's client tools from PostgreSQL's own repository (PGDG) - pg_dump, pg_restore and psql for the built-in
 # backups (Administration.md §12); 18 dumps and restores every supported server, 15 to 18. Its key is fetched over
 # HTTPS from postgresql.org, and curl leaves with the build.
 RUN apt-get update \

@@ -50,7 +50,7 @@ export async function getWidget(ctx: DashboardsContext, dashboardId: string, wid
   return toAdminWidget(row);
 }
 
-/** Adding a widget never asks for its source - it's inserted unconfigured and edited afterward (Specification_Dashboards.md §10.4). */
+/** Adding a widget never asks for its source - it's inserted unconfigured and edited afterward (Dashboards.md §10.4). */
 export async function addWidget(ctx: DashboardsContext, dashboardId: string, input: CreateWidgetInput): Promise<AdminDashboardWidget> {
   const dashboard = await getDashboard(ctx, dashboardId);
   const type = validateWidgetType(input.type);

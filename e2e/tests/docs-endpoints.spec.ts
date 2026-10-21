@@ -4,7 +4,7 @@ import { login } from './helpers.js'
 const SHOTS = process.env.E2E_SHOTS_DIR
 
 /**
- * Docs > Endpoints (Specification_Admin_UI.md §12): the whole HTTP
+ * Docs > Endpoints (Admin_UI.md §12): the whole HTTP
  * surface - resources, workflows and fixed routes -, filtered and searched,
  * a row's cURL with an example body, and "Open in API docs" landing on the
  * route in the Data API document.

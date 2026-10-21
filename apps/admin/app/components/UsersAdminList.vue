@@ -219,7 +219,7 @@ async function confirmDrop() {
     })
   }
 }
-// --- Bulk role membership and deactivation (Specification_Security.md §9.4):
+// --- Bulk role membership and deactivation (Security.md §9.4):
 // one Data API request each - one transaction, an audit row per change. ---
 const rolesApi = useRolesApi()
 const roleAction = ref<'add' | 'remove' | null>(null)

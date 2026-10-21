@@ -62,7 +62,7 @@ const props = withDefaults(defineProps<{
   /** `dataview.viewType` - `undefined`/`'TABLE'` keeps the `<UTable>` this component always rendered; `'CARDS'` swaps it for a grid of `DataViewCard.vue` instead (see `isCards` below) - same toolbar/fetch/pagination/selection/delete either way, only the rows' own visual rendering differs. */
   viewType?: DataViewType
   /**
-   * The views it offers (`view_config.layouts`, Specification_DataViews.md §5) - the viewer switches between them
+   * The views it offers (`view_config.layouts`, DataViews.md §5) - the viewer switches between them
    * in the header; each reads its own layout config (cardLayout, mapLayout...). One, or none: viewType alone.
    */
   layouts?: DataViewType[]
@@ -107,7 +107,7 @@ const props = withDefaults(defineProps<{
   /** view_config.edit_side, already resolved (resolveEditSide) - only meaningful when editPresentation is SIDEBAR. */
   editSide: EditSide
   /**
-   * A Detail widget's own scoping filter (Specification_DataViews.md §9.7, v1: "embed an
+   * A Detail widget's own scoping filter (DataViews.md §9.7, v1: "embed an
    * existing DataView" - WidgetDataView.vue), in the same where-
    * grammar every column needs (`{ category_id: { _eq: '...' } }`, not a
    * bare value - see query-engine's own operators). Merged in AFTER the
@@ -152,7 +152,7 @@ const props = withDefaults(defineProps<{
   /** A shared saved view to apply once on load - the routed App page's `?view=<id>` ("Copy link"); its host drops the param on `sharedViewApplied`. */
   sharedView?: string
   /**
-   * A link's filter (`?filter=<json>`, a dashboard's click - Specification_DataViews.md §4.10): the where grammar, applied
+   * A link's filter (`?filter=<json>`, a dashboard's click - DataViews.md §4.10): the where grammar, applied
    * once on load on top of the DataView's filters and the viewer's permissions - even where its Filter is off (it only
    * narrows). Shown as chips with ✕; one the Data API refuses shows its error, never the rows unfiltered.
    */
@@ -174,7 +174,7 @@ const props = withDefaults(defineProps<{
   /** The DataView itself - its record form (DataViewRecordPanel.vue) mounts only with it, and its onRowSelect code hook (useDataViewController.ts). */
   dataview?: DataView | null
   /**
-   * A TDataView's own toolbar (Specification_DataViews.md §9.7), fixed - not the viewer's
+   * A TDataView's own toolbar (DataViews.md §9.7), fixed - not the viewer's
    * to switch: `none` keeps only New; `compact`/`full` that toolbar (a phone still
    * compact). Unset: the viewer's choice, else the DataView's, else the instance's.
    */
@@ -203,7 +203,7 @@ const props = withDefaults(defineProps<{
 })
 
 /**
- * The columns as they show (utils/field-presentation.ts, Specification_DataViews.md §15):
+ * The columns as they show (utils/field-presentation.ts, DataViews.md §15):
  * each one's own title and display options over what its resource's
  * column sets - what every layout, the export and the print read.
  */
@@ -256,7 +256,7 @@ const densitySwitcher = computed(() => !!(activeFeatures.value.density || active
 const dataApi = useDataApi()
 // What a published DataView needs at runtime (user prefs, saved views, its
 // catalog, the bulk audit event) is on /app/api - reachable by every
-// portal user who may open it (Specification_Security.md §8).
+// portal user who may open it (Security.md §8).
 const appApi = useAppApi()
 const toast = useToast()
 const { t } = useI18n()
@@ -281,8 +281,8 @@ const densityLabel = (density: Density) => catalogText(dataviewMetaKey('densitie
 // which only exists once the rows do), and `selectedCount` is a ref that
 // composable fills in rather than the computed it'd otherwise be.
 const selectedCount = ref(0)
-/** The DataView's own actions for the selection (Specification_DataViews.md §3.7) - the page header's selection bar shows them. */
-/** The selection's sum, for the selection bar - null without a summed column (Specification_DataViews.md §4.9). */
+/** The DataView's own actions for the selection (DataViews.md §3.7) - the page header's selection bar shows them. */
+/** The selection's sum, for the selection bar - null without a summed column (DataViews.md §4.9). */
 const selectionSummary = ref<string | null>(null)
 const selectionActions = ref<{ label: string, icon: string, color?: 'neutral' | 'primary' | 'success' | 'warning' | 'error', onSelect: () => void }[]>([])
 defineExpose({ openCreate, requestBulkDelete, clearSelection, selectedCount, selectionActions, selectionSummary })
@@ -420,7 +420,7 @@ const printFilterSummary = computed(() => {
 const relationDetail = ref<RelationDetail | null>(null)
 /**
  * The Filter's Builder offers the DataView's own columns - what it reads
- * (Specification_DataViews.md §4), not every column of the
+ * (DataViews.md §4), not every column of the
  * table - and its related ones by path (`producto.codigo`), typed by the
  * catalog's `relatedColumns`: the Data API filters on a path as on a column.
  */
@@ -468,7 +468,7 @@ function openTableHistory() {
   tableHistoryOpen.value = true
 }
 
-// --- Saved views (features.savedViews, Specification_DataViews.md §5.9) - useGridSavedViews owns the open view and
+// --- Saved views (features.savedViews, DataViews.md §5.9) - useGridSavedViews owns the open view and
 // the writes; the grid captures and applies the state (its filter, columns, sort,
 // density and view).
 function applySavedView(config: SavedViewConfig) {
@@ -529,7 +529,7 @@ const forcedWhereParams = computed(() =>
 /**
  * The `fields` param every row read sends (buildFieldsParam): the
  * DataView's columns - shown or hidden, a column in the DataView is always
- * read and one not in it never is (Specification_DataViews.md §4.1)
+ * read and one not in it never is (DataViews.md §4.1)
  * - the primary key, and one joined alias per foreign key
  * display_field and per `{{fk.related}}` reference in a formula (a field's
  * bindings, and the Card/Map/Kanban/Calendar/Gantt layouts' formulas,
@@ -582,7 +582,7 @@ const {
 } = useDisplayFormatDefaults()
 
 // MAP, KANBAN, CALENDAR and GANTT have no pager: each asks once for every
-// relevant row, up to its instance-wide cap (Specification_DataViews.md
+// relevant row, up to its instance-wide cap (DataViews.md
 // §5.11, `dataviews.map_max_points` ...) - a CALENDAR's request is already
 // bounded by its visible range, the cap its backstop. The cap is that
 // view's own `limit`, never written into `pageSize`: the viewer's page size
@@ -618,10 +618,10 @@ const sourcePath = () => dataApi.resourcePath(props.schema, props.resourceName, 
 const ganttOrderParams = computed(() => (isGantt.value && props.ganttLayout?.startDateColumn ? { order_by: props.ganttLayout.startDateColumn } : {}))
 
 /**
- * Conditional formatting (Specification_DataViews.md §15.7): the shown columns' conditions, sent as `flags` - PostgreSQL
+ * Conditional formatting (DataViews.md §15.7): the shown columns' conditions, sent as `flags` - PostgreSQL
  * answers which each row meets (`meta.flags`); the grid only paints it.
  */
-/** The DataView's own actions this viewer may run (Specification_DataViews.md §3.7) - a row's shown where its condition holds, a flag too. */
+/** The DataView's own actions this viewer may run (DataViews.md §3.7) - a row's shown where its condition holds, a flag too. */
 const runnable = computed(() => runnableActions(props.dataview?.viewConfig, props.dataview?.actionTargets))
 const rowActionFlags = computed(() => actionFlags(runnable.value, ['row']))
 const conditionPlanned = computed(() => conditionPlan(fields.value
@@ -635,7 +635,7 @@ const flagParams = computed(() => {
 /**
  * What narrows the list's rows - its filter (the viewer's, the DataView's and an embed's link, a calendar's range)
  * and its search, with the fields it reads - a search looks in exactly those: the DataView's columns, shown or
- * hidden, a foreign key by what it shows (Specification_Data_API.md §3.5, Specification_DataViews.md §4.6), a
+ * hidden, a foreign key by what it shows (Data_API.md §3.5, DataViews.md §4.6), a
  * day typed as the viewer sees it sent as ISO. The rows and the totals at its foot are read with exactly this.
  */
 const listFilterParams = computed<Record<string, string>>(() => ({
@@ -820,7 +820,7 @@ async function confirmDrop() {
 const mayCreate = computed(() => props.canCreate ?? props.canWrite)
 const mayDelete = computed(() => props.canDelete ?? props.canWrite)
 
-// --- Row selection (standalone layout) and its bulk delete - useGridSelection (Specification_DataViews.md §5.15). ---
+// --- Row selection (standalone layout) and its bulk delete - useGridSelection (DataViews.md §5.15). ---
 /** Edit the chosen rows together - wherever a row may be edited: the role may update and Allow has Edit. */
 const mayBulkEdit = computed(() => isStandalone.value && !!props.canWrite && !!props.primaryKey && props.sourceResourceType !== 'VIEW')
 /** The most rows a viewer may choose - dataviews.bulk_edit_max_rows, where they may be edited together. */
@@ -948,7 +948,7 @@ function rowMenu(row: Record<string, unknown>): DropdownMenuItem[][] {
   }, t)
 }
 
-// --- Totals (Specification_DataViews.md §4.9, useGridTotals) - the TABLE's foot, and the selection's sum. ---
+// --- Totals (DataViews.md §4.9, useGridTotals) - the TABLE's foot, and the selection's sum. ---
 const { totalsPlanned, totalText } = useGridTotals({
   active: () => activeType.value === 'TABLE',
   orderedFields,
@@ -1033,7 +1033,7 @@ const tableUi = computed(() => ({
 // choice follows them across devices too, per-DataView (some DataViews get
 // used heavily, some barely - one global switch would be too blunt). The
 // toggle itself lives inside the "⋮", not as its own permanent button.
-// Which toolbar a viewer opens with (Specification_DataViews.md §5): their own saved
+// Which toolbar a viewer opens with (DataViews.md §5): their own saved
 // choice; else the DataView's (`default_state.toolbarMode`); else the instance's
 // (Settings > DataViews > Toolbar, sent with the DataView); else compact, every
 // type (Search and the "⋮" in the page header - the admin's own shape). A phone
@@ -1068,7 +1068,7 @@ useGridUserPrefsAutosave(
   () => ({ columnPrefs: props.fixedColumns?.length ? userPrefsConfig.columnPrefs : colPrefs.prefs, sort: sort.value, density: densityPrefs.value, ...(toolbarChoice.value && { toolbarMode: toolbarChoice.value }), pageSize: pageSize.value, collapsedLanes: collapsedLanes.value, ...(offeredLayouts.value.length > 1 && { layout: activeType.value }), savedView: activeViewId.value })
 )
 
-// --- Views (Specification_DataViews.md §5): the switcher - the toolbar's icon buttons, or the "⋮"'s View on a phone. ---
+// --- Views (DataViews.md §5): the switcher - the toolbar's icon buttons, or the "⋮"'s View on a phone. ---
 const layoutOptions = computed(() => offeredLayouts.value.map(type => ({ type, label: catalogText(`dataviews.meta.types.${type}.label`, DATAVIEW_TYPE_META[type].label), icon: DATAVIEW_TYPE_META[type].icon })))
 function switchLayout(type: DataViewType) {
   if (type === activeType.value) return

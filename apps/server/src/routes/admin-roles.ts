@@ -5,7 +5,7 @@ import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, arrayOf, object, ok, UUID_PARAM } from "../openapi-admin-docs.js";
 
 /**
- * Roles are Data API rows (roles - Specification_Security.md §10):
+ * Roles are Data API rows (roles - Security.md §10):
  * listed, read, created, edited and deleted there, an
  * administrator also setting their access flags. What is not a row
  * operation stays here: replacing a role's managers as a set.
@@ -13,7 +13,7 @@ import { adminDoc, arrayOf, object, ok, UUID_PARAM } from "../openapi-admin-docs
 export function registerAdminRolesRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
 
-  // Role managers (Specification_Security.md §9.4): which roles' members
+  // Role managers (Security.md §9.4): which roles' members
   // may assign this one - the only way delegated users get to hand out a
   // role they didn't create.
   app.put<{ Params: { id: string }; Body: { data?: { roleIds?: string[] } } }>(

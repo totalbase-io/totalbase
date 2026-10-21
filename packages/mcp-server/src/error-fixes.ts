@@ -1,5 +1,5 @@
 /**
- * What fixes an error, by its code (Usability_85 §7): every refusal an agent meets during a build says which tool
+ * What fixes an error, by its code: every refusal an agent meets during a build says which tool
  * to reach for next, so it corrects the cause instead of retrying. Appended to the error's text by AdminApiError;
  * a code with no entry reads as before. Each names tools this server has (its test checks).
  */

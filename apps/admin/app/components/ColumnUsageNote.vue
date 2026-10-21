@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Where a column's presentation shows (Specification_DataViews.md §15): the DataViews with a grid column, a form
+ * Where a column's presentation shows (DataViews.md §15): the DataViews with a grid column, a form
  * field or a related column on it - what a change here changes. Read when shown; nothing while it loads.
  */
 const props = defineProps<{

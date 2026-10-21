@@ -7,7 +7,7 @@ const column = (patch: Partial<DataViewField>): DataViewField => ({
   columnAttnum: 2, columnName: 'fecha_alta', widget: 'UInputDate', visible: true, config: {}, relatedDataview: null, ...patch
 })
 
-// Specification_DataViews.md §15: a layout setting's columns read as the grid titles them - their table column's.
+// DataViews.md §15: a layout setting's columns read as the grid titles them - their table column's.
 describe('columnOptions()', () => {
   it('titles each column by its table column\'s label, else its name humanized', () => {
     expect(columnOptions([

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateDefinitionLimits, WORKFLOW_DEFINITION_LIMITS as LIMITS } from "./definition-limits.js";
 
-/** Workflow definition limits (Specification_Workflows.md §3.6), one case per limit. */
+/** Workflow definition limits (Workflows.md §3.6), one case per limit. */
 const op = (key: string, configuration: unknown = {}) => ({ id: `id-${key}`, type: "totalbase.finish-result", key, label: key, configuration_version: 1, configuration });
 const start = { id: "start", type: "totalbase.start", key: "start", label: "Start", configuration_version: 1, configuration: { trigger: "MANUAL" } };
 const definition = (operations: unknown[], connections: unknown[] = []) => ({ operations: [start, ...operations], connections });

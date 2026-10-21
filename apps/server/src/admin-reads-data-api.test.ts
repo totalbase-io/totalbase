@@ -10,7 +10,7 @@ const P = "admin-reads-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * Specification_Security.md §10.3 step 2: the administrator's screens
+ * Security.md §10.3 step 2: the administrator's screens
  * read TotalBase's own tables through the Data API (fixed exposure, the
  * administrator bypassing permissions), and revoke sessions as a plain row
  * update - which PostgreSQL keeps to a revocation only.

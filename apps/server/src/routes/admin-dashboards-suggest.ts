@@ -11,7 +11,7 @@ interface SuggestBody {
   schema?: string | null;
 }
 
-/** A decision (Specification_Dashboards.md §5.19, DM3): a fixed code, its sentence in the App's language, what was read. */
+/** A decision (Dashboards.md §5.19, DM3): a fixed code, its sentence in the App's language, what was read. */
 const DECISION: JsonSchema = object({
   code: { type: "string", description: "Fixed, kebab-case - one of the decision codes (totalbase://guide/dashboards, Reasons)." },
   message: { type: "string", description: "In the App's language (system.language)." },
@@ -60,7 +60,7 @@ const SUGGESTION: JsonSchema = object({
 });
 
 /**
- * The dashboard assistant (Specification_Dashboards.md §10.7, D27) - administrators only, like the rest of
+ * The dashboard assistant (Dashboards.md §10.7, D27) - administrators only, like the rest of
  * /admin/api/dashboards: one table or view read from the catalog and pg_stats (never its rows) and a dashboard
  * proposed for it. Nothing is created: the spec is applied with apply_dashboard.
  */

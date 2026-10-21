@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Form and the wizard's Form step (Specification_DataViews.md §3.6): how the record form opens (its mode,
+ * Settings > Form and the wizard's Form step (DataViews.md §3.6): how the record form opens (its mode,
  * size and side, a record page's width and fit to screen; a FORM's mode, a Master-detail's opening) and the record's
  * actions (clone, save & new, copy, print, activity, previous/next). Clone and Save & New need Allow › Create;
  * Previous/Next is a FORM's. "Design the form →" opens the Design form.

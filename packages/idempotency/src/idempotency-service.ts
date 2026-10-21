@@ -13,7 +13,7 @@ export interface IdempotencyScope {
   key: string;
 }
 
-/** Deterministic hash over method + scope + normalized body (Specification_Data_API.md §9). */
+/** Deterministic hash over method + scope + normalized body (Data_API.md §9). */
 export function computeRequestHash(method: string, operationScope: string, body: unknown): string {
   const normalized = JSON.stringify(body ?? null);
   return createHash("sha256").update(`${method}\n${operationScope}\n${normalized}`).digest("hex");
@@ -25,7 +25,7 @@ export interface RecordedResponse {
 }
 
 /**
- * Idempotency Keys (Specification_Data_API.md §9). Only
+ * Idempotency Keys (Data_API.md §9). Only
  * successful (2xx) responses are memoized: a failed attempt did not
  * durably change anything, so the record is deleted on failure and the
  * client is free to retry with the same key without hitting a stale
@@ -34,7 +34,7 @@ export interface RecordedResponse {
  *
  * The UNIQUE (principal_type, principal, operation_scope, key) index in
  * the table's UNIQUE is the actual concurrency authority
- * (Specification_Data_API.md §9) - this service's INSERT ... ON CONFLICT DO NOTHING is how it
+ * (Data_API.md §9) - this service's INSERT ... ON CONFLICT DO NOTHING is how it
  * observes "I lost the race" without a separate SELECT-then-INSERT gap.
  */
 export class IdempotencyService {
@@ -61,7 +61,7 @@ export class IdempotencyService {
     const requestHash = computeRequestHash(method, scope.operationScope, body);
     const ttlHours = await this.settings.get("idempotency.ttl_hours");
 
-    // An expired key is an unused one (Specification_Data_API.md §9): the
+    // An expired key is an unused one (Data_API.md §9): the
     // conflicting row is taken over in the same statement - fresh id, so a
     // request still holding the old one can no longer complete or release
     // it - while a live key conflicts and is resolved below.

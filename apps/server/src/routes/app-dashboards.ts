@@ -92,7 +92,7 @@ export function withoutOptionsQuery(variable: DashboardVariable): DashboardVaria
 
 /**
  * Published dashboards for the /app UI. Access is per dashboard x role
- * (Specification_Dashboards.md §2.6); widget data
+ * (Dashboards.md §2.6); widget data
  * is executed by widget id from the published snapshot - the caller
  * never sends SQL (AGENTS.md section 7 "Dashboard widget SQL").
  */

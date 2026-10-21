@@ -1,7 +1,7 @@
 import type { Composer } from 'vue-i18n'
 
 /**
- * A shared catalog's text in the UI's language (Specification_Admin_UI.md §14):
+ * A shared catalog's text in the UI's language (Admin_UI.md §14):
  * the widget catalog, the column types, the settings metadata, the dashboard
  * widgets, the workflow operations live in packages the server reads too, in
  * English. The admin translates them through a key derived from the catalog

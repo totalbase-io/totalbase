@@ -45,14 +45,14 @@ export function grantedAccessFlags(role: RoleAccessFlags): RoleAccessFlag[] {
 export type PortalAccess = 'ADMIN' | 'APP'
 
 /**
- * Where a portal user lands - after signing in, at `/` and from the rail's mark (Specification_Admin_UI.md §3.4):
+ * Where a portal user lands - after signing in, at `/` and from the rail's mark (Admin_UI.md §3.4):
  * an administrator on Status, the instance's state; everyone else in the App, what the instance is built for.
  */
 export function portalHomeFor(access: PortalAccess | undefined): string {
   return access === 'ADMIN' ? '/status' : '/app'
 }
 
-/** A portal module a non-administrator can be delegated - visible when their roles may read its table (Specification_Security.md §9.2). */
+/** A portal module a non-administrator can be delegated - visible when their roles may read its table (Security.md §9.2). */
 export type DelegatedModule = 'users' | 'roles' | 'files' | 'templates' | 'logs'
 
 /** The pages each delegated module opens - never its administrator-only parts (sign-in insights, system emails). */

@@ -6,7 +6,7 @@ import type { OperationHandler } from "./types.js";
 
 /**
  * The file operations act as the run's executor, under the same rule as the
- * Files API (Specification_Workflows.md §5.20, Specification_Administration.md
+ * Files API (Workflows.md §5.20, Administration.md
  * §10.3): a PUBLIC file is readable by anyone, any other needs READ on
  * files within the grant's row filter; creating needs CREATE. An
  * administrator executor resolves full access. The file is authorized

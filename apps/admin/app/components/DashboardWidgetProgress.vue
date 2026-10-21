@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The PROGRESS dashboard widget's body (Specification_Dashboards.md §5.15, D12): Nuxt UI's UProgress and its line -
+ * The PROGRESS dashboard widget's body (Dashboards.md §5.15, D12): Nuxt UI's UProgress and its line -
  * "$ 13.9M of $ 30M · 46 %". Its color - a threshold's or its Color, a palette shade from its builder - is the bar's
  * own (`--ui-primary` on it alone); past its target the bar is full and the percent real. A text line and the bar
  * fit a card of one grid row (3x1, DB12). Purely presentational: its card handles the click.

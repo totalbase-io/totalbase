@@ -7,7 +7,7 @@ import type { ValueKind } from "./widget-catalog.js";
 /** A column's default widget: the column input catalog's rule (no chosen input, no CHECKs) - one rule with the form. */
 const inferDefaultWidget = (dataType: string, foreignKey: ForeignKeyTarget | null) => columnFormInput({ name: "n", dataType, foreignKey, checks: [] }).widget;
 
-describe("a column's default widget (columnFormInput, Specification_DataViews.md §16.1)", () => {
+describe("a column's default widget (columnFormInput, DataViews.md §16.1)", () => {
   it("defaults a plain (non-FK) uuid/text column to UInput", () => {
     expect(inferDefaultWidget("uuid", null)).toBe("UInput");
     expect(inferDefaultWidget("text", null)).toBe("UInput");
@@ -17,7 +17,7 @@ describe("a column's default widget (columnFormInput, Specification_DataViews.md
     expect(inferDefaultWidget("uuid", { targetSchema: "public", targetTable: "categories" })).toBe("USelectMenu");
   });
 
-  it("defaults a FK targeting totalbase.files to UFileUpload, not USelectMenu (no list route to populate that picker - Specification_Administration.md §10)", () => {
+  it("defaults a FK targeting totalbase.files to UFileUpload, not USelectMenu (no list route to populate that picker - Administration.md §10)", () => {
     expect(inferDefaultWidget("uuid", { targetSchema: "totalbase", targetTable: "files" })).toBe("UFileUpload");
   });
 

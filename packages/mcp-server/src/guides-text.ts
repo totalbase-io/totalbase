@@ -2,7 +2,7 @@ import { COLUMN_INPUT_KEYS, COLUMN_INPUTS, DASHBOARD_DECISION_CODES, DATAVIEW_FE
 import { pagePropLine } from "./guides-pages.js";
 
 /**
- * The guides' text (Specification_Administration.md §11.4). Whatever the code
+ * The guides' text (Administration.md §11.4). Whatever the code
  * already knows - DataView features, a column's default widget, every
  * dashboard widget type - is generated from the same catalog the server
  * validates against, so it can't drift; the rest restates the specification

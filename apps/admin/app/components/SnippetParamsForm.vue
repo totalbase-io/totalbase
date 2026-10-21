@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A snippet's questions (the snippet catalog's `params`,
- * Specification_DataViews.md §11.2), answered from what the
+ * DataViews.md §11.2), answered from what the
  * page has: its variables of the right kind, its named widgets exposing the
  * right method, the App's DataViews. Recursive - "Ask for confirmation,
  * then…" asks for another snippet and its own questions.

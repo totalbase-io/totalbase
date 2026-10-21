@@ -7,7 +7,7 @@ import { INTERNAL_REQUEST_HEADER, RateLimiter } from "./hardening.js";
 
 /**
  * The MCP server, served by the TotalBase server itself at POST /mcp
- * (Specification_Administration.md §11.5, §11.7) - one service, one port.
+ * (Administration.md §11.5, §11.7) - one service, one port.
  * HTTP only here: authentication (an administrator's bearer token, as the
  * Admin API takes it), Settings > MCP read per request (on/off, the policy,
  * the per-token limit, the allowed hosts). The tools are @totalbase/mcp-server's;

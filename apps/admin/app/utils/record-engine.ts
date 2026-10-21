@@ -1,5 +1,5 @@
 /**
- * A page's record (Specification_DataViews.md §8.5): one row
+ * A page's record (DataViews.md §8.5): one row
  * of the DataView's source table, loaded, edited and saved through the Data
  * API as the viewer - `dataview.vars.record` in code, `{{vars.record.data.<column>}}`
  * in formulas, and what a form field bound to a column edits.
@@ -108,11 +108,11 @@ export interface RecordTransport {
   remove: (pk: unknown) => Promise<void>
   /** The record's table - what its header write names when it saves together with its lines. */
   table?: { schema: string, name: string }
-  /** The record and its lines in one transaction (Specification_DataViews.md §6.6) - each operation's resulting row, by key. */
+  /** The record and its lines in one transaction (DataViews.md §6.6) - each operation's resulting row, by key. */
   saveTogether?: (operations: RecordWriteOperation[]) => Promise<Record<string, Record<string, unknown>>>
 }
 
-/** One write of a save together - the transactions format (Specification_Data_API.md §8). */
+/** One write of a save together - the transactions format (Data_API.md §8). */
 export interface RecordWriteOperation {
   key: string
   operation: 'insert' | 'update' | 'delete'
@@ -123,7 +123,7 @@ export interface RecordWriteOperation {
 }
 
 /**
- * Lines edited with the record and saved with it (a master-detail's, Specification_DataViews.md §6.6): their
+ * Lines edited with the record and saved with it (a master-detail's, DataViews.md §6.6): their
  * pending writes join the record's save, in one transaction.
  */
 export interface RecordLines {
@@ -188,7 +188,7 @@ export interface RecordOptions {
   confirm?: (message: string) => boolean | Promise<boolean>
   /** Closes the record's page or panel - the host's. */
   close?: () => void
-  /** The UI's language for the record's own notices (Specification_Admin_UI.md §14) - English when not given. */
+  /** The UI's language for the record's own notices (Admin_UI.md §14) - English when not given. */
   t?: (key: string) => string
   /** Whether a column has a field on screen - its error shows there instead of as a notice. */
   showsField?: (column: string) => boolean

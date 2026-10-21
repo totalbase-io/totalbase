@@ -1,7 +1,7 @@
 // Pages a system email's link opens (invitation, password reset, email
 // verification) - reached signed-out, and left alone when signed in too:
 // the link belongs to whoever received the email, not the current session.
-// A signed dashboard embed (Specification_Dashboards.md §9.5) is framed by
+// A signed dashboard embed (Dashboards.md §9.5) is framed by
 // another site for visitors with no TotalBase account: its token is its access.
 const PUBLIC_PREFIXES = ['/auth/', '/embed/']
 // The first-start setup (pages/setup.vue): no one can sign in yet.

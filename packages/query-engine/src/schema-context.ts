@@ -25,7 +25,7 @@ export interface ResolvedResource {
 
 /**
  * Loads and caches column/relation metadata for the root resource and
- * any related tables reached through relation traversal (Specification_Data_API.md §3.4).
+ * any related tables reached through relation traversal (Data_API.md §3.4).
  *
  * Only tables that are ACTIVE, EXPOSED TotalBase resources may be
  * traversed into - this keeps hidden/internal tables from leaking
@@ -80,7 +80,7 @@ export class SchemaContext {
   /**
    * Resolves a nested-write relation property (e.g. "$invoice_items" while
    * processing "invoices") to a real child resource and its FK column.
-   * See Specification_Data_API.md §6.2.
+   * See Data_API.md §6.2.
    *
    * - The child table must exist in the SAME schema as the parent, be an
    *   ACTIVE resource, and have `method` mounted (its "create" ceiling).

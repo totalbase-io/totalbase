@@ -34,12 +34,13 @@ interface DashboardData {
     postgres: { database: string, version: string, sizeBytes: number, connections: number, maxConnections: number }
     pool: { max: number, total: number, idle: number, waiting: number }
     sessionsActive: number
+    backups: { lastCompletedAt: string | null, nextAt: string | null }
     masterKey: { source: 'ENV' | 'FILE', path: string | null }
     outbox: { pending: number, oldestPendingSeconds: number | null }
     space: { schemas: Array<{ schema: string, bytes: number }>, totalbase: Array<{ table: string, bytes: number }> }
   }
 }
-type AttentionKey = 'outbox_failed' | 'workflow_runs_failed' | 'locked_accounts' | 'missing_resources'
+type AttentionKey = 'backup_failed' | 'outbox_failed' | 'workflow_runs_failed' | 'locked_accounts' | 'missing_resources'
   | 'pool_waiting' | 'outbox_backlog' | 'tokens_expiring' | 'failed_sign_ins'
 
 const api = useAdminApi()
@@ -61,6 +62,7 @@ const { data, pending, error, refresh } = await useAsyncData('status', () =>
 // --- Needs attention: how each item reads, and where it's handled. ---
 // The text of each is `shell.status.attention.<key>` (plural forms, {n}).
 const ATTENTION: Record<AttentionKey, { icon: string, to?: string }> = {
+  backup_failed: { icon: 'i-lucide-archive', to: '/settings/backups' },
   outbox_failed: { icon: 'i-lucide-inbox', to: '/workflows' },
   workflow_runs_failed: { icon: 'i-lucide-workflow', to: '/workflows' },
   locked_accounts: { icon: 'i-lucide-lock', to: '/users/insights/sign-ins' },
@@ -68,9 +70,10 @@ const ATTENTION: Record<AttentionKey, { icon: string, to?: string }> = {
   pool_waiting: { icon: 'i-lucide-hourglass', to: '/settings/connector' },
   outbox_backlog: { icon: 'i-lucide-clock-alert' },
   tokens_expiring: { icon: 'i-lucide-key-round', to: '/tokens?status=expiring' },
-  failed_sign_ins: { icon: 'i-lucide-log-in', to: '/logs?event=auth.login,auth.portal_login,auth.oauth_login&status=DENIED' }
+  failed_sign_ins: { icon: 'i-lucide-log-in', to: '/logs?event=auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify&status=DENIED' }
 }
 const ATTENTION_KEYS: Record<AttentionKey, string> = {
+  backup_failed: 'backupFailed',
   outbox_failed: 'outboxFailed',
   workflow_runs_failed: 'workflowRunsFailed',
   locked_accounts: 'lockedAccounts',
@@ -80,6 +83,8 @@ const ATTENTION_KEYS: Record<AttentionKey, string> = {
   tokens_expiring: 'tokensExpiring',
   failed_sign_ins: 'failedSignIns'
 }
+/** A backup's moment, in the viewer's locale. */
+const backupTime = (value: string) => new Intl.DateTimeFormat(ui.intlLocale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 // A linked item is a NuxtLink, one with nowhere to go (outbox backlog) a plain row.
 const NuxtLink = resolveComponent('NuxtLink')
 const SEVERITY_TONE = { error: 'text-error', warning: 'text-warning', info: 'text-muted' } as const
@@ -456,7 +461,26 @@ function formatAge(seconds: number | null): string {
                 {{ numberFormat.format(data.system.sessionsActive) }}
               </NuxtLink>
             </dd>
-            <!-- Where the master key comes from (Specification.md §15) - never the key. A file must be backed up apart from the database. -->
+            <!-- Built-in backups (Administration.md §12): the last one completed, the next one scheduled. -->
+            <dt class="text-muted">
+              {{ t('shell.status.system.backups') }}
+            </dt>
+            <dd>
+              <NuxtLink
+                to="/settings/backups"
+                class="hover:underline"
+                :class="data.system.backups.lastCompletedAt ? undefined : 'text-warning'"
+              >
+                {{ data.system.backups.lastCompletedAt ? t('shell.status.system.backupsLast', { when: backupTime(data.system.backups.lastCompletedAt) }) : t('shell.status.system.backupsNone') }}
+              </NuxtLink>
+              <p
+                v-if="data.system.backups.nextAt"
+                class="text-xs text-muted"
+              >
+                {{ t('shell.status.system.backupsNext', { when: backupTime(data.system.backups.nextAt) }) }}
+              </p>
+            </dd>
+            <!-- Where the master key comes from (Foundations.md §15) - never the key. A file must be backed up apart from the database. -->
             <dt class="text-muted">
               {{ t('shell.status.system.masterKey') }}
             </dt>

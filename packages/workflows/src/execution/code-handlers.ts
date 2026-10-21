@@ -60,7 +60,7 @@ const EXECUTE_JAVASCRIPT_TIMEOUT_MS = 5_000;
 const EXECUTE_JAVASCRIPT_MEMORY_LIMIT_MB = 32;
 
 /**
- * One run's Execute JavaScript isolate (Specification_Workflows.md §5.8):
+ * One run's Execute JavaScript isolate (Workflows.md §5.8):
  * created by the first such step, kept on `RunState.sandbox` for the rest
  * of the run - a For each body's step runs its code once per item, and an
  * isolate (a whole V8 heap) is the expensive part - and disposed by the
@@ -148,7 +148,7 @@ function sandboxResults(state: HandlerArgs["state"]): { values: Record<string, u
  * trigger data) and `results` (every already-executed operation's envelope,
  * keyed by operation id - `RunState.results` as the engine keeps it - and
  * by step key, as templates read them (`results.read_people.data`);
- * Specification_Workflows.md §5.8). No `fs`, no
+ * Workflows.md §5.8). No `fs`, no
  * network, no `process`, no `require` - none of that exists inside a
  * fresh isolate to begin with (this isn't an allowlist stripping anything
  * away - a new isolate simply never had them).
@@ -207,7 +207,7 @@ const executeJavascript: OperationHandler = async ({ configuration, state }) => 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
 /**
- * Outbound HTTP (Specification_Workflows.md §5.15). `url`/`headers`/`body` are
+ * Outbound HTTP (Workflows.md §5.15). `url`/`headers`/`body` are
  * literal JSON/text with `{{...}}` support, already resolved by the engine.
  * The destination is checked against the SSRF policy at connect time, every
  * redirect hop included (http-client.ts); `workflows.http_allowed_hosts`

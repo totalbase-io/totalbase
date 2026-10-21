@@ -11,7 +11,7 @@ const HIDDEN = "dataviews_custom_test_hidden";
 const ORDERS = "dataviews_custom_test_pedidos";
 
 /**
- * CUSTOM DataViews (Specification_DataViews.md): no source, variables
+ * CUSTOM DataViews (DataViews.md): no source, variables
  * in view_config, widgets of the widget catalog as WIDGET fields - every
  * rule of the widget and variable catalogs held by the Admin API itself.
  */
@@ -128,13 +128,21 @@ describe("CUSTOM DataViews (integration)", () => {
       [resourceVariable(tableResource, { fields: "id", where: { nombre: { _whatever: "x" } } })],
       expect.stringContaining("clientes: the filter isn't valid") as unknown as string,
     );
-    await expectInvalid([{ name: "emitir", kind: "CALL", target: { type: "WORKFLOW", slug: "missing" } }], "emitir: the workflow doesn't exist.");
+    const workflowId = async (slug: string) => (await database.query<{ id: string }>(`SELECT id FROM totalbase.workflows WHERE slug = $1`, [slug])).rows[0]!.id;
+    await expectInvalid([{ name: "emitir", kind: "CALL", target: { type: "WORKFLOW", workflow: "00000000-0000-4000-8000-000000000000" } }], "emitir: the workflow doesn't exist.");
+    await expectInvalid([{ name: "emitir", kind: "CALL", target: { type: "WORKFLOW", workflow: `${PREFIX}-manual` } }], "emitir: the workflow doesn't exist.");
     await expectInvalid(
-      [{ name: "emitir", kind: "CALL", target: { type: "WORKFLOW", slug: `${PREFIX}-cron` } }],
+      [{ name: "emitir", kind: "CALL", target: { type: "WORKFLOW", workflow: await workflowId(`${PREFIX}-cron`) } }],
       "emitir: only a MANUAL workflow runs from a page, as the viewer.",
     );
     await expectInvalid([{ name: "calc", kind: "CALL", target: { type: "FUNCTION", resource: tableResource } }], "calc: the function doesn't exist.");
-    expect((await custom("db-ok", [...VARIABLES, { name: "emitir", kind: "CALL", target: { type: "WORKFLOW", slug: `${PREFIX}-manual` } }])).viewType).toBe("CUSTOM");
+    const manual = await workflowId(`${PREFIX}-manual`);
+    const page = await custom("db-ok", [...VARIABLES, { name: "emitir", kind: "CALL", target: { type: "WORKFLOW", workflow: manual } }]);
+    expect(page.viewType).toBe("CUSTOM");
+    // The Call keeps its workflow by id: a renamed slug is what the page runs it by next.
+    await database.query(`UPDATE totalbase.workflows SET slug = $2 WHERE id = $1`, [manual, `${PREFIX}-renamed`]);
+    expect((await dataviewsAdmin.get(page.id)).variableWorkflows).toEqual({ [manual]: { slug: `${PREFIX}-renamed`, name: "Custom manual" } });
+    await database.query(`UPDATE totalbase.workflows SET slug = $2 WHERE id = $1`, [manual, `${PREFIX}-manual`]);
   });
 
   it("takes a record table and its events, and refuses a view or an unknown event", async () => {

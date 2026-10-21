@@ -1,4 +1,4 @@
-// Templates and workflows (Docs_Demo_Field_Service.md §8, §9), through the MCP server.
+// Templates and workflows (DATASET.md §8, §9), through the MCP server.
 //   TOTALBASE_TOKEN=... node 09-workflows.mjs
 import { call } from './mcp.mjs'
 

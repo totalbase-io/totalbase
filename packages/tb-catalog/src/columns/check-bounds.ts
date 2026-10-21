@@ -1,7 +1,7 @@
 /**
  * The bounds a column's CHECKs hold - a number's (`price >= 0`) and a text's
  * length (`length(code) <= 10`) - so a form shows a value out of range under
- * its field before saving (Specification_DataViews.md §15:
+ * its field before saving (DataViews.md §15:
  * what values are valid is PostgreSQL's, read live, never copied into a
  * column's presentation). PostgreSQL still decides every save; these only
  * anticipate it, the way `checkConstraintPatterns` anticipates a CHECK's

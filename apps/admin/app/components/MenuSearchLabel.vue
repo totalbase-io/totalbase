@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** A menu entry's label with what the search matched marked (AppMenuPanel.vue, Specification_Security.md §8.2). */
+/** A menu entry's label with what the search matched marked (AppMenuPanel.vue, Security.md §8.2). */
 import { highlightParts } from '~/utils/menu-search'
 
 const props = defineProps<{ text: string, term: string }>()

@@ -10,7 +10,7 @@ interface DefinitionOperation {
 }
 
 /**
- * CRON admission (specs/Specification_Workflows.md §6.4): ticked
+ * CRON admission (specs/Workflows.md §6.4): ticked
  * on a fixed interval (apps/server/src/index.ts) rather than computing and
  * sleeping until each workflow's own next occurrence - "Scheduler scans use
  * the database clock; on restart they compute only future occurrences and
@@ -66,7 +66,7 @@ export async function runCronTick(context: WorkflowEngineContext, options: { now
 
     const initiator = { type: "CRON", scheduledAt: scheduledAt.toISOString() };
 
-    // Overlap (Specification_Workflows.md §6.4.3): while the previous
+    // Overlap (Workflows.md §6.4.3): while the previous
     // scheduled run is still running, this occurrence is skipped - not
     // queued - and recorded as a visible FAILED run like any suppressed
     // admission (§6.6), without counting toward auto-disable.
@@ -82,7 +82,7 @@ export async function runCronTick(context: WorkflowEngineContext, options: { now
     }
 
     // The configured execution user is revalidated at admission
-    // (Specification_Workflows.md §7.2), never cached from when the
+    // (Workflows.md §7.2), never cached from when the
     // workflow was last saved.
     let executor;
     try {

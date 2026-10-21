@@ -6,7 +6,7 @@ import { TABLE_COLUMN_PRESENTATION_KEYS } from "../columns/column-presentation.j
 import { LIST_VIEW_TYPES } from "../dataviews/dataview-features.js";
 
 /**
- * What a control placed on a canvas stores (Specification_DataViews.md §9, §13.2):
+ * What a control placed on a canvas stores (DataViews.md §9, §13.2):
  * the widget, its literal props, the props bound to something
  * else, and the Code function each emit calls. Lives in a control's
  * `dataviews_fields.config`; read by the Design inspector, the runtime
@@ -22,7 +22,7 @@ export interface WidgetControlConfig {
   emits: Record<string, string>;
 }
 
-/** Specification_DataViews.md §9.2: a formula over variables/slot props, or a variable itself (data binding). */
+/** DataViews.md §9.2: a formula over variables/slot props, or a variable itself (data binding). */
 export type WidgetPropBinding = { kind: "formula"; formula: string } | { kind: "variable"; variable: string };
 
 
@@ -32,7 +32,7 @@ export interface VariableRef {
   kind: VariableKind;
 }
 
-/** The variable kind a data-bound prop accepts (Specification_DataViews.md §9.2). */
+/** The variable kind a data-bound prop accepts (DataViews.md §9.2). */
 export function variableKindForProp(prop: WidgetProp): VariableKind | null {
   if (prop.binding === "value") return "VALUE";
   if (prop.binding === "resource") return "RESOURCE";
@@ -71,7 +71,7 @@ export function newWidgetControlConfig(widget: WidgetName): WidgetControlConfig 
  * when it is valid. Checks names against the catalog, literal values
  * against each prop's editor, and bindings against the prop's binding and,
  * when `variables` is given, against the page's variables. Validation is
- * for the author, not security (Specification_DataViews.md §13.2): the Data API and the
+ * for the author, not security (DataViews.md §13.2): the Data API and the
  * function/workflow routes still enforce every permission at run time.
  */
 export function validateWidgetControlConfig(config: unknown, variables?: readonly VariableRef[]): string[] {
@@ -102,7 +102,7 @@ export function validateWidgetControlConfig(config: unknown, variables?: readonl
       errors.push(`${entry.label}'s ${prop.label} has an invalid binding.`);
     } else if (binding.kind === "formula") {
       // An option list's field may be a formula too - evaluated once per option (PropBinding "option") -
-      // and an input's Value: a computed input, read only (Specification_DataViews.md §9.2).
+      // and an input's Value: a computed input, read only (DataViews.md §9.2).
       const computedInput = prop.binding === "value" && name === "modelValue" && entry.group === "input";
       if (prop.binding !== "formula" && prop.binding !== "option" && !computedInput) errors.push(`${entry.label}'s ${prop.label} can't be bound to a formula.`);
       else if (typeof binding.formula !== "string") errors.push(`${entry.label}'s ${prop.label} has an invalid formula.`);
@@ -155,7 +155,7 @@ const TABLE_COLUMN_SETTINGS: Shape = {
   },
 };
 
-/** The shape a prop's editor takes as a literal (Specification_DataViews.md §9.1). */
+/** The shape a prop's editor takes as a literal (DataViews.md §9.1). */
 function literalShape(prop: WidgetProp): Shape {
   switch (prop.editor) {
     case "boolean":
@@ -170,6 +170,7 @@ function literalShape(prop: WidgetProp): Shape {
       return { type: "any" };
     case "dataview":
     case "dashboard":
+    case "junction":
       return UUID;
     case "dataviewView":
       return { type: "enum", options: LIST_VIEW_TYPES };

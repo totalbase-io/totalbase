@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * "From the column" (Specification_DataViews.md §15): how a column reads wherever it shows - its label, format, how
+ * "From the column" (DataViews.md §15): how a column reads wherever it shows - its label, format, how
  * each value shows, its look and its conditions - read only where it is used (a DataView's column, a form field), with
  * its preview, where else it shows, and "Edit in the table": the one place it is set.
  */

@@ -2,7 +2,7 @@ import type { Queryable } from "@totalbase/database";
 import { VIEW_LAYOUTS } from "./view-layouts.js";
 
 /**
- * A DataView that names a column its source no longer has (Specification_DataViews.md §4.8): a view's
+ * A DataView that names a column its source no longer has (DataViews.md §4.8): a view's
  * layout (a formula's `{{column}}`, a picked column) or its Filter (`base_where`) - or its source itself
  * gone. Read against PostgreSQL's catalog (pg_attribute), the draft's `view_config` and the live
  * version's. `version`: null for the draft, else the live version.

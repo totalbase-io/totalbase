@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A dashboard's settings (Specification_Dashboards.md §10.6, D26) - in the format of a DataView's: its sections in the
+ * A dashboard's settings (Dashboards.md §10.5, D26) - in the format of a DataView's: its sections in the
  * toolbar, each its own URL (`?section=`), a header with **Dashboard design** to go back to the canvas. General (name,
  * slug, how the App presents it), Variables, Data (auto-refresh), Share (its embeds) and Security (the roles that open
  * it). What is versioned - the variables - applies on Publish; everything else at once, and each section says which.
@@ -34,7 +34,7 @@ const published = computed(() => (versions.value?.length ?? 0) > 0)
 const liveVersion = computed(() => versions.value?.[0]?.version ?? 0)
 const notifyError = useErrorToast()
 
-// Publish, as on the canvas (Specification_Admin_UI.md §3.7): what is versioned here - the variables - goes live.
+// Publish, as on the canvas (Admin_UI.md §3.7): what is versioned here - the variables - goes live.
 const publishing = ref(false)
 async function publish(note?: string) {
   publishing.value = true
@@ -163,7 +163,7 @@ async function backToDesign() {
             @retry="autosave.retry()"
           />
         </template>
-        <!-- The other screen, then publishing (Specification_Admin_UI.md §3.7). -->
+        <!-- The other screen, then publishing (Admin_UI.md §3.7). -->
         <UButton
           icon="i-lucide-layout-dashboard"
           :label="t('dashboards.settings.design')"
@@ -296,7 +296,7 @@ async function backToDesign() {
           :source-resource="null"
         />
 
-        <!-- Versions (Specification.md §13.7): a version opens on the canvas, read-only. -->
+        <!-- Versions (Foundations.md §13.7): a version opens on the canvas, read-only. -->
         <VersionsTimeline
           v-if="visited.has('versions')"
           v-show="section === 'versions'"

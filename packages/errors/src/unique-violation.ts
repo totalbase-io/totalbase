@@ -15,7 +15,7 @@ export interface UniqueViolationCase {
  * matches (equal, or ends with), else `fallback` when given - a table whose
  * other unique column needs no name; any other error passes through
  * unchanged. One helper, so every "a X with this name already exists"
- * reads the same (Pre_Beta_Review 4.6).
+ * reads the same.
  */
 export function remapUniqueViolation(error: unknown, cases: UniqueViolationCase[], fallback?: { code: TotalBaseErrorCode; message: string }): never {
   if (error instanceof TotalBaseError && error.code === "UNIQUE_VIOLATION") {

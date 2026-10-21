@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { adminSession, api, createDashboard, deleteDashboardsNamed, expect, resetSchema, sql, test, type DashboardRef } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
  * A dashboard widget runs SQL - the one exception to "no SQL from clients"
@@ -34,7 +35,7 @@ interface QueryResult { columns: { name: string }[], rows: Record<string, unknow
 
 /** The editor's Run: status and body, success or not. */
 async function run(page: Page, token: string, query: string, variables: Record<string, unknown> = {}) {
-  const response = await page.request.fetch(`http://localhost:3050/admin/api/dashboards/${dashboard.id}/query`, {
+  const response = await page.request.fetch(`${BASE_URL}/admin/api/dashboards/${dashboard.id}/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}` }, data: { data: { query, variables } }
   })
   const body = await response.json()
@@ -137,6 +138,6 @@ test('a hand-written parameter, an undefined variable and the password hash are 
 })
 
 test('a viewer\'s Data API token can\'t run draft SQL - the Admin API is administrators\' only', async ({ page }) => {
-  const response = await page.request.fetch(`http://localhost:3050/admin/api/dashboards/${dashboard.id}/query`, { method: 'POST', data: { data: { query: 'SELECT 1' } } })
+  const response = await page.request.fetch(`${BASE_URL}/admin/api/dashboards/${dashboard.id}/query`, { method: 'POST', data: { data: { query: 'SELECT 1' } } })
   expect(response.status()).toBe(401)
 })

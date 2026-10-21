@@ -7,8 +7,8 @@ import type { SettingsService } from "@totalbase/settings";
 
 /**
  * Where the hardening hooks read their settings from - the settings
- * service, on every request (Specification_Data_API.md §12,
- * Specification_Administration.md §7.5, §7.8). Reads are served from its
+ * service, on every request (Data_API.md §12,
+ * Administration.md §7.5, §7.8). Reads are served from its
  * in-process cache and a change through the Admin API invalidates it, so
  * a new limit, origin list or rate applies to the next request, without a
  * restart. Only `security.trust_proxy` is a Fastify construction option
@@ -28,7 +28,7 @@ export const HEADER_HEADROOM_BYTES = 16_384;
  * above Node's 16 KiB default). Node rejects a request past it with a raw 431 before any
  * hook runs, so the server sets it at startup from the setting's value
  * then - a query string up to the setting gets QUERY_STRING_TOO_LARGE in
- * the error envelope instead (Specification_Data_API.md §12.1).
+ * the error envelope instead (Data_API.md §12.1).
  */
 export function maxHeaderSizeFor(maxQueryStringBytes: number): number {
   return maxQueryStringBytes + HEADER_HEADROOM_BYTES;
@@ -45,7 +45,7 @@ export const QUERY_STRING_DEPTH_LIMIT = 64;
  * it - a 21st array item turns the array into an object keyed "0".."20", a sixth bracket level
  * becomes a literal key - so a valid-looking `where[_or]` failed as unknown field names. Here its
  * bounds are wide and past them it refuses with the stable errors; `api.max_query_parameters`,
- * `api.max_query_nodes` and `api.max_filter_depth` still apply after it (Specification_Data_API.md §12).
+ * `api.max_query_nodes` and `api.max_filter_depth` still apply after it (Data_API.md §12).
  */
 export function parseQueryString(queryString: string): Record<string | symbol, unknown> {
   try {
@@ -111,10 +111,10 @@ export class RateLimiter {
 }
 
 /**
- * Registers the defensive request-size/complexity guards (Specification_Data_API.md §12)
- * plus rate limiting and CORS (Specification_Administration.md §7.7, §7.8) as global hooks. Must
+ * Registers the defensive request-size/complexity guards (Data_API.md §12)
+ * plus rate limiting and CORS (Administration.md §7.7, §7.8) as global hooks. Must
  * run before route handlers so oversized/abusive requests are rejected
- * "before expensive SQL compilation or execution" (Specification_Data_API.md §12).
+ * "before expensive SQL compilation or execution" (Data_API.md §12).
  */
 /** The header an in-process request carries (the MCP endpoint's calls to the APIs), with a key made at boot that never leaves the process. */
 export const INTERNAL_REQUEST_HEADER = "x-totalbase-internal";
@@ -154,7 +154,7 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       settings.get("security.rate_limit_per_minute"),
     ]);
 
-    // --- CORS (Specification_Administration.md §7.8) ---
+    // --- CORS (Administration.md §7.8) ---
     const origin = request.headers.origin;
     if (corsEnabled && origin && corsOrigins.includes(origin)) {
       reply.header("access-control-allow-origin", origin);
@@ -168,7 +168,7 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       return;
     }
 
-    // --- QUERY_STRING_TOO_LARGE / QUERY_PARAMETER_LIMIT_EXCEEDED (Specification_Data_API.md §12) ---
+    // --- QUERY_STRING_TOO_LARGE / QUERY_PARAMETER_LIMIT_EXCEEDED (Data_API.md §12) ---
     // Node's maxHeaderSize is set at startup above the setting's value
     // (maxHeaderSizeFor, server.ts), so a query string past the limit
     // reaches this hook instead of Node's raw 431.
@@ -185,7 +185,7 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       throw new TotalBaseError("QUERY_PARAMETER_LIMIT_EXCEEDED", "Too many query parameters.");
     }
 
-    // --- Rate limiting (Specification_Administration.md §7.7's ip resolution, honored via Fastify's trustProxy option) ---
+    // --- Rate limiting (Administration.md §7.7's ip resolution, honored via Fastify's trustProxy option) ---
     // An in-process request (app.inject) from the MCP endpoint - whose own requests are limited per token there - is not
     // counted again against the caller's IP. Only a request bearing the boot-time key, which no client can know, is.
     const internal = options.internalKey !== undefined && isInternalRequest(request.headers[INTERNAL_REQUEST_HEADER], options.internalKey);
@@ -199,14 +199,14 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
     }
   });
 
-  // --- REQUEST_BODY_TOO_LARGE (Specification_Data_API.md §12) ---
+  // --- REQUEST_BODY_TOO_LARGE (Data_API.md §12) ---
   // api.max_body_bytes, read per request: a declared Content-Length over
   // it is refused before the body is read, and the body stream is counted
   // as it arrives, so a body without one (chunked) is cut off at the limit
   // too. Fastify's own bodyLimit is only a ceiling (FASTIFY_BODY_LIMIT_CEILING).
   // A multipart upload is left alone: its parser reads the raw request
   // itself, and files.max_file_size_bytes is its limit (§10.4 of
-  // Specification_Administration.md).
+  // Administration.md).
   app.addHook("preParsing", async (request, _reply, payload) => {
     if (request.headers["content-type"]?.toLowerCase().startsWith("multipart/")) return payload;
     const limit = await settings.get("api.max_body_bytes");

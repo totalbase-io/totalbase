@@ -23,7 +23,7 @@ import { useApiErrorMessage } from '~/utils/api-error-message'
 
 const route = useRoute()
 const templatesApi = useTemplatesApi()
-// A delegated user sees only the actions their permissions allow (Specification_Security.md §9.3).
+// A delegated user sees only the actions their permissions allow (Security.md §9.3).
 const session = useSession()
 const canUpdate = computed(() => session.can('templates', 'UPDATE'))
 const canDelete = computed(() => session.can('templates', 'DELETE'))

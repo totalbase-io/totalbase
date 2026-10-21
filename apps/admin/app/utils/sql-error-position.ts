@@ -1,6 +1,6 @@
 /**
  * Where a PostgreSQL error points in the SQL Console's editor
- * (Specification_Administration.md §5.6). PostgreSQL reports `position` as
+ * (Administration.md §5.6). PostgreSQL reports `position` as
  * a 1-based *character* offset into the statement text it received; the
  * editor counts UTF-16 code units, lines and columns. `start` is the
  * editor offset (UTF-16) where the text sent to the server begins - not 0

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The device camera's live picture - shared by the Scanner (TScanner) and
- * Camera (TCamera) widgets (Specification_DataViews.md §9.9). Opens the
+ * Camera (TCamera) widgets (DataViews.md §9.9). Opens the
  * stream when mounted, stops every track when unmounted or when the facing
  * changes, and says why there is none (no HTTPS, permission denied, no
  * camera) instead of a black box.

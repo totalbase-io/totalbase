@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A dashboard embed (Specification_Dashboards.md §9.5), framed by another
+ * A dashboard embed (Dashboards.md §9.5), framed by another
  * site. Its address says which:
  * - `/admin/embed/tbe_…` - a public link: the path is its credential;
  * - `/admin/embed/<embed id>#<token>` - a signed embed: a portal's backend
@@ -16,7 +16,8 @@
  * How it looks is the embed's own (the drawer); the query string may
  * override presentation and starting values (utils/embed-params.ts) -
  * never what the embed locks. The page tells its parent its height
- * (`totalbase:embed:resize`) to size the frame.
+ * (`totalbase:embed:resize`) to size the frame. An embed of one widget
+ * is the other way round: its card fills whatever frame the site gives it.
  */
 import { isUiLanguage } from '@totalbase/shared'
 import { parseEmbedParams } from '~/utils/embed-params'
@@ -34,8 +35,9 @@ const credential = ref<string | null>(null)
 const notFramed = ref(false)
 const variableValues = ref<Record<string, unknown>>({})
 const root = ref<HTMLElement | null>(null)
-const view = ref<{ dashboard: { language?: string, display?: { theme?: 'light' | 'dark' | 'auto', transparent?: boolean } } | null } | null>(null)
-// No user: the URL's `locale`, else the instance's language (Specification_Admin_UI.md §14).
+const view = ref<{ dashboard: { language?: string, display?: { theme?: 'light' | 'dark' | 'auto', transparent?: boolean } } | null, singleWidget: string | null } | null>(null)
+const single = computed(() => Boolean(view.value?.singleWidget))
+// No user: the URL's `locale`, else the instance's language (Admin_UI.md §14).
 const { setLocale, locale, t } = useI18n()
 watch(() => params.locale ?? view.value?.dashboard?.language, (language) => {
   if (isUiLanguage(language) && language !== locale.value) void setLocale(language)
@@ -105,8 +107,7 @@ onBeforeUnmount(() => observer?.disconnect())
 <template>
   <div
     ref="root"
-    class="p-3"
-    :class="transparent ? 'bg-transparent' : 'min-h-dvh bg-default'"
+    :class="[single ? 'h-dvh p-1' : 'p-3', transparent ? 'bg-transparent' : single ? 'bg-default' : 'min-h-dvh bg-default']"
   >
     <UEmpty
       v-if="notFramed"

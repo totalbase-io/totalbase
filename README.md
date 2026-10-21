@@ -33,7 +33,7 @@
 TotalBase connects to a PostgreSQL database, new or existing, and gives you on top of it:
 
 - **A REST Data API** over the tables, views and functions you choose to expose: filters, relations, aggregates, nested writes and transactions, with a generated OpenAPI document.
-- **Users, roles and permissions** down to rows and fields - row filters, field grants and payload checks, compiled into the SQL PostgreSQL runs.
+- **Users, roles and permissions** down to rows and fields - row filters, field grants and payload checks, compiled into the SQL PostgreSQL runs; sign-in with a password or an OAuth/OIDC provider, and two-factor authentication with an authenticator app.
 - **DataViews**: screens over your data - tables, cards, kanban boards, calendars, Gantt charts, maps, trees and org charts, forms and custom pages - that people use in the App on a desktop, a tablet or a phone.
 - **Dashboards** built from SQL queries, which you can also embed in another site.
 - **Workflows** started by a data change, a schedule, a webhook or a person: emails, PDFs, HTTP calls, code.
@@ -112,13 +112,13 @@ Either way the result is the same: ordinary PostgreSQL tables and objects you op
 
 - **PostgreSQL decides.** Constraints, triggers, functions and types keep deciding; TotalBase shows their messages instead of re-implementing them. Anything you change with `psql` or a migration tool shows up in TotalBase too.
 - **Nothing is exposed until you say so.** A new table is hidden; every read and write needs a grant, down to the row and the field.
-- **One instance, one port, no extra infrastructure.** No Redis, no queue, no second database: the API, the admin, the App, the workflows and the MCP server run in one container.
+- **One instance, one port, no extra infrastructure.** No Redis, no queue, no second database: the API, the admin, the App, the workflows and the MCP server run in one container. When one isn't enough, run several behind a load balancer: PostgreSQL carries what they share.
 
 ## Status
 
-**Beta** (`0.1.0-beta.1`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
+**Beta** (`0.1.0-beta.2`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
 
-The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.1` pins this version.
+The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.2` pins this version.
 
 ## Requirements
 

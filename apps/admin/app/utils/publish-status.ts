@@ -1,7 +1,7 @@
 import { isValidColorValue, roleColorShade } from '~/types/permission'
 
 /**
- * The versioning status (Specification.md §13.5) the DataViews,
+ * The versioning status (Foundations.md §13.5) the DataViews,
  * Dashboards and Workflows sidebars show on each row's badge: green when
  * published and up to date (green = live, like the editors' Publish
  * button), amber with unpublished changes, gray when never published -

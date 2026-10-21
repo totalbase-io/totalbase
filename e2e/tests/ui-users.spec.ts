@@ -1,5 +1,6 @@
 import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test'
 import { ADMIN_EMAIL, ADMIN_PASSWORD, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every write action of the Users, Roles, API tokens and Sessions screens,
@@ -7,7 +8,7 @@ import { ADMIN_EMAIL, ADMIN_PASSWORD, watchApiFailures } from './helpers.js'
  * and cleaned up through the API, deleted by primary key; the admin account
  * itself is never changed.
  */
-const BASE = 'http://localhost:3050'
+const BASE = BASE_URL
 const PASSWORD = 'UiUsers-Password-12345'
 const RUN = Math.random().toString(36).slice(2, 8)
 const SMTP_SEND = /^POST \/admin\/api\/users\/[^/]+\/(invite|reset-password)$/

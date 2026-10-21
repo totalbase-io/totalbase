@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A file a dashboard widget's query returned (Specification_Dashboards.md §5.16, D14), by the link the run signed
+ * A file a dashboard widget's query returned (Dashboards.md §5.16, D14), by the link the run signed
  * for it (`result.files[id]` - an `<img>` sends no header, the signature is the access): an image as a thumbnail
  * that opens large on a tap (`thumb`), filling its box (`fill`), anything else - or `link` - a link to it. An embed's
  * PRIVATE file without allowFiles (`blocked`) says it isn't available there.

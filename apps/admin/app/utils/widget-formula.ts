@@ -1,5 +1,5 @@
 /**
- * A widget prop's formula binding (Specification_DataViews.md §9.2, §10):
+ * A widget prop's formula binding (DataViews.md §9.2, §10):
  * the Bind modal's formula language over `{{vars.<name>.<property>}}`,
  * `{{slot.<prop>.<field>}}` and `{{controls.<name>.<state>}}` - another widget's
  * state (its value, an option list's item, a Table's row). The formula engine resolves one-hop tokens

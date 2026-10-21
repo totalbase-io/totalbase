@@ -18,7 +18,7 @@ import { loadQueryFeatures } from "../query-features.js";
 import { ReadAudit } from "../read-audit.js";
 
 /**
- * TABLE read endpoints. See Specification_Data_API.md §2.1.
+ * TABLE read endpoints. See Data_API.md §2.1.
  * VIEW/FUNCTION and mutations are later phases (5 and 4).
  */
 export function registerDataTableRoutes(app: FastifyInstance, context: AppContext): void {
@@ -79,7 +79,7 @@ export function registerDataTableRoutes(app: FastifyInstance, context: AppContex
       try {
         return await context.database.transaction(async (client) => {
           const { rows } = await client.query(compiled.sql, compiled.params);
-          // Which flags each row met (Specification_Data_API.md §3.9) - their columns out of the rows.
+          // Which flags each row met (Data_API.md §3.9) - their columns out of the rows.
           const flags = takeFlags(rows, ast.flags);
           if (ast.count && compiled.countSql) {
             const { rows: countRows } = await client.query<{ count: string }>(compiled.countSql, compiled.countParams);
@@ -139,7 +139,7 @@ export function registerDataTableRoutes(app: FastifyInstance, context: AppContex
         value: request.params.pk,
       };
       // The grant's row filter goes as the row filter, not into the request's where: its paths are the
-      // administrator's and need no field grant (Specification_Security.md §6.5) - as a list read has it.
+      // administrator's and need no field grant (Security.md §6.5) - as a list read has it.
       const rowFilter = buildRowFilter(permission, limits);
       const passwordColumns = await loadPasswordColumns(context, resource.id);
 
@@ -174,7 +174,7 @@ export function registerDataTableRoutes(app: FastifyInstance, context: AppContex
       if (rows.length === 0) {
         throw new TotalBaseError("ROW_NOT_FOUND", "Row not found.");
       }
-      // Its version, for an optimistic write's If-Match (Specification_Data_API.md §5.3) - never a field of the row.
+      // Its version, for an optimistic write's If-Match (Data_API.md §5.3) - never a field of the row.
       const { [ROW_VERSION_COLUMN]: version, ...row } = rows[0]!;
       if (typeof version === "string") reply.header("etag", `"${version}"`);
       return { data: row, ...(typeof version === "string" && { meta: { version } }) };

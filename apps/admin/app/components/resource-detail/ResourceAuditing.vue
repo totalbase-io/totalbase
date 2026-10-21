@@ -3,7 +3,7 @@ import type { Resource } from '~/types/resource'
 import type { RelationDetail } from '~/types/schema'
 
 /**
- * A resource's auditing (Specification_Security.md §11, §11.4): every
+ * A resource's auditing (Security.md §11, §11.4): every
  * CREATE/UPDATE/DELETE and EXECUTE is audited - writes whole, the row and an
  * UPDATE's old and new of every column it changed. Here: whether a READ
  * writes an entry too (TABLE and VIEW; off by default - it's the volume),

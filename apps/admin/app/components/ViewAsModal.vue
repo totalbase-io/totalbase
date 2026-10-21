@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * See as (Specification_Security.md §8.4): an administrator picks a role, or a user, and the App opens as they see
+ * See as (Security.md §8.4): an administrator picks a role, or a user, and the App opens as they see
  * it - their menu, their rows, their buttons - read-only. A user brings their own $USER (their rows by a row
  * filter); a role keeps the administrator's.
  */

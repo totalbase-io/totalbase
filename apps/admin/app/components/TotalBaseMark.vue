@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * TotalBase's own mark (Specification_Admin_UI.md §4.1.1): a database cylinder with a T cut out of it, drawn in
+ * TotalBase's own mark (Admin_UI.md §4.1.1): a database cylinder with a T cut out of it, drawn in
  * `currentColor` so it takes the primary color, white over a panel, or whatever the parent sets. Shown wherever
  * the operator has set no `system.logo` (BrandMark, LoginBrand); the favicon is the same drawing in sky-600
  * (`public/favicon.ico`, `public/logo.svg`).

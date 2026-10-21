@@ -29,7 +29,7 @@ function pathParameters(fastifyUrl: string): ParameterObject[] {
  * Builds the admin Control Plane OpenAPI document directly from Fastify's
  * registered route table (collected via an `onRoute` hook in
  * apps/server), so it can never drift from what's actually mounted
- * (Specification_Data_API.md §14.3: "dynamic generation").
+ * (Data_API.md §14.3: "dynamic generation").
  *
  * A route that declares `config.openapi` (a RouteDoc, same as the Data
  * API's fixed routes) gets its request/response shapes; any other route

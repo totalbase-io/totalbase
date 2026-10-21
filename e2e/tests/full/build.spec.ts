@@ -16,6 +16,10 @@ const dashboards: string[] = []
 test.beforeAll(async () => {
   ({ api, dispose } = await adminApi())
   await resetFullSchema(api)
+  // What a run stopped halfway left behind: the names are fixed, so a leftover would make this run's create a 409.
+  const leftovers = async (path: string) => ((await api.get<{ id: string, name: string }[]>(path)).data ?? []).filter(o => o.name.startsWith('E2E Full '))
+  for (const d of await leftovers('/admin/api/dataviews')) await api.send('DELETE', `/admin/api/dataviews/${d.id}`)
+  for (const d of await leftovers('/admin/api/dashboards')) await api.send('DELETE', `/admin/api/dashboards/${d.id}`)
 })
 // Cleanup by primary key: only what this run created, by the ids it got back.
 test.afterAll(async () => {

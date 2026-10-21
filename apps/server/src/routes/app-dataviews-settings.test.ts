@@ -11,7 +11,7 @@ const PASSWORD = "a-strong-enough-password";
 const LAYOUT = { keyColumn: "clave", valueColumn: "valor", titleColumn: "titulo", descriptionColumn: "descripcion", groupColumn: "grupo", orderColumn: "orden" };
 
 /**
- * A SETTINGS DataView (Specification_DataViews.md §5.12): its layout's columns are checked when it is
+ * A SETTINGS DataView (DataViews.md §5.12): its layout's columns are checked when it is
  * created, and which settings a viewer may change is the Permission Resolver's answer - UPDATE's
  * fields and row filter - so a row shows locked before anyone tries to save it.
  */

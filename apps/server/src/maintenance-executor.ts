@@ -8,7 +8,7 @@ import type { AppContext } from "./context.js";
 const HEARTBEAT_MS = 30_000;
 
 /**
- * Runs one queued maintenance action (Specification_Administration.md §6) in
+ * Runs one queued maintenance action (Administration.md §6) in
  * the dedicated maintenance worker - one at a time, outside any
  * transaction, as VACUUM and REINDEX CONCURRENTLY require, and outside the
  * admin's HTTP request, since they can take minutes. The target is

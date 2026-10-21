@@ -1,5 +1,5 @@
 /**
- * History payload handling (specs/Specification_Workflows.md §9):
+ * History payload handling (specs/Workflows.md §9):
  * SUMMARY never stores a step's input/result payload at all
  * (only status/timing/selected output/a sanitized error); DETAILED
  * stores them too, redacted and size-capped. Secrets are stripped

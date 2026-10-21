@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Organize menu's Edit on a group (Specification_Security.md §8.2): its name, its icon and its open icon (the pair
+ * Organize menu's Edit on a group (Security.md §8.2): its name, its icon and its open icon (the pair
  * proposed from the icon), how it starts in the tree menu, Add subgroup (a root group) and Delete group - its entries move up to where it was,
  * nothing is deleted. The editor owns the tree and its autosave: Save hands the changes back.
  */

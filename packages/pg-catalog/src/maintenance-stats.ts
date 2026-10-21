@@ -2,7 +2,7 @@ import type { Database } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
- * Read side of PostgreSQL maintenance (Specification_Administration.md §6):
+ * Read side of PostgreSQL maintenance (Administration.md §6):
  * sizes and vacuum/analyze state from PostgreSQL's own statistics views.
  * Every relation kind that VACUUM/ANALYZE/REINDEX apply to - ordinary and
  * partitioned tables, materialized views - in every schema but

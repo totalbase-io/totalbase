@@ -26,7 +26,7 @@ interface ApiRow {
 
 /**
  * The `tokens_limited_changes` trigger (
- * Specification_Security.md §10.3): a personal access token written on
+ * Security.md §10.3): a personal access token written on
  * someone's behalf - `totalbase.actor_user_id` set, as every Data API write
  * is - may be renamed, described, deactivated or revoked, never moved to
  * another user or plane, re-keyed, extended or un-revoked; the revocation

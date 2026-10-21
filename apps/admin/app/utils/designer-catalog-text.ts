@@ -3,7 +3,7 @@ import type { SnippetGroup, SnippetName, ValueType, VariableKind, WidgetGroup, W
 import { catalogText } from '~/utils/catalog-text'
 
 /**
- * The canvas catalogs' texts in the UI's language (Specification_Admin_UI.md
+ * The canvas catalogs' texts in the UI's language (Admin_UI.md
  * §14): the widget, variable and snippet catalogs of @totalbase/tb-catalog, read by
  * the Design form's palette, inspector, Variables panel and snippet wizards.
  * Each text's key is derived from its catalog key under `designer.catalog.*`;

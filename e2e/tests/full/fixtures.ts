@@ -1,4 +1,5 @@
 import { test as base, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'
+import { BASE_URL } from '../helpers'
 
 /**
  * The exhaustive phase (e2e/tests/full): one system built from scratch -
@@ -10,7 +11,7 @@ import { test as base, expect, request as pwRequest, type APIRequestContext } fr
 
 export { expect }
 
-const BASE = 'http://localhost:3050'
+const BASE = BASE_URL
 const ADMIN_EMAIL = process.env.TOTALBASE_ADMIN_EMAIL ?? 'admin@totalbase.local'
 const ADMIN_PASSWORD = process.env.TOTALBASE_ADMIN_PASSWORD ?? '1234567'
 

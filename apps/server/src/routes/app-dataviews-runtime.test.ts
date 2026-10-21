@@ -238,7 +238,7 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
     expect(stale.json().errors[0].code).toBe("DATAVIEW_STATE_NOT_FOUND");
   });
 
-  it("shares a saved view with the sharer's own roles and the people holding one - read-only for them (Specification_DataViews.md §5.9)", async () => {
+  it("shares a saved view with the sharer's own roles and the people holding one - read-only for them (DataViews.md §5.9)", async () => {
     const colleagueToken = await login(`${P}-colleague@example.com`, viewerRoleId);
     const otherRoleId = (await database.query<{ id: string }>(`SELECT id FROM totalbase.roles WHERE name = $1`, [`${P}-other`])).rows[0]!.id;
     const otherUserId = (await database.query<{ id: string }>(`SELECT id FROM totalbase.users WHERE email = $1`, [`${P}-other@example.com`])).rows[0]!.id;
@@ -327,7 +327,7 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
       expect(await actions()).toEqual({ create: false, update: true, delete: false });
       await context.permissions.set(role, resourceId, "CREATE", { effect: "ALLOW" });
       expect(await actions()).toEqual({ create: true, update: true, delete: false });
-      // The DataView's own Allow narrows them - a listing with no New (Specification_DataViews.md §5.1) - never widens them.
+      // The DataView's own Allow narrows them - a listing with no New (DataViews.md §5.1) - never widens them.
       await context.dataviewsAdmin.update(dataviewId, { viewConfig: { allow: ["update", "delete"] } });
       await context.dataviewsAdmin.publish(dataviewId, null);
       expect(await actions()).toEqual({ create: false, update: true, delete: false });
@@ -346,7 +346,7 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
     await database.query(`DROP TABLE IF EXISTS public.${TABLE}_owners CASCADE`);
     await database.query(`CREATE TABLE public.${TABLE}_owners (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text)`);
     await database.query(`ALTER TABLE public.${TABLE} ADD FOREIGN KEY (owner) REFERENCES public.${TABLE}_owners (id)`);
-    // What a foreign key shows is its table's (Specification_DataViews.md §15.5): owners' name, by default.
+    // What a foreign key shows is its table's (DataViews.md §15.5): owners' name, by default.
     const { rows: [owners] } = await database.query<{ id: string }>(
       `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
        VALUES ($1::regclass::oid, 'public', $2, 'TABLE', 'ACTIVE', '{GET}') RETURNING id`,

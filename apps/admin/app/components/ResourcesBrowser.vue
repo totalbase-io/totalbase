@@ -37,7 +37,7 @@ const copy = computed(() => {
 
 // One drawer, two intents: "New resource" opens it blank (create); a View/
 // Function row's "Edit" action opens the same drawer pre-filled with its
-// current DDL as a CREATE OR REPLACE (Specification_Administration.md §4: "Create/edit
+// current DDL as a CREATE OR REPLACE (Administration.md §4: "Create/edit
 // Views and Functions through SQL Console" - there's no POST/PATCH schema
 // endpoint that accepts full source). Tables don't get this action -
 // PostgreSQL has no CREATE OR REPLACE TABLE, so TableDrawer's structured
@@ -56,7 +56,7 @@ function openNewResource() {
   isSqlConsoleOpen.value = true
 }
 
-// Specification_Administration.md: saving the minimal New
+// Administration.md: saving the minimal New
 // Table wizard navigates straight to the new table's own detail page to
 // keep adding columns there, rather than the wizard growing into the
 // full page itself.
@@ -99,7 +99,7 @@ async function openEditResource(resource: Resource) {
 
 const search = ref('')
 
-// Query params per Specification_Admin_UI.md §11.1: ?schema=/?type=. "Exposed"/"Hidden" are filtered
+// Query params per Admin_UI.md §11.1: ?schema=/?type=. "Exposed"/"Hidden" are filtered
 // client-side (below) since exposure is now just "exposedMethods.length >
 // 0", not a server-side flag to query on.
 const query = computed(() => {
@@ -158,7 +158,7 @@ const sortedRows = computed(() => {
   return [...list].sort((a, b) => a.name.localeCompare(b.name) || a.schema.localeCompare(b.schema))
 })
 
-// --- Grouped function overloads (Specification_Admin_UI.md §11.5) ---
+// --- Grouped function overloads (Admin_UI.md §11.5) ---
 // Overloads share a name but are distinct resources (one OID each, their
 // own exposure and page). The Functions list shows one row per
 // schema-qualified name; a name with several overloads expands (open by
@@ -270,7 +270,7 @@ const exposing = ref(false)
 // open showing every box unchecked for no reason.
 const exposeMethodsDraft = ref<DataApiMethod[]>([])
 
-// TotalBase's own tables have a fixed exposure (Specification_Security.md §10.1)
+// TotalBase's own tables have a fixed exposure (Security.md §10.1)
 // - access to them is decided by permissions alone.
 function exposureFixed(resource: Resource): boolean {
   return resource.exposureFixed
@@ -488,7 +488,7 @@ function actionColor(action: string) {
 // internal row click/dropdown action.
 defineExpose({ openDetail })
 
-// Suggest presentation for every table and view (Specification_DataViews.md §15.6) - a secondary action.
+// Suggest presentation for every table and view (DataViews.md §15.6) - a secondary action.
 const schemaSuggestOpen = ref(false)
 const headerActions = computed<HeaderAction[]>(() => (type.value === 'FUNCTION'
   ? []

@@ -119,7 +119,7 @@ const whereError = ref<string | null>(null)
 const saving = ref(false)
 const clearing = ref(false)
 
-// "Payload checks" - only meaningful for CREATE/UPDATE on a TABLE (Specification_Admin_UI.md §11.3:
+// "Payload checks" - only meaningful for CREATE/UPDATE on a TABLE (Admin_UI.md §11.3:
 // VIEW is read-only, and DELETE/EXECUTE have no proposed
 // values to check a business rule against). Each row is its own rule +
 // optional label, same grammar as Row filter (including full _and/_or/
@@ -221,7 +221,7 @@ function toggleDraftField(name: string, checked: boolean) {
 }
 
 // "Select all" only adds/removes the direct columns this list actually
-// shows - a relation-traversal field (e.g. "manager.first_name", Specification_Security.md §6.4)
+// shows - a relation-traversal field (e.g. "manager.first_name", Security.md §6.4)
 // set some other way (API, or before this table's columns loaded)
 // isn't in editorColumns and stays untouched either way, rather than
 // getting silently wiped by unchecking this. Protected columns (see

@@ -21,7 +21,8 @@ type AttentionKey =
   | "pool_waiting"
   | "outbox_backlog"
   | "tokens_expiring"
-  | "failed_sign_ins";
+  | "failed_sign_ins"
+  | "backup_failed";
 type AttentionItem = { key: AttentionKey; severity: "error" | "warning" | "info"; count: number };
 
 const INT: JsonSchema = { type: "integer" };
@@ -50,6 +51,7 @@ const DASHBOARD_SCHEMA = object({
     postgres: object({ database: { type: "string" }, version: { type: "string" }, sizeBytes: INT, connections: INT, maxConnections: INT }),
     pool: object({ max: INT, total: INT, idle: INT, waiting: INT }),
     sessionsActive: INT,
+    backups: { ...object({ lastCompletedAt: { type: ["string", "null"], format: "date-time" }, nextAt: { type: ["string", "null"], format: "date-time", description: "The schedule's next backup - null while scheduled backups are off." } }, ["lastCompletedAt", "nextAt"]), description: "Built-in backups (Administration.md §12)." },
     masterKey: object({ source: { type: "string", enum: ["ENV", "FILE"] }, path: { type: ["string", "null"], description: "FILE: the file holding it - back it up apart from the database." } }, ["source", "path"]),
     outbox: object({ pending: INT, oldestPendingSeconds: { type: ["number", "null"] } }),
     space: object({
@@ -60,7 +62,7 @@ const DASHBOARD_SCHEMA = object({
 });
 
 /**
- * The admin's home (Specification_Administration.md §1: "Dashboard"): what
+ * The admin's home (Administration.md §1: "Dashboard"): what
  * needs attention, a few counts, 14 days of activity in the viewer's
  * zone, the busiest resources and the system's state. Orchestration
  * only - each number comes from the package that owns it.
@@ -88,7 +90,7 @@ export function registerAdminDashboardRoutes(app: FastifyInstance, context: AppC
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const warningDays = await context.settings.get("api_keys.rotation_warning_days");
     const zone = await resolveDayZone(context.database, window.timeZone, window.utcOffsetMinutes);
-    const [insights, people, usableTokens, expiringTokens, locked, resources, failedRuns, runsPerDay, outbox, postgres, space, sessionsActive] = await Promise.all([
+    const [insights, people, usableTokens, expiringTokens, locked, resources, failedRuns, runsPerDay, outbox, postgres, space, sessionsActive, backups] = await Promise.all([
       context.auditInsights.dashboard(window),
       context.auth.users.countActivePeople(),
       context.usersApis.countUsable(),
@@ -101,11 +103,13 @@ export function registerAdminDashboardRoutes(app: FastifyInstance, context: AppC
       getDatabaseSummary(context.database),
       getDatabaseSpace(context.database),
       context.auth.sessions.countActive(),
+      context.backups.summary(),
     ]);
     const pool = context.database.poolStats();
 
     // Most urgent first; only what has a count.
     const attention: AttentionItem[] = [
+      { key: "backup_failed" as const, severity: "error" as const, count: backups.latestFailed ? 1 : 0 },
       { key: "outbox_failed" as const, severity: "error" as const, count: outbox.failed },
       { key: "workflow_runs_failed" as const, severity: "error" as const, count: failedRuns },
       { key: "locked_accounts" as const, severity: "warning" as const, count: locked },
@@ -136,6 +140,7 @@ export function registerAdminDashboardRoutes(app: FastifyInstance, context: AppC
           postgres,
           pool,
           sessionsActive,
+          backups: { lastCompletedAt: backups.lastCompletedAt, nextAt: backups.nextAt },
           masterKey: context.masterKeyOrigin,
           outbox: { pending: outbox.pending, oldestPendingSeconds: outbox.oldestPendingSeconds },
           space,

@@ -3,10 +3,13 @@ import { isValueType, WIDGET_NAMES, widgetDefinition, type ValueType, type Varia
 import type { DataViewField } from '~/types/dataview'
 import type { RelationDefinition, RelationDetail } from '~/types/schema'
 import type { CanvasDropTarget } from '~/composables/useCustomCanvasContext'
+import type { JunctionCandidate } from '~/utils/junction-links'
 import { useDesignerCatalogText } from '~/utils/designer-catalog-text'
 
 /** The inputs that pick from a list - a foreign key's options fill them. */
 const OPTION_INPUTS: readonly WidgetName[] = ['USelectMenu', 'USelect', 'UInputMenu', 'URadioGroup']
+/** The inputs that pick several - a junction's links (DataViews.md §8.5); the first is a new one's. */
+export const JUNCTION_INPUTS: readonly WidgetName[] = ['USelectMenu', 'UCheckboxGroup', 'UInputMenu', 'USelect', 'UListbox']
 
 /**
  * Placing a form field on a designed page (CustomDesigner.vue): a UFormField
@@ -21,13 +24,15 @@ export function useDesignerFormFields(options: {
   fields: Ref<DataViewField[]>
   variables: Ref<VariableDefinition[]>
   recordRelations: ComputedRef<RelationDefinition[]>
+  /** The record table's junction tables - a field linked through one picks the other table's rows. */
+  recordJunctions: Ref<JunctionCandidate[]>
   /** `field`, already in `target`'s area, moved to `target.index`. */
   insertAt: (field: DataViewField, target: CanvasDropTarget) => Promise<void>
   /** A widget's starting props - without its sample label inside a form field. */
   startingProps: (name: WidgetName, parentId: string | null | undefined) => Record<string, unknown>
   /** The title a column's field shows with none of its own. */
   columnTitle: (column: string) => string
-  /** The input a column is edited with (Specification_DataViews.md §15.2). */
+  /** The input a column is edited with (DataViews.md §15.2). */
   inputForColumn: (column: string) => WidgetName
 }) {
   const api = useAdminApi()
@@ -55,15 +60,19 @@ export function useDesignerFormFields(options: {
   }
 
   /**
-   * A foreign key's options as a Resource of its target table (Specification_DataViews.md §9.2):
+   * A foreign key's options as a Resource of its target table (DataViews.md §9.2):
    * its key and first text column, ordered by it, 100 at a time - with the
    * select bound to it. Null when the target isn't readable through the
    * Data API: the select then takes its options from the author.
    */
   async function foreignKeyOptions(column: string): Promise<{ variable: VariableDefinition, props: Record<string, unknown>, existing: boolean } | null> {
     const fk = options.recordRelations.value.find(r => r.sourceColumn === column)
-    const target = fk && resources.value.find(r => r.schema === fk.targetSchema && r.name === fk.targetTable && r.status === 'ACTIVE' && r.exposedMethods.includes('GET'))
-    if (!fk || !target) return null
+    return fk ? targetOptions(fk) : null
+  }
+  /** The rows of the table a key points at as a select's options - a foreign key's, or a junction's other table's (§8.5). */
+  async function targetOptions(fk: { targetSchema: string, targetTable: string, targetColumn: string }): Promise<{ variable: VariableDefinition, props: Record<string, unknown>, existing: boolean } | null> {
+    const target = resources.value.find(r => r.schema === fk.targetSchema && r.name === fk.targetTable && r.status === 'ACTIVE' && r.exposedMethods.includes('GET'))
+    if (!target) return null
     // A Resource of that table already reading its key: the same options - reused, not copied.
     const reused = options.variables.value.find((v): v is Extract<VariableDefinition, { kind: 'RESOURCE' }> => v.kind === 'RESOURCE' && v.resource === target.id && String(v.query.fields).split(',').includes(fk.targetColumn))
     if (reused) {
@@ -86,8 +95,11 @@ export function useDesignerFormFields(options: {
    * Value, or to nothing. Saved as it goes; a field is never left without its
    * input.
    */
-  async function placeField(spec: { label: string, input: WidgetName, column?: string, variable?: string, target: CanvasDropTarget }): Promise<DataViewField> {
-    const fkOptions = spec.column && OPTION_INPUTS.includes(spec.input) ? await foreignKeyOptions(spec.column) : null
+  async function placeField(spec: { label: string, input: WidgetName, column?: string, junction?: string, variable?: string, target: CanvasDropTarget }): Promise<DataViewField> {
+    const junction = spec.junction ? options.recordJunctions.value.find(j => j.resourceId === spec.junction) : undefined
+    const fkOptions = junction && JUNCTION_INPUTS.includes(spec.input)
+      ? await targetOptions({ targetSchema: junction.target.schema, targetTable: junction.target.table, targetColumn: junction.target.column })
+      : spec.column && OPTION_INPUTS.includes(spec.input) ? await foreignKeyOptions(spec.column) : null
     if (fkOptions && !fkOptions.existing) {
       const next = [...options.variables.value, fkOptions.variable]
       await options.track(api.patch(`/dataviews/${options.dataviewId}`, { data: { viewConfig: { variables: next } } }))
@@ -100,10 +112,10 @@ export function useDesignerFormFields(options: {
       options.variables.value = next
     }
     const { target } = spec
-    // Bound to a column, a title that is the one it inherits isn't stored - it follows its column (Specification_DataViews.md §15).
+    // Bound to a column, a title that is the one it inherits isn't stored - it follows its column (DataViews.md §15).
     const fieldProps = spec.column
       ? { column: spec.column, ...(spec.label.trim() && spec.label.trim() !== options.columnTitle(spec.column) ? { label: spec.label.trim() } : {}) }
-      : { label: spec.label }
+      : junction ? { junction: junction.resourceId, label: spec.label } : { label: spec.label }
     // Its column's input follows the column (§15.2): a change there reaches this form too.
     const fromColumn = Boolean(spec.column) && spec.input === options.inputForColumn(spec.column!)
     const { data: field } = await options.track(api.post<DataViewField>(`/dataviews/${options.dataviewId}/widgets`, {
@@ -123,7 +135,7 @@ export function useDesignerFormFields(options: {
         data: {
           widget: spec.input,
           parent: field.id,
-          config: { slot: 'default', props: { ...inputProps, ...fkOptions?.props }, bindings, emits: {}, ...(fromColumn && { fromColumn: true }) }
+          config: { slot: 'default', props: { ...inputProps, ...fkOptions?.props, ...(junction && 'multiple' in widgetDefinition(spec.input).props && { multiple: true }) }, bindings, emits: {}, ...(fromColumn && { fromColumn: true }) }
         }
       }))).data
     } catch (error) {

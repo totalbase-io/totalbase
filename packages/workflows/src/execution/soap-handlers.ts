@@ -4,7 +4,7 @@ import { outboundFetch, outboundPolicy } from "./http-client.js";
 import type { OperationHandler } from "./types.js";
 
 /**
- * SOAP request (Specification_Workflows.md §5.15.1): one operation of a SOAP
+ * SOAP request (Workflows.md §5.15.1): one operation of a SOAP
  * 1.1 or 1.2 web service, the envelope built by the server from a JSON
  * object, the response's Body handed back as JSON, a Fault failing the
  * step. The exchange itself goes through the HTTP request step's outbound

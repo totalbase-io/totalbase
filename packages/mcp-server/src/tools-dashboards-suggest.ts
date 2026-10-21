@@ -4,7 +4,7 @@ import type { AdminClient } from "./admin-client.js";
 import { READ_ONLY, result, schemaName } from "./tool-helpers.js";
 
 /**
- * The dashboard assistant (Specification_Dashboards.md §10.7, D27) - suggest_presentation's twin for dashboards:
+ * The dashboard assistant (Dashboards.md §10.7, D27) - suggest_presentation's twin for dashboards:
  * reads one table or view from the catalog and pg_stats (never its rows) and proposes a dashboard. Nothing is applied.
  */
 export function registerDashboardSuggestTools(server: McpServer, client: AdminClient): void {

@@ -24,7 +24,7 @@ import { useCatalogText } from '~/utils/catalog-text'
 import { brokenDataViewLine, useBrokenReferences } from '~/composables/useBrokenReferences'
 
 const { dataviews, error, refresh } = useAppsNavDataViews()
-// What a DataView names that PostgreSQL no longer has - an error icon on its row (Specification_DataViews.md §4.8).
+// What a DataView names that PostgreSQL no longer has - an error icon on its row (DataViews.md §4.8).
 const broken = useBrokenReferences()
 onMounted(broken.ensure)
 function brokenText(id: string): string | null {

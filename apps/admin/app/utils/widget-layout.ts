@@ -1,5 +1,5 @@
 /**
- * How placed widgets lay out (Specification_DataViews.md §12.2):
+ * How placed widgets lay out (DataViews.md §12.2):
  * every area - the page itself, or one slot of a widget - is an ordered list
  * in flow, wrapped into rows of 12 columns; each widget has an order
  * (`gridY`) and a width (`gridW`), each row is as tall as its tallest widget,

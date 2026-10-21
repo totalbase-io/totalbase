@@ -1,4 +1,4 @@
-// CUSTOM pages (Docs_Demo_Field_Service.md §5): the Dispatch board and the New service request.
+// CUSTOM pages (DATASET.md §5): the Dispatch board and the New service request.
 //   TOTALBASE_TOKEN=... node 12-pages.mjs
 import { call } from './mcp.mjs'
 

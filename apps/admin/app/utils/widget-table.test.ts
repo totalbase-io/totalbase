@@ -63,7 +63,7 @@ describe('resourceTableColumns()', () => {
   })
 })
 
-// A page Table's columns computed per row, and its cells' Color formula (Specification_DataViews.md §15).
+// A page Table's columns computed per row, and its cells' Color formula (DataViews.md §15).
 describe('resourceTableColumns() with formulas per row', () => {
   beforeAll(() => loadFormulaFunctions())
   const vars = { iva: { kind: 'VALUE', value: 0.21 } }

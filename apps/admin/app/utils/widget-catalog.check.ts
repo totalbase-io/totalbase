@@ -1,6 +1,6 @@
 /**
  * Checks the widget catalog (@totalbase/tb-catalog' WIDGET_CATALOG) against the
- * types of the component behind each widget - Specification_DataViews.md §14.1.
+ * types of the component behind each widget - DataViews.md §14.1.
  * Types only, nothing runs:
  * - a catalog prop, slot or emit the component doesn't have fails `nuxi
  *   typecheck` at that widget's line, naming it (`{ unknownNames: "labell" }`);
@@ -107,7 +107,7 @@ type Assert<T extends readonly true[]> = T
 interface WidgetCatalogChecks {
   UForm: Assert<Check<'UForm', FormProps<any>, FormSlots, FormEmits<any>>>
   // `column`, `block`, `pattern` and `patternMessage` are TotalBase's: the renderer binds the input to the record's column, sizes it and checks its value, never passes them on.
-  UFormField: Assert<Check<'UFormField', FormFieldProps & { column?: string, block?: boolean, pattern?: string, patternMessage?: string, labelWidth?: string }, FormFieldSlots>>
+  UFormField: Assert<Check<'UFormField', FormFieldProps & { column?: string, junction?: string, block?: boolean, pattern?: string, patternMessage?: string, labelWidth?: string }, FormFieldSlots>>
   TDataView: Assert<Check<'TDataView', OwnProps<typeof WidgetDataView>, object>>
   TDashboard: Assert<Check<'TDashboard', OwnProps<typeof WidgetDashboard>, object>>
   TFrame: Assert<Check<'TFrame', OwnProps<typeof WidgetFrame>, object>>

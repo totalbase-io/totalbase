@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A column's presentation (Specification_DataViews.md §15):
+ * A column's presentation (DataViews.md §15):
  * how it reads wherever it shows - inherited by every grid column, form
  * field and Table widget that doesn't set its own. In sections: General,
  * In forms (its input), Display (its value), In tables (its cells' look)

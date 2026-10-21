@@ -1,5 +1,5 @@
 /**
- * How published widgets run under load (Specification_Dashboards.md §2.9, D24): their results reused for a while
+ * How published widgets run under load (Dashboards.md §2.9, D24): their results reused for a while
  * (a cache behind an interface - in memory for now, per instance), identical requests at the same time waiting for one
  * execution, and at most N queries of one dashboard at once.
  */

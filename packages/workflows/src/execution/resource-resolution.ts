@@ -6,7 +6,7 @@ export interface WorkflowResource {
   postgresOid: number;
   schema: string;
   name: string;
-  /** The resource's default order (Specification.md §11.7) - a Read records without an order uses it. */
+  /** The resource's default order (Foundations.md §11.7) - a Read records without an order uses it. */
   defaultSort: { column: string; direction: "asc" | "desc" }[];
 }
 
@@ -24,7 +24,7 @@ export interface WorkflowResource {
 export async function resolveWorkflowResource(
   context: WorkflowEngineContext,
   resourceId: string | undefined,
-  /** Accepted resource types - Read records also reads a VIEW (Specification_Workflows.md §5.2); writes and functions take exactly one. */
+  /** Accepted resource types - Read records also reads a VIEW (Workflows.md §5.2); writes and functions take exactly one. */
   types: ReadonlyArray<"TABLE" | "VIEW" | "FUNCTION"> = ["TABLE"],
 ): Promise<WorkflowResource> {
   if (!resourceId) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no resource configured.");

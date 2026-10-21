@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * New dashboard › From a table (Specification_Dashboards.md §10.7, D27): the
+ * New dashboard › From a table (Dashboards.md §10.7, D27): the
  * dashboard assistant on the product's WizardModal (AGENTS.md section 25).
  * 1) the table or view - choosing it analyzes it (`POST /dashboards/suggest`,
  * the service MCP's suggest_dashboard calls: the catalog and pg_stats, never

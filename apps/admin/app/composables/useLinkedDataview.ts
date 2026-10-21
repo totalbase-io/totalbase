@@ -25,7 +25,7 @@ export function useLinkedDataview(targetId: string | null) {
    * the definition fetch, the target since deleted, a network error, or
    * no target at all) means "don't render" rather than showing an error
    * about a DataView the caller didn't even ask to see. Matches
-   * Specification_DataViews.md §9.7: "independently gated by the viewer's own READ permission... if
+   * DataViews.md §9.7: "independently gated by the viewer's own READ permission... if
    * absent, the panel doesn't render" - no new permission-checking
    * mechanism, just not surfacing what the fetch already refused.
    */

@@ -20,7 +20,7 @@ import {
 } from "@totalbase/tb-catalog";
 import { suggestPresentation, type ColumnSuggestions, type RowSuggestion } from "./presentation-rules.js";
 
-/** One column of a resource's default order (Specification.md §11.7). */
+/** One column of a resource's default order (Foundations.md §11.7). */
 export interface DefaultSortEntry {
   column: string;
   direction: "asc" | "desc";
@@ -43,7 +43,7 @@ export function validateDefaultSort(input: unknown, columns: readonly string[]):
 
 export type DataApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
-/** Verbs the Data API generates per resource type (Specification.md §5, §12) - the ceiling `exposed_methods` can select from. */
+/** Verbs the Data API generates per resource type (Foundations.md §5, §12) - the ceiling `exposed_methods` can select from. */
 export const APPLICABLE_METHODS: Record<"TABLE" | "VIEW" | "FUNCTION", DataApiMethod[]> = {
   TABLE: ["GET", "POST", "PATCH", "DELETE"],
   VIEW: ["GET"],
@@ -59,17 +59,17 @@ export interface AdminResource {
   status: "ACTIVE" | "MISSING";
   /** Which of APPLICABLE_METHODS[type] are actually mounted - a hard ceiling below role permissions, e.g. "DELETE never exists for this table, regardless of who's asking." A resource is exposed iff this is non-empty; there's no separate on/off flag. */
   exposedMethods: DataApiMethod[];
-  /** TotalBase's own tables: their exposure is fixed by TotalBase (Specification_Security.md §10.1), access decided by grants alone - an administrator can't change `exposedMethods`. */
+  /** TotalBase's own tables: their exposure is fixed by TotalBase (Security.md §10.1), access decided by grants alone - an administrator can't change `exposedMethods`. */
   exposureFixed: boolean;
   /** TotalBase's own metadata, not a PostgreSQL `COMMENT ON` - a plain column on `resources`. */
   description: string | null;
   functionClass: "UNCLASSIFIED" | "QUERY" | "ACTION" | null;
   auditRead: boolean;
-  /** A TABLE's CREATE or a FUNCTION's EXECUTE needs an Idempotency-Key (Specification_Data_API.md §9.1). Always false on a VIEW. */
+  /** A TABLE's CREATE or a FUNCTION's EXECUTE needs an Idempotency-Key (Data_API.md §9.1). Always false on a VIEW. */
   requireIdempotencyKey: boolean;
-  /** How a row of this table or view shows where a foreign key points at it, inherited by every such column (Specification_DataViews.md §15.5). Always `{}` on a FUNCTION. */
+  /** How a row of this table or view shows where a foreign key points at it, inherited by every such column (DataViews.md §15.5). Always `{}` on a FUNCTION. */
   rowPresentation: RowPresentation;
-  /** The order its rows come in when nobody asks for one (Specification.md §11.7): the Data API without `order_by`, a new DataView's default. Empty: the primary key. */
+  /** The order its rows come in when nobody asks for one (Foundations.md §11.7): the Data API without `order_by`, a new DataView's default. Empty: the primary key. */
   defaultSort: DefaultSortEntry[];
   createdAt: Date;
   updatedAt: Date;
@@ -107,7 +107,7 @@ export interface ResourceColumn {
   /** A view's column that is a table's column: that column's presentation, which it shows under its own (T67 first step). */
   inherited?: ColumnPresentation;
   /**
-   * The input the rule gives it (`columnFormInput`, Specification_DataViews.md §15.2) - what Automatic edits it
+   * The input the rule gives it (`columnFormInput`, DataViews.md §15.2) - what Automatic edits it
    * with: the catalog entry, its widget and props, and why. Its presentation's own choice aside.
    */
   automatic?: ColumnFormInput;
@@ -116,7 +116,7 @@ export interface ResourceColumn {
 }
 
 /**
- * A password column stays one (Specification_Security.md §2.3): its writes are hashed and its value never read, by
+ * A password column stays one (Security.md §2.3): its writes are hashed and its value never read, by
  * its presentation's `input` - chosen when it is created (Add Column), never changed after: another control would
  * expose the hashes, and an existing column's plain values would read as hashes.
  */
@@ -129,7 +129,7 @@ function assertPasswordInput(columnName: string, before: unknown, after: unknown
   }
 }
 
-/** Suggest presentation's review of one table or view (Specification_DataViews.md §15.6): what its types and constraints suggest. */
+/** Suggest presentation's review of one table or view (DataViews.md §15.6): what its types and constraints suggest. */
 export interface PresentationReview {
   resourceId: string;
   columns: ColumnSuggestions[];
@@ -192,7 +192,7 @@ export interface UpdateResourceInput {
 }
 
 /**
- * Admin management of totalbase.resources exposure state (Specification_Administration.md §1.5:
+ * Admin management of totalbase.resources exposure state (Administration.md §1.5:
  * "Resources" - GET/PATCH). Identity fields (postgres_oid,
  * schema, name, type, status) are never writable here; they only change
  * through reconcileResources following real PostgreSQL DDL.
@@ -262,7 +262,7 @@ export class ResourcesAdminService {
 
   /**
    * Each column's row in totalbase.resources_columns: the widget picked for
-   * it and its presentation (Specification_DataViews.md §15)
+   * it and its presentation (DataViews.md §15)
    * - keyed by column name, since every caller already has the
    * column's name from the same catalog read. A column with no row yet
    * (pg-sync hasn't seen it) is simply absent.
@@ -384,7 +384,7 @@ export class ResourcesAdminService {
   }
 
   /**
-   * Suggest presentation (Specification_DataViews.md §15.6, T69): what each column's type and constraints suggest
+   * Suggest presentation (DataViews.md §15.6, T69): what each column's type and constraints suggest
    * beyond TotalBase's defaults - never by its name, never in a language (presentation-rules.ts). Every
    * difference with the column's own presentation is listed: one it lacks to fill, one it has marked a change.
    * A view's column that is a table's shows that column's presentation: nothing is suggested for it.
@@ -442,7 +442,7 @@ export class ResourcesAdminService {
 
   /**
    * Every application table and view's review, in a line each - how many values it would fill and change -
-   * for whoever installs TotalBase over an existing database (Specification_DataViews.md §15.6).
+   * for whoever installs TotalBase over an existing database (DataViews.md §15.6).
    */
   async suggestPresentationEverywhere(): Promise<{ resourceId: string; schema: string; name: string; type: "TABLE" | "VIEW"; fills: number; changes: number; row: boolean }[]> {
     const { rows } = await this.database.query<{ id: string; schema: string; name: string; type: "TABLE" | "VIEW" }>(
@@ -509,7 +509,7 @@ export class ResourcesAdminService {
   }
 
   /**
-   * Replaces a table's or a view's default order (Specification.md §11.7) - every entry a column it has, each at most
+   * Replaces a table's or a view's default order (Foundations.md §11.7) - every entry a column it has, each at most
    * once, `asc` or `desc`; `[]` clears it (the primary key orders then). Validated against PostgreSQL's current columns.
    */
   async updateDefaultSort(resourceId: string, input: unknown): Promise<DefaultSortEntry[]> {

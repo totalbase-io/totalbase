@@ -3,7 +3,7 @@ import { DASHBOARD_REFRESH_INTERVALS } from '@totalbase/tb-catalog'
 import { isUiLanguage } from '@totalbase/shared'
 
 /**
- * A dashboard embed's URL parameters (Specification_Dashboards.md §9.5), over
+ * A dashboard embed's URL parameters (Dashboards.md §9.5), over
  * what the embed itself was set up with in the drawer - presentation and
  * starting state only - the visitor can edit the URL, so
  * nothing here restricts data (that is the signed token's `params`). An
@@ -23,7 +23,7 @@ export interface EmbedParams {
   hiddenVariables: string[]
   /** `refresh=30s|1m|5m|15m|1h|off` - undefined: the dashboard's own interval; null: off. */
   refreshSeconds: number | null | undefined
-  /** `locale=es` - the embed's UI language (Specification_Admin_UI.md §14); unset - the instance's. One of UI_LANGUAGES, else ignored. */
+  /** `locale=es` - the embed's UI language (Admin_UI.md §14); unset - the instance's. One of UI_LANGUAGES, else ignored. */
   locale: string | undefined
   /** `var-<name>=value` - starting values, as the App's URL writes them (`from..to`, repeated keys); the bar can change them. */
   variables: LocationQuery

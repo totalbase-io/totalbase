@@ -22,7 +22,7 @@ const TAG = "workflows";
 /**
  * A run's outcome, as the run, synchronous webhook and run-result routes
  * return it (@totalbase/workflows WorkflowRunResult) - never its steps
- * (Specification_Workflows.md §13).
+ * (Workflows.md §13).
  */
 const RUN_RESULT: JsonSchema = {
   type: "object",

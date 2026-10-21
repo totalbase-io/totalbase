@@ -39,7 +39,7 @@ describe('text from numbers and dates (T52)', () => {
   })
 })
 
-describe('a foreign key in a formula (Specification_DataViews.md §15.5)', () => {
+describe('a foreign key in a formula (DataViews.md §15.5)', () => {
   const values = { work_order: 'a1b2', technician: null }
   const foreignKeyText = { work_order: 'WO-1042' }
   const run = (source: string, returnType?: 'string' | 'boolean') => evaluateFormula(source, { values, foreignKeyText, returnType })

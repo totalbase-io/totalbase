@@ -2,12 +2,12 @@ import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { generateOpaqueToken, hashToken } from "./tokens.js";
 
-/** See Specification_Security.md. */
+/** See Security.md. */
 export type AuthTokenType = "INVITATION" | "PASSWORD_RESET" | "EMAIL_VERIFICATION";
 
 /**
  * Single-use tokens for invitation, password reset and email verification
- * flows. See Specification_Security.md.
+ * flows. See Security.md.
  */
 export class AuthTokensService {
   constructor(private readonly database: Database) {}

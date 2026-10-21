@@ -1,13 +1,13 @@
 import type { Queryable } from "@totalbase/database";
 import { resolveEffect, type PermissionDecision } from "@totalbase/permissions";
 
-/** What a role may be granted beyond row operations (Specification_Security.md §5.2). */
+/** What a role may be granted beyond row operations (Security.md §5.2). */
 export type Capability = "TRANSACTIONS" | "SEND_EMAIL";
 
 /**
  * Per-role capabilities (`roles_capabilities`): TRANSACTIONS runs POST
- * /api/transactions (Specification_Data_API.md §8), SEND_EMAIL a workflow's
- * Send email step (Specification_Workflows.md §5.16). Not modeled through
+ * /api/transactions (Data_API.md §8), SEND_EMAIL a workflow's
+ * Send email step (Workflows.md §5.16). Not modeled through
  * permissions - a capability is not a resource (migration
  * 000009) - but resolved with the same resolveEffect(): any DENY wins, no
  * grant is denied.

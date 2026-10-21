@@ -74,7 +74,7 @@ describe("DataViewsAdminService (integration)", () => {
   });
 
   afterAll(async () => {
-    // dataviews.source_resource is ON DELETE RESTRICT (Specification_DataViews.md §2.1: never
+    // dataviews.source_resource is ON DELETE RESTRICT (DataViews.md §2.1: never
     // silently destroy a configured DataView) - every DataView created by
     // this suite must go first, or the resource deletes below fail loudly
     // exactly as designed.
@@ -114,7 +114,7 @@ describe("DataViewsAdminService (integration)", () => {
     const fields = (await dataviewsAdmin.listFields(dataview.id)).filter((f) => f.kind === "COLUMN");
     expect(fields.map((f) => f.columnName)).toEqual(["id", "title", "price", "in_stock", "category_id", "created_at"]);
     expect(fields.every((f) => f.kind === "COLUMN")).toBe(true);
-    // Each the column input catalog's rule (Specification_DataViews.md §16.1): a numeric is a Number field (UInput),
+    // Each the column input catalog's rule (DataViews.md §16.1): a numeric is a Number field (UInput),
     // a boolean a Switch, a text a Text - and a foreign key a Relation (searchable), never the plain uuid's UInput.
     expect(fields.find((f) => f.columnName === "price")?.widget).toBe("UInput");
     expect(fields.find((f) => f.columnName === "in_stock")?.widget).toBe("USwitch");
@@ -199,7 +199,7 @@ describe("DataViewsAdminService (integration)", () => {
       last_attnum: expect.any(Number),
     });
 
-    // A column left out gets no field - it's never read (Specification_DataViews.md §4.1).
+    // A column left out gets no field - it's never read (DataViews.md §4.1).
     const fields = (await dataviewsAdmin.listFields(dataview.id)).filter((f) => f.kind === "COLUMN");
     expect(fields.map((f) => f.columnName).sort()).toEqual(["id", "price", "title"]);
     expect(fields.every((f) => f.visible)).toBe(true);
@@ -217,7 +217,7 @@ describe("DataViewsAdminService (integration)", () => {
     });
     const fields = await dataviewsAdmin.listFields(dataview.id);
     const createdAt = fields.find((f) => f.columnName === "created_at")!;
-    // Its title is its table's column's (Specification_DataViews.md §15) - a DataView's column has none.
+    // Its title is its table's column's (DataViews.md §15) - a DataView's column has none.
     expect(fields.filter((f) => f.kind === "COLUMN").every((f) => f.label === null)).toBe(true);
     expect(createdAt.dataType).toBe("timestamp with time zone");
     // `displayFormatKind`/`displayFormatTzAware` are auto-derived from the
@@ -272,7 +272,7 @@ describe("DataViewsAdminService (integration)", () => {
     expect(dataview.sourceResource).toBe(viewResourceId);
   });
 
-  it("rejects a FUNCTION source (Specification_DataViews.md §1.2: never a source)", async () => {
+  it("rejects a FUNCTION source (DataViews.md §1.2: never a source)", async () => {
     await expect(
       dataviewsAdmin.create({ name: "Bad Source", sourceResourceId: functionResourceId, viewType: "TABLE" }),
     ).rejects.toMatchObject({ code: "DATAVIEW_SOURCE_TYPE_INVALID" } satisfies Partial<TotalBaseError>);
@@ -371,7 +371,7 @@ describe("DataViewsAdminService (integration)", () => {
     expect(dataview.viewType).toBe("GANTT");
   });
 
-  // TREE (Specification_DataViews.md §5.14): its parent is the table's foreign key to itself.
+  // TREE (DataViews.md §5.14): its parent is the table's foreign key to itself.
   it("accepts a TREE over a self-referencing table, fills its parent, and refuses one without it", async () => {
     await database.query(`DROP TABLE IF EXISTS public.dvpkg_tree_nodes`);
     await database.query(`CREATE TABLE public.dvpkg_tree_nodes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, parent uuid REFERENCES public.dvpkg_tree_nodes (id), position int, created timestamptz NOT NULL DEFAULT now(), due date DEFAULT CURRENT_DATE)`);
@@ -413,7 +413,7 @@ describe("DataViewsAdminService (integration)", () => {
     }
   });
 
-  // Specification_DataViews.md §5.13: the main view is one of the views a list offers; never a change of kind.
+  // DataViews.md §5.13: the main view is one of the views a list offers; never a change of kind.
   it("switches a list DataView's main view among the views it offers, and refuses any other change of type", async () => {
     const list = await dataviewsAdmin.create({ name: "Main View Switch", sourceResourceId: tableResourceId, viewType: "TABLE", viewConfig: { layouts: ["TABLE", "CARDS"] } });
     expect((await dataviewsAdmin.update(list.id, { viewType: "CARDS" })).viewType).toBe("CARDS");
@@ -497,7 +497,7 @@ describe("DataViewsAdminService (integration)", () => {
     expect(updatedAgain.viewConfig).toMatchObject({ edit_presentation: "MODAL", edit_size: "md" });
   });
 
-  describe("view_config shapes (Specification_DataViews.md §2.7)", () => {
+  describe("view_config shapes (DataViews.md §2.7)", () => {
     let id: string;
     beforeAll(async () => {
       id = (await dataviewsAdmin.create({ name: "View Config Shapes", sourceResourceId: tableResourceId, viewType: "KANBAN", viewConfig: {} })).id;
@@ -581,7 +581,7 @@ describe("DataViewsAdminService (integration)", () => {
     const wideResourceId = resourceRows[0]!.id;
 
     try {
-      // The default record form, a Sidebar: one column however many fields (Specification_DataViews.md §6.3).
+      // The default record form, a Sidebar: one column however many fields (DataViews.md §6.3).
       const sidebar = await dataviewsAdmin.create({ name: "Sidebar Layout", sourceResourceId: wideResourceId, viewType: "TABLE" });
       const sidebarFields = (await dataviewsAdmin.listFields(sidebar.id)).filter((f) => f.kind === "COLUMN");
       expect(sidebarFields).toHaveLength(10);
@@ -849,7 +849,7 @@ describe("DataViewsAdminService (integration)", () => {
       expect(await dataviewsAdmin.hasUnpublishedChanges(dataview.id)).toBe(true);
       expect((await dataviewsAdmin.affectedByColumnPresentation(resources[0]!)).map((d) => d.id)).toContain(dataview.id);
 
-      // None of its own: what it shows is the table's (Specification_DataViews.md §15.5).
+      // None of its own: what it shows is the table's (DataViews.md §15.5).
       const { display_inherited: _flag, display_template: _template, ...own } = (await brand()).config as Record<string, unknown>;
       await expect(dataviewsAdmin.updateField(dataview.id, (await brand()).id, { config: { ...own, display_field: "code" } })).rejects.toMatchObject({ code: "DATAVIEW_COLUMN_INVALID" });
     } finally {
@@ -1122,7 +1122,7 @@ describe("DataViewsAdminService (integration)", () => {
     await expect(dataviewsAdmin.update(dataview.id, { scope: "HIDDEN" as never })).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
   });
 
-  // Specification.md §13 - draft vs immutable versions, Restore, Save as.
+  // Foundations.md §13 - draft vs immutable versions, Restore, Save as.
   describe("versioning", () => {
     it("creates a draft only - nothing is published implicitly", async () => {
       const dataview = await dataviewsAdmin.create({ name: "Versioning Draft", sourceResourceId: tableResourceId, viewType: "TABLE" });
@@ -1183,7 +1183,7 @@ describe("DataViewsAdminService (integration)", () => {
       expect((await dataviewsAdmin.publish(dataview.id, null)).restoredFromVersion).toBeNull();
     });
 
-    // Specification_DataViews.md §15: a draft inherits live, a version keeps what it inherited.
+    // DataViews.md §15: a draft inherits live, a version keeps what it inherited.
     it("freezes what it inherits from its resource's columns at Publish", async () => {
       const dataview = await dataviewsAdmin.create({ name: "Versioning Presentation", sourceResourceId: tableResourceId, viewType: "TABLE" });
       const setLabel = (label: string) => database.query(

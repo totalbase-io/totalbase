@@ -1,5 +1,5 @@
 /**
- * Ready-made themes for Settings > Appearance (Specification_Admin_UI.md
+ * Ready-made themes for Settings > Appearance (Admin_UI.md
  * §4.1.1): each one a complete custom CSS built on the stable contract only
  * (`[data-shell]`, Nuxt UI's tokens, `.dark`), chosen from a thumbnail.
  * Applying one replaces the sheet with its CSS, headed by a `Theme: <key>` comment

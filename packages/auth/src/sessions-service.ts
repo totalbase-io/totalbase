@@ -47,11 +47,11 @@ function toSession(row: SessionRow): Session {
 }
 
 /**
- * Opaque bearer-token sessions. See Specification_Security.md §2.2, §2.5
+ * Opaque bearer-token sessions. See Security.md §2.2, §2.5
  * (Authorization: Bearer <token>).
  *
  * Permissions are never embedded in the token; it is only a session
- * lookup key (Specification_Security.md §6.9).
+ * lookup key (Security.md §6.9).
  */
 export type SessionStatusFilter = "ACTIVE" | "EXPIRED" | "REVOKED" | "ALL";
 
@@ -70,15 +70,17 @@ export class SessionsService {
     userAgent?: string | undefined;
     ttlHours: number;
     maxSessionsPerUser: number;
+    /** The sign-in passed a second factor (Security.md §2.17) - recorded as `mfa_verified_at`. */
+    mfaVerified?: boolean;
   }): Promise<{ token: string; session: Session }> {
     const token = generateOpaqueToken();
     const tokenHash = hashToken(token);
 
     const { rows } = await this.database.query<SessionRow>(
-      `INSERT INTO totalbase.sessions ("user", token_hash, ip, user_agent, expires_at)
-       VALUES ($1, $2, $3, $4, now() + make_interval(hours => $5))
+      `INSERT INTO totalbase.sessions ("user", token_hash, ip, user_agent, expires_at, mfa_verified_at)
+       VALUES ($1, $2, $3, $4, now() + make_interval(hours => $5), CASE WHEN $6::boolean THEN now() END)
        RETURNING id, "user", ip, user_agent, created_at, last_seen_at, expires_at, revoked_at`,
-      [input.user, tokenHash, input.ip ?? null, input.userAgent ?? null, input.ttlHours],
+      [input.user, tokenHash, input.ip ?? null, input.userAgent ?? null, input.ttlHours, input.mfaVerified === true],
     );
 
     await this.enforceMaxSessions(input.user, input.maxSessionsPerUser);

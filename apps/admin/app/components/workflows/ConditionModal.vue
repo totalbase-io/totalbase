@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
- * Configures a `totalbase.condition` node's `configuration` (Specification_Workflows.md §5.9):
+ * Configures a `totalbase.condition` node's `configuration` (Workflows.md §5.9):
  * an `input` evaluated against a
  * `filter` using the existing filter-object grammar (AGENTS.md section 7 "one
  * grammar, three uses" - reused here as its fourth use, via WhereField.vue,
@@ -19,7 +19,7 @@ import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vu
  * whole configuration) - a comparison value can reference another step's
  * data too, not just `input` itself.
  *
- * Both fields are optional at draft time (Specification_Workflows.md §3.5 - "Condition
+ * Both fields are optional at draft time (Workflows.md §3.5 - "Condition
  * requires both input and a syntactically valid filter" is a completeness
  * rule, not a save-blocking one); this modal never blocks Save on an
  * incomplete condition.

@@ -13,7 +13,7 @@ function getPath(value: unknown, path: string[]): unknown {
 function resolveRawValue(raw: string | QueryVariable, input: unknown): unknown {
   if (typeof raw === "string") return raw;
   switch (raw.kind) {
-    // Another field of the same object - the row the filter reads (Specification_Data_API.md §3.7).
+    // Another field of the same object - the row the filter reads (Data_API.md §3.7).
     case "row":
       return getPath(input, [raw.column]);
     case "currentTimestamp":
@@ -22,7 +22,7 @@ function resolveRawValue(raw: string | QueryVariable, input: unknown): unknown {
     case "currentDate":
       return new Date(new Date().toDateString());
     case "interval": {
-      // CURRENT_TIMESTAMP - interval (Specification_Data_API.md §3.7): $INTERVAL.7d is 7 days ago.
+      // CURRENT_TIMESTAMP - interval (Data_API.md §3.7): $INTERVAL.7d is 7 days ago.
       const msPerUnit: Record<string, number> = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000, w: 604_800_000, y: 31_536_000_000 };
       return new Date(Date.now() - raw.amount * msPerUnit[raw.unit]!);
     }

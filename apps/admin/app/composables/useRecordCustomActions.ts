@@ -6,7 +6,7 @@ import { actionFlags, actionsAt, CUSTOM_ACTION_ICON, runnableActions } from '~/u
 import { flattenQueryObject } from '~/utils/flatten-query-object'
 
 /**
- * A record form's own actions (Specification_DataViews.md §3.7) - for its "⋮": those this viewer may run, shown
+ * A record form's own actions (DataViews.md §3.7) - for its "⋮": those this viewer may run, shown
  * where their condition holds for the open record (its row read with their flags - PostgreSQL decides). Done, the
  * record is read again.
  */

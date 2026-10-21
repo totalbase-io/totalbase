@@ -9,7 +9,7 @@ export interface FolderNode {
 }
 
 /**
- * Files and folders for every portal user (Specification_Security.md §9.3).
+ * Files and folders for every portal user (Security.md §9.3).
  * Read through the Data API (files / folders -
  * only the rows and columns the caller may read; a file's storage key
  * never comes out of it). Files are written through their own Data API
@@ -66,10 +66,10 @@ export function useFilesApi() {
       await dataApi.del(`${foldersPath}/${id}`)
     },
     upload: async (form: FormData): Promise<FileNode> => (await dataApi.post<FileNode>(filesPath, form)).data,
-    // JSON bodies carry the `{ data }` envelope (Specification_Data_API.md §2.5); multipart goes as is.
+    // JSON bodies carry the `{ data }` envelope (Data_API.md §2.5); multipart goes as is.
     replaceContent: async (id: string, body: FormData | { content: string }): Promise<FileNode> =>
       (await dataApi.put<FileNode>(`${filesPath}/${id}/content`, body instanceof FormData ? body : { data: body })).data,
-    /** Metadata, and rename (`name`) / move (`folder`, null = root) - Specification_Administration.md §10.12. */
+    /** Metadata, and rename (`name`) / move (`folder`, null = root) - Administration.md §10.12. */
     updateMetadata: async (id: string, patch: { visibility?: 'PRIVATE' | 'PUBLIC', description?: string | null, tags?: string[], name?: string, folder?: string | null }): Promise<FileNode> =>
       (await dataApi.patch<FileNode>(`${filesPath}/${id}`, { data: patch })).data,
     remove: async (id: string): Promise<void> => {

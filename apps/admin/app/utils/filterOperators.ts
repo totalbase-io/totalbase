@@ -24,7 +24,7 @@ export const BETWEEN_OPERATOR = '_between' as const
 export const LIST_OPERATORS: ReadonlySet<ComparisonOperator> = new Set(['_in', '_nin'])
 
 /**
- * A label in the UI's language (Specification_Admin_UI.md §14), read when it
+ * A label in the UI's language (Admin_UI.md §14), read when it
  * is shown - the maps below keep their English as the fallback (outside a
  * Nuxt app, or a language without the key), so their callers read them as
  * plain records.

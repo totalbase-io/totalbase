@@ -35,7 +35,7 @@ const color = ref<RoleColor | undefined>(undefined)
 const DEFAULT_FLAGS: RoleAccessFlags = { adminAccess: false, appAccess: true, apiAccess: false }
 const flags = ref<RoleAccessFlags>({ ...DEFAULT_FLAGS })
 const saving = ref(false)
-// Its App home (Specification_Security.md §8.1): one of the menu's objects, `KIND:id`; undefined = the App's own page.
+// Its App home (Security.md §8.1): one of the menu's objects, `KIND:id`; undefined = the App's own page.
 const home = ref<string | undefined>(undefined)
 const homeOptions = ref<{ value: string, label: string, description: string, icon: string }[]>([])
 async function loadHomeOptions() {
@@ -55,7 +55,7 @@ async function loadHomeOptions() {
     notifyError(err, t('users.roleForm.homeLoadError'))
   }
 }
-// The role's capabilities (roles_capabilities, Specification_Security.md
+// The role's capabilities (roles_capabilities, Security.md
 // §5.2) - their own grant rows, not role columns, so a reserved role's
 // switches work too. `grants` are the rows as loaded; null = none.
 const CAPABILITIES: Capability[] = ['TRANSACTIONS', 'SEND_EMAIL']

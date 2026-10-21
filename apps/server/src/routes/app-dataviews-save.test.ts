@@ -9,7 +9,7 @@ const PREFIX = "dv-save-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * A record and its lines saved together (Specification_DataViews.md §6.6, T51): one transaction through the
+ * A record and its lines saved together (DataViews.md §6.6, T51): one transaction through the
  * DataView, its own tables only, each write under the viewer's permissions - no TRANSACTIONS capability.
  */
 describe("POST /app/api/dataviews/:slug/save", () => {
@@ -23,6 +23,8 @@ describe("POST /app/api/dataviews/:slug/save", () => {
   let lines: string;
   let masterId: string;
   let grantedRoles: string[];
+  let junctionId: string;
+  let techId: number;
 
   const save = (operations: unknown[], as = token) =>
     app.inject({ method: "POST", url: `/app/api/dataviews/${slug}/save`, headers: { authorization: `Bearer ${as}` }, payload: { data: { operations } } });
@@ -51,7 +53,7 @@ describe("POST /app/api/dataviews/:slug/save", () => {
     await database.query(`DELETE FROM totalbase.users WHERE email LIKE '${PREFIX}%'`);
     await database.query(`DELETE FROM totalbase.roles WHERE name LIKE '${PREFIX}%'`);
     await database.query(`DELETE FROM totalbase.resources WHERE name LIKE 'dv_save_test_%'`);
-    await database.query(`DROP TABLE IF EXISTS public.dv_save_test_lines, public.dv_save_test_orders, public.dv_save_test_other CASCADE`);
+    await database.query(`DROP TABLE IF EXISTS public.dv_save_test_orders_techs, public.dv_save_test_techs, public.dv_save_test_lines, public.dv_save_test_orders, public.dv_save_test_other CASCADE`);
   }
 
   beforeAll(async () => {
@@ -64,14 +66,24 @@ describe("POST /app/api/dataviews/:slug/save", () => {
          "order" uuid NOT NULL REFERENCES public.dv_save_test_orders (id), product text NOT NULL, quantity integer NOT NULL CHECK (quantity > 0))`,
     );
     const other = await table("dv_save_test_other", `CREATE TABLE public.dv_save_test_other (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), note text)`);
+    const techs = await table("dv_save_test_techs", `CREATE TABLE public.dv_save_test_techs (id integer PRIMARY KEY, name text NOT NULL)`);
+    // A junction table, as New table › Junction table creates it (Administration.md §3.4).
+    junctionId = await table(
+      "dv_save_test_orders_techs",
+      `CREATE TABLE public.dv_save_test_orders_techs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+         "order" uuid NOT NULL REFERENCES public.dv_save_test_orders (id) ON DELETE CASCADE,
+         tech integer NOT NULL REFERENCES public.dv_save_test_techs (id) ON DELETE CASCADE, UNIQUE ("order", tech))`,
+    );
+    techId = 7;
+    await database.query(`INSERT INTO public.dv_save_test_techs VALUES (7, 'Ana'), (8, 'Luis')`);
 
     const role = (await context.roles.create(`${PREFIX}-clerk`, { appAccess: true })).id;
     const readOnly = (await context.roles.create(`${PREFIX}-reader`, { appAccess: true })).id;
     // Every column, each write: a grant names the fields it opens.
     const fields = (names: string[]) => names.map((field) => ({ field, effect: "ALLOW" as const }));
-    const columns = { [orders]: fields(["id", "customer"]), [lines]: fields(["id", "order", "product", "quantity"]), [other]: fields(["id", "note"]) };
+    const columns = { [orders]: fields(["id", "customer"]), [lines]: fields(["id", "order", "product", "quantity"]), [other]: fields(["id", "note"]), [techs]: fields(["id", "name"]), [junctionId]: fields(["id", "order", "tech"]) };
     for (const action of ["READ", "CREATE", "UPDATE", "DELETE"] as const) {
-      for (const resource of [orders, lines, other]) {
+      for (const resource of [orders, lines, other, techs, junctionId]) {
         await context.permissions.set(role, resource, action, { effect: "ALLOW", ...(action === "DELETE" ? {} : { fields: columns[resource] }) });
       }
     }
@@ -82,6 +94,7 @@ describe("POST /app/api/dataviews/:slug/save", () => {
     const detail = await context.dataviewsAdmin.create({ name: "Save lines", slug: `${PREFIX}-lines`, sourceResourceId: lines, viewType: "TABLE" });
     const master = await context.dataviewsAdmin.create({ name: "Save orders", slug: `${PREFIX}-orders`, sourceResourceId: orders, viewType: "TABLE" });
     await context.dataviewsAdmin.addWidget(master.id, { widget: "TDataView", config: { props: { dataview: detail.id, column: "order" } } });
+    await context.dataviewsAdmin.addWidget(master.id, { widget: "UFormField", config: { props: { junction: junctionId, label: "Technicians" } } });
     for (const id of [detail.id, master.id]) {
       await context.dataviewsAdmin.setRoles(id, [role, readOnly]);
       await context.dataviewsAdmin.publish(id, null);
@@ -130,6 +143,54 @@ describe("POST /app/api/dataviews/:slug/save", () => {
     // Which line PostgreSQL refused: a form marks that one.
     expect(res.json().errors[0].operation).toBe("line1");
     expect(await count("dv_save_test_orders")).toBe(before);
+  });
+
+  it("tells a viewer how a form field's junction table links the record, and what they may do in it (DataViews.md §8.5)", async () => {
+    const res = await app.inject({ method: "GET", url: `/app/api/dataviews/${slug}/junctions/${junctionId}`, headers: { authorization: `Bearer ${token}` } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({
+      resourceId: junctionId,
+      table: "dv_save_test_orders_techs",
+      primaryKey: "id",
+      column: "order",
+      otherColumn: "tech",
+      target: { schema: "public", table: "dv_save_test_techs", column: "id" },
+      actions: { read: true, create: true, delete: true },
+    });
+    // What the Design form offers: only the junction - the lines' table points at the orders too, but holds rows.
+    expect((await context.dataviewsAdmin.listJunctions(orders)).map((j) => j.table)).toEqual(["dv_save_test_orders_techs"]);
+    // Denied is missing: the reader holds no READ on it - and a table that isn't a junction of the record is no junction.
+    const denied = await app.inject({ method: "GET", url: `/app/api/dataviews/${slug}/junctions/${junctionId}`, headers: { authorization: `Bearer ${readOnlyToken}` } });
+    expect(denied.statusCode).toBe(404);
+    const { rows } = await database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE name = 'dv_save_test_lines'`);
+    const notOne = await app.inject({ method: "GET", url: `/app/api/dataviews/${slug}/junctions/${rows[0]!.id}`, headers: { authorization: `Bearer ${token}` } });
+    expect(notOne.statusCode).toBe(404);
+  });
+
+  it("adds and removes a junction's links with the record, in one transaction - a link twice refuses the whole save", async () => {
+    const res = await save([
+      { key: "header", operation: "insert", schema: "public", table: "dv_save_test_orders", data: { customer: "Linked" } },
+      { key: "link1", operation: "insert", schema: "public", table: "dv_save_test_orders_techs", data: { order: "$header.id", tech: techId } },
+    ]);
+    expect(res.statusCode).toBe(200);
+    const { header, link1 } = res.json().data;
+    expect(link1.order).toBe(header.id);
+
+    // PostgreSQL's UNIQUE keeps a link once: the header's change goes back with it.
+    const twice = await save([
+      { key: "header", operation: "update", schema: "public", table: "dv_save_test_orders", id: header.id, data: { customer: "Linked twice" } },
+      { key: "link2", operation: "insert", schema: "public", table: "dv_save_test_orders_techs", data: { order: header.id, tech: techId } },
+    ]);
+    expect(twice.statusCode).toBe(409);
+    expect((await database.query<{ customer: string }>(`SELECT customer FROM public.dv_save_test_orders WHERE id = $1`, [header.id])).rows[0]!.customer).toBe("Linked");
+
+    const removed = await save([
+      { key: "unlink1", operation: "delete", schema: "public", table: "dv_save_test_orders_techs", id: link1.id },
+      { key: "link2", operation: "insert", schema: "public", table: "dv_save_test_orders_techs", data: { order: header.id, tech: 8 } },
+    ]);
+    expect(removed.statusCode).toBe(200);
+    const { rows } = await database.query<{ tech: number }>(`SELECT tech FROM public.dv_save_test_orders_techs WHERE "order" = $1`, [header.id]);
+    expect(rows.map((r) => r.tech)).toEqual([8]);
   });
 
   it("writes only the DataView's own tables", async () => {

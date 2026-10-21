@@ -33,7 +33,7 @@ export interface SettingsWritableRead {
 export type SettingsWritableContext = Pick<MutationsContext, "database" | "effectivePermissions" | "settings">;
 
 /**
- * Which rows of a SETTINGS DataView the viewer may change (Specification_DataViews.md §5.12) - the
+ * Which rows of a SETTINGS DataView the viewer may change (DataViews.md §5.12) - the
  * Permission Resolver's own answer, never a guess: UPDATE's field decision for the value column, and
  * its row filter compiled with READ's, as the Data API compiles any read (compileSelect: identifiers
  * from the catalog, quoted centrally; values parameterized), so each row shows locked or editable

@@ -12,7 +12,7 @@ export interface CompiledFunctionCall {
 /**
  * Compiles a function call using PostgreSQL's named-argument notation
  * (func(param => $1, ...)), which lets Postgres itself reject unknown
- * argument names. See Specification_Data_API.md §7.
+ * argument names. See Data_API.md §7.
  */
 export function compileFunctionCall(
   schema: string,

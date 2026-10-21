@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Location widget (TGeolocation, Specification_DataViews.md §9.9): the
+ * The Location widget (TGeolocation, DataViews.md §9.9): the
  * device's position into a `point` column, no map - a button, the
  * coordinates once captured, and why not when there's none. `auto` captures
  * when the field opens empty (a reading's "where it was taken"); the button

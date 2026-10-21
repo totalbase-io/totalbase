@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * `TDashboard` (Specification_DataViews.md §9.7): a
+ * `TDashboard` (DataViews.md §9.7): a
  * published Dashboard inside the page (DashboardView.vue, the App's own
  * viewer), its variables set from the page - `variables` holds a formula per
  * variable name, e.g. `{{vars.record.data.id}}` for a customer's figures.

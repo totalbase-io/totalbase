@@ -4,7 +4,7 @@ import type { AppContext } from "../context.js";
 import { requireAppAccess } from "../auth-guards.js";
 
 /**
- * The base layer every map draws (Specification_DataViews.md §5.4), for any
+ * The base layer every map draws (DataViews.md §5.4), for any
  * portal user: a MAP DataView, a map field, a dashboard map. The Mapbox
  * token in it is a public one - restricted by URL in the Mapbox account,
  * never a secret.

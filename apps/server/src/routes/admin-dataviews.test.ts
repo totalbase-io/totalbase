@@ -7,7 +7,7 @@ import { setupTestApp } from "../test-support.js";
 
 /**
  * DataView management routes - the wizard's steps 1-2 (identity, source).
- * See Specification_DataViews.md. Admin-only, same as every
+ * See DataViews.md. Admin-only, same as every
  * other admin-plane route family.
  */
 describe("/admin/api/dataviews", () => {
@@ -187,7 +187,7 @@ describe("/admin/api/dataviews", () => {
     }
   });
 
-  // Specification_DataViews.md §8.3, "All or nothing".
+  // DataViews.md §8.3, "All or nothing".
   it("tells which roles opening a page can't READ a Resource's table or a column its query reads (GET /resource-access)", async () => {
     const page = await context.dataviewsAdmin.create({ name: "Admin DV route resource access", viewType: "CUSTOM" });
     const full = (await context.roles.create("admin-dataviews-route-test-full", { appAccess: true })).id;

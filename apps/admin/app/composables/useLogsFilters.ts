@@ -81,7 +81,8 @@ export const LOGS_CATEGORIES: LogsActionCategory[] = [
     icon: 'i-lucide-database',
     actions: [
       { value: 'DDL', labelKey: 'content.logs.actions.DDL', icon: 'i-lucide-table-properties' },
-      { value: 'MAINTENANCE', labelKey: 'content.logs.actions.MAINTENANCE', icon: 'i-lucide-wrench' }
+      { value: 'MAINTENANCE', labelKey: 'content.logs.actions.MAINTENANCE', icon: 'i-lucide-wrench' },
+      { value: 'BACKUP', labelKey: 'content.logs.actions.BACKUP', icon: 'i-lucide-archive' }
     ]
   },
   {
@@ -108,7 +109,7 @@ export const LOGS_CATEGORIES: LogsActionCategory[] = [
  * a URL. Event names come from apps/server/src/access-audit.ts.
  */
 export const LOGS_SECURITY_VIEWS: Array<{ key: string, labelKey: string, icon: string, event: string, status?: AuditStatus }> = [
-  { key: 'failed-sign-ins', labelKey: 'content.logs.securityViews.failed-sign-ins', icon: 'i-lucide-log-in', event: 'auth.login,auth.portal_login,auth.oauth_login', status: 'DENIED' },
+  { key: 'failed-sign-ins', labelKey: 'content.logs.securityViews.failed-sign-ins', icon: 'i-lucide-log-in', event: 'auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify', status: 'DENIED' },
   { key: 'access-changes', labelKey: 'content.logs.securityViews.access-changes', icon: 'i-lucide-shield', event: 'role.*,permission.*,user.roles_set,assignment.*,role_manager.*,dataview_role.*,dashboard_role.*' },
   { key: 'config-changes', labelKey: 'content.logs.securityViews.config-changes', icon: 'i-lucide-settings', event: 'settings.*,secret.*,auth_provider.*,system_email.*' },
   { key: 'credential-changes', labelKey: 'content.logs.securityViews.credential-changes', icon: 'i-lucide-key-round', event: 'token.*,session.*,user.sessions_revoke,user.password_reset' }

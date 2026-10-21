@@ -65,7 +65,7 @@ export interface AuditLogFilter {
    * access review.
    */
   roleChange?: string | undefined;
-  /** Every entry written by one workflow run's steps (`workflow_run`, from metadata.workflowRun - Specification_Workflows.md §7.4). */
+  /** Every entry written by one workflow run's steps (`workflow_run`, from metadata.workflowRun - Workflows.md §7.4). */
   workflowRun?: string | undefined;
   since?: Date | undefined;
   until?: Date | undefined;
@@ -175,7 +175,7 @@ function buildWhere(filter: AuditLogFilter): { whereSql: string; params: unknown
     const added = bind(JSON.stringify({ roles_added: [filter.roleChange] }));
     const removed = bind(JSON.stringify({ roles_removed: [filter.roleChange] }));
     // A role's members also change through the Data API (delegated users,
-    // Specification_Security.md §9.4): an assignment row written or
+    // Security.md §9.4): an assignment row written or
     // deleted, its event named by the mutation's audit entry.
     const role = bind(filter.roleChange);
     conditions.push(
@@ -193,7 +193,7 @@ function buildWhere(filter: AuditLogFilter): { whereSql: string; params: unknown
 }
 
 /**
- * Read side of totalbase.logs for the Admin API (Specification_Security.md §11.8:
+ * Read side of totalbase.logs for the Admin API (Security.md §11.8:
  * "GET /audit/activity", "GET /audit/logs",
  * "GET /audit/logs/{id}", "GET /resources/{resource}/audit").
  */

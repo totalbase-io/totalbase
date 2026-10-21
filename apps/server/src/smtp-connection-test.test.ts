@@ -9,7 +9,7 @@ import { loadServerEnv } from "./env.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * SMTP "Test connection" (Specification_Administration.md §8.1):
+ * SMTP "Test connection" (Administration.md §8.1):
  * `POST /admin/api/settings/mail/verify` connects and authenticates through
  * the saved smtp.* settings without sending. A tiny local relay speaks just
  * enough SMTP (greeting, EHLO with AUTH PLAIN, AUTH, QUIT) and records the

@@ -42,7 +42,7 @@ function roleFromRow(row: Record<string, unknown>): Role {
 }
 
 /**
- * Roles and their members through the Data API (Specification_Security.md §9.3, §9.4)
+ * Roles and their members through the Data API (Security.md §9.3, §9.4)
  * - for administrators and delegated users alike: a
  * non-administrator sees the roles and columns their permissions allow,
  * and writes are checked by the same resolver plus the role guardrails
@@ -53,7 +53,7 @@ function roleFromRow(row: Record<string, unknown>): Role {
 /** What a role may be granted beyond row operations (roles_capabilities). */
 export type Capability = 'TRANSACTIONS' | 'SEND_EMAIL'
 
-/** An attestation that a role's members were reviewed (roles_reviews, Specification_Security.md §1.8). */
+/** An attestation that a role's members were reviewed (roles_reviews, Security.md §1.8). */
 export interface AccessReview {
   id: string
   outcome: 'NO_CHANGES' | 'CHANGES_MADE'
@@ -104,7 +104,7 @@ export function useRolesApi() {
       await dataApi.del(`${assignmentsPath}/${assignmentId}`)
     },
     /**
-     * Bulk role membership (Specification_Security.md §9.4): one Data API
+     * Bulk role membership (Security.md §9.4): one Data API
      * request each, so one transaction with an audit row per assignment.
      * Adding skips users who already hold the role (ON CONFLICT DO NOTHING).
      */
@@ -141,7 +141,7 @@ export function useRolesApi() {
         fields: (row.field_overrides ?? []) as Permission['fields'],
         payloadChecks: (row.payload_checks ?? []) as Permission['payloadChecks']
       })),
-    /** A role's capability (roles_capabilities, Specification_Security.md §5.2): its ALLOW/DENY row, or null without one. */
+    /** A role's capability (roles_capabilities, Security.md §5.2): its ALLOW/DENY row, or null without one. */
     capabilityGrant: async (roleId: string, capability: Capability): Promise<'ALLOW' | 'DENY' | null> =>
       (await dataApi.get<Array<{ effect: 'ALLOW' | 'DENY' }>>(capabilitiesPath, { 'where[role][_eq]': roleId, 'where[capability][_eq]': capability, 'fields': 'effect', 'limit': 1 })).data[0]?.effect ?? null,
     /**
@@ -165,7 +165,7 @@ export function useRolesApi() {
         await dataApi.post(capabilitiesPath, { data: { role: roleId, capability, effect: 'ALLOW' } })
       }
     },
-    /** A role's access reviews, newest first (Specification_Security.md §1.8). */
+    /** A role's access reviews, newest first (Security.md §1.8). */
     accessReviews: async (roleId: string, limit = 20): Promise<AccessReview[]> =>
       (await dataApi.get<Array<Record<string, unknown>>>(dataApi.resourcePath('totalbase', 'roles_reviews'), {
         'where[role][_eq]': roleId,
@@ -188,7 +188,7 @@ export function useRolesApi() {
     /** The roles whose members may assign `roleId` (roles_managers). */
     managers: async (roleId: string): Promise<string[]> =>
       (await dataApi.getAll<{ manager: string }>(dataApi.resourcePath('totalbase', 'roles_managers'), { 'where[role][_eq]': roleId, 'fields': 'manager' })).map(row => row.manager),
-    /** The roles granted object access to a DataView or a Dashboard (Specification_Security.md §7.1). */
+    /** The roles granted object access to a DataView or a Dashboard (Security.md §7.1). */
     grantedOn: async (kind: 'dataview' | 'dashboard', id: string): Promise<string[]> =>
       (await dataApi.getAll<{ role: string }>(dataApi.resourcePath('totalbase', `${kind}s_roles`), { [`where[${kind}][_eq]`]: id, fields: 'role' })).map(row => row.role)
   }

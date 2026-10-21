@@ -1,5 +1,5 @@
 /**
- * Calendar periods (Specification_Data_API.md §3.7) - the query language's
+ * Calendar periods (Data_API.md §3.7) - the query language's
  * `$PERIOD.<period>.<from|to>` and a date range variable's presets. Only the
  * names live here, so the browser can offer them; PostgreSQL computes the
  * bounds (@totalbase/query-engine's periodSql).

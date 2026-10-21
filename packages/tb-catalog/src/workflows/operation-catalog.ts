@@ -1,7 +1,7 @@
 import { describeShape, distinct, isRecord, type Shape } from "@totalbase/shared";
 
 /**
- * The workflow operation catalog (Specification_Workflows.md §5, §5.25): every step a workflow can hold, and the
+ * The workflow operation catalog (Workflows.md §5, §5.25): every step a workflow can hold, and the
  * one description of it - the editor's step menu, its canvas ports, the server's save and publish checks, the
  * engine's template resolution and the MCP's guide all read it. Plain data, no `pg`: the runtime handlers stay in
  * `@totalbase/workflows` (`OPERATION_HANDLERS`), which a test keeps equal to the entries that run as a handler.
@@ -91,13 +91,13 @@ const ANY: Shape = { type: "any" };
 const BOOLEAN: Shape = { type: "boolean" };
 /** A JSON object of any fields - a record's values, a function's arguments, a PDF's data. */
 const OBJECT: Shape = { type: "custom", takes: "an object", check: (value) => (isRecord(value) ? null : "is not an object") };
-/** A filter object in the one filter grammar (Specification_Data_API.md §3), parsed where it's used. */
+/** A filter object in the one filter grammar (Data_API.md §3), parsed where it's used. */
 const FILTER: Shape = { type: "custom", takes: "a filter object", check: (value) => (isRecord(value) ? null : "is not a filter object") };
 /** One address, several comma-separated, or a list of them (§5.16). */
 const ADDRESSES: Shape = { type: "oneOf", forms: [TEXT, { type: "list", of: TEXT }], label: "an address, a comma-separated list or a list of addresses" };
 const CSV_OR_JSON: Shape = { type: "enum", options: ["json", "csv"] };
 
-/** A Data API query object - its top-level clauses (Specification_Data_API.md §3), each read by the query parser. */
+/** A Data API query object - its top-level clauses (Data_API.md §3), each read by the query parser. */
 const QUERY: Shape = {
   type: "object",
   fields: Object.fromEntries(
@@ -300,7 +300,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "none",
-    // executeAs defaults to the run's executor (Specification_Workflows.md §5.7).
+    // executeAs defaults to the run's executor (Workflows.md §5.7).
     required: [{ field: "statement", missing: "no SQL statement" }],
     configuration: { type: "object", fields: { statement: TEXT, executeAs: TEXT } },
   },

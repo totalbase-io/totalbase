@@ -4,7 +4,7 @@ import forge from "node-forge";
 import type { OperationHandler } from "./types.js";
 
 /**
- * Sign (Specification_Workflows.md §5.15.2): signs a text with a certificate
+ * Sign (Workflows.md §5.15.2): signs a text with a certificate
  * and its private key kept in `totalbase.secrets`, read when the step runs -
  * never in the definition, a version or the history. The one format today is
  * `CMS`: a PKCS#7/CMS SignedData with the content attached, the certificate

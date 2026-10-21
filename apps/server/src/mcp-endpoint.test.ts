@@ -11,7 +11,7 @@ import type { AppContext } from "./context.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * POST /mcp, served by the TotalBase server itself (Specification_Administration.md
+ * POST /mcp, served by the TotalBase server itself (Administration.md
  * §11.5, §11.7): off until an administrator turns it on, authenticated as
  * the Admin API, narrowed by Settings > MCP, its tools' calls injected
  * in-process and audited as the caller's.
@@ -136,7 +136,7 @@ describe("MCP endpoint (POST /mcp)", () => {
     const responses = [];
     for (let i = 0; i < 3; i += 1) responses.push(await listTools({}, fresh));
     expect(responses.map((r) => r.statusCode)).toEqual([200, 200, 429]);
-    // When to try again: the seconds left in the window (Beta_Findings 3.11).
+    // When to try again: the seconds left in the window.
     expect(Number(responses[2]!.headers["retry-after"])).toBeGreaterThanOrEqual(1);
     await context.settings.reset("mcp.rate_limit_per_minute");
   });

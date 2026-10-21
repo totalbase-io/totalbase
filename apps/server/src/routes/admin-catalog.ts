@@ -58,10 +58,10 @@ async function relationDetailWithOwnership(context: AppContext, id: string, type
 }
 
 /**
- * Raw PostgreSQL catalog browsing (Specification_Administration.md §1:
+ * Raw PostgreSQL catalog browsing (Administration.md §1:
  * "Catalog"). Independent of exposure state - see admin-resources.ts for
  * managing what's actually exposed through the Data API. `{resource}`
- * is the PostgreSQL oid (Specification.md §11: identity follows
+ * is the PostgreSQL oid (Foundations.md §11: identity follows
  * OID), not a resource name, since names collide across schemas.
  * `{id}` is the TotalBase resource id, or the object's PostgreSQL OID
  * (resourceByPathId - the same rules as DROP VIEW/FUNCTION).
@@ -286,7 +286,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
     },
   );
 
-  // What still names a column, table or view PostgreSQL lost (Specification_DataViews.md §4.8).
+  // What still names a column, table or view PostgreSQL lost (DataViews.md §4.8).
   app.get<{ Querystring: { resource?: string } }>("/admin/api/catalog/broken-references", {
     preHandler,
     ...doc({
@@ -300,7 +300,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
     }),
   }, async request => ({ data: await brokenReferences(context, request.query.resource) }));
 
-  // pg-sync's Pull direction (Specification.md §11.8)
+  // pg-sync's Pull direction (Foundations.md §11.8)
   // - see catalog-refresh.ts's syncCatalog().
   app.post<{ Body: { data?: { autoPresentation?: unknown } } | undefined }>("/admin/api/catalog/refresh", {
     preHandler,

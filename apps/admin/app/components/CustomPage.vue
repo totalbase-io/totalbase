@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A CUSTOM DataView, live (Specification_DataViews.md §13.1) -
+ * A CUSTOM DataView, live (DataViews.md §13.1) -
  * the App page and the Design form's Preview both mount it. Its variables
  * load, its widgets draw bound to them, its Code runs on their events;
  * every read and write is the viewer's, through the Data API.

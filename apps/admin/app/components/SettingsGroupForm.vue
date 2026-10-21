@@ -17,7 +17,8 @@ import { CUSTOM_CSS_EXAMPLES } from '~/utils/custom-css-examples'
  * value that differs from its registry default is marked "Modified";
  * Restore default puts the default in the draft, and saving it drops the
  * stored override (the server stores no value equal to its default).
- * A setting whose `dependsOn` switch is off is dimmed, still editable.
+ * A setting whose `dependsOn` switch is off is dimmed, still editable - or,
+ * with `disableDependents`, not editable until the switch is on.
  */
 const props = defineProps<{
   /**
@@ -30,6 +31,13 @@ const props = defineProps<{
   /** Overrides the page header's title/description (the first group's copy by default). */
   title?: string
   description?: string
+  /** The zone a `cron` setting's next occurrences are shown in - the instance's (system.timezone); UTC when unset. */
+  cronTimezone?: string
+  /**
+   * A setting whose `dependsOn` switch is off can't be edited, rather than only dimmed - for a page whose switch
+   * turns the whole feature off (Backups). Elsewhere it stays editable, to be set up before turning it on.
+   */
+  disableDependents?: boolean
 }>()
 
 interface SettingField {
@@ -38,7 +46,7 @@ interface SettingField {
   description: string
   unit?: string
   section?: string
-  input?: 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea'
+  input?: 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron'
   options?: Array<{ label: string, value: string, description?: string }>
   orientation?: 'vertical'
   dependsOn?: string
@@ -49,7 +57,7 @@ interface SettingField {
   /** Keys applied only at startup (pool.*): the value the server uses right now. */
   liveValue?: unknown
 }
-type SettingLink = { setting: string } | { page: 'secrets' | 'roles' | 'templates' | 'docs' }
+type SettingLink = { setting: string } | { page: 'secrets' | 'roles' | 'templates' | 'docs' | 's3' }
 interface SettingsSchema {
   group: { label: string, description: string }
   fields: SettingField[]
@@ -65,7 +73,7 @@ const notifyError = useErrorToast()
 const ui = useUiLocale()
 
 // --- The settings metadata catalog in the UI's language
-// (Specification_Admin_UI.md §14): @totalbase/settings' metadata.ts is the
+// (Admin_UI.md §14): @totalbase/settings' metadata.ts is the
 // English source the server sends; settings.metadata.* translates it, and a
 // setting added later without a translation still reads in English. ---
 const catalog = useCatalogText()
@@ -128,7 +136,6 @@ const fields = computed<SettingField[]>(() => {
     .map(key => ({ key, label: shortKey(key), description: '' }))
   return [...known, ...fallback]
 })
-const fieldsByKey = computed(() => new Map(fields.value.map(f => [f.key, f])))
 
 // Each key is listed under its own `section`, in order of first
 // appearance. A key without one falls under its group's label when the
@@ -156,7 +163,7 @@ function shortKey(fullKey: string) {
   return fullKey.startsWith(`${group}.`) ? fullKey.slice(group.length + 1) : fullKey
 }
 
-type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'string'
+type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'string'
 function widgetFor(field: SettingField): Widget {
   if (field.input) return field.input
   if (field.options) return 'select'
@@ -177,6 +184,10 @@ function restartPending(field: SettingField) {
 }
 function isDimmed(field: SettingField) {
   return !!field.dependsOn && settings.value?.[field.dependsOn] === false
+}
+/** With `disableDependents`: off while its switch is off in the draft - turning the switch on frees it at once. */
+function isDisabled(field: SettingField) {
+  return !!props.disableDependents && !!field.dependsOn && draft.value[field.dependsOn] === false
 }
 
 // --- Human-readable hints next to raw numbers ---
@@ -268,7 +279,8 @@ const LINK_PAGES = {
   secrets: { to: '/settings/secrets', label: 'shell.nav.items.secrets', icon: 'i-lucide-lock-keyhole' },
   roles: { to: '/roles', label: 'shell.nav.items.roles', icon: 'i-lucide-shield' },
   templates: { to: '/templates', label: 'shell.nav.items.templates', icon: 'i-lucide-file-text' },
-  docs: { to: '/docs/openapi', label: 'settings.groupForm.docsOpenapi', icon: 'i-lucide-file-code' }
+  docs: { to: '/docs/openapi', label: 'settings.groupForm.docsOpenapi', icon: 'i-lucide-file-code' },
+  s3: { to: '/settings/s3', label: 'shell.nav.items.s3Storage', icon: 'i-lucide-cloud' }
 } as const
 function fieldLinks(field: SettingField): { key: string, to: string, label: string, icon: string }[] {
   const links: SettingLink[] = [
@@ -432,11 +444,12 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
             :key="field.key"
           >
             <USeparator v-if="index > 0" />
-            <div
+            <fieldset
               :id="settingAnchor(field.key)"
-              class="flex flex-col gap-2 rounded-md outline-offset-8 transition-[opacity,outline-color] duration-500"
+              :disabled="isDisabled(field)"
+              class="m-0 flex min-w-0 flex-col gap-2 rounded-md border-0 p-0 outline-offset-8 transition-[opacity,outline-color] duration-500"
               :class="[
-                isDimmed(field) ? 'opacity-60' : undefined,
+                isDimmed(field) || isDisabled(field) ? 'opacity-60' : undefined,
                 highlightKey === field.key ? 'outline-2 outline-primary/50' : 'outline-2 outline-transparent'
               ]"
             >
@@ -484,12 +497,6 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                       />
                       {{ link.label }}
                     </ULink>
-                  </p>
-                  <p
-                    v-if="isDimmed(field)"
-                    class="text-xs text-muted"
-                  >
-                    {{ t('settings.groupForm.noEffectWhileOff', { setting: fieldsByKey.get(field.dependsOn!) ? fieldLabel(fieldsByKey.get(field.dependsOn!)!) : field.dependsOn }) }}
                   </p>
                 </div>
                 <USwitch
@@ -575,6 +582,15 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                     class="w-full max-w-md"
                     @update:model-value="(v: string) => setSelectValue(field.key, v)"
                   />
+                  <!-- Mounted with its value: the editor starts from the expression it's given, and emits it back unchanged. -->
+                  <CronScheduleFields
+                    v-else-if="widgetFor(field) === 'cron' && typeof settings?.[field.key] === 'string'"
+                    :key="String(settings?.[field.key])"
+                    :model-value="(draft[field.key] ?? settings?.[field.key]) as string"
+                    :timezone="cronTimezone || 'UTC'"
+                    class="w-full"
+                    @update:model-value="(v: string) => { draft[field.key] = v }"
+                  />
                   <UTextarea
                     v-else-if="widgetFor(field) === 'textarea'"
                     v-model="draft[field.key] as string"
@@ -652,10 +668,16 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                   @click="restoreDefault(field)"
                 />
               </p>
-            </div>
+            </fieldset>
           </template>
         </template>
       </template>
+
+      <!-- Below the fields: what the page lists besides them (Backups' backups). -->
+      <slot
+        name="after"
+        :settings="settings"
+      />
     </div>
     <template
       v-if="dirtyKeys.length"

@@ -1,5 +1,5 @@
 /**
- * Each admin screen's documentation page (Specification_Admin_UI.md §3.8) - the docs mirror the admin, a page
+ * Each admin screen's documentation page (Admin_UI.md §3.8) - the docs mirror the admin, a page
  * per screen (AGENTS.md section 1), so a screen's "?" opens the page about it. One list, matched in order
  * against the router's path (the admin's base left out); a screen with no entry shows no "?". The App's pages
  * are for its users, not administrators, and have none.
@@ -37,9 +37,11 @@ const DOCS_PAGES: [RegExp, string][] = [
   [/^\/account$/, '/user-profile/my-account'],
   [/^\/settings\/system$/, '/settings/general#general'],
   [/^\/settings\/appearance$/, '/settings/general#appearance'],
-  [/^\/settings\/connector$/, '/settings/general#connector'],
-  [/^\/settings\/maintenance$/, '/settings/general#maintenance'],
+  [/^\/settings\/connector$/, '/settings/postgresql#connector'],
+  [/^\/settings\/maintenance$/, '/settings/postgresql#maintenance'],
+  [/^\/settings\/backups$/, '/settings/postgresql#backups'],
   [/^\/settings\/smtp$/, '/settings/general#smtp'],
+  [/^\/settings\/s3$/, '/settings/general#s3-storage'],
   [/^\/settings\/auth$/, '/settings/access#authentication'],
   [/^\/settings\/auth-providers$/, '/settings/access#providers'],
   [/^\/settings\/api-tokens$/, '/settings/access#tokens'],
@@ -56,7 +58,7 @@ const DOCS_PAGES: [RegExp, string][] = [
   [/^\/settings\/maps$/, '/settings/features#maps'],
   [/^\/settings\/files$/, '/settings/features#files'],
   [/^\/settings\/workflows$/, '/settings/features#workflows'],
-  [/^\/settings\/sql-console$/, '/settings/features#sql-console']
+  [/^\/settings\/sql-console$/, '/settings/postgresql#sql-console']
 ]
 
 /** The documentation page about the screen at `path`, or null. */

@@ -1,5 +1,5 @@
 /**
- * Pure DENY > ALLOW > UNDEFINED resolution. See Specification_Security.md §6.2
+ * Pure DENY > ALLOW > UNDEFINED resolution. See Security.md §6.2
  * (action precedence) and §6.4 (field precedence).
  *
  * This is deliberately decoupled from HTTP/query-engine concerns so it
@@ -26,7 +26,7 @@ export function resolveEffect(grants: readonly PermissionGrant[]): PermissionDec
   return sawAllow ? "ALLOW" : "UNDEFINED";
 }
 
-/** UNDEFINED = not allowed (Specification.md §2.4). */
+/** UNDEFINED = not allowed (Foundations.md §2.4). */
 export function isAuthorized(decision: PermissionDecision): boolean {
   return decision === "ALLOW";
 }

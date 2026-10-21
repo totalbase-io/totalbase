@@ -5,7 +5,7 @@ import { humanizeColumnName } from '~/utils/humanize-column-name'
 
 /**
  * A link's filter on a DataView's grid (`?filter=<json>`, a dashboard's click -
- * Specification_DataViews.md §4.10): the where grammar, taken once on load and
+ * DataViews.md §4.10): the where grammar, taken once on load and
  * applied on top of the DataView's filters and the viewer's permissions - even
  * where its Filter is off (it only narrows). Shown as chips with ✕, each
  * condition by its column's title and a foreign key by its row's presentation;

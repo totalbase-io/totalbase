@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { cacheKey, KeyedSemaphore, MemoryWidgetResultCache, SingleFlight } from "./widget-runs.js";
 
-/** How published widgets run under load (Specification_Dashboards.md §2.9, D24). */
+/** How published widgets run under load (Dashboards.md §2.9, D24). */
 describe("widget runs (D24)", () => {
   it("keeps a result until it expires, and drops the oldest past its size", () => {
     vi.useFakeTimers();

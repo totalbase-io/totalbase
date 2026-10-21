@@ -16,7 +16,7 @@ export type DataViewScope = "LISTED" | "EMBEDDED_ONLY";
 
 /**
  * The types with a designed page - widgets, variables and Code
- * (Specification_DataViews.md §6.1): CUSTOM is one; FORM and
+ * (DataViews.md §6.1): CUSTOM is one; FORM and
  * MASTER_DETAIL are their record form; every grid type's record form is one
  * too. Only an EXTERNALFRAME has none.
  */
@@ -38,7 +38,7 @@ export interface AffectedDataView {
 /** `AdminDataView.columnPresentation` - each resource's columns' presentation, by resource id and column name. */
 export type ColumnPresentationMap = Record<string, Record<string, ColumnPresentation>>;
 
-/** How a row of a table shows where a foreign key points at it (Specification_DataViews.md §15.5), by resource id. */
+/** How a row of a table shows where a foreign key points at it (DataViews.md §15.5), by resource id. */
 export type RowPresentationMap = Record<string, RowPresentation>;
 
 /** Everything a DataView inherits - `dataview_presentation()`, frozen whole in a version's `presentation_snapshot`. */
@@ -56,7 +56,7 @@ export interface VariableResource {
   columns?: Record<string, string>;
   /** Its single-column foreign keys: column → the resource id it points at - a related column's title. */
   relations?: Record<string, string>;
-  /** How each foreign key shows (Specification_DataViews.md §15.5) - a Table reads its target's rows by it. */
+  /** How each foreign key shows (DataViews.md §15.5) - a Table reads its target's rows by it. */
   displays?: Record<string, ForeignKeyDisplay>;
 }
 
@@ -83,12 +83,12 @@ export interface AdminDataView {
   /**
    * The source resource's real Postgres identifiers - needed by the
    * admin SPA's grid page to call the public REST Data API directly
-   * (`GET /api/:schema/table/:name`, Specification_Data_API.md §2.1), which addresses
+   * (`GET /api/:schema/table/:name`, Data_API.md §2.1), which addresses
    * resources by schema+name, never by totalbase.resources' internal id.
    */
   sourceResourceSchema: string | null;
   sourceResourceName: string | null;
-  /** TABLE vs. VIEW - the write-actions gate for a TABLE-layout DataView (Specification_DataViews.md §1.2: a VIEW source stays read-only regardless of layout). Not FUNCTION - excluded at create time. */
+  /** TABLE vs. VIEW - the write-actions gate for a TABLE-layout DataView (DataViews.md §1.2: a VIEW source stays read-only regardless of layout). Not FUNCTION - excluded at create time. */
   sourceResourceType: "TABLE" | "VIEW" | null;
   /** Needed by the Design form (and the Edit form's FK picker) to call `GET /catalog/table|view/:oid` directly - already selected alongside schema/name, just not exposed until now. */
   sourceResourceOid: number | null;
@@ -105,7 +105,13 @@ export interface AdminDataView {
    */
   variableResources?: Record<string, VariableResource>;
   /**
-   * What it inherits from its resources' columns (Specification_DataViews.md §15):
+   * The workflows its Calls run, by id: the slug the App runs each by
+   * (`/api/workflows/{slug}/run`) and its name. A Call stores the id, so
+   * renaming a slug never breaks it. A deleted workflow is absent.
+   */
+  variableWorkflows?: Record<string, { slug: string; name: string }>;
+  /**
+   * What it inherits from its resources' columns (DataViews.md §15):
    * `{ <resource id>: { <column>: ColumnPresentation } }` for
    * every resource it reads. Live on a draft read, the version's frozen copy
    * on a published one (`dataview_column_presentation()`, migration
@@ -114,7 +120,7 @@ export interface AdminDataView {
   columnPresentation?: ColumnPresentationMap;
   /** Draft client-side controller code. `getPublishedBySlug` overrides this with the latest publish's `code_snapshot` instead - see its own doc comment. */
   code: string;
-  /** The live (highest) version number - null until first published (Specification.md §13.1). */
+  /** The live (highest) version number - null until first published (Foundations.md §13.1). */
   liveVersion: number | null;
   createdAt: Date;
   updatedAt: Date;
@@ -217,7 +223,7 @@ export interface AdminDataViewField {
   relatedDashboard: string | null;
   /**
    * COLUMN/RELATED, on a read: what it inherits from its resource's column
-   * (Specification_DataViews.md §15) - live on a draft, the
+   * (DataViews.md §15) - live on a draft, the
    * version's copy on a published read. Its own `label`/`config` override it.
    */
   inherited?: ColumnPresentation;
@@ -290,7 +296,7 @@ export interface AdminDataViewPublish {
   restoredFromVersion: number | null;
   user: string | null;
   publishedAt: Date;
-  /** The publisher's note (Specification.md §13.3). */
+  /** The publisher's note (Foundations.md §13.3). */
   note: string | null;
 }
 
@@ -358,12 +364,12 @@ export interface CreateDataViewInput {
   viewType: DataViewType;
   /** Wizard step 4 - column names to mark visible; omitted means every current column (the pre-wizard behavior). */
   selectedColumns?: string[] | undefined;
-  /** The DataView's `view_config` - each key checked against its shape (view-config.ts, Specification_DataViews.md §2.7). */
+  /** The DataView's `view_config` - each key checked against its shape (view-config.ts, DataViews.md §2.7). */
   viewConfig?: Record<string, unknown> | undefined;
   /**
    * Wizard step 4's per-column overrides, keyed by column name - its
    * input and its form help; never a title: a column's is its table's
-   * (Specification_DataViews.md §15). `help` lands in the field's own `config`
+   * (DataViews.md §15). `help` lands in the field's own `config`
    * (the generic per-field jsonb slot an FK's `display_field` will also
    * use later), rendered as the Edit form widget's `help` text.
    */
@@ -389,8 +395,23 @@ export interface DetailCandidate {
   fkColumn: string;
 }
 
+/** A junction table of a record's table (DataViews.md §8.5) - what a form field's Junction table names. */
+export interface JunctionCandidate {
+  resourceId: string;
+  schema: string;
+  table: string;
+  /** Its single-column primary key - a removed link is deleted by it. */
+  primaryKey: string;
+  /** Its column pointing at the record's table. */
+  column: string;
+  /** Its column pointing at the other table - what the field picks. */
+  otherColumn: string;
+  /** The other table: its resource (null when it isn't an ACTIVE one) and the column the key targets. */
+  target: { resourceId: string | null; schema: string; table: string; column: string };
+}
+
 /**
- * The Design form's per-field edits (Specification_DataViews.md §12) - position/size on the
+ * The Design form's per-field edits (DataViews.md §12) - position/size on the
  * grid, visibility, label, widget, and the widget's own `config`
  * (an FK's `display_field`, a plain field's `help`), and for a `WIDGET`
  * row its parent.
@@ -450,7 +471,7 @@ export interface UpdateDataViewInput {
    */
   sourceResourceId?: string | undefined;
   /**
-   * A list DataView's main view (Specification_DataViews.md §5.13) - another list type it offers (`layouts`), the one it
+   * A list DataView's main view (DataViews.md §5.13) - another list type it offers (`layouts`), the one it
    * opens with. Never a change of kind: a list stays a list.
    */
   viewType?: DataViewType | undefined;

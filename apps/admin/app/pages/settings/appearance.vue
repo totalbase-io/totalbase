@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Appearance (Specification_Admin_UI.md §4.1.1): the generic
+ * Settings > Appearance (Admin_UI.md §4.1.1): the generic
  * settings form plus Preview - the draft's primary and neutral colors and custom CSS
  * applied to this window, nothing saved, so the operator sees the result
  * before committing it. The <style> it injects comes after the operator's

@@ -27,7 +27,7 @@ function escapeHtml(value: string): string {
  * from `variables`, HTML-escaping each value when `escape` is set. A
  * placeholder with no value renders empty. The one renderer for every email
  * TotalBase sends: system emails and MAILING templates
- * (Specification_Workflows.md §5.16).
+ * (Workflows.md §5.16).
  */
 export function fillMailPlaceholders(content: string, variables: Record<string, string>, escape: boolean): string {
   return content.replace(TEMPLATE_PLACEHOLDER, (_, name: string) => {
@@ -82,11 +82,11 @@ export function formatDuration(hours: number): string {
 }
 
 /**
- * Renders and sends TotalBase's system emails (Specification_Administration.md §8): the
+ * Renders and sends TotalBase's system emails (Administration.md §8): the
  * template comes from the `mail.templates.<slot>` setting (registry
  * default unless an admin edited it), and the link from the matching
  * `auth.links.*` setting, built on `system.public_url` - never on a
- * request's Host header (Specification_Administration.md §7.6).
+ * request's Host header (Administration.md §7.6).
  */
 export class SystemMailer {
   constructor(

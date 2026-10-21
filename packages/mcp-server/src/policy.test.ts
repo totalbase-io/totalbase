@@ -46,6 +46,27 @@ describe("MCP policy", () => {
     expect(JSON.stringify(sql.content)).toMatch(/STANDARD mode/);
   });
 
+  it("refuses in STANDARD mode an apply_dashboard that would delete widgets, and applies one against the draft its check saw", async () => {
+    const answers: unknown[] = [];
+    const { client, fetchMock } = await connect({ ...FULL_POLICY, mode: "STANDARD" });
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ data: answers.shift() }), { status: 200 }));
+    const spec = { name: "Sales", variables: [], tabs: [], widgets: [] };
+
+    answers.push({ draftVersion: "v1", diff: { widgets: { deleted: [{ label: "Revenue", type: "KPI" }] } } });
+    const refused = await client.callTool({ name: "apply_dashboard", arguments: { id: "d1", spec } });
+    expect(refused.isError).toBe(true);
+    expect(JSON.stringify(refused.content)).toMatch(/Deleting widgets \(Revenue\).*STANDARD mode/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    answers.push({ draftVersion: "v2", diff: { widgets: { deleted: [] } } }, { applied: true });
+    const applied = await client.callTool({ name: "apply_dashboard", arguments: { id: "d1", spec } });
+    expect(applied.isError, JSON.stringify(applied.content)).toBeFalsy();
+    const body = (call: number) => JSON.parse(String((fetchMock.mock.calls[call] as unknown as [string, RequestInit])[1].body)) as { data: Record<string, unknown> };
+    expect(body(1).data.dryRun).toBe(true);
+    expect(body(2).data).toMatchObject({ draftVersion: "v2" });
+    expect(body(2).data.dryRun).toBeUndefined();
+  });
+
   it("leaves a switched-off group's tools out, the orienting ones in", async () => {
     const { tools } = await connect({ ...FULL_POLICY, groups: new Set(MCP_TOOL_GROUPS.filter((g) => g !== "workflows" && g !== "sql")) });
     const names = tools.map((t) => t.name);

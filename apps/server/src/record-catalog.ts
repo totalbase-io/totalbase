@@ -31,7 +31,7 @@ export async function readableCatalog(context: AppContext, roleIds: string[] | n
 }
 
 /**
- * A page's record table as this viewer may use it (Specification_DataViews.md §8.5):
+ * A page's record table as this viewer may use it (DataViews.md §8.5):
  * the columns they may read, and those of them they may write
  * when creating and when updating - what a form field bound to a column
  * shows as read-only. The Data API still decides every write.

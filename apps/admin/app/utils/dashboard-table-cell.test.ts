@@ -5,7 +5,7 @@ const number = (settings = {}) => ({ dataType: 'numeric', numeric: true, setting
 const text = (settings = {}) => ({ dataType: 'text', numeric: false, settings })
 const locale = (n: number, decimals: number) => new Intl.NumberFormat(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(n)
 
-// A Dashboard TABLE's cell, by its column's settings (Specification_DataViews.md §15).
+// A Dashboard TABLE's cell, by its column's settings (DataViews.md §15).
 describe('formatTableCell()', () => {
   it('formats a number with its Format - prefix, suffix and decimals in one pattern', () => {
     expect(formatTableCell('1234.5', number({ displayFormat: '"$ "#,##0.00" kg"' }))).toBe(`$ ${locale(1234.5, 2)} kg`)

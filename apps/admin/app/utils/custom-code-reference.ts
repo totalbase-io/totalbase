@@ -1,10 +1,10 @@
 /**
- * The Code tab's Reference (Specification_DataViews.md §11.1):
+ * The Code tab's Reference (DataViews.md §11.1):
  * what a handler's `dataview` holds, as the live page builds it
  * (useWidgetRuntime.ts) - each entry its signature, what it does and a line
  * to insert. Plain data: a new runtime member means a new entry here.
  *
- * Texts are keys under `designer.customCodeReference.<section>` (Specification_Admin_UI.md §14):
+ * Texts are keys under `designer.customCodeReference.<section>` (Admin_UI.md §14):
  * `title`, `description` and `entries.<entry>`; signatures and examples are
  * code and stay as written. `params` fill a text's code fragments.
  */

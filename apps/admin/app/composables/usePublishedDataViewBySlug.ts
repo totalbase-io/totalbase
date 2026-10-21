@@ -5,7 +5,7 @@ import { resolveAutoRefresh, resolveBaseWhere, resolveCalendarLayout, resolveCar
 /**
  * `useDataViewById`'s published counterpart - reads the latest publish
  * (`by-slug/:slug/published`, `:id/fields/published`), never the live
- * Studio draft (Specification.md §13: a
+ * Studio draft (Foundations.md §13: a
  * developer editing Design/Code doesn't affect this until they hit
  * Publish). Shared by every actual consumer-facing DataView page -
  * pages/app/dataviews/[slug]/index.vue, .../new.vue, .../[pk]/edit.vue,
@@ -15,7 +15,7 @@ import { resolveAutoRefresh, resolveBaseWhere, resolveCalendarLayout, resolveCar
 /**
  * `draft`: the draft instead of the published version - the editor's device
  * preview frames the App with `?draft=true` (administrators only,
- * Specification_DataViews.md §12.9).
+ * DataViews.md §12.9).
  */
 export function usePublishedDataViewBySlug(slug: Ref<string>, draft: Ref<boolean> = ref(false)) {
   const api = useAppApi()
@@ -41,7 +41,7 @@ export function usePublishedDataViewBySlug(slug: Ref<string>, draft: Ref<boolean
 /**
  * Everything a DataView's layout components need, derived from one DataView
  * + its fields - shared by the published read path above and the editor's
- * read-only version preview (Specification.md §13.7), which feeds
+ * read-only version preview (Foundations.md §13.7), which feeds
  * it a version's snapshot instead. `readOnly` forces `canWrite` off.
  */
 export function useDataViewPresentation(
@@ -50,7 +50,7 @@ export function useDataViewPresentation(
   options: { readOnly?: boolean } = {}
 ) {
   // Write actions need: a TABLE source (a VIEW stays read-only regardless
-  // of layout, Specification_DataViews.md §1.2) and a single-column primary key
+  // of layout, DataViews.md §1.2) and a single-column primary key
   // (data-table-mutations.ts's own row-addressing limitation).
   const primaryKey = computed(() => {
     const pk = dataview.value?.sourceResourcePrimaryKey

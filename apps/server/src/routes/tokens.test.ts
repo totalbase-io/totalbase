@@ -8,7 +8,7 @@ import { setupTestApp } from "../test-support.js";
 const PREFIX = "self-tokens-test";
 
 /**
- * The self-service /api/tokens routes under the body contract (Specification_Data_API.md §2.5):
+ * The self-service /api/tokens routes under the body contract (Data_API.md §2.5):
  * bodies in `{ data }`, 201 on create, 204 for revoke
  * and delete, 404 for a token that isn't the caller's.
  */

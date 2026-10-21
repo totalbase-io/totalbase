@@ -7,7 +7,7 @@ const column = (patch: Partial<DataViewField>): DataViewField => ({
   columnAttnum: 2, columnName: 'precio_unitario', widget: 'UInputNumber', visible: true, config: {}, relatedDataview: null, ...patch
 })
 
-// Specification_DataViews.md §15: a grid column inherits from its resource's column.
+// DataViews.md §15: a grid column inherits from its resource's column.
 describe('resolveFieldPresentation()', () => {
   it('titles a column by its table column\'s, else its name humanized - never a title of its own', () => {
     expect(resolveFieldPresentation(column({ inherited: { label: 'Precio unitario' } })).label).toBe('Precio unitario')

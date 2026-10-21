@@ -11,7 +11,7 @@ const PREFIX = "wf-chain-test";
 const TABLE = "wf_chain_test_items";
 
 /**
- * Configurable chain depth (Specification_Workflows.md §6.3.4, §5.23,
+ * Configurable chain depth (Workflows.md §6.3.4, §5.23,
  * §15.1): `workflows.max_chain_depth` bounds how many workflows one causal
  * chain holds - data events started by a workflow's write and Execute
  * workflow alike - and a loop is refused at any depth.

@@ -38,7 +38,7 @@ export { roleDecisions } from "./dashboards-runner.js";
 
 /**
  * Admin management of dashboards/dashboards_widgets plus the
- * widget SQL executor. See Specification_Dashboards.md §2
+ * widget SQL executor. See Dashboards.md §2
  * (SQL-sourced widgets) and AGENTS.md section 7 "Dashboard
  * widget SQL".
  *
@@ -93,7 +93,7 @@ export class DashboardsAdminService {
     return crud.getDashboard(this.ctx, id);
   }
 
-  /** get() plus the draft-vs-latest-version flag (Specification.md §13.5) - the editor's GET only. */
+  /** get() plus the draft-vs-latest-version flag (Foundations.md §13.5) - the editor's GET only. */
   getWithStatus(id: string): Promise<AdminDashboard> {
     return crud.getWithStatus(this.ctx, id);
   }
@@ -133,7 +133,7 @@ export class DashboardsAdminService {
     return widgets.getWidget(this.ctx, dashboardId, widgetId);
   }
 
-  /** Adding a widget never asks for its source - it's inserted unconfigured and edited afterward (Specification_Dashboards.md §10.4). */
+  /** Adding a widget never asks for its source - it's inserted unconfigured and edited afterward (Dashboards.md §10.4). */
   addWidget(dashboardId: string, input: CreateWidgetInput): Promise<AdminDashboardWidget> {
     return widgets.addWidget(this.ctx, dashboardId, input);
   }
@@ -153,7 +153,7 @@ export class DashboardsAdminService {
     return runner.executeQuery(this.ctx, rawSql, limits, context);
   }
 
-  /** Every widget whose query names what PostgreSQL no longer has (Specification_Dashboards.md §2.8). */
+  /** Every widget whose query names what PostgreSQL no longer has (Dashboards.md §2.8). */
   brokenWidgets(timeoutMs: number): Promise<BrokenDashboardWidget[]> {
     return runner.brokenWidgets(this.ctx, timeoutMs);
   }
@@ -195,7 +195,7 @@ export class DashboardsAdminService {
     return options.withDefaultValues(this.ctx, variables, userId);
   }
 
-  // --- The draft as one document (dashboards-spec-apply.ts, Specification_Dashboards.md §10.6, DM2)
+  // --- The draft as one document (dashboards-spec-apply.ts, Dashboards.md §8.3, DM2)
 
   /** The draft as a spec (get_dashboard): what apply_dashboard takes back as is. */
   getSpec(id: string): Promise<{ id: string; draftVersion: string; liveVersion: number | null; hasUnpublishedChanges: boolean; spec: DashboardSpec }> {
@@ -219,7 +219,7 @@ export class DashboardsAdminService {
     return spec.applySpec(this.ctx, id, input, language, onApplied);
   }
 
-  // --- Versions (dashboards-versions.ts, Specification.md §13)
+  // --- Versions (dashboards-versions.ts, Foundations.md §13)
 
   /** Snapshots the draft as the next version - a no-op when the draft equals the latest. See `publish`. */
   publish(dashboardId: string, userId: string | null, note: string | null = null): Promise<AdminDashboardVersion> {
@@ -231,7 +231,7 @@ export class DashboardsAdminService {
     return versions.listVersions(this.ctx, dashboardId);
   }
 
-  /** Deletes every version before `before` (Specification.md §13.4) - never the live one. */
+  /** Deletes every version before `before` (Foundations.md §13.4) - never the live one. */
   deleteVersionsBefore(dashboardId: string, before: number): Promise<{ deleted: number[] }> {
     return versions.deleteDashboardVersionsBefore(this.ctx, dashboardId, before);
   }
@@ -261,7 +261,7 @@ export class DashboardsAdminService {
     return versions.getPublishedWidgets(this.ctx, dashboardId);
   }
 
-  /** Restore (Specification.md §13.4): version `version`'s content replaces the draft; publishes nothing. */
+  /** Restore (Foundations.md §13.4): version `version`'s content replaces the draft; publishes nothing. */
   restore(dashboardId: string, version: number): Promise<AdminDashboard> {
     return versions.restore(this.ctx, dashboardId, version);
   }
@@ -271,7 +271,7 @@ export class DashboardsAdminService {
     return versions.duplicateDashboard(this.ctx, dashboardId, input);
   }
 
-  /** Save as (Specification.md §13.4): a NEW dashboard whose draft is version `version`'s content. */
+  /** Save as (Foundations.md §13.4): a NEW dashboard whose draft is version `version`'s content. */
   duplicateVersion(dashboardId: string, version: number, input: { name: string; slug?: string | undefined }): Promise<AdminDashboard> {
     return versions.duplicateVersion(this.ctx, dashboardId, version, input);
   }

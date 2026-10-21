@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextOccurrences, parseCronExpression } from "./cron.js";
 
-/** The cron grammar's month and weekday names (Specification_Workflows.md §6.4.2). */
+/** The cron grammar's month and weekday names (Workflows.md §6.4.2). */
 describe("cron names", () => {
   it("reads JAN-DEC and SUN-SAT, case-insensitively, in lists and ranges", () => {
     const schedule = parseCronExpression("0 9 * jan,Jul MON-FRI");

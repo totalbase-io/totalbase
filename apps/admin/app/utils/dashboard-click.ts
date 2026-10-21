@@ -1,5 +1,5 @@
 /**
- * What a click on a dashboard widget's mark does (Specification_Dashboards.md §5.14, D6): its `config.click`
+ * What a click on a dashboard widget's mark does (Dashboards.md §5.14, D6): its `config.click`
  * resolved against the clicked row and the variables - plain data the card acts on. Values are formulas over
  * `{{row.<column>}}` and `{{vars.<name>}}` (utils/dashboard-formula.ts); a filter's value that comes out empty
  * drops its condition, as a page Resource's does. Targets are ids: the App's routes take a DataView's or a

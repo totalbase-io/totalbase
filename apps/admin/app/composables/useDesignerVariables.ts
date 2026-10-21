@@ -19,7 +19,7 @@ export function useDesignerVariables(options: {
   /**
    * Which roles opening the page can't read what a Resource asks for - its
    * table, or a column its query reads: the Data API refuses the whole query
-   * for them (Specification_DataViews.md §8.3, "All or nothing"). Read again
+   * for them (DataViews.md §8.3, "All or nothing"). Read again
    * a moment after the variables change - they're saved by then. A warning
    * only; it never grants anything.
    */

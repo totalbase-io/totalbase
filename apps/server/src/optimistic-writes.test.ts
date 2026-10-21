@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Optimistic writes (Specification_Data_API.md §4.2, §5.3, T56): a row's version is PostgreSQL's xmin, answered
+ * Optimistic writes (Data_API.md §4.2, §5.3, T56): a row's version is PostgreSQL's xmin, answered
  * by a read and an update by key; If-Match makes a PATCH or DELETE by key fail 409 ROW_VERSION_CONFLICT on a row
  * written since - and never tells a row hidden by the row filter from one that doesn't exist (404 both).
  */

@@ -11,7 +11,7 @@ const TABLE = `dash_t3_${RUN}`;
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 /**
- * Dashboards, tanda 3 (Specification_Dashboards.md §5): the new widgets' server side - a PIVOT aggregated by
+ * Dashboards, tanda 3 (Dashboards.md §5): the new widgets' server side - a PIVOT aggregated by
  * PostgreSQL, a COMBO's two values, a funnel's negative step, a file column's signed links (and an embed's
  * allowFiles), and the 2b leftovers checked on save (DB14, DB20, DB24, DB27, DB28, DB29).
  */

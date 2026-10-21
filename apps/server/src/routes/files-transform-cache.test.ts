@@ -9,7 +9,7 @@ const PNG = Buffer.from(
   "base64",
 );
 
-/** A transformed image's Cache-Control follows files.transforms.cache_ttl_seconds (Specification_Administration.md §10.8). */
+/** A transformed image's Cache-Control follows files.transforms.cache_ttl_seconds (Administration.md §10.8). */
 describe("image transformation Cache-Control", () => {
   let app: FastifyInstance;
   let context: AppContext;

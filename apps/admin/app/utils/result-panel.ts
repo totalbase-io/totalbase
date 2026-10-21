@@ -1,5 +1,5 @@
 /**
- * The Result widget's logic (TResult, Specification_DataViews.md §9.11),
+ * The Result widget's logic (TResult, DataViews.md §9.11),
  * kept apart from the component so it is tested on its own: what a
  * `dataview.controls.<name>.show(...)` call means, which tone and vibration
  * go with it, and the timer that brings the panel back to waiting.

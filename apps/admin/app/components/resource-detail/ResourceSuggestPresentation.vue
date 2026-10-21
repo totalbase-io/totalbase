@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Suggest presentation (Specification_DataViews.md §15.6): what each column's type and constraints suggest -
+ * Suggest presentation (DataViews.md §15.6): what each column's type and constraints suggest -
  * never its name - reviewed before anything is written. One row per difference with the column's own
  * presentation: what it lacks ticked, a change of a value it has unticked (never overwritten unless ticked);
  * a text value editable; its reason beside it. Opening it again re-analyses.

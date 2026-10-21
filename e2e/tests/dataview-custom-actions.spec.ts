@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { apiRequest, login, publishDataView, watchApiFailures } from './helpers.js'
 
 /**
- * A DataView's own actions (Specification_DataViews.md §3.7, T72): one set up in Settings › Actions - a function on
+ * A DataView's own actions (DataViews.md §3.7, T72): one set up in Settings › Actions - a function on
  * a row, shown only where its condition holds, asked first - and one on a selection; both run from the App.
  */
 const NAME = 'Custom Actions Test'

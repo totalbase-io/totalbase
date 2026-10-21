@@ -10,7 +10,11 @@ source .env
 set +a
 
 export POSTGRES_DB="${TOTALBASE_TEST_DB:-totalbase_test}"
+# Another server than .env's - scripts/test-matrix.sh runs this once per PostgreSQL major.
+export POSTGRES_HOST="${TOTALBASE_TEST_PG_HOST:-$POSTGRES_HOST}"
+export POSTGRES_PORT="${TOTALBASE_TEST_PG_PORT:-$POSTGRES_PORT}"
 
-pnpm -r run build
+# Built once by a caller that runs this several times (scripts/test-matrix.sh).
+[ "${TOTALBASE_TEST_SKIP_BUILD:-}" = "1" ] || pnpm -r run build
 # One package at a time: they share the test database too. --no-bail: every package runs, so one run shows every failure.
 pnpm -r --workspace-concurrency=1 --no-bail run test

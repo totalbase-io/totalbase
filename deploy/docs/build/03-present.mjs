@@ -1,4 +1,4 @@
-// Presentation before any DataView (Docs_Demo_Field_Service.md §5): how a referenced row shows, labels the
+// Presentation before any DataView (DATASET.md §5): how a referenced row shows, labels the
 // humanized name doesn't get right, each state's label and color, money and dates.
 import { writeFileSync } from 'node:fs'
 const ARS = { displayFormat: 'CURRENCY:ARS', align: 'right' }
@@ -63,7 +63,7 @@ const steps = [
   ...Object.entries(rows).map(([name, r]) => ['set_row_presentation', { name, ...r }]),
   ...Object.entries(cols).map(([name, columns]) => ['set_column_presentations', { name, columns, merge: true }]),
   // Rows colored by a condition: an overdue order and an order's priority - before any DataView, which inherits them
-  // when it's published (Specification_DataViews.md §15).
+  // when it's published (DataViews.md §15).
   ['set_column_presentations', { name: 'work_orders', merge: true, columns: {
     number: { conditions: [{ name: 'Overdue', where: { due_at: { _lt: '$CURRENT_DATE' }, status: { _nin: ['COMPLETED', 'CANCELLED'] } }, applyTo: 'row', style: { color: 'red' } }] },
     priority: { conditions: [{ name: 'Urgent', where: { priority: { _eq: 'URGENT' } }, applyTo: 'row', style: { color: 'red' } }, { name: 'High', where: { priority: { _eq: 'HIGH' } }, applyTo: 'row', style: { color: 'amber' } }] } } }]

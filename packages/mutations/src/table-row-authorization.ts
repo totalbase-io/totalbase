@@ -7,7 +7,7 @@ import { buildRowFilter, userVariableResolver, type Limits } from "./mutation-se
 
 /**
  * Authorization for a dedicated endpoint (or a workflow operation) over one
- * of TotalBase's own tables (Files, Templates - Specification_Security.md
+ * of TotalBase's own tables (Files, Templates - Security.md
  * §9.3: what is not a plain row write keeps its own route, authorized
  * through the same resolver). The same model as the Data API: the action
  * grant, then the grant's row filter against the row itself, and field

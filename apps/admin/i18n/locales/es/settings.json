@@ -273,7 +273,6 @@
       "modified": "Modificado",
       "unsaved": "Sin guardar",
       "unsavedCount": "{n} cambio sin guardar | {n} cambios sin guardar",
-      "noEffectWhileOff": "Sin efecto mientras “{setting}” esté desactivado.",
       "noSecrets": "Todavía no hay secretos: crea uno en {link}.",
       "secretsLink": "Configuración › Secretos",
       "restartPending": "Guardado: el servidor sigue funcionando con {value} hasta que se reinicie.",
@@ -363,6 +362,13 @@
       "sendToDescription": "Usa la configuración guardada; guarda antes cualquier cambio.",
       "send": "Enviar"
     },
+    "s3": {
+      "testConnection": "Probar conexión",
+      "connectionWorks": "La conexión funciona",
+      "connectionWorksDescription": "Se escribió un archivo de prueba en el bucket, se leyó y se borró.",
+      "connectionFailed": "Falló la conexión",
+      "unreachable": "No se pudo contactar al servicio S3."
+    },
     "metadata": {
       "groups": {
         "api": {
@@ -396,6 +402,10 @@
         "smtp": {
           "label": "SMTP",
           "description": "El servidor de correo para los correos del sistema y los pasos \"Enviar correo\" de los Workflows."
+        },
+        "s3": {
+          "label": "Almacenamiento S3",
+          "description": "Una conexión a un bucket compatible con S3 (Amazon S3, Cloudflare R2, MinIO y otros) donde Files puede guardar lo que se sube."
         },
         "security": {
           "label": "Red",
@@ -460,6 +470,10 @@
         "mcp": {
           "label": "MCP",
           "description": "El servidor MCP con el que un agente de IA construye y opera esta instancia - servido en la propia dirección de la instancia, /mcp, con el token de un administrador."
+        },
+        "backups": {
+          "label": "Backups",
+          "description": "Backups programados de la base de datos y de los archivos guardados, en el disco local o en el almacenamiento S3. Nunca contienen la clave maestra - guárdala aparte."
         }
       },
       "sections": {
@@ -496,7 +510,10 @@
         "agent": "Agente",
         "toolbar": "Barra de herramientas",
         "pageWidth": "Ancho de página",
-        "color": "Color"
+        "color": "Color",
+        "schedule": "Programación",
+        "destination": "Destino",
+        "content": "Contenido"
       },
       "units": {
         "bytes": "bytes",
@@ -531,7 +548,7 @@
         },
         "api__max_relation_depth": {
           "label": "Profundidad máxima de relaciones",
-          "description": "Cuántos niveles de recursos relacionados puede expandir una sola solicitud (?expand=a.b.c)."
+          "description": "Cuántas claves foráneas puede seguir una ruta con puntos en una solicitud (order.customer.email sigue dos)."
         },
         "api__max_filter_depth": {
           "label": "Profundidad máxima de filtros",
@@ -623,14 +640,15 @@
         },
         "files__storage_provider": {
           "label": "Proveedor de almacenamiento",
-          "description": "Dónde se guardan los archivos subidos. El almacenamiento local es el único proveedor disponible en esta primera versión.",
+          "description": "Dónde se guardan los archivos nuevos. Un archivo ya subido queda donde se escribió y se sigue sirviendo desde ahí. Antes hay que habilitar el almacenamiento S3.",
           "options": {
-            "local": "Disco local"
+            "local": "Disco local",
+            "s3": "Almacenamiento S3"
           }
         },
         "files__storage_local_path": {
           "label": "Ruta de almacenamiento local",
-          "description": "Directorio del sistema de archivos en el que se escriben los archivos cuando el proveedor de almacenamiento es local."
+          "description": "Dónde se guardan los archivos locales, incluidos los subidos antes de pasar al almacenamiento S3, que se siguen sirviendo desde aquí."
         },
         "files__transforms__enabled": {
           "label": "Activar transformaciones de imagen",
@@ -732,6 +750,15 @@
           "label": "Duración del bloqueo",
           "description": "Cuánto tiempo sigue bloqueada una cuenta bloqueada. Un restablecimiento de contraseña o el desbloqueo de un administrador lo termina antes."
         },
+        "auth__mfa_required": {
+          "label": "Exigir verificación en dos pasos",
+          "description": "Quién debe iniciar sesión con un código de una app de autenticación. A quien se le exige y aún no la configuró se le pide en su próximo inicio de sesión; las sesiones ya abiertas siguen.",
+          "options": {
+            "NONE": "Nadie",
+            "ADMINISTRATORS": "Administradores",
+            "EVERYONE": "Todos"
+          }
+        },
         "auth__links__invitation": {
           "label": "Enlace de invitación",
           "description": "Adónde apunta el enlace de un correo de invitación. TotalBase completa {'{'}{'{'}public_url{'}'}{'}'} y {'{'}{'{'}token{'}'}{'}'}: apúntalo a una página de tu propia app si es ella quien gestiona las invitaciones."
@@ -815,6 +842,38 @@
         "smtp__from": {
           "label": "Dirección del remitente",
           "description": "La dirección From (de sobre y de cabecera) con la que se envía el correo saliente."
+        },
+        "s3__enabled": {
+          "label": "Habilitar almacenamiento S3",
+          "description": "Activa la conexión. No se puede desactivar mientras Files guarde ahí los archivos nuevos o todavía tenga archivos en ella."
+        },
+        "s3__endpoint": {
+          "label": "Endpoint",
+          "description": "La URL base del servicio, por ejemplo https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com o http://minio:9000."
+        },
+        "s3__region": {
+          "label": "Región",
+          "description": "La región del bucket, parte de la firma de cada petición: us-east-1 en la mayoría de los servicios sin regiones, auto en Cloudflare R2."
+        },
+        "s3__bucket": {
+          "label": "Bucket",
+          "description": "El bucket donde se escribe. Tiene que existir; TotalBase no lo crea."
+        },
+        "s3__prefix": {
+          "label": "Prefijo de claves",
+          "description": "Una carpeta dentro del bucket para esta instancia, por ejemplo production/, para que varias instancias compartan un bucket. Cada uso escribe en su propia carpeta dentro de ella (files/). Vacío: la raíz del bucket."
+        },
+        "s3__path_style": {
+          "label": "Direccionamiento por ruta",
+          "description": "Accede al bucket como endpoint/bucket en lugar de bucket.endpoint. MinIO y la mayoría de los servicios autoalojados lo necesitan activado."
+        },
+        "s3__access_key_id": {
+          "label": "ID de clave de acceso",
+          "description": "El ID de la clave de acceso. Su secreto va en el siguiente ajuste, como secreto."
+        },
+        "s3__secret_key": {
+          "label": "Clave secreta de acceso (clave del secreto)",
+          "description": "La clave de una entrada de Ajustes → Secretos que guarda la clave secreta de acceso; nunca se guarda aquí en texto plano."
         },
         "security__rate_limit_enabled": {
           "label": "Activar la limitación de solicitudes",
@@ -1328,6 +1387,34 @@
             "ALWAYS": "Siempre",
             "NEVER": "Nunca"
           }
+        },
+        "backups__enabled": {
+          "label": "Backups",
+          "description": "Hace un backup de la instancia según la programación de abajo, y permite Hacer backup ahora. Apagado: no se hace ningún backup nuevo - los hechos siguen en la lista, para descargarlos o eliminarlos."
+        },
+        "backups__schedule": {
+          "label": "Programación",
+          "description": "Cuándo, como expresión cron en la zona horaria de la instancia (Settings › General). 0 3 * * *: todos los días a las 03:00."
+        },
+        "backups__keep": {
+          "label": "Backups a conservar",
+          "description": "Los backups completados más recientes que se conservan; uno más viejo se elimina cuando se completa cada uno nuevo."
+        },
+        "backups__destination": {
+          "label": "Destino",
+          "description": "Dónde se escriben los backups nuevos. Un backup ya hecho queda donde se escribió.",
+          "options": {
+            "local": "Disco local",
+            "s3": "Almacenamiento S3"
+          }
+        },
+        "backups__local_path": {
+          "label": "Ruta local de los backups",
+          "description": "El directorio donde se escriben los backups locales - monta ahí un volumen, en otro disco que el de la base de datos."
+        },
+        "backups__include_files": {
+          "label": "Incluir los archivos guardados",
+          "description": "Los archivos que Files guarda en el disco local entran en cada backup. Los guardados en el almacenamiento S3 nunca - respalda el bucket con el versionado o la replicación del propio servicio."
         }
       }
     },
@@ -1378,6 +1465,86 @@
       "mcpJsonHelp": "O este archivo en la carpeta del proyecto - el token se lee de TOTALBASE_TOKEN.",
       "copy": "Copiar",
       "copied": "Copiado"
+    },
+    "backups": {
+      "backUpNow": "Hacer backup ahora",
+      "queued": "Backup en cola",
+      "queueFailed": "No se pudo poner el backup en cola",
+      "downloadFailed": "No se pudo descargar el backup",
+      "deleteFailed": "No se pudo eliminar el backup",
+      "deleteTitle": "Eliminar backup",
+      "deleteBody": "Se eliminan {name} y su archivo. No se puede deshacer.",
+      "nextAt": "Próximo backup: {when} ({timezone}).",
+      "scheduleOff": "Los backups están apagados - actívalos para hacerlos según la programación o ahora. Los ya hechos siguen abajo.",
+      "scheduled": "Programado",
+      "manual": "Hacer backup ahora",
+      "local": "Disco local",
+      "s3": "Almacenamiento S3",
+      "empty": "Todavía no hay backups",
+      "emptyDescription": "Haz un backup ahora, o activa los backups programados más abajo.",
+      "masterKeyApart": "Un backup nunca contiene la clave maestra: guárdala aparte - para restaurar hace falta.",
+      "columns": {
+        "backup": "Backup",
+        "status": "Estado",
+        "size": "Tamaño"
+      },
+      "status": {
+        "PENDING": "En cola",
+        "RUNNING": "En ejecución",
+        "COMPLETED": "Completado",
+        "FAILED": "Fallido"
+      },
+      "listTitle": "Backups",
+      "pager": {
+        "noun": "backup",
+        "plural": "backups"
+      },
+      "restore": {
+        "menu": "Restaurar…",
+        "title": "Restaurar un backup",
+        "description": "El backup del {when} ({name}): los comandos que lo restauran, para ejecutar donde corre la instancia.",
+        "before": "Antes de empezar",
+        "beforeHelp": "Qué hace una restauración",
+        "options": "Tu instalación",
+        "optionsHelp": "Adónde va el backup",
+        "commands": "Comandos",
+        "commandsHelp": "Ejecútalos en orden",
+        "what": "Desde aquí no se ejecuta nada. Los pasos siguientes dan los comandos que restauran este backup en una base nueva y vacía y pasan la instancia a usarla:",
+        "whatDatabase": "La base actual, {database}, queda como está - volver a ella deshace la restauración.",
+        "whatFiles": "Los archivos guardados vuelven a los del backup; los actuales se mueven aparte, nunca se borran.",
+        "whatStopped": "TotalBase queda detenido mientras corre: planifica una pausa breve.",
+        "whatSince": "Lo que cambió después del {when} no está en el backup.",
+        "masterKey": "La misma clave maestra",
+        "masterKeyHelp": "La instancia tiene que arrancar con la clave maestra con la que se hizo este backup - TOTALBASE_MASTER_KEY, o master.key en su volumen de datos. La restauración la verifica antes de escribir nada.",
+        "database": "Base nueva",
+        "databaseHelp": "Se crea vacía para el backup. Minúsculas, dígitos y _.",
+        "user": "Usuario de la base",
+        "userHelp": "El rol con el que se conecta TotalBase (POSTGRES_USER) - dueño de la base nueva.",
+        "postgres": "PostgreSQL",
+        "postgresInCompose": "En el mismo Docker Compose",
+        "postgresInComposeHelp": "Como en la primera instalación de la guía: la base se crea a través de su servicio.",
+        "postgresElsewhere": "En otro lado",
+        "postgresElsewhereHelp": "Un servicio administrado o un servidor propio: la crea quien lo administra.",
+        "appService": "Servicio de TotalBase",
+        "dbService": "Servicio de PostgreSQL",
+        "identifierError": "Minúsculas, dígitos y _, empezando por una letra o _.",
+        "serviceError": "Un nombre de servicio de Compose: letras, dígitos, ., _ y -.",
+        "sameDatabase": "Usa una base nueva - nunca la que está en uso.",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "done": "Listo",
+        "rollbackTitle": "Para volver atrás",
+        "steps": {
+          "create": "Crea la base vacía, como superusuario de PostgreSQL:",
+          "createSql": "Pide que creen la base vacía, a alguien con permiso - el usuario de TotalBase no lo tiene:",
+          "download": "Descarga {name} en la carpeta desde la que ejecutas los comandos siguientes:",
+          "stop": "Detén TotalBase:",
+          "restore": "Restaura el backup en la base nueva - antes verifica la clave maestra, las versiones y que la base esté vacía:",
+          "switch": "En docker-compose.yml, apunta TotalBase a la base nueva:",
+          "start": "Arranca TotalBase - aplica cualquier migración más nueva:",
+          "rollback": "Vuelve a apuntar TotalBase a la base anterior y devuelve sus archivos:"
+        }
+      }
     }
   }
 }

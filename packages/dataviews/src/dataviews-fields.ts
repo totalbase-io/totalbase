@@ -39,7 +39,7 @@ export function withoutInheritedDisplay(config: Record<string, unknown>, read: R
 /** What a DataView's column may not set itself - its title and presentation are its table's column's (§15), its foreign key's display its table's row presentation's (§15.5). */
 export const COLUMN_FIELD_FORBIDDEN_KEYS: readonly string[] = [...COLUMN_PRESENTATION_KEYS, "disabledConditions", "display_field", "display_template", "display_field_target"];
 
-/** A grid column's config, refused when it sets what belongs to its table's column (Specification_DataViews.md §15). */
+/** A grid column's config, refused when it sets what belongs to its table's column (DataViews.md §15). */
 export function withoutColumnPresentation(config: Record<string, unknown>): Record<string, unknown> {
   const own = Object.keys(config).filter((key) => COLUMN_FIELD_FORBIDDEN_KEYS.includes(key));
   if (own.length > 0) {
@@ -61,7 +61,7 @@ export function typeDerivedConfig(dataType: string): Record<string, unknown> {
 }
 
 /**
- * A DataView's items in real display order (Specification_DataViews.md §2.2: `ORDER BY
+ * A DataView's items in real display order (DataViews.md §2.2: `ORDER BY
  * grid_y, grid_x`) - `COLUMN` rows auto-populated at create time (§3.2),
  * plus the `WIDGET` rows of its page.
  */
@@ -111,7 +111,7 @@ export async function fieldSource(ctx: DataViewsContext, dataviewId: string): Pr
 }
 
 /**
- * A form field's input that follows its column (`config.fromColumn`, Specification_DataViews.md §15.2): the input
+ * A form field's input that follows its column (`config.fromColumn`, DataViews.md §15.2): the input
  * its column is edited with - `columnFormInput` over the column's presentation (live on a draft, the version's on a
  * published read) and its live PostgreSQL facts. When that's another widget than the one stored, the field reads
  * as that one, keeping only the props and bindings it takes. `parents` are the form fields when `fields` lacks them.
@@ -154,7 +154,7 @@ export async function withColumnInputs(ctx: DataViewsContext, dataviewId: string
  * Each COLUMN/RELATED field as the grid reads it: its column's PostgreSQL
  * type, live (`dataType`, and the format keys it derives - never stored),
  * and what it inherits from its resource's column out of `presentation`
- * (Specification_DataViews.md §15). Matched by attnum, so a
+ * (DataViews.md §15). Matched by attnum, so a
  * rename keeps both; a column that no longer exists gets neither.
  *
  * A foreign-key COLUMN shows what it
@@ -289,7 +289,7 @@ export async function updateFieldOn(ctx: DataViewsContext, on: Queryable, datavi
     ? widgetRelatedDashboard(widgetRow.widget as WidgetName, patch.config as WidgetFieldConfig)
     : undefined;
   // A DataView's column has no title or presentation of its own: its table's column's, set in Database
-  // (Specification_DataViews.md §15) - only how the list shows it is its own.
+  // (DataViews.md §15) - only how the list shows it is its own.
   if (!widgetRow && patch.label !== undefined && patch.label !== null) {
     throw new TotalBaseError("DATAVIEW_COLUMN_INVALID", "A DataView's column takes its title from its table's column - set it in Database › the column.");
   }
@@ -353,7 +353,7 @@ export async function deleteField(ctx: DataViewsContext, dataviewId: string, fie
   );
   const row = rows[0];
   if (!row) throw new TotalBaseError("DATAVIEW_FIELD_NOT_FOUND", `Field not found: ${fieldId}`);
-  // A column leaves the DataView - it's no longer read (Specification_DataViews.md §4.1); "Add columns…" brings it back.
+  // A column leaves the DataView - it's no longer read (DataViews.md §4.1); "Add columns…" brings it back.
   // Never the primary key: editing and deleting a row need it - it can be hidden instead.
   if (row.kind === "COLUMN" || row.kind === "RELATED") {
     if (row.kind === "COLUMN" && row.column_name && dataview.sourceResourceOid !== null) {

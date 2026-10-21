@@ -264,11 +264,11 @@ describe('Calls', () => {
     const emit = vi.fn()
     const { vars } = createVariablesEngine([
       { name: 'cliente', kind: 'VALUE', type: 'number', default: { source: 'constant', value: 7 } },
-      { name: 'emitir', kind: 'CALL', target: { type: 'WORKFLOW', slug: 'emitir-factura' }, input: { cliente: '{{vars.cliente.value}}', nota: 'hola' } }
+      { name: 'emitir', kind: 'CALL', target: { type: 'WORKFLOW', workflow: 'wf-1' }, input: { cliente: '{{vars.cliente.value}}', nota: 'hola' } }
     ], { transport, emit })
     const emitir = vars.emitir as CallHandle
     const result = await emitir.execute()
-    expect(transport.call).toHaveBeenCalledWith({ type: 'WORKFLOW', slug: 'emitir-factura' }, { cliente: 7, nota: 'hola' })
+    expect(transport.call).toHaveBeenCalledWith({ type: 'WORKFLOW', workflow: 'wf-1' }, { cliente: 7, nota: 'hola' })
     expect(result).toEqual({ ok: true, input: { cliente: 7, nota: 'hola' } })
     expect(emitir.status).toBe('success')
     expect(emit.mock.calls.map(c => c[1])).toEqual(['before:execute', 'success', 'complete'])

@@ -33,7 +33,7 @@ interface AffectedRow {
 }
 
 /**
- * The DATA_EVENT Start's own matching (Specification_Workflows.md §6.3.1),
+ * The DATA_EVENT Start's own matching (Workflows.md §6.3.1),
  * on top of resource and kind: `filter` over the resulting row (the deleted
  * one on DELETE), and on an UPDATE `changed_fields` (one of them changed) and
  * `old_filter` (over the row before) - the one filter grammar, evaluated in
@@ -61,7 +61,7 @@ interface DefinitionOperation {
 }
 
 /**
- * Data-event admission (specs/Specification_Workflows.md §6.3):
+ * Data-event admission (specs/Workflows.md §6.3):
  * the consumer side of `outbox`, which `enqueueOutboxEvent`
  * (@totalbase/outbox) has been writing into all along - `dispatchOutboxEventsEagerly`'s
  * doc comment in mutation-service.ts already named Workflow as this
@@ -79,11 +79,11 @@ interface DefinitionOperation {
  * but opted out" (skip, same behavior this dispatcher always had before ancestry existed
  * at all); a real array is the chain of workflow ids that already ran
  * before this mutation, oldest first. Immutable causal ancestry
- * (Specification_Workflows.md §6.3.4) then rejects admitting a candidate workflow
+ * (Workflows.md §6.3.4) then rejects admitting a candidate workflow
  * whose own id already appears in that chain (a repeat = a loop), or
  * whose admission would make the chain longer than `workflows.max_chain_depth`.
  *
- * Delivery (Specification_Data_API.md §13.3, Specification_Workflows.md
+ * Delivery (Data_API.md §13.3, Workflows.md
  * §6.3.5): the event is claimed under a lease (`locked_until`, renewed
  * before each admission) so a stopped process's event is retried, and
  * every run - or suppression - it admits takes a claim in
@@ -92,7 +92,7 @@ interface DefinitionOperation {
 export async function dispatchDataEvent(context: WorkflowEngineContext, outboxEventId: string): Promise<void> {
   const workerId = `data-event-${randomUUID()}`;
   const leaseSeconds = await context.settings.get("outbox.lease_seconds");
-  // Claim (Specification_Data_API.md §13.3): PENDING -> PROCESSING under a
+  // Claim (Data_API.md §13.3): PENDING -> PROCESSING under a
   // lease. SKIP LOCKED: a dispatcher racing for the same event moves on
   // instead of waiting for it.
   const { rows: claimed } = await context.database.query<OutboxRow>(
@@ -138,9 +138,9 @@ export async function dispatchDataEvent(context: WorkflowEngineContext, outboxEv
 }
 
 async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renewLease: () => Promise<void>): Promise<void> {
-  if (outbox.event === "EXECUTE") return; // DATA_EVENT Starts only match CREATE/UPDATE/DELETE (Specification_Workflows.md §6.3.1).
+  if (outbox.event === "EXECUTE") return; // DATA_EVENT Starts only match CREATE/UPDATE/DELETE (Workflows.md §6.3.1).
 
-  // The event says where it came from itself (never the audit log, which audit.enabled may switch off - Pre_Beta_Review 1.1).
+  // The event says where it came from itself (never the audit log, which audit.enabled may switch off).
   let incomingAncestry: string[] = [];
   if (outbox.source === "workflow") {
     if (outbox.workflow_ancestry == null) return; // that step's own emitEvents was unset at write time - opted out.
@@ -152,11 +152,11 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
   if (!(await context.workflowsAdmin.hasEnabledPublishedDataEventStart())) return;
 
   const rows = Array.isArray(outbox.payload) ? (outbox.payload as Record<string, unknown>[]) : outbox.payload ? [outbox.payload as Record<string, unknown>] : [];
-  if (rows.length === 0) return; // "zero affected records admits no run" (Specification_Workflows.md §6.3.3).
+  if (rows.length === 0) return; // "zero affected records admits no run" (Workflows.md §6.3.3).
   const affectedRows: AffectedRow[] = rows.map((row, item) => ({ row, old: outbox.old_payload, changed: outbox.changed_columns, item }));
 
   // For each statement: every row the same write produced on this resource, in order - the
-  // events of one request, one per row (Specification_Workflows.md §6.3.3). Its first event
+  // events of one request, one per row (Workflows.md §6.3.3). Its first event
   // admits the run; the others leave it to that one.
   let statement: { anchor: string; rows: AffectedRow[] } | null = null;
   const statementRows = async () => {
@@ -203,7 +203,7 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
     const initiator = { type: "DATA_EVENT", resource: outbox.resource, event: outbox.event, requestId: outbox.request_id, ...(perStatement && { forEach: "STATEMENT" }) };
     // Every run this event admits for this workflow - or the one
     // suppression it records - takes a claim, so a retried event never
-    // admits it twice (Specification_Workflows.md §6.3.5).
+    // admits it twice (Workflows.md §6.3.5).
     const workflowClaim = { event: outbox.id, item: null };
     await renewLease();
 
@@ -213,7 +213,7 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
       continue;
     }
     // The chain - the ancestry plus this candidate - holds at most
-    // workflows.max_chain_depth workflows (Specification_Workflows.md §6.3.4).
+    // workflows.max_chain_depth workflows (Workflows.md §6.3.4).
     if (incomingAncestry.length >= maxChainDepth) {
       context.logger.warn({ workflowId: workflow.id, ancestry: incomingAncestry }, "causal-ancestry chain depth exceeded, admission suppressed");
       await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, outboxClaim: workflowClaim }, { code: "WORKFLOW_LIMIT_EXCEEDED", message: `This admission's causal-ancestry chain would exceed the maximum depth of ${maxChainDepth} (workflows.max_chain_depth).` });
@@ -242,7 +242,7 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
 
     // Re-project through execute_as's OWN current permissions at
     // admission time - never trust the write-time projection
-    // (Specification_Workflows.md §6.3.3: "never bypasses field or row permissions merely because the
+    // (Workflows.md §6.3.3: "never bypasses field or row permissions merely because the
     // initiating write was allowed").
     // Each record keeps its position in the event's payload - its
     // admission claim's `item`, stable across retries.

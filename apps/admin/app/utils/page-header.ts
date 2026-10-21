@@ -32,7 +32,7 @@ export interface HeaderAction {
  */
 export interface HeaderSelection {
   count: number
-  /** What the selection adds up to - a summed column's total (Specification_DataViews.md §4.9). */
+  /** What the selection adds up to - a summed column's total (DataViews.md §4.9). */
   summary?: string | null
   actions: HeaderAction[]
   onClear: () => void

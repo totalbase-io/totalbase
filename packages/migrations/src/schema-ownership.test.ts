@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { runMigrations, TOTALBASE_SCHEMA_MARKER } from "./runner.js";
 
 /**
- * The startup ownership check (Specification.md §14, step 3). Each case
+ * The startup ownership check (Foundations.md §14, step 3). Each case
  * runs in a scratch database of its own, created and dropped here - a
  * foreign `totalbase` schema can't be staged in the shared test database,
  * which TotalBase already owns.

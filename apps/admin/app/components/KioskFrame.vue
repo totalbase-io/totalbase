@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A kiosk page's frame (`view_config.kiosk`, Specification_DataViews.md
+ * A kiosk page's frame (`view_config.kiosk`, DataViews.md
  * §7.3): the page alone, filling the screen - no App menu, no page header.
  *
  * - A discreet "⋮" in a corner: Full screen (the Fullscreen API needs a

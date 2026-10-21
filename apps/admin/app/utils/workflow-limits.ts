@@ -1,5 +1,5 @@
 // Client-side mirror of @totalbase/workflows' WORKFLOW_DEFINITION_LIMITS
-// (Specification_Workflows.md §3.6), so the editor refuses before saving
+// (Workflows.md §3.6), so the editor refuses before saving
 // what the server would refuse with WORKFLOW_LIMIT_EXCEEDED. The server
 // stays authoritative; workflow-limits.test.ts keeps the values equal.
 
@@ -15,7 +15,7 @@ export const WORKFLOW_DEFINITION_LIMITS = {
 
 /**
  * A workflows text by key, with `{param}` placeholders filled - the UI passes
- * vue-i18n's `t` (Specification_Admin_UI.md §14). A caller with no i18n (a
+ * vue-i18n's `t` (Admin_UI.md §14). A caller with no i18n (a
  * unit test) builds one from a locale file with `workflowTextFrom()` - this
  * module never imports the file itself, so the workflows area stays out of
  * every bundle that merely checks a limit (the area loads with its route).

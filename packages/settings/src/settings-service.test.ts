@@ -15,6 +15,11 @@ const TOUCHED_KEYS = [
   "api.max_limit",
   "smtp.port",
   "files.transforms.presets_json",
+  "files.storage_provider",
+  "s3.enabled",
+  "s3.endpoint",
+  "s3.bucket",
+  "s3.prefix",
 ];
 
 describe("SettingsService (integration)", () => {
@@ -136,6 +141,28 @@ describe("SettingsService (integration)", () => {
       message: "auth.password_min_length: Expected a whole number from 8 to 128.",
     });
     expect(await settings.isOverridden("api.max_limit")).toBe(false);
+  });
+
+  it("accepts only a well-formed S3 connection, and Files in S3 only while it is enabled - which then stays on", async () => {
+    await expect(settings.set("files.storage_provider", "gcs")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.set("s3.endpoint", "s3.amazonaws.com")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.set("s3.endpoint", "https://key:secret@s3.amazonaws.com")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.set("s3.bucket", "My_Bucket")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.set("s3.prefix", "../other")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.set("s3.prefix", "/root")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await settings.set("s3.endpoint", "http://minio:9000");
+    await settings.set("s3.bucket", "totalbase-files");
+    await settings.set("s3.prefix", "production/");
+
+    await expect(settings.set("files.storage_provider", "s3")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await settings.set("s3.enabled", true);
+    await settings.set("files.storage_provider", "s3");
+    expect(await settings.get("files.storage_provider")).toBe("s3");
+    await expect(settings.set("s3.enabled", false)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(settings.reset("s3.enabled")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await settings.reset("files.storage_provider");
+    await settings.set("s3.enabled", false);
+    for (const key of ["s3.endpoint", "s3.bucket", "s3.prefix"] as const) await settings.reset(key);
   });
 
   it("accepts only a JSON object for files.transforms.presets_json", async () => {

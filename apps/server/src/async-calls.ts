@@ -9,7 +9,7 @@ import { executeFunctionCall, resolveFunctionCall } from "@totalbase/mutations";
 import { sanitizeForAudit } from "./access-audit.js";
 
 /**
- * Asynchronous calls (Specification_Data_API.md §10.4): a function call or
+ * Asynchronous calls (Data_API.md §10.4): a function call or
  * a transaction sent with `Prefer: respond-async` is checked at once
  * (resource, EXECUTE or the TRANSACTIONS capability), queued as an
  * execution and answered 202 with its id; the executions worker runs it

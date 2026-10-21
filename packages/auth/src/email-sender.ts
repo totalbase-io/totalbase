@@ -18,7 +18,7 @@ export interface EmailSendInput {
   cc?: string;
   bcc?: string;
   replyTo?: string;
-  /** Files sent with the message - a workflow's Send email step (Specification_Workflows.md §5.16). */
+  /** Files sent with the message - a workflow's Send email step (Workflows.md §5.16). */
   attachments?: EmailAttachment[];
 }
 
@@ -32,7 +32,7 @@ export interface EmailSender {
   send(input: EmailSendInput): Promise<void>;
   /**
    * Connects to the relay and authenticates, sending nothing - the admin's
-   * "Test connection" (Specification_Administration.md §8.1).
+   * "Test connection" (Administration.md §8.1).
    */
   verify(): Promise<void>;
 }

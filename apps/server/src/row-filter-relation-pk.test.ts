@@ -5,8 +5,8 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Regression (Beta_Findings 3.16): a grant's row filter through a relation - an order's `technician.owner` -
- * needs no field grant (Specification_Security.md §6.5). A list read applied it as the row filter, but a read
+ * Regression: a grant's row filter through a relation - an order's `technician.owner` -
+ * needs no field grant (Security.md §6.5). A list read applied it as the row filter, but a read
  * by primary key merged it into the request's where, where every path needs the caller's field grant: a
  * technician listed their orders and couldn't open one (403 FIELD_PERMISSION_DENIED technician.owner).
  */

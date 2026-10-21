@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * `appearance.primary_color` (Specification_Admin_UI.md §4.1.1): a hex, or
+ * `appearance.primary_color` (Admin_UI.md §4.1.1): a hex, or
  * empty for the product's blue. The browser's own color picker behind a
  * swatch, the hex typed beside it, and a few presets - one color is all
  * the server needs, it derives the shades.

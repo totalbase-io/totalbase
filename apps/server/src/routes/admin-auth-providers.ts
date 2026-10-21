@@ -52,7 +52,7 @@ async function assertSecretExists(context: AppContext, key: string): Promise<voi
 }
 
 /**
- * Admin CRUD for totalbase.providers (Specification_Security.md §2.11).
+ * Admin CRUD for totalbase.providers (Security.md §2.11).
  * The public flow itself (redirect + callback) is
  * api-auth.ts - this is only configuration, admin-gated like every other
  * feature's settings surface.

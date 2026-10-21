@@ -52,7 +52,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'shell.nav.groups.app',
     icon: 'i-lucide-app-window',
     // Published DataViews and Dashboards in the administrator-arranged
-    // menu (Specification_Security.md §8) - its panel is AppMenuPanel.vue.
+    // menu (Security.md §8) - its panel is AppMenuPanel.vue.
     // First for an APP user: the App is what they work in.
     to: '/app',
     routePrefixes: ['/app']
@@ -164,6 +164,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'shell.nav.groups.settings',
     icon: 'i-lucide-settings',
     routePrefixes: ['/settings'],
+    // PostgreSQL = the database itself (its connection, maintenance, backups, the SQL Console);
     // Access = who gets in and how; Security = protecting the instance;
     // Data API = what the generic API's callers are held to; Features =
     // each admin module's own knobs. Labels match each page's own header
@@ -173,9 +174,15 @@ export const adminNavGroups: AdminNavGroup[] = [
         { label: 'shell.nav.items.general', type: 'label' },
         { label: 'shell.nav.items.general', icon: 'i-lucide-globe', to: '/settings/system' },
         { label: 'shell.nav.items.appearance', icon: 'i-lucide-palette', to: '/settings/appearance' },
+        { label: 'shell.nav.items.emailSmtp', icon: 'i-lucide-send', to: '/settings/smtp' },
+        { label: 'shell.nav.items.s3Storage', icon: 'i-lucide-cloud', to: '/settings/s3' }
+      ],
+      [
+        { label: 'shell.nav.items.postgresql', type: 'label' },
         { label: 'shell.nav.items.connector', icon: 'i-lucide-plug', to: '/settings/connector' },
         { label: 'shell.nav.items.maintenance', icon: 'i-lucide-wrench', to: '/settings/maintenance' },
-        { label: 'shell.nav.items.emailSmtp', icon: 'i-lucide-send', to: '/settings/smtp' }
+        { label: 'shell.nav.items.backups', icon: 'i-lucide-archive', to: '/settings/backups' },
+        { label: 'shell.nav.items.sqlConsole', icon: 'i-lucide-terminal', to: '/settings/sql-console' }
       ],
       [
         { label: 'shell.nav.items.access', type: 'label' },
@@ -203,8 +210,7 @@ export const adminNavGroups: AdminNavGroup[] = [
         { label: 'shell.nav.items.dashboards', icon: 'i-lucide-layout-dashboard', to: '/settings/dashboards' },
         { label: 'shell.nav.items.maps', icon: 'i-lucide-map', to: '/settings/maps' },
         { label: 'shell.nav.items.files', icon: 'i-lucide-files', to: '/settings/files' },
-        { label: 'shell.nav.items.workflows', icon: 'i-lucide-workflow', to: '/settings/workflows' },
-        { label: 'shell.nav.items.sqlConsole', icon: 'i-lucide-terminal', to: '/settings/sql-console' }
+        { label: 'shell.nav.items.workflows', icon: 'i-lucide-workflow', to: '/settings/workflows' }
       ]
     ]
   }
@@ -231,6 +237,8 @@ export const SETTINGS_GROUP_ROUTES: Record<string, string> = {
   system: '/settings/system',
   appearance: '/settings/appearance',
   smtp: '/settings/smtp',
+  s3: '/settings/s3',
+  backups: '/settings/backups',
   pool: '/settings/connector',
   catalog: '/settings/connector',
   auth: '/settings/auth',

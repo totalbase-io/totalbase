@@ -1,4 +1,4 @@
--- Acme Field Services - the documentation demo's schema (specs/proposals/Docs_Demo_Field_Service.md §3).
+-- Acme Field Services - the documentation demo's schema (deploy/docs/DATASET.md §3).
 -- Everything in public; the one object outside it is the `branch` column on totalbase.users.
 -- PostgreSQL decides: stock, schedules, due dates and totals are constraints, triggers, functions and views.
 
@@ -512,7 +512,7 @@ CREATE VIEW orders_due_soon AS
   FROM work_orders o JOIN sites s ON s.id = o.site
   WHERE o.status NOT IN ('COMPLETED', 'CANCELLED') AND o.due_at BETWEEN now() AND now() + interval '2 hours';
 
--- Each rule a person can break from a form says what to fix, beside its field (Specification_DataViews.md §18:
+-- Each rule a person can break from a form says what to fix, beside its field (DataViews.md §18:
 -- CONSTRAINT_WITHOUT_MESSAGE). Lists of values and foreign keys need none: a select offers only valid ones.
 COMMENT ON CONSTRAINT branches_code_check ON public.branches IS 'A branch code is three capital letters, like SAL.';
 COMMENT ON CONSTRAINT branches_code_key ON public.branches IS 'Another branch already has this code.';

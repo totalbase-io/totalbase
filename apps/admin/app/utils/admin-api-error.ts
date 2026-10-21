@@ -3,7 +3,7 @@ import type { AdminApiError as AdminApiErrorShape } from '~/types/api'
 /**
  * Thrown by useAdminApi() for every non-2xx response. Carries the server's
  * own code/message through untouched — the UI's job is to display it, not
- * to reinterpret it (Specification_Admin_UI.md §1.2: no logic that belongs server-side).
+ * to reinterpret it (Admin_UI.md §1.2: no logic that belongs server-side).
  */
 export class AdminApiError extends Error {
   readonly status: number

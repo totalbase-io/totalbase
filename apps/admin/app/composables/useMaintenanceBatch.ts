@@ -1,5 +1,5 @@
 /**
- * The maintenance batch (Settings > Maintenance, Specification_Administration.md §6.5), shared
+ * The maintenance batch (Settings > Maintenance, Administration.md §6.5), shared
  * by the page's batch modal and the Settings menu's "running" indicator.
  * Its state lives in PostgreSQL - this only mirrors it: one poll for the
  * whole app, every 2s while a batch is active and someone is watching,

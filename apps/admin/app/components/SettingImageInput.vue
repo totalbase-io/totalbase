@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A setting that holds the id of a PUBLIC image in Files (`system.logo`,
- * `appearance.login_background` - Specification_Admin_UI.md §4.1.1): the
+ * `appearance.login_background` - Admin_UI.md §4.1.1): the
  * current image, Upload (a picked file goes straight to Files as PUBLIC,
  * `POST /api/totalbase/table/files`, the way WidgetFileUpload does) and
  * Remove. The setting itself is saved with the page; replacing an image

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Design form of a CUSTOM DataView (Specification_DataViews.md §12):
+ * The Design form of a CUSTOM DataView (DataViews.md §12):
  * Design · Variables · Code.
  *
  * - Design: the palette is the widget catalog (every widget, by group); the
@@ -135,8 +135,8 @@ function resourcePresentation(name: string): Record<string, ColumnPresentation> 
   if (!definition) return undefined
   return withRelatedPresentation(props.dataview.columnPresentation?.[definition.resource], resourceFields(name), props.dataview.variableResources?.[definition.resource]?.relations, props.dataview.columnPresentation)
 }
-/** The record: the page's source table (useDesignerRecord, Specification_DataViews.md §8.5) - its columns and foreign keys, for a field bound to a column, and what each column's presentation sets. */
-const { recordTable, recordTableName, recordColumns, recordRelations, recordPresentation, columnTitle, inputForColumn } = useDesignerRecord(() => props.dataview)
+/** The record: the page's source table (useDesignerRecord, DataViews.md §8.5) - its columns and foreign keys, for a field bound to a column, and what each column's presentation sets. */
+const { recordTable, recordTableName, recordColumns, recordRelations, recordJunctions, recordPresentation, columnTitle, inputForColumn } = useDesignerRecord(() => props.dataview)
 /** A record column's presentation, in Database - its table's page opens it. */
 const router = useRouter()
 function presentationLink(column: string): string | undefined {
@@ -219,7 +219,7 @@ async function remove(id: string) {
   }
 }
 
-// --- Canvas (Specification_DataViews.md §12.2, useDesignerSteps) -----------------------------------------
+// --- Canvas (DataViews.md §12.2, useDesignerSteps) -----------------------------------------
 
 const { steps, step, stepField, breadcrumb, enter, ownSlots, ownFrameClass, defaultTarget } = useDesignerSteps({
   fields: localFields,
@@ -318,7 +318,7 @@ async function move(id: string, target: CanvasDropTarget) {
   await insertAt(fieldById(id)!, { ...target, index })
 }
 
-// --- How the form opens (Specification_DataViews.md §6.3, §6.7): the toolbar's popover, the same controls as
+// --- How the form opens (DataViews.md §6.3, §6.7): the toolbar's popover, the same controls as
 // Settings › Form (DataViewOpenSettings.vue), each change written to the DataView at once. ---
 const openSettingsOpen = ref(false)
 const editPresentation = ref<EditPresentation>(resolveEditPresentation(props.dataview.viewConfig))
@@ -791,6 +791,7 @@ const { inputOptions: INPUT_OPTIONS, valueTypeFor, identifierFrom, placeField } 
   fields: localFields,
   variables,
   recordRelations,
+  recordJunctions,
   insertAt,
   startingProps,
   columnTitle,
@@ -798,7 +799,7 @@ const { inputOptions: INPUT_OPTIONS, valueTypeFor, identifierFrom, placeField } 
 })
 const variablesPanel = ref<InstanceType<typeof CustomVariablesPanel> | null>(null)
 
-/** Renaming a variable renames it in every widget bound to it; the Code is left to the author (Specification_DataViews.md §12.7). */
+/** Renaming a variable renames it in every widget bound to it; the Code is left to the author (DataViews.md §12.7). */
 function renameVariable(from: string, to: string) {
   for (const field of localFields.value) {
     const bindings = (field.config as { bindings?: Record<string, { kind: string, variable?: string }> }).bindings ?? {}
@@ -819,7 +820,7 @@ function usedBy(name: string): string[] {
 }
 
 /**
- * A select's Search window turned on (Specification_DataViews.md §9.8): its options' Resource reads every column of its
+ * A select's Search window turned on (DataViews.md §9.8): its options' Resource reads every column of its
  * table, so the window shows them and searches them - a foreign key's generated one reads only its key and label. The
  * author may drop some in Variables.
  */
@@ -1160,6 +1161,7 @@ defineExpose({ flush, hasUnsavedWork, saveStatus })
               :columns="recordColumns"
               :relations="recordRelations"
               :record-table="recordTableName"
+              :junctions="recordJunctions"
               :dataview-id="dataview.id"
               :resource-fields="resourceFields"
               :resource-columns="resourceColumns"
@@ -1332,6 +1334,7 @@ defineExpose({ flush, hasUnsavedWork, saveStatus })
     <CustomDesignerFieldSetupModal
       v-model:open="fieldSetupOpen"
       :columns="recordColumns"
+      :junctions="recordJunctions"
       :input-options="INPUT_OPTIONS"
       :column-title="columnTitle"
       :input-for-column="inputForColumn"

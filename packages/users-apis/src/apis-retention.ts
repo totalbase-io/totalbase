@@ -6,7 +6,7 @@ const PURGE_BATCH_SIZE = 5_000;
 /**
  * Deletes personal access tokens that ended - revoked, or past their expiry -
  * more than `purgeAfterDays` ago (api_keys.purge_after_days): the server's
- * hourly retention job (Specification_Security.md §3). An ended token stays
+ * hourly retention job (Security.md §3). An ended token stays
  * listed (Tokens → Revoked / Expired) for that long and is then deleted; a
  * token that is merely deactivated (`active = false`) is kept - it can be
  * turned on again. 0 keeps ended tokens forever. Returns how many were deleted.

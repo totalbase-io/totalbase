@@ -7,8 +7,8 @@ import { TotalBaseError } from "@totalbase/errors";
 
 const SETTINGS_KEY = "system.master_key_verifier";
 
-function fingerprint(masterKey: string): string {
-  // Non-reversible verifier only, per Specification.md §15.
+export function fingerprint(masterKey: string): string {
+  // Non-reversible verifier only, per Foundations.md §15.
   // The plaintext master key is never persisted in PostgreSQL.
   return createHash("sha256").update(masterKey, "utf8").digest("hex");
 }
@@ -16,7 +16,7 @@ function fingerprint(masterKey: string): string {
 /**
  * Validates TOTALBASE_MASTER_KEY against the stored fingerprint.
  * On first run (no fingerprint yet), stores the fingerprint of the
- * provided key. See Specification.md §15.
+ * provided key. See Foundations.md §15.
  */
 export async function assertValidMasterKey(database: Database, masterKey: string): Promise<void> {
   const expected = fingerprint(masterKey);
@@ -74,7 +74,7 @@ async function readKeyFile(path: string): Promise<string | null> {
 }
 
 /**
- * The master key (Specification.md §15): TOTALBASE_MASTER_KEY when set; else the one kept in the data directory
+ * The master key (Foundations.md §15): TOTALBASE_MASTER_KEY when set; else the one kept in the data directory
  * (`<dataDir>/master.key`); else - only for an installation that has none yet - a new one, generated and kept
  * there. Never a new key for an installation that already has one: its secrets would become unreadable, so a
  * missing key file with a recorded fingerprint refuses to start. Every key is checked against the fingerprint.

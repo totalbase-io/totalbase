@@ -4,7 +4,7 @@ import { actionInput, fillText, type RunnableAction } from '~/utils/custom-actio
 interface WorkflowRun { status: string, error: { message: string } | null }
 
 /**
- * Runs a DataView's custom action (Specification_DataViews.md §3.7) on a row, a record or a selection: asked first
+ * Runs a DataView's custom action (DataViews.md §3.7) on a row, a record or a selection: asked first
  * when it says so, then the same call any client makes - the function's route, the workflow's run - under the
  * viewer's own permissions. A success says so and `onDone` reloads what shows; a failure shows the call's message.
  */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The Users table for a delegated user (pages/users/index.vue;
- * Specification_Security.md §9.3): the users and columns their
+ * Security.md §9.3): the users and columns their
  * permissions allow, through the Data API - searched, paged and counted in
  * PostgreSQL. A row opens the user's page. Invite lives in the panel.
  */

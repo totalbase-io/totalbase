@@ -11,7 +11,7 @@ interface ExecuteBody {
   transactional?: boolean;
 }
 
-/** A request body's documented shape: `{ data: <schema> }` (Specification_Data_API.md §2.5). */
+/** A request body's documented shape: `{ data: <schema> }` (Data_API.md §2.5). */
 const dataBody = (schema: JsonSchema) => ({ schema: dataEnvelope(schema) });
 
 /** The `data` of a request body; a missing one, or one without its SQL, is a 400. */
@@ -60,9 +60,9 @@ const SQL_CONSOLE_SCHEMAS: Record<string, JsonSchema> = {
 const docs = (doc: Parameters<typeof adminDoc>[1]) => adminDoc("sql-console", { ...doc, schemas: SQL_CONSOLE_SCHEMAS });
 
 /**
- * Raw admin SQL execution (Specification_Administration.md §5).
+ * Raw admin SQL execution (Administration.md §5).
  * Deliberately bypasses the Query Engine and Permission
- * Resolver (Specification.md §19) - admin auth is the only gate.
+ * Resolver (Foundations.md §19) - admin auth is the only gate.
  */
 export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
@@ -88,7 +88,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
   // A failed statement answers with PostgreSQL's own diagnostics - DETAIL,
   // HINT, SQLSTATE, position (TotalBaseError.toAdminJSON) - on these two
   // routes only; every other route keeps the public shape (AGENTS.md §20,
-  // Specification_Administration.md §5.2).
+  // Administration.md §5.2).
   function sendAdminError(reply: FastifyReply, error: unknown): FastifyReply {
     if (!(error instanceof TotalBaseError)) throw error;
     return reply.code(error.httpStatus).send({ errors: [error.toAdminJSON()] });
@@ -138,7 +138,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
         });
         // The console's whole point is unrestricted DDL/DML - refresh
         // the catalog after every run rather than trying to sniff DDL
-        // keywords out of arbitrary SQL text (Specification_Administration.md §5.5: "catalog
+        // keywords out of arbitrary SQL text (Administration.md §5.5: "catalog
         // refresh after DDL"), unless catalog.auto_refresh_after_ddl is
         // off. Cheap enough for an admin-only, low-frequency tool.
         if (await context.settings.get("catalog.auto_refresh_after_ddl")) await reconcileCatalog(context);

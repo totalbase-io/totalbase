@@ -9,7 +9,7 @@ const route = useRoute()
 const colorMode = useColorMode()
 const { t } = useI18n()
 
-// One portal shell for everyone (Specification_Security.md §9): an
+// One portal shell for everyone (Security.md §9): an
 // administrator sees every group; a user with app access the App plus the
 // delegated modules their permissions open (session.modules, from the
 // server) - of Users, only the Users page, never other people's tokens or
@@ -216,7 +216,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
     scrollbar with an empty strip under the app. -->
     <!-- Rail: the groups follow the product navigation order. Only the
     account cluster is anchored at the bottom of the rail. -->
-    <!-- data-shell: the anchors the operator's CSS may target (Specification_Admin_UI.md §4.1.1) - rail, panel, header, main. -->
+    <!-- data-shell: the anchors the operator's CSS may target (Admin_UI.md §4.1.1) - rail, panel, header, main. -->
     <nav
       v-if="!isCompact"
       data-shell="rail"

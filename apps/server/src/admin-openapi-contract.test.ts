@@ -18,7 +18,7 @@ describe("Admin OpenAPI matches real responses", () => {
     await contract.close();
   });
 
-  // Roles and resources are read through the Data API (Specification_Security.md §10)
+  // Roles and resources are read through the Data API (Security.md §10)
   // - its own generated OpenAPI documents them.
   it("effective permissions", async () => {
     const roleId = (await context.roles.list())[0]!.id;

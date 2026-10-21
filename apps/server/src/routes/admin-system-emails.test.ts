@@ -6,7 +6,7 @@ import { loadServerEnv } from "../env.js";
 import { setupTestApp } from "../test-support.js";
 
 /**
- * System emails (Specification_Administration.md §8.2) - templates as settings overrides,
+ * System emails (Administration.md §8.2) - templates as settings overrides,
  * edited through /admin/api/system-emails - and the admin invite/reset
  * routes' `delivery: "link"` mode.
  */

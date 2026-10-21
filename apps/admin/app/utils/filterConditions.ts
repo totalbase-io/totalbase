@@ -83,7 +83,7 @@ function parseLeaf(entry: unknown): Condition | null {
 
 /**
  * A stored value as the builder's text: the grammar also takes a JSON number, boolean or - for
- * `_in`/`_nin`/`_between` - a list (`Specification_Data_API.md` §3). A list whose items hold a
+ * `_in`/`_nin`/`_between` - a list (`Data_API.md` §3). A list whose items hold a
  * comma can't be one comma-separated text, so it stays in the JSON editor (null).
  */
 function leafText(raw: unknown): string | null {

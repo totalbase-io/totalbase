@@ -165,7 +165,7 @@ export function emptyTreeLayout(): TreeLayoutConfig {
   return { parentColumn: null, orderColumn: null, titleFormula: null, descriptionFormula: null, iconFormula: null, colorFormula: null, imageFormula: null, defaultDisplay: 'tree', expandLevel: 1 }
 }
 /**
- * TREE (Specification_DataViews.md §5.14): the parent is a foreign key of the table to itself (the first one); the
+ * TREE (DataViews.md §5.14): the parent is a foreign key of the table to itself (the first one); the
  * order a number column, only when picked; the title the first column that isn't the parent. The parent and the
  * order come from every column (`all` - a hidden one is still read), the rest from the visible ones.
  */

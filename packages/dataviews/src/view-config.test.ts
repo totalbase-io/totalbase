@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assertViewConfigShape } from "./view-config.js";
 
-describe("assertViewConfigShape() - layouts (Specification_DataViews.md §5.13)", () => {
+describe("assertViewConfigShape() - layouts (DataViews.md §5.13)", () => {
   it("takes a list DataView's views in order, and null", () => {
     expect(() => assertViewConfigShape("TABLE", { layouts: ["TABLE", "MAP", "CARDS"] })).not.toThrow();
     expect(() => assertViewConfigShape("CARDS", { layouts: null })).not.toThrow();
@@ -25,7 +25,7 @@ describe("assertViewConfigShape() - layouts (Specification_DataViews.md §5.13)"
   });
 });
 
-describe("assertViewConfigShape() - kiosk (Specification_DataViews.md §7.3)", () => {
+describe("assertViewConfigShape() - kiosk (DataViews.md §7.3)", () => {
   it("takes kiosk on a CUSTOM page - true, false or null back to the default", () => {
     for (const kiosk of [true, false, null]) expect(() => assertViewConfigShape("CUSTOM", { kiosk })).not.toThrow();
   });

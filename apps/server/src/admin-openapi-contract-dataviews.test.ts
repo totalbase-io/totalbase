@@ -219,7 +219,7 @@ describe("Admin OpenAPI matches real responses - dataviews and app menu", () => 
     expect(dashboard.statusCode, dashboard.body).toBe(200);
     expect(dashboard.json().data).toEqual([roleId]);
 
-    // The diagnosis (Specification_DataViews.md §18): the same answers, one list per object, and all at once.
+    // The diagnosis (DataViews.md §18): the same answers, one list per object, and all at once.
     const issue = (code: string, more: Record<string, unknown> = {}) => expect.objectContaining({ code, role: expect.objectContaining({ id: roleId }), ...more });
     const table = await contract.get(`/admin/api/dataviews/${tableDv}/diagnosis`);
     expect(table.statusCode, table.body).toBe(200);

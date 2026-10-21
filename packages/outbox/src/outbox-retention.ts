@@ -9,7 +9,7 @@ export interface OutboxRetryPolicy {
 
 /**
  * Puts FAILED events that still have attempts left back to PENDING once
- * their backoff has elapsed (Specification_Data_API.md §13.3) - the
+ * their backoff has elapsed (Data_API.md §13.3) - the
  * fallback poller then dispatches them like any other pending event,
  * through the same atomic PENDING -> PROCESSING claim. The backoff is
  * counted from the failed attempt's claim (`locked_at`):
@@ -32,7 +32,7 @@ export async function requeueFailedOutboxEvents(client: Queryable, policy: Outbo
 
 /**
  * Turns PROCESSING events whose dispatcher lease (`locked_until`) has
- * expired into FAILED attempts (Specification_Data_API.md §13.3): their
+ * expired into FAILED attempts (Data_API.md §13.3): their
  * process stopped mid-dispatch - a crash, a restart - and nothing else
  * would ever finish them. The attempt was already counted when the event
  * was claimed, so `requeueFailedOutboxEvents` then retries it with the

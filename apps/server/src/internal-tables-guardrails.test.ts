@@ -10,7 +10,7 @@ const P = `internal-guard-test-${uniqueSuffix()}`;
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * Specification_Security.md §10.3 step 1 - regressions for two gaps
+ * Security.md §10.3 step 1 - regressions for two gaps
  * found reviewing the Admin API:
  * - rules that lived only in the services (role name and icon, template
  *   name and slug, folder name, user email and name) are PostgreSQL CHECKs,

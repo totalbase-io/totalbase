@@ -52,7 +52,7 @@ export interface RelationDetail {
   checkConstraints: CheckConstraintDefinition[]
   /** The PostgreSQL role that owns it. */
   owner: string
-  /** The configured PostgreSQL role may alter/drop it (owner or member of the owner role) - Specification_Administration.md §3.15. */
+  /** The configured PostgreSQL role may alter/drop it (owner or member of the owner role) - Administration.md §3.15. */
   canAlter: boolean
 }
 
@@ -81,14 +81,14 @@ export interface FunctionDetail {
   returnsRows: boolean
   /** The PostgreSQL role that owns it. */
   owner: string
-  /** The configured PostgreSQL role may alter/drop it (owner or member of the owner role) - Specification_Administration.md §3.15. */
+  /** The configured PostgreSQL role may alter/drop it (owner or member of the owner role) - Administration.md §3.15. */
   canAlter: boolean
 }
 
 /**
- * Schema-mutation request bodies (Specification_Administration.md §3) - what goes
+ * Schema-mutation request bodies (Administration.md §3) - what goes
  * inside the request's `{ data }`, camelCase like every API body
- * (Specification_Data_API.md §2.5).
+ * (Data_API.md §2.5).
  */
 export type FkAction = 'NO ACTION' | 'RESTRICT' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT'
 
@@ -119,10 +119,10 @@ export interface ColumnBody {
   unique?: boolean
   check?: string
   foreignKey?: InlineForeignKeyBody
-  /** Add Column wizard only - the column input catalog entry picked (its presentation's `input`), written into totalbase.resources_columns once the column exists (Specification_DataViews.md §16.2). Omitted by every other caller: Automatic. */
+  /** Add Column wizard only - the column input catalog entry picked (its presentation's `input`), written into totalbase.resources_columns once the column exists (DataViews.md §16.2). Omitted by every other caller: Automatic. */
   input?: string
   config?: unknown
-  /** Add Column only: a UID column generated from `source` (Specification_DataViews.md §16.3). */
+  /** Add Column only: a UID column generated from `source` (DataViews.md §16.3). */
   uid?: { source: string }
   /** Add Column only, with `input`: the entry's creation config - the server derives dataType/check/foreignKey/uid/unique from it (never built here). */
   creation?: CreationConfig
@@ -146,7 +146,7 @@ export interface ForeignKeyBody {
 }
 
 /**
- * Index builder (Specification_Administration.md §3.10 leaves this to SQL Console for
+ * Index builder (Administration.md §3.10 leaves this to SQL Console for
  * v1 - the Edit Table drawer's Indexes tab covers it directly instead,
  * per team decision). Mirrors packages/schema's IndexMethod/IndexSummary.
  */

@@ -57,7 +57,7 @@ export interface PublicOpenApiOptions extends OpenApiDocumentOptions {
 /**
  * Builds the public Data API OpenAPI document for one principal, listing
  * only resources/actions/fields that principal's effective permissions
- * actually grant (Specification_Data_API.md §14.1: "principal-effective spec").
+ * actually grant (Data_API.md §14.1: "principal-effective spec").
  */
 export async function buildPublicOpenApiSpec(
   database: Database,
@@ -139,7 +139,7 @@ export async function buildPublicOpenApiSpec(
       title: "TotalBase Data API",
       version: "1.0.0",
       description:
-        "Principal-effective spec (Specification_Data_API.md §14): only resources, actions, and fields the " +
+        "Principal-effective spec (Data_API.md §14): only resources, actions, and fields the " +
         "requesting caller is currently authorized for are listed. Never manually edited.",
     },
     servers: common.servers,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A CUSTOM page's Variables tab (Specification_DataViews.md §12):
+ * A CUSTOM page's Variables tab (DataViews.md §12):
  * the list on the left, grouped by kind, and the selected variable's form on
  * the right - built from the variable catalog (`VARIABLE_CATALOG`,
  * @totalbase/tb-catalog): its kind's props, its events with a Code function
@@ -45,7 +45,7 @@ const props = defineProps<{
   codeFunctions: readonly string[]
   /** Each variable's users: widget names and the Code functions that mention it. */
   usedBy: (name: string) => string[]
-  /** A Resource the roles opening the page may not fully read - why, for its warning (Specification_DataViews.md §8.3, "All or nothing"). */
+  /** A Resource the roles opening the page may not fully read - why, for its warning (DataViews.md §8.3, "All or nothing"). */
   accessWarning?: (name: string) => string | undefined
 }>()
 const emit = defineEmits<{
@@ -116,7 +116,7 @@ function create(kind: Exclude<VariableKind, 'RECORD'>): string {
     ? { name, kind, type: 'text' }
     : kind === 'RESOURCE'
       ? { name, kind, resource: '', query: { fields: '' }, mode: 'list', immediate: true, watch: true, count: false }
-      : { name, kind, target: { type: 'WORKFLOW', slug: '' } }
+      : { name, kind, target: { type: 'WORKFLOW', workflow: '' } }
   variables.value = [...variables.value, definition]
   selectedName.value = name
   return name
@@ -289,16 +289,16 @@ const CALL_TYPES = computed(() => [
 ])
 function setCallType(type: string) {
   const target: CallTarget = type === 'WORKFLOW'
-    ? { type: 'WORKFLOW', slug: '' }
+    ? { type: 'WORKFLOW', workflow: '' }
     : type === 'TABLE' ? { type: 'TABLE', resource: '', action: 'CREATE' } : { type: 'FUNCTION', resource: '' }
   setCall({ target })
 }
-interface WorkflowOption { name: string, description: string | null, slug: string, triggerType?: string | null }
+interface WorkflowOption { id: string, name: string, description: string | null, triggerType?: string | null }
 const { data: workflowList } = useAsyncData('custom-variables-workflows',
   () => adminApi.get<WorkflowOption[]>('/workflows').then(r => r.data), { default: () => [] })
 const manualWorkflows = computed(() => workflowList.value
   .filter(w => w.triggerType === 'MANUAL')
-  .map(w => ({ label: w.name, description: w.description ?? undefined, value: w.slug })))
+  .map(w => ({ label: w.name, description: w.description ?? undefined, value: w.id })))
 function setCall(patch: Partial<CallVariableDefinition>) {
   replace({ ...call.value!, ...patch })
 }
@@ -676,11 +676,11 @@ function createHandler(event: string) {
               :description="t('designer.variablesPanel.workflowDescription')"
             >
               <USelectMenu
-                :model-value="call.target.slug || undefined"
+                :model-value="call.target.workflow || undefined"
                 :items="manualWorkflows"
                 value-key="value"
                 class="w-full"
-                @update:model-value="(slug: string) => setCall({ target: { type: 'WORKFLOW', slug } })"
+                @update:model-value="(workflow: string) => setCall({ target: { type: 'WORKFLOW', workflow } })"
               />
             </UFormField>
             <UFormField

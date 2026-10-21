@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A table's row presentation (Specification_DataViews.md §15.5): how one of
+ * A table's row presentation (DataViews.md §15.5): how one of
  * its rows shows wherever a foreign key points at it - a column or a
  * template - inherited by every foreign-key column of every DataView that
  * sets none of its own. Two fields, so a popover on the Columns header.

@@ -9,9 +9,9 @@ import type { ServerEnv } from "./env.js";
 import { resolveMasterKey, type MasterKeyOrigin } from "./master-key.js";
 import { resolveSetup, type SetupState } from "./setup.js";
 import { assertSupportedPostgresVersion } from "./postgres-version.js";
+import { TOTALBASE_VERSION } from "./version.js";
 
-const TOTALBASE_VERSION = "0.1.0-beta.1";
-const MIGRATIONS_DIR = new URL("../../../migrations/totalbase", import.meta.url).pathname;
+export const MIGRATIONS_DIR = new URL("../../../migrations/totalbase", import.meta.url).pathname;
 
 export interface BootstrapResult {
   database: Database;
@@ -23,7 +23,7 @@ export interface BootstrapResult {
 
 /**
  * Executes the first-startup sequence.
- * See Specification.md §14 (steps 1-12).
+ * See Foundations.md §14 (steps 1-12).
  */
 export async function bootstrap(env: ServerEnv, logger: pino.Logger): Promise<BootstrapResult> {
   // 1. Connect PostgreSQL
@@ -69,7 +69,7 @@ export async function bootstrap(env: ServerEnv, logger: pino.Logger): Promise<Bo
 
   // 7. The instance owner: from TOTALBASE_ADMIN_* when set; else the first-start setup's code (§14.1)
   await bootstrapFirstAdmin(database, env.adminEmail, env.adminPassword);
-  const setup = await resolveSetup(database, env.setupCode, env.dataDir, logger, publicUrlFor(env));
+  const setup = await resolveSetup(database, env.setupCode, env.dataDir, logger, publicUrlFor(env), env.publicUrl === undefined);
   logger.info({ setupPending: setup.code !== null }, "first admin ensured");
 
   // 8. Introspect catalog

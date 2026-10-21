@@ -10,7 +10,7 @@ import {
 
 /**
  * The page a FORM or MASTER_DETAIL wizard generates for its record form
- * (Specification_DataViews.md §6.1): content, the author's
+ * (DataViews.md §6.1): content, the author's
  * from then on - a `UForm` with a `UFormField` per column bound to the
  * record, a Detail for a Master-detail, the buttons, and their Code written
  * with the snippet catalog. What depends on the database stays live: the
@@ -91,7 +91,7 @@ function handler(name: string, what: string, body: readonly string[]): string {
 const NOT_ON_CREATE = { visible: { kind: "formula", formula: '{{vars.record.mode}} != "create"' } };
 
 function fieldProps(column: RecordPageColumn): Record<string, unknown> {
-  // No label: the form field shows its column's, inherited live (Specification_DataViews.md §15).
+  // No label: the form field shows its column's, inherited live (DataViews.md §15).
   return { column: column.name, ...(column.label ? { label: column.label } : {}), ...(column.help?.trim() ? { help: column.help.trim() } : {}) };
 }
 
@@ -133,7 +133,7 @@ export function generateRecordPage(input: RecordPageInput): GeneratedPage {
       widget: "TDataView",
       name: "detail",
       // "Add item" is the generated Detail's - the grid shows it in the viewer's language (WidgetDataView.vue).
-      // Its lines edited in the grid, saved with the record in one transaction (Specification_DataViews.md §6.6).
+      // Its lines edited in the grid, saved with the record in one transaction (DataViews.md §6.6).
       props: { dataview: input.detail.dataview, column: input.detail.column, newLabel: "Add item", toolbarMode: "none", paging: false, editInline: true },
       emits: { rowsChanged: "onDetailRowsChanged" },
       width: 12,

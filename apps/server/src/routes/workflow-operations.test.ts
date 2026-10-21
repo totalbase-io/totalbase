@@ -11,12 +11,12 @@ import type { Database } from "@totalbase/database";
 import { validateExecutionReadiness } from "@totalbase/workflows";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AppContext } from "../context.js";
-import { createTestApiToken, setupTestApp } from "../test-support.js";
+import { adminToken, createTestApiToken, setupTestApp } from "../test-support.js";
 
 const PREFIX = "wfop";
 
 /**
- * Workflow operations (Specification_Workflows.md §5), run as a
+ * Workflow operations (Workflows.md §5), run as a
  * non-administrator executor through POST /api/workflows/{slug}/run:
  *
  * - Update/Delete records honor api.require_where_for_update/_delete, at
@@ -181,7 +181,7 @@ describe("workflow operations", () => {
   });
 
   describe("Update/Delete records and api.require_where_for_*", () => {
-    // A real table: publish checks a step's table exists (Specification_Workflows.md §3.5). Marked MISSING
+    // A real table: publish checks a step's table exists (Workflows.md §3.5). Marked MISSING
     // after publishing, it shows which check stopped the step at run time - the guard runs before the resource is resolved.
     let missingResource: string;
     beforeAll(async () => {
@@ -451,7 +451,7 @@ describe("workflow operations", () => {
         content: { basePdf: { width: 210, height: 297, padding: [10, 10, 10, 10] }, schemas: [{ greeting: { type: "text", position: { x: 20, y: 20 }, width: 100, height: 20 } }] },
       })).id;
       templateIds.push(mailingId, otherMailingId, pdfId);
-      // Sending is a capability (Specification_Security.md §5.2) - granted here, taken away in its own test.
+      // Sending is a capability (Security.md §5.2) - granted here, taken away in its own test.
       await context.capabilityPermissions.setGrant(roleId, "SEND_EMAIL", "ALLOW");
 
       const sendFrom = (templateId: string) => ({
@@ -526,6 +526,46 @@ describe("workflow operations", () => {
         await context.permissions.delete(roleId, filesResourceId, "READ");
         await context.filesAdmin.remove(file.id);
       }
+    });
+
+    it("a test run's email redirect sends every email to that one address - cc and bcc dropped - and never applies to production", async () => {
+      const id = await publishedWorkflow(`${PREFIX}-mail-redirect`, {
+        type: "totalbase.send-email",
+        configuration: { to: ["ana@example.com", "luis@example.com"], cc: "copy@example.com", bcc: "audit@example.com", subject: "Hi", bodyType: "text", textBody: "Hello." },
+      });
+      const token = await adminToken(context);
+      const testRun = (body: Record<string, unknown>) => app.inject({
+        method: "POST",
+        url: `/admin/api/workflows/${id}/test-run`,
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        payload: JSON.stringify(body),
+      });
+
+      sent.length = 0;
+      const redirected = await testRun({ data: {}, emailRedirect: " me@company.test " });
+      expect(redirected.json().data.run, redirected.body).toMatchObject({
+        status: "SUCCEEDED",
+        result: { data: { to: "me@company.test", redirectedFrom: { to: "ana@example.com, luis@example.com", cc: "copy@example.com", bcc: "audit@example.com" } } },
+      });
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ to: "me@company.test", subject: "Hi" });
+      expect(sent[0]).not.toHaveProperty("cc");
+      expect(sent[0]).not.toHaveProperty("bcc");
+
+      // One address only: a list would let a test fan out.
+      for (const bad of ["a@x.test, b@x.test", "not-an-address", 42]) {
+        const res = await testRun({ data: {}, emailRedirect: bad });
+        expect(res.statusCode, res.body).toBe(422);
+        expect(res.json().errors[0].code).toBe("WORKFLOW_VALIDATION_FAILED");
+      }
+
+      // Without it, and on a production run, the step's own recipients.
+      sent.length = 0;
+      await testRun({ data: {} });
+      expect(sent[0]).toMatchObject({ to: "ana@example.com, luis@example.com", cc: "copy@example.com" });
+      await run(`${PREFIX}-mail-redirect`);
+      expect(sent).toHaveLength(2);
+      expect(sent[1]).toMatchObject({ to: "ana@example.com, luis@example.com" });
     });
 
     it("Generate PDF from template needs READ on the template", async () => {

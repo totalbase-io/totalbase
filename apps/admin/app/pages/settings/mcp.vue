@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > MCP (Specification_Administration.md §11.7): the generic
+ * Settings > MCP (Administration.md §11.7): the generic
  * settings form, and above it how an agent connects - the address the
  * server answers at (this instance's public URL + /mcp), ready-to-paste
  * configuration for Claude Code, and where its token comes from (an

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A FORM or MASTER_DETAIL whose record form is a page (Specification_DataViews.md §6.4):
+ * A FORM or MASTER_DETAIL whose record form is a page (DataViews.md §6.4):
  * the page frame around CustomPage.vue - title, New, Edit,
  * Previous/Next, Delete - driving the page's record (`dataview.vars.record`,
  * record-engine.ts). What the form holds and its buttons are the page's own
@@ -171,7 +171,7 @@ const saving = computed(() => record.value?.status === 'pending')
 async function onSave() {
   if (!await record.value?.save()) return
   toast.add({ title: t('dataviews.record.saved'), color: 'success' })
-  // A CREATE form is always a blank new record: a save starts the next (Specification_DataViews.md §6.5, B47).
+  // A CREATE form is always a blank new record: a save starts the next (DataViews.md §6.5, B47).
   if (formMode.value === 'CREATE' && !isMasterDetail.value) {
     previousPk.value = null
     void startRecord()
@@ -220,7 +220,7 @@ const searchOpen = ref(false)
 const historyOpen = ref(false)
 /**
  * What a FORM's record Search reads, shows per result and searches in: the key
- * and the page's first text fields, top to bottom (Specification_Data_API.md §3.5).
+ * and the page's first text fields, top to bottom (Data_API.md §3.5).
  */
 const searchLabelFields = computed(() => {
   const columns = props.fields.filter(f => f.kind === 'COLUMN' && f.columnName)
@@ -238,7 +238,7 @@ const canSearch = computed(() => !isMasterDetail.value && formMode.value !== 'CR
 /** What the viewer's grants and the DataView's Allow let them do (the App's viewerActions) - a READ form never writes. */
 const mayCreate = computed(() => formMode.value !== 'READ' && props.dataview.viewerActions?.create !== false)
 const mayDelete = computed(() => formMode.value !== 'READ' && props.dataview.viewerActions?.delete !== false)
-/** New: whoever may create rows here - a FORM read-only at rest still starts a new record (Beta_Findings 3.18). */
+/** New: whoever may create rows here - a FORM read-only at rest still starts a new record. */
 const offersNew = computed(() => props.dataview.viewerActions?.create !== false)
 /** Delete, then the next record of the browse (or the previous one) - a blank form only when none is left (T65). */
 /**
@@ -258,7 +258,7 @@ async function deleteRecord() {
   const neighbor = at >= 0 ? (pkOrder.value[at + 1] ?? pkOrder.value[at - 1]) : undefined
   if (neighbor !== undefined && formMode.value !== 'CREATE' && !isMasterDetail.value) await current.open(neighbor, false)
 }
-/** The DataView's own actions on this record (Specification_DataViews.md §3.7). */
+/** The DataView's own actions on this record (DataViews.md §3.7). */
 const customActions = useRecordCustomActions(toRef(props, 'dataview'), record)
 const headerMenu = computed<DropdownMenuItem[][]>(() => {
   const current = record.value

@@ -4,6 +4,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
 import { extractBearerToken, requireAdmin } from "../auth-guards.js";
 import { resolveDataPrincipal } from "../data-principal.js";
+import { signal } from "../invalidations.js";
 import { OPERATION_HANDLERS, nextOccurrences, parseCronExpression, requestRunCancellation, runWorkflowManual, runWorkflowTest, validateExecutionReadiness } from "@totalbase/workflows";
 import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
 import type { JsonSchema } from "@totalbase/openapi";
@@ -25,11 +26,15 @@ interface UpdateWorkflowBody { revision: string; name: string; description: stri
 const ID_PARAMS = { id: { ...UUID_PARAM, description: "The workflow's id." } };
 const VERSION_PARAMS = { ...ID_PARAMS, version: { schema: { type: "integer", minimum: 1 }, description: "The version NUMBER (1, 2, ...), not its id." } };
 const REVISION: JsonSchema = { type: "string", description: "The workflow's current `revision` (optimistic concurrency)." };
-/** `{ data: <schema> }` - every request body (Specification_Data_API.md §2.5). */
+/** `{ data: <schema> }` - every request body (Data_API.md §2.5). */
 const dataBody = (schema: JsonSchema): JsonSchema => object({ data: schema }, ["data"]);
 const REVISION_BODY = dataBody(object({ revision: REVISION }, ["revision"]));
 const TRIGGER_INPUT_BODY = object({
   data: { description: "Trigger input - what the Start step outputs as `{{start.data}}`. Defaults to null." },
+});
+const TEST_RUN_BODY = object({
+  data: { description: "Trigger input - what the Start step outputs as `{{start.data}}`. Defaults to null." },
+  emailRedirect: { type: "string", description: "One email address every Send email step of this run goes to instead of its recipients (to, cc and bcc). Absent: the steps' own recipients." },
 });
 /** `{ data: [...], meta: { total } }` - a paginated list. */
 const paged = (items: JsonSchema) => ({
@@ -118,7 +123,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     preHandler,
     ...docs({
       summary: "Create a workflow",
-      description: "Created disabled, with a draft holding only a Start step configured by `startConfiguration` (default `{ \"trigger\": \"MANUAL\" }`). Nothing is published. 409 WORKFLOW_NAME_CONFLICT / WORKFLOW_SLUG_CONFLICT; 422 WORKFLOW_LIMIT_EXCEEDED when the Start configuration passes a definition limit (specs/Specification_Workflows.md §3.6).",
+      description: "Created disabled, with a draft holding only a Start step configured by `startConfiguration` (default `{ \"trigger\": \"MANUAL\" }`). Nothing is published. 409 WORKFLOW_NAME_CONFLICT / WORKFLOW_SLUG_CONFLICT; 422 WORKFLOW_LIMIT_EXCEEDED when the Start configuration passes a definition limit (specs/Workflows.md §3.6).",
       requestBody: {
         schema: dataBody(object({
           name: { type: "string", maxLength: 32 },
@@ -129,7 +134,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
           startConfiguration: {
             type: "object",
             additionalProperties: true,
-            description: "The Start step's configuration, stored as is in the definition: `trigger` (MANUAL, CRON, WEBHOOK, DATA_EVENT) and its trigger settings (e.g. cron_expression, timezone, execute_as) - specs/Specification_Workflows.md §7, §6.",
+            description: "The Start step's configuration, stored as is in the definition: `trigger` (MANUAL, CRON, WEBHOOK, DATA_EVENT) and its trigger settings (e.g. cron_expression, timezone, execute_as) - specs/Workflows.md §7, §6.",
           },
         }, ["name"])),
       },
@@ -191,7 +196,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     ...docs({ summary: "Delete a workflow", description: "With its versions and run history.", pathParameters: ID_PARAMS, response: NO_CONTENT }),
   }, async (request, reply) => { await context.workflowsAdmin.remove(request.params.id); reply.code(204).send(); });
 
-  // Publish (Specification_Workflows.md §10.2 + Specification.md §13): validates
+  // Publish (Workflows.md §10.2 + Foundations.md §13): validates
   // execution readiness against the registered native handler set, then
   // snapshots the draft as the next version. Does not enable the workflow -
   // that's a separate PATCH (enabled: true), refused without a published
@@ -214,30 +219,31 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
   }));
 
   // Runs the current DRAFT synchronously, as the requesting admin - "Probar"
-  // in the visual editor (specs/Specification_Workflows.md §10:
+  // in the visual editor (specs/Workflows.md §10:
   // test runs are always manual/synchronous and never touch `published`).
   // Resolves a full DataPrincipal (not just the Admin from requireAdmin)
   // because the run's own operation handlers re-check real Data API
   // permissions per step, same as an ordinary Data API request would.
-  app.post<{ Params: { id: string }; Body: { data?: unknown } }>("/admin/api/workflows/:id/test-run", {
+  app.post<{ Params: { id: string }; Body: { data?: unknown; emailRedirect?: unknown } }>("/admin/api/workflows/:id/test-run", {
     preHandler,
     ...docs({
       summary: "Test-run the draft",
       description:
         "Runs the current DRAFT synchronously as the calling admin (mode TEST, version null), enabled or not, without the INVOKE check. " +
         "Every step re-checks the admin's real Data API permissions - its writes are real. The response carries live, unredacted " +
-        "results whatever the history level; TEST runs don't count toward auto-disable.",
+        "results whatever the history level; TEST runs don't count toward auto-disable. `emailRedirect` sends every email of the run to " +
+        "one address instead (422 WORKFLOW_VALIDATION_FAILED if it isn't one).",
       pathParameters: ID_PARAMS,
-      requestBody: { schema: TRIGGER_INPUT_BODY, required: false },
+      requestBody: { schema: TEST_RUN_BODY, required: false },
       response: ok(ref("WorkflowRunOutcome")),
     }),
   }, async (request) => {
     const token = extractBearerToken(request);
     const dataPrincipal = await resolveDataPrincipal(context, token);
-    return { data: await runWorkflowTest(context, dataPrincipal, request.params.id, request.body?.data ?? null) };
+    return { data: await runWorkflowTest(context, dataPrincipal, request.params.id, request.body?.data ?? null, { emailRedirect: request.body?.emailRedirect }) };
   });
 
-  // Production MANUAL run (Specification_Workflows.md §11.2: "Production manual... runs
+  // Production MANUAL run (Workflows.md §11.2: "Production manual... runs
   // require an enabled published version") - distinct from test-run above
   // in every dimension that matters: runs the published snapshot (never
   // the draft), mode: PRODUCTION, requires enabled = true, and enforces
@@ -263,16 +269,16 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     return { data: await runWorkflowManual(context, dataPrincipal, request.params.id, request.body?.data ?? null) };
   });
 
-  // WORKFLOW_INVOKE grants (Specification_Workflows.md §12) - which roles may
+  // WORKFLOW_INVOKE grants (Workflows.md §12) - which roles may
   // trigger this workflow on demand (the run route, an AUTHENTICATED
   // webhook, Execute workflow toward a MANUAL target). The picker always
   // saves the complete set - ALLOW and DENY - never one grant at a time.
-  // Object access, as a DataView's and a Dashboard's roles (Specification_Security.md §7): the complete set, replaced.
+  // Object access, as a DataView's and a Dashboard's roles (Security.md §7): the complete set, replaced.
   app.get<{ Params: { id: string } }>("/admin/api/workflows/:id/roles", {
     preHandler,
     ...docs({
       summary: "The roles that may invoke the workflow",
-      description: "WORKFLOW_INVOKE (Specification_Workflows.md §12): who may run it through /api/workflows/{slug}/run, an AUTHENTICATED webhook or Execute workflow. Administrators always may. Never grants data.",
+      description: "WORKFLOW_INVOKE (Workflows.md §12): who may run it through /api/workflows/{slug}/run, an AUTHENTICATED webhook or Execute workflow. Administrators always may. Never grants data.",
       pathParameters: ID_PARAMS,
       response: ok(arrayOf(UUID)),
     }),
@@ -298,7 +304,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     return { data: await context.workflowPermissions.setRoles(request.params.id, roleIds) };
   });
 
-  // Versions - same shape as dataviews/dashboards (Specification.md §13.6),
+  // Versions - same shape as dataviews/dashboards (Foundations.md §13.6),
   // addressed by version NUMBER. A version's `id` is what runs reference (Logs filter by it).
   app.get<{ Params: { id: string } }>("/admin/api/workflows/:id/versions", {
     preHandler,
@@ -420,10 +426,12 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     });
     return { data: runs, meta: { total } };
   });
-  // Cancel from Logs (Specification_Workflows.md §8.5): cooperative - the
+  // Cancel from Logs (Workflows.md §8.5): cooperative - the
   // running step finishes, no further step starts, the run ends CANCELLED.
-  // Only a run executing in this process can be stopped; any other run
-  // (finished, or left RUNNING by a process that died - recovery marks it
+  // A run executing in this process is stopped here; a RUNNING one within
+  // its deadline is executing in another process, which the RUN_CANCEL
+  // signal reaches (invalidations.ts). Any other run (finished, or left
+  // RUNNING past its deadline by a process that died - recovery marks it
   // INTERRUPTED) answers 409.
   app.post<{ Params: { runId: string } }>("/admin/api/workflows/runs/:runId/cancel", {
     preHandler,
@@ -438,9 +446,11 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request, reply) => {
     const run = await context.workflowRuns.getRun(request.params.runId);
-    if (run.status !== "RUNNING" || !requestRunCancellation(run.id)) {
-      throw new TotalBaseError("WORKFLOW_RUN_NOT_CANCELLABLE", `This run is ${run.status === "RUNNING" ? "not executing in this process" : run.status.toLowerCase()} and cannot be canceled.`);
+    const executing = run.status === "RUNNING" && run.expiresAt.getTime() > Date.now();
+    if (!executing) {
+      throw new TotalBaseError("WORKFLOW_RUN_NOT_CANCELLABLE", `This run is ${run.status === "RUNNING" ? "no longer executing" : run.status.toLowerCase()} and cannot be canceled.`);
     }
+    if (!requestRunCancellation(run.id)) await signal(context, { topic: "RUN_CANCEL", run: run.id });
     reply.code(202);
     return { data: run };
   });

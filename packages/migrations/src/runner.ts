@@ -6,14 +6,14 @@ import { TotalBaseError } from "@totalbase/errors";
 
 /**
  * The COMMENT that marks the `totalbase` schema as TotalBase's own
- * (Specification.md §14, step 3) - stamped when the runner creates the
+ * (Foundations.md §14, step 3) - stamped when the runner creates the
  * schema.
  */
 export const TOTALBASE_SCHEMA_MARKER = "TotalBase internal schema - managed by TotalBase migrations.";
 
 /**
  * Refuses to migrate a `totalbase` schema that isn't TotalBase's
- * (Specification.md §14, step 3). It is TotalBase's when it carries the
+ * (Foundations.md §14, step 3). It is TotalBase's when it carries the
  * marker, or TotalBase's migration ledger (an install from before the
  * marker, or one whose schema another role owns and so couldn't be
  * stamped). An empty schema - pre-created for TotalBase by a DBA - is
@@ -46,7 +46,7 @@ export async function assertTotalBaseSchemaOwnership(database: Queryable): Promi
  * Bootstrap DDL for the migration ledger itself.
  * This runs unconditionally before any tracked migration, because
  * totalbase.migrations must exist before it can track anything.
- * See Specification.md §16 and section 52.
+ * See Foundations.md §16 and section 52.
  */
 const BOOTSTRAP_SQL = `
 DO $$
@@ -127,7 +127,7 @@ export interface RunMigrationsResult {
 /**
  * Applies pending migrations in order, inside one transaction per migration.
  * Published migrations are immutable: checksum mismatches abort with
- * MIGRATION_CHECKSUM_MISMATCH (Specification.md §16).
+ * MIGRATION_CHECKSUM_MISMATCH (Foundations.md §16).
  */
 export async function runMigrations(
   database: Database,
@@ -164,7 +164,7 @@ export async function runMigrations(
 
     // A migration file is a script - several statements - so it runs over
     // the simple query protocol (transactionRaw), the one other caller
-    // besides the SQL Console (Specification.md §18): every other query is
+    // besides the SQL Console (Foundations.md §18): every other query is
     // the extended protocol, which accepts one statement. The ledger row's
     // values are the file's own version/name/checksum (pattern-checked
     // above) and the server's version string, quoted as literals.

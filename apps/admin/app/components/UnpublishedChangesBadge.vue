@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The editor header's "Unpublished changes" badge - shared by the
- * Dashboards, Workflows and DataViews editors (Specification.md §13.7).
+ * Dashboards, Workflows and DataViews editors (Foundations.md §13.7).
  * Same height as the header buttons (`page-header__tall`), two centered lines so it
  * stays narrow. `inline`: one line, the height of a size-sm button - for a
  * header with room to spare (DataViewPreviewDrawer.vue). Saving itself is

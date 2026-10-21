@@ -1,6 +1,6 @@
 /**
- * What still names a column, a table or a view PostgreSQL no longer has (Specification_DataViews.md
- * §4.8, Specification_Dashboards.md §2.8) - `GET /admin/api/catalog/broken-references`: dashboard
+ * What still names a column, a table or a view PostgreSQL no longer has (DataViews.md
+ * §4.8, Dashboards.md §2.8) - `GET /admin/api/catalog/broken-references`: dashboard
  * widgets whose query PostgreSQL refuses, DataViews whose layouts or Filter name a lost column. One
  * read shared by the DataViews and Dashboards trees (their error icon); `refresh()` after a sync.
  */

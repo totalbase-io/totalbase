@@ -1,5 +1,5 @@
 /**
- * Starting points for Settings > Appearance > Custom CSS (Specification_Admin_UI.md
+ * Starting points for Settings > Appearance > Custom CSS (Admin_UI.md
  * §4.1.1): each one built only on the stable contract - Nuxt UI's tokens,
  * `.dark`, `html[data-surface]` and the shell's `[data-shell]` anchors - so
  * it keeps working across versions. The label is an i18n key under

@@ -2,7 +2,7 @@ import { isPeriod, isRecord, type Period } from "@totalbase/shared";
 import { WIDGET_NAMES, widgetDefinition, type ValueKind, type WidgetName } from "./widget-catalog.js";
 
 /**
- * The variable catalog (Specification_DataViews.md §8): every
+ * The variable catalog (DataViews.md §8): every
  * kind of variable a designed screen can hold - its data and its state - in
  * the same shape as a widget: Props (the definition, edited in the
  * Variables tab), State (read by bindings and code), Expose (methods for
@@ -80,7 +80,7 @@ export function widgetsForValueType(type: ValueType): WidgetName[] {
 /**
  * `VALUE` - page state; `RESOURCE` - read-only data from the Data API;
  * `CALL` - a function, a workflow or a table write run on demand; `RECORD` - the page's
- * record, a row of its DataView's source table (Specification_DataViews.md §8.5): there when the
+ * record, a row of its DataView's source table (DataViews.md §8.5): there when the
  * DataView has one, never created by the author.
  */
 export type VariableKind = "VALUE" | "RESOURCE" | "CALL" | "RECORD";
@@ -329,7 +329,8 @@ export type TableCallAction = (typeof TABLE_CALL_ACTIONS)[number];
 
 export type CallTarget =
   | { type: "FUNCTION"; resource: string }
-  | { type: "WORKFLOW"; slug: string }
+  /** A MANUAL workflow by id - a rename of its slug keeps it (the App runs it by the slug the server resolves, `variableWorkflows`). */
+  | { type: "WORKFLOW"; workflow: string }
   | { type: "TABLE"; resource: string; action: TableCallAction };
 
 export interface CallVariableDefinition {
@@ -370,7 +371,7 @@ const VAR_REFERENCE = /\{\{\s*vars\.([a-zA-Z_][a-zA-Z0-9_]*)/g;
 
 /**
  * Variables no author defines: `record`, the page's record, present when
- * its DataView has a source table (Specification_DataViews.md §8.5). Its name is reserved, so
+ * its DataView has a source table (DataViews.md §8.5). Its name is reserved, so
  * no variable takes it; a reference to it is never "doesn't exist".
  */
 export const IMPLICIT_VARIABLE_NAMES: readonly string[] = ["record"];
@@ -490,7 +491,7 @@ export function variableDependencies(definition: VariableDefinition): string[] {
  * The columns a Resource's query reads - its `fields`, its `order_by` and
  * every field its `where` names (through `_and`/`_or`/`_not`): what a viewer
  * must be allowed to READ, or the Data API refuses the whole query
- * (Specification_DataViews.md §8.3, "All or nothing").
+ * (DataViews.md §8.3, "All or nothing").
  * Aggregates' aliases aren't columns; `{{vars.*}}` values aren't either.
  */
 export function resourceQueryColumns(query: Record<string, unknown>): string[] {
@@ -583,7 +584,7 @@ function validateCall(raw: Record<string, unknown>, label: string, errors: strin
   const valid =
     isRecord(target) &&
     ((target.type === "FUNCTION" && typeof target.resource === "string" && target.resource !== "") ||
-      (target.type === "WORKFLOW" && typeof target.slug === "string" && target.slug !== "") ||
+      (target.type === "WORKFLOW" && typeof target.workflow === "string" && target.workflow !== "") ||
       (target.type === "TABLE" &&
         typeof target.resource === "string" &&
         target.resource !== "" &&

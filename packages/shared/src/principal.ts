@@ -1,6 +1,6 @@
 /**
  * Identifies who is performing an action against TotalBase.
- * See Specification_Security.md §11.2 (audit_logs.principal_type).
+ * See Security.md §11.2 (audit_logs.principal_type).
  */
 export type PrincipalType = "USER" | "API_KEY" | "ADMIN" | "SYSTEM";
 

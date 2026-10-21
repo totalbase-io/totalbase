@@ -4,7 +4,7 @@ const BEARER_SCHEME = "bearerAuth";
 
 /**
  * The one error envelope every TotalBase route answers with (server.ts's
- * error handler + TotalBaseError.toPublicJSON(), Specification_Data_API.md §11.1).
+ * error handler + TotalBaseError.toPublicJSON(), Data_API.md §11.1).
  * Generated SQL is never part of it (AGENTS.md section 20).
  */
 const ERROR_SCHEMA_NAME = "Error";
@@ -28,7 +28,7 @@ const ERROR_SCHEMA = {
 };
 
 /**
- * Status -> reusable response, following Specification_Data_API.md §11.2's status families.
+ * Status -> reusable response, following Data_API.md §11.2's status families.
  * Descriptions name representative codes (packages/errors' status map)
  * so a reader can tell what each status means here.
  */
@@ -127,7 +127,7 @@ export const IDEMPOTENCY_KEY_HEADER: ParameterObject = {
   description: "Retrying with the same key replays the first response instead of repeating the write.",
 };
 
-/** Queues the call instead of running it (Specification_Data_API.md §10.4) - 202 with an execution to poll. */
+/** Queues the call instead of running it (Data_API.md §10.4) - 202 with an execution to poll. */
 export const PREFER_RESPOND_ASYNC_HEADER: ParameterObject = {
   name: "Prefer",
   in: "header",
@@ -136,7 +136,7 @@ export const PREFER_RESPOND_ASYNC_HEADER: ParameterObject = {
   description: "`respond-async` queues the call: 202 with an execution id, polled at GET /api/executions/{id}, whose `result` is what this call would have returned.",
 };
 
-/** The 202 a queued call answers (Specification_Data_API.md §10.4). */
+/** The 202 a queued call answers (Data_API.md §10.4). */
 export const QUEUED_EXECUTION_RESPONSE: ResponseObject = {
   description: "Queued (`Prefer: respond-async`) - poll GET /api/executions/{id}.",
   content: {
@@ -154,7 +154,7 @@ export const QUEUED_EXECUTION_RESPONSE: ResponseObject = {
   },
 };
 
-/** The same header on an operation whose resource requires it (Specification_Data_API.md §9.1). */
+/** The same header on an operation whose resource requires it (Data_API.md §9.1). */
 export function idempotencyKeyHeader(required: boolean): ParameterObject {
   return required
     ? {

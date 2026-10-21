@@ -9,7 +9,7 @@ import { writeTransactionContext, type DataPrincipal, type MutationsContext } fr
 import { dispatchOutboxEventsEagerly } from "./mutation-service.js";
 
 /**
- * FUNCTION EXECUTE (Specification_Data_API.md §7): the overload a call's
+ * FUNCTION EXECUTE (Data_API.md §7): the overload a call's
  * argument names select, the EXECUTE grant, and the call itself - one
  * transaction naming the acting user, with its audit row and outbox event,
  * then the eager dispatch. Shared by the Data API route, the asynchronous
@@ -56,7 +56,7 @@ function matchesArgs(detail: FunctionDetail, argNames: string[]): boolean {
 
 /**
  * Resolves overloads by argument-name match, allowing DEFAULT parameters
- * to be omitted (Specification_Data_API.md §7: "Overloads supported. Ambiguity:
+ * to be omitted (Data_API.md §7: "Overloads supported. Ambiguity:
  * AMBIGUOUS_FUNCTION").
  */
 async function resolveOverload(
@@ -82,7 +82,7 @@ async function resolveOverload(
   return matches[0]!;
 }
 
-/** The function a call names and the overload its argument names select (Specification_Data_API.md §7). */
+/** The function a call names and the overload its argument names select (Data_API.md §7). */
 export async function resolveFunctionCall(
   context: Pick<MutationsContext, "database">,
   schema: string,
@@ -151,7 +151,7 @@ export async function executeFunctionCall(
       const result = compiled.scalar ? (rows[0]?.["result"] ?? null) : rows;
 
       // resources_audit_fields only defines CREATE/UPDATE/DELETE
-      // (Specification_Security.md §11.4); EXECUTE has no field-level restriction, so args/result are
+      // (Security.md §11.4); EXECUTE has no field-level restriction, so args/result are
       // recorded in full via payload rather than a filtered "changes" set.
       await context.audit.record(client, {
         requestId: audit.requestId,
@@ -171,14 +171,14 @@ export async function executeFunctionCall(
         requestId: audit.requestId,
         resource: resource.id,
         event: "EXECUTE",
-        // A password argument never reaches a webhook (Pre_Beta_Review 1.9).
+        // A password argument never reaches a webhook.
         payload: { data: redactSecretKeys(args), result },
         source: audit.source,
       });
 
       return { data: result, outboxEventId };
     }, { ...(await writeTransactionContext(context, dataPrincipal)), ...cancellation });
-    // Eager dispatch (Specification_Data_API.md §13.3) - fire-and-forget, outside
+    // Eager dispatch (Data_API.md §13.3) - fire-and-forget, outside
     // the transaction, never awaited on the response path.
     dispatchOutboxEventsEagerly(context, [transactionResult.outboxEventId]);
     return transactionResult.data;

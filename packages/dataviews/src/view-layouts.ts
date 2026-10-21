@@ -2,7 +2,7 @@ import { SETTINGS_LAYOUT_KEYS } from "@totalbase/tb-catalog";
 import type { Shape } from "@totalbase/shared";
 
 /**
- * Each view's layout in `view_config` (`card_layout`, `map_layout`, ...; Specification_DataViews.md §5): the
+ * Each view's layout in `view_config` (`card_layout`, `map_layout`, ...; DataViews.md §5): the
  * view that reads it, what in it names a column of the source - a picked column, a formula's `{{column}}` -
  * and its other settings. Defined once: `view-config.ts` checks a layout's shape from it, `broken-references.ts`
  * finds the columns it names.

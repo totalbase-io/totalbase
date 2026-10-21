@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { signCms } from "./sign-handlers.js";
 
 /**
- * Sign (Specification_Workflows.md §5.15.2): the SignedData is checked by
+ * Sign (Workflows.md §5.15.2): the SignedData is checked by
  * OpenSSL itself - the signature, the attached content - the way the
  * service receiving it would.
  */

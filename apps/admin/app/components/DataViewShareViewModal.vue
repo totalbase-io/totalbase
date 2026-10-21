@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Share a saved view (its owner - Specification_DataViews.md §5.9): one search over roles and people - picking
+ * Share a saved view (its owner - DataViews.md §5.9): one search over roles and people - picking
  * one shares it at once -, the list of who has it, each stopped with its ×, and "Copy link" at the foot - a link
  * applies the view once and is never added to the opener's own list. The roles and people offered are the
  * server's (`share-candidates`): for one who isn't an administrator, their own roles and the people holding one

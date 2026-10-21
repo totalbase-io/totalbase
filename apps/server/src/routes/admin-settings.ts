@@ -7,11 +7,11 @@ import { dataEnvelope } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, NO_CONTENT, adminDoc, object, ok, ref } from "../openapi-admin-docs.js";
 
 /**
- * Settings management (Specification_Administration.md §1: "Settings").
+ * Settings management (Administration.md §1: "Settings").
  *
  * getGroup/setGroup are generic over whatever's declared in
  * @totalbase/settings' registry.ts - every group there (the full list is
- * Specification_Administration.md §7.4) is read by some code path.
+ * Administration.md §7.4) is read by some code path.
  */
 const GROUP_PARAM = { description: "Registry group, e.g. `api`, `auth`, `smtp` - 404 for a group with no keys." };
 
@@ -216,6 +216,24 @@ export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppCo
       body: "This is a test email sent from the TotalBase Admin API.",
     });
     return { data: { sent: true } };
+  });
+
+  // Writes, reads back and deletes one probe object in the bucket of the
+  // saved s3.* settings - the admin's "Test connection" on S3 storage.
+  app.post("/admin/api/settings/s3/verify", {
+    preHandler,
+    ...adminDoc("settings", {
+      summary: "Test the S3 storage connection",
+      description:
+        "Writes a small probe object under the saved s3.* settings' bucket and prefix (verify/), reads it back and deletes it - " +
+        "also while s3.enabled is off, to check before turning it on. 204 when all of it works; INVALID_SETTING when the " +
+        "endpoint, bucket or credentials are missing; FILE_STORAGE_ERROR (502) with the service's own reason (an unreachable " +
+        "endpoint, a missing bucket, refused credentials).",
+      response: NO_CONTENT,
+    }),
+  }, async (_request, reply) => {
+    await context.s3.verify();
+    return reply.code(204).send();
   });
 
   // Connects and authenticates through the current smtp.* settings without

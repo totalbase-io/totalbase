@@ -18,12 +18,12 @@
     "triggers": {
       "manual": {
         "title": "Manual",
-        "description": "Ejecuta este workflow a demanda desde el editor o desde una futura acción manual.",
+        "description": "Ejecuta este workflow a demanda: desde el editor, una acción o página de un DataView, la API u otro workflow.",
         "configDescription": "Sin más configuración."
       },
       "dataEvent": {
         "title": "Evento de base de datos",
-        "description": "Se ejecuta cuando se crea, actualiza o elimina un registro de una tabla.",
+        "description": "Se ejecuta cuando se crean, actualizan o eliminan registros de una tabla.",
         "configDescription": "Tabla y eventos que admiten una ejecución."
       },
       "cron": {
@@ -266,7 +266,7 @@
       "records": "Registros",
       "aJsonArrayOneObject": "Un array JSON - un objeto por cada registro a insertar. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}), y a los elementos de un array con {c2}.",
       "emitDatabaseEvents": "Emitir eventos de base de datos",
-      "letThisStepSInserts": "Permite que las inserciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+      "letThisStepSInserts": "Permite que las inserciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (como máximo Settings > Workflows > Profundidad máxima de cadena, sin repeticiones) evita un bucle accidental."
     },
     "deleteRecordsModal": {
       "deleteRecords": "Eliminar registros",
@@ -276,7 +276,7 @@
       "filterWhere": "Filtro (where)",
       "whichRowsToDeleteRequired": "Qué filas eliminar. Obligatorio salvo que la opción 'Exigir un filtro para eliminaciones masivas' esté desactivada - entonces vacío coincide con todas las filas. Un valor del filtro puede hacer referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
       "emitDatabaseEvents": "Emitir eventos de base de datos",
-      "letThisStepSDeletions": "Permite que las eliminaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+      "letThisStepSDeletions": "Permite que las eliminaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (como máximo Settings > Workflows > Profundidad máxima de cadena, sin repeticiones) evita un bucle accidental."
     },
     "editor": {
       "notConfigured": "Sin configurar",
@@ -561,7 +561,7 @@
       "set": "Valores",
       "aJsonObjectColumnNames": "Un objeto JSON - nombres de columnas asociados a sus nuevos valores. Haz referencia al resultado de otro paso con {c0} (incluido Inicio, como {c1}).",
       "emitDatabaseEvents": "Emitir eventos de base de datos",
-      "letThisStepSUpdates": "Permite que las actualizaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (máximo 8 workflows de profundidad, sin repeticiones) evita un bucle accidental."
+      "letThisStepSUpdates": "Permite que las actualizaciones de este paso cuenten como disparador de evento de base de datos para OTROS workflows - desactivado por defecto. Un seguimiento inmutable de la ascendencia causal (como máximo Settings > Workflows > Profundidad máxima de cadena, sin repeticiones) evita un bucle accidental."
     },
     "validateDataModal": {
       "validateData": "Validar datos",
@@ -598,7 +598,7 @@
     "workflowInvokeRolesField": {
       "rolesThatMayInvokeThis": "Roles que pueden invocar este workflow",
       "administratorsCanAlwaysInvokeAny": "Los administradores siempre pueden invocar cualquier workflow. Sin ningún rol permitido, solo ellos pueden.",
-      "onlyMattersForManualCron": "Solo importa para disparadores Manual/Cron/Webhook",
+      "onlyMattersForManualCron": "Solo importa para disparadores Manual y Programación, y webhooks autenticados",
       "aDataEventTriggerNever": "Un disparador de evento de datos nunca comprueba esto - siempre se ejecuta como su propio usuario configurado, sin importar quién causó la mutación subyacente."
     },
     "workflowRunModal": {
@@ -616,11 +616,13 @@
       "runTitle": "Ejecutar",
       "testDescription": "Ejecuta el borrador guardado como tú - una ejecución real: sus escrituras y efectos secundarios ocurren. Se marca como TEST; no se publica ni se habilita nada.",
       "scheduledDescription": "Ejecuta ahora la versión publicada{version}, exactamente como lo haría su programación: como su usuario de ejecución, con los datos de la programación ({path}, started_at, timezone) como entrada.",
-      "productionDescription": "Ejecuta la versión publicada{version} en producción, como tú.",
+      "productionDescription": "Ejecuta la versión publicada{version} en producción - como tú, o como su usuario de Ejecutar como.",
       "draftNotSavedReason": "No se pudo guardar el borrador, así que no se ejecutó: {reason}",
       "draftNotSaved": "No se pudo guardar el borrador, así que no se ejecutó.",
       "couldNotStart": "No se pudo iniciar la ejecución.",
-      "runTest": "Ejecutar prueba"
+      "runTest": "Ejecutar prueba",
+      "sendEmailsTo": "Enviar los emails a",
+      "sendEmailsToHelp": "Opcional. Cada email que envía esta prueba va solo a esta dirección en lugar de a sus destinatarios, cc y bcc incluidos. Vacío: los destinatarios de cada paso."
     },
     "workflowRunStepDetail": {
       "started": "Inicio",

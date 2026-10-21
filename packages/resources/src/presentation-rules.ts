@@ -10,7 +10,7 @@ import {
 import type { RelationDetail } from "@totalbase/pg-catalog";
 
 /**
- * Suggest presentation (Specification_DataViews.md §15.6, T69): what a column's type and constraints - never its
+ * Suggest presentation (DataViews.md §15.6, T69): what a column's type and constraints - never its
  * name, never a language - say about how it should show, beyond what TotalBase already does by default (numbers
  * right-aligned with the locale's grouping and their column's scale, dates in the instance's patterns, a column's
  * name humanized as its label): storing those would only freeze a default. A suggestion is a help - it fills or

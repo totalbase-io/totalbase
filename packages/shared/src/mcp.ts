@@ -1,5 +1,5 @@
 /**
- * The MCP server's policy vocabulary (Specification_Administration.md §11.7):
+ * The MCP server's policy vocabulary (Administration.md §11.7):
  * read by the settings registry (Settings > MCP), the server that serves
  * /mcp, and the MCP package that filters its tools by it.
  */

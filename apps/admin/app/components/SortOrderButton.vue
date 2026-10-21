@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One column's place in a default order (Specification.md §11.7, Specification_DataViews.md §4): none, ascending or
+ * One column's place in a default order (Foundations.md §11.7, DataViews.md §4): none, ascending or
  * descending, with its priority when several columns order - a click cycles none -> asc -> desc -> none, as clicking
  * a grid's header does. The same control in a resource's Columns (its default order) and a DataView's (its own).
  */

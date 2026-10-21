@@ -3,7 +3,7 @@ import { DEFAULT_UI_LANGUAGE, isUiLanguage, UI_LANGUAGES, type UiLanguage } from
 
 /**
  * A user's own display preferences (`users.preferences`,
- * Specification_Security.md §4.2). A missing
+ * Security.md §4.2). A missing
  * key means "use the instance default". The presets mirror the
  * migration's CHECK constraint - PostgreSQL has the final say; these
  * lists only let the service answer with a readable error first.
@@ -18,7 +18,7 @@ export interface UserPreferences {
   timezone?: string;
   dateFormat?: DateFormatPreset;
   timeFormat?: TimeFormatPreset;
-  /** The UI's language (Specification_Admin_UI.md §14) - one of UI_LANGUAGES. */
+  /** The UI's language (Admin_UI.md §14) - one of UI_LANGUAGES. */
   language?: UiLanguage;
 }
 

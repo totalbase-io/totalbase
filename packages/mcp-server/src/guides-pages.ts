@@ -16,7 +16,7 @@ import {
 } from "@totalbase/tb-catalog";
 
 /**
- * The page guides (Specification_DataViews.md §7-§13): what a page is built
+ * The page guides (DataViews.md §7-§13): what a page is built
  * from and how its parts talk, with the variable kinds and every widget
  * generated from the catalogs the server validates a page against - so
  * nothing here can name a prop, slot or emit the server would refuse.
@@ -34,6 +34,7 @@ const EDITOR_VALUES: Record<string, string> = {
   attributes: "{ name: value }",
   function: "a Code function's name",
   column: "a column of the page's record",
+  junction: "a junction table's resource id: id, a NOT NULL key to the page's record table, one to another table, UNIQUE over both - nothing else",
   dataview: "a published DataView's id",
   detailColumn: "the detail table's foreign key column to the record",
   dashboard: "a published Dashboard's id",

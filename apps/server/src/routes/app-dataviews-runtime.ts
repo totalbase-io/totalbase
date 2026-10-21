@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { UUID_PATTERN } from "@totalbase/shared";
 import { callerRoleIds, callerRoles } from "../caller-roles.js";
 import { checkConstraintValues } from "@totalbase/tb-catalog";
 import { getRelationDetail } from "@totalbase/pg-catalog";
@@ -27,7 +28,7 @@ function stateConfig(config: unknown): Record<string, unknown> {
 
 /**
  * What a published DataView needs at runtime, for every portal user (the
- * App - Specification_Security.md §8): the viewer's own current grid
+ * App - Security.md §8): the viewer's own current grid
  * state and saved views (owner-scoped), its source's column catalog
  * narrowed to what they may read, and the bulk IMPORT/EXPORT/PRINT audit
  * summary. Every route first checks the caller may open the DataView.
@@ -184,6 +185,26 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
         ...(presentation.displayTemplate ? { displayTemplate: presentation.displayTemplate } : {}),
       },
     };
+  });
+
+  /**
+   * A form field's Junction table as this viewer may use it (DataViews.md §8.5): how it links the record's table to
+   * the other one, read live from PostgreSQL's catalog, and whether they may read, add and remove its rows - the
+   * Permission Resolver's READ/CREATE/DELETE on an exposed method. Not a junction of the record's table any more, or
+   * not readable by them: 404, as a missing one.
+   */
+  app.get<{ Params: { slug: string; resource: string } }>("/app/api/dataviews/:slug/junctions/:resource", { preHandler }, async (request) => {
+    const view = await openableDataView(context, request, request.params.slug);
+    const junction = view.sourceResource && UUID_PATTERN.test(request.params.resource) ? await context.dataviewsAdmin.getJunction(view.sourceResource, request.params.resource) : null;
+    if (!junction) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Junction table not found.");
+    const { rows } = await context.database.query<{ exposed_methods: string[] }>(`SELECT exposed_methods FROM totalbase.resources WHERE id = $1`, [junction.resourceId]);
+    const exposed = new Set(rows[0]?.exposed_methods ?? []);
+    const roleIds = await callerRoleIds(context, request);
+    const decisions = roleIds === null ? null : (await context.effectivePermissions.resolveBulk(roleIds, [junction.resourceId])).get(junction.resourceId);
+    const allowed = (action: "READ" | "CREATE" | "DELETE", method: string) => exposed.has(method) && (decisions === null || decisions?.[action].decision === "ALLOW");
+    const actions = { read: allowed("READ", "GET"), create: allowed("CREATE", "POST"), delete: allowed("DELETE", "DELETE") };
+    if (!actions.read) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Junction table not found.");
+    return { data: { ...junction, actions } };
   });
 
   app.get<{ Params: { slug: string } }>("/app/api/dataviews/:slug/record", { preHandler }, async (request) => {

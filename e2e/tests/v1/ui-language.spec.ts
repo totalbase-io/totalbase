@@ -1,7 +1,8 @@
 import { adminSession, api, expect, test } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
- * The UI's language (Specification_Admin_UI.md §14): a user picks Español in
+ * The UI's language (Admin_UI.md §14): a user picks Español in
  * My account and the screens follow at once, and after a reload. A user of
  * its own - the instance admin's language stays English for every other
  * spec running beside this one.
@@ -27,7 +28,7 @@ test.afterAll(async ({ browser }) => {
 })
 
 test('a user switches to Spanish in My account - at once, and after a reload', async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(EMAIL)

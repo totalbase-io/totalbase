@@ -12,7 +12,7 @@ export interface AuditDiffRow {
 }
 
 /**
- * An UPDATE entry's own before/after (Specification_Security.md §11.4):
+ * An UPDATE entry's own before/after (Security.md §11.4):
  * `changes` holds `{ column: { old, new } }` for every column the update
  * changed, read in the same statement - exact even when an earlier change
  * didn't go through TotalBase (SQL Console, a script). null when the entry

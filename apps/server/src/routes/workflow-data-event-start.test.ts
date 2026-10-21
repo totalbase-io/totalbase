@@ -11,7 +11,7 @@ const PREFIX = "wf-start-test";
 const TABLE = "wf_start_test_orders";
 
 /**
- * A DATA_EVENT Start's own matching and granularity (Specification_Workflows.md
+ * A DATA_EVENT Start's own matching and granularity (Workflows.md
  * §6.3.1, §6.3.3): For each row or For each statement - the rows of one write,
  * one run - and its filter, changed fields and filter on the row before.
  */

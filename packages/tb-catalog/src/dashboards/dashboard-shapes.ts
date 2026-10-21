@@ -1,5 +1,5 @@
 /**
- * The shapes of a dashboard widget's structured props (Specification_Dashboards.md §5.1, DB20): an object, a list,
+ * The shapes of a dashboard widget's structured props (Dashboards.md §5.1, DB20): an object, a list,
  * a map by name, a choice of forms - checked at every level by `shapeErrors` (shape.ts), a refusal naming its path
  * ("series.facturado has no "colour" - it takes: label, color, type, axis, displayFormat").
  */

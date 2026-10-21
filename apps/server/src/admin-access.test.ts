@@ -12,11 +12,20 @@ type Spec = { paths: Record<string, Record<string, Operation>> };
 
 const PREFIX = "admin-access-test";
 const PASSWORD = "a-strong-enough-password";
-// Answer before the guard would be meaningless: these three are the
+// Answer before the guard would be meaningless: these are the
 // Admin API's only routes that don't require the Administrators role
 // (auth-guards.ts): login is public, logout only ends the token it's
 // given, and me tells the portal which surface a caller opens.
-const NOT_ADMIN_ONLY = new Set(["POST /admin/api/auth/login", "POST /admin/api/auth/logout", "GET /admin/api/auth/me"]);
+const NOT_ADMIN_ONLY = new Set([
+  "POST /admin/api/auth/login",
+  "POST /admin/api/auth/logout",
+  "GET /admin/api/auth/me",
+  // A sign-in's second step (Security.md §2.17): public like login - the challenge is the credential.
+  "POST /admin/api/auth/mfa/verify",
+  // A backup's archive (Administration.md §12.4): followed by the browser, authorized by the signature of a link an
+  // administrator was given - never by a session. Without a valid one it names nothing (asserted below).
+  "GET /admin/api/backups/{id}/archive",
+]);
 
 /**
  * The Admin API is for members of the Administrators role only. Walks
@@ -112,6 +121,11 @@ describe("Admin API access: Administrators only", () => {
     }
     expect(checked).toBeGreaterThan(150);
     expect(offenders).toEqual([]);
+    // The signed archive route: without its signature, or with a session instead of one, nothing.
+    for (const token of [undefined, appUserToken, systemToken, adminToken]) {
+      const res = await inject("GET", "/admin/api/backups/00000000-0000-4000-8000-000000000000/archive", token);
+      expect(res.statusCode).toBe(404);
+    }
   });
 
   it("refuses to issue any token to a system account", async () => {

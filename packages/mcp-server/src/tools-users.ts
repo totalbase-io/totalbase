@@ -4,7 +4,7 @@ import type { AdminClient } from "./admin-client.js";
 import { ADDITIVE, IDEMPOTENT, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
- * Users' accounts (Specification_Security.md §1, §2.9, §10.4): what isn't a
+ * Users' accounts (Security.md §1, §2.9, §10.4): what isn't a
  * plain row write keeps its Admin API route - an account with a password or
  * an invitation, a user's whole role set, an invitation or a reset link.
  * Reading users, renaming or deactivating them stays write_records /

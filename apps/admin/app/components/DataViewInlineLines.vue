@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A record's lines edited in place (Specification_DataViews.md §6.6, §9.7 Edit in the grid) - a master-detail's
+ * A record's lines edited in place (DataViews.md §6.6, §9.7 Edit in the grid) - a master-detail's
  * items: each line a row of inputs, Tab from cell to cell and, past the last one, a new line; a line removed with
  * its ✕. Nothing is written as the viewer types: the changes join the page record's save (`record.attach`), header
  * and lines in one transaction - PostgreSQL decides it whole. Cancel drops them.
@@ -71,7 +71,7 @@ const tableColumns = computed<TableColumn<Line>[]>(() => [
   { id: 'actions', meta: { class: { th: 'w-10', td: 'w-10' } } }
 ])
 /**
- * A column's total (`config.total`, Specification_DataViews.md §4.9) over the lines as they are now - the unsaved
+ * A column's total (`config.total`, DataViews.md §4.9) over the lines as they are now - the unsaved
  * ones included, a removed one not: an invoice's total as its lines are typed. Formatted as its cells.
  */
 function lineTotal(cell: { field: DataViewField, name: string, meta: RecordColumn }): string | null {

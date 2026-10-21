@@ -137,7 +137,7 @@ describe("role access flags", () => {
       app.inject({ method: "POST", url: "/api/auth/password/change", headers: { authorization: `Bearer ${token}` }, payload: data });
     const wrong = await change({ currentPassword: "not-the-password", newPassword: "role-access-test-password-2" });
     expect([wrong.statusCode, wrong.json().errors[0].code]).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
-    // Nothing to return: 204, never { success: true } (Specification_Data_API.md §2.5).
+    // Nothing to return: 204, never { success: true } (Data_API.md §2.5).
     expect((await change({ currentPassword: PASSWORD, newPassword: "role-access-test-password-2" })).statusCode).toBe(204);
     expect((await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: API_EMAIL, password: "role-access-test-password-2" } })).statusCode).toBe(200);
     // Back, so the other cases keep signing in with PASSWORD.

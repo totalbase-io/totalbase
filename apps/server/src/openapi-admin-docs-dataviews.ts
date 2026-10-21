@@ -13,7 +13,7 @@ import { arrayOf, DATE_TIME, object, ref, UUID } from "./openapi-admin-docs.js";
  * documents: only their top-level shape is described here.
  */
 
-const CUSTOM_SPEC = "specs/Specification_DataViews.md";
+const CUSTOM_SPEC = "specs/DataViews.md";
 const TEXT_OR_NULL: JsonSchema = { type: ["string", "null"] };
 const INT: JsonSchema = { type: "integer" };
 const INT_OR_NULL: JsonSchema = { type: ["integer", "null"] };
@@ -106,7 +106,7 @@ export const DATAVIEW_SCHEMAS: Record<string, JsonSchema> = {
       relations: { type: "object", additionalProperties: { type: "string", format: "uuid" }, description: "Its single-column foreign keys: column -> the resource id it points at (its presentation is in `columnPresentation`) - a related column's title." },
       displays: {
         type: "object",
-        description: "How each foreign key shows (Specification_DataViews.md §15.5): its table's row presentation, else its default column - a Table reads the target's rows by it. Absent when every key shows itself.",
+        description: "How each foreign key shows (DataViews.md §15.5): its table's row presentation, else its default column - a Table reads the target's rows by it. Absent when every key shows itself.",
         additionalProperties: object(
           { schema: { type: "string" }, table: { type: "string" }, column: { type: "string", description: "The target's key column." }, displayField: { type: "string" }, displayTemplate: { type: "string" } },
           ["schema", "table", "column", "displayField"],
@@ -130,6 +130,11 @@ export const DATAVIEW_SCHEMAS: Record<string, JsonSchema> = {
             additionalProperties: ref("DataViewVariableResource"),
             description: "Page types only (absent on an EXTERNALFRAME): the resources its variables name, by resource id.",
           },
+          variableWorkflows: {
+            type: "object",
+            additionalProperties: object({ slug: { type: "string" }, name: { type: "string" } }, ["slug", "name"]),
+            description: "Page types only: the workflows its Calls run, by workflow id - the slug the App runs each by. A deleted workflow is absent.",
+          },
           sourceResourcePrimaryKey: {
             ...arrayOf({ type: "string" }),
             description: "The source's primary key column(s) - absent when there is no source.",
@@ -140,7 +145,7 @@ export const DATAVIEW_SCHEMAS: Record<string, JsonSchema> = {
     ],
   },
   DataViewWithStatus: {
-    allOf: [ref("DataView"), object({ hasUnpublishedChanges: { type: "boolean", description: `The draft differs from the live version, or it was never published (specs/Specification.md §13.5).` } }, ["hasUnpublishedChanges"])],
+    allOf: [ref("DataView"), object({ hasUnpublishedChanges: { type: "boolean", description: `The draft differs from the live version, or it was never published (specs/Foundations.md §13.5).` } }, ["hasUnpublishedChanges"])],
   },
   DataViewListItem: {
     allOf: [ref("DataViewBase"), object({ hasUnpublishedChanges: { type: "boolean" } }, ["hasUnpublishedChanges"])],
@@ -218,6 +223,26 @@ export const DATAVIEW_SCHEMAS: Record<string, JsonSchema> = {
       fkColumn: { type: "string", description: "The detail table's column referencing the master." },
     },
     ["resourceId", "schema", "table", "fkColumn"],
+  ),
+  DataViewJunction: object(
+    {
+      resourceId: UUID,
+      schema: { type: "string" },
+      table: { type: "string" },
+      primaryKey: { type: "string", description: "The junction's single-column primary key - a removed link is deleted by it." },
+      column: { type: "string", description: "Its column referencing the record's table." },
+      otherColumn: { type: "string", description: "Its column referencing the other table - what the field picks." },
+      target: object(
+        {
+          resourceId: { type: ["string", "null"], format: "uuid", description: "The other table's resource - null when it isn't an ACTIVE one." },
+          schema: { type: "string" },
+          table: { type: "string" },
+          column: { type: "string", description: "The column the junction's key references." },
+        },
+        ["resourceId", "schema", "table", "column"],
+      ),
+    },
+    ["resourceId", "schema", "table", "primaryKey", "column", "otherColumn", "target"],
   ),
 };
 
@@ -322,7 +347,7 @@ export const MOVE_WIDGET_BODY: JsonSchema = object({
   position: { ...INT, description: "Its place in that area, 0 = first; omitted = last." },
 });
 
-// --- App menu (Specification_Security.md §8) ---
+// --- App menu (Security.md §8) ---
 
 export const APP_MENU_SCHEMAS: Record<string, JsonSchema> = {
   AppMenuObject: object(

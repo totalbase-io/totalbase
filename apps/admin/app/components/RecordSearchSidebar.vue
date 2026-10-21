@@ -10,7 +10,7 @@
  * Lists rows via the public Data API's own `search`+`fields` query
  * params (packages/query-engine's `compileSearch`): the search looks in
  * the fields read - `labelFields`, what each result shows
- * (Specification_Data_API.md §3.5).
+ * (Data_API.md §3.5).
  *
  * Paginated `PAGE_SIZE` at a time (`count: true` + `meta.count`, the
  * SAME params/response shape DataViewGrid.vue's own list fetch already

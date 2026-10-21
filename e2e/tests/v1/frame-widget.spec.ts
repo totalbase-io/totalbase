@@ -1,7 +1,7 @@
 import { adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test, type DataViewRef } from './fixtures.js'
 
 /**
- * The Frame widget (Specification_DataViews.md §9.7): a FORM's record page
+ * The Frame widget (DataViews.md §9.7): a FORM's record page
  * frames another site with the record's own value in the URL, encoded; the
  * site itself can never come from data.
  */

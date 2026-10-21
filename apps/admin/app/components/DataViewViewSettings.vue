@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One list view's content in Settings > Views (Specification_DataViews.md §3.6, §5.13), inside its row of the views
+ * One list view's content in Settings > Views (DataViews.md §3.6, §5.13), inside its row of the views
  * accordion (DataViewViewsAccordion.vue): its layout (the page's own settings component, in the default slot) and its
  * own controls - a table's density, columns, print and row edit, the cards' size. Whether it's offered, its place and
  * the defaults every view shares are the accordion's and Presentation's.

@@ -31,7 +31,7 @@ const keyValid = computed(() => keyValue.value.length > 0 && keyValue.value !== 
 
 const method = ref<HttpMethod>('GET')
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
-// Secret headers (Specification_Workflows.md §5.15): a header named here takes a secret's value at run time.
+// Secret headers (Workflows.md §5.15): a header named here takes a secret's value at run time.
 const secretHeaders = ref<{ name: string, secret: string }[]>([])
 const api = useAdminApi()
 const { data: secretKeys } = useAsyncData('http-request-secrets', () => api.get<{ key: string }[]>('/secrets').then(r => r.data.map(s => s.key)), { default: () => [] })

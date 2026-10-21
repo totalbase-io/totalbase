@@ -49,8 +49,11 @@ test('a grid on a phone: its rows, no sideways page scroll, a record form to edi
   await expect(email).toHaveValue('info@beta.test')
   // Fits the phone: its Save and Cancel within the screen.
   const save = form.getByRole('button', { name: 'Save', exact: true })
-  const box = await save.boundingBox()
-  expect(box && box.x >= 0 && box.x + box.width <= 390).toBe(true)
+  // Polled: measured while the modal is still sliding in, it sits off to one side.
+  await expect.poll(async () => {
+    const box = await save.boundingBox()
+    return !!box && box.x >= 0 && box.x + box.width <= 390
+  }).toBe(true)
   await email.fill('movil@beta.test')
   await save.tap()
   await expect(form).toBeHidden()

@@ -33,6 +33,8 @@ interface Embed {
   kind: "LINK" | "SIGNED" | "PREVIEW";
   embedId: string | null;
   display: EmbedDisplay;
+  /** The one widget it shows - null, the whole dashboard. Every other widget is out of reach. */
+  widget: string | null;
   /** The published variables the viewer may choose - EDITABLE ones (a variable no embed setting names is EDITABLE). */
   editable: DashboardVariable[];
   /** EDITABLE variables' configured starting values - the bar starts there. */
@@ -44,7 +46,7 @@ interface Embed {
 const notAvailable = () => new TotalBaseError("RESOURCE_NOT_FOUND", "This embed is not available.");
 
 /**
- * The embed a request's credential names (Specification_Dashboards.md §9.5),
+ * The embed a request's credential names (Dashboards.md §9.5),
  * checked on every request:
  * - a public link (`tbe_…`): its hash finds it;
  * - a portal's token: verified with the instance's embedding secret, it
@@ -54,15 +56,15 @@ const notAvailable = () => new TotalBaseError("RESOURCE_NOT_FOUND", "This embed 
  * The embed not revoked nor expired, its dashboard published and its
  * embedding on - otherwise RESOURCE_NOT_FOUND, "denied = missing".
  */
-async function resolve(context: AppContext, raw: string): Promise<{ dashboardId: string; kind: Embed["kind"]; embedId: string | null; display: EmbedDisplay; config: Record<string, EmbedVariableConfig>; tokenParams: Record<string, unknown> }> {
+async function resolve(context: AppContext, raw: string): Promise<{ dashboardId: string; kind: Embed["kind"]; embedId: string | null; display: EmbedDisplay; widget: string | null; config: Record<string, EmbedVariableConfig>; tokenParams: Record<string, unknown> }> {
   if (raw.startsWith(EMBED_LINK_PREFIX)) {
     const embed = await context.dashboardEmbeds.findByLink(raw);
     if (!embed || embed.type !== "LINK" || embed.revokedAt || (embed.expiresAt && new Date(embed.expiresAt) <= new Date())) throw notAvailable();
-    return { dashboardId: embed.dashboard, kind: "LINK", embedId: embed.id, display: embed.display, config: embed.variables, tokenParams: {} };
+    return { dashboardId: embed.dashboard, kind: "LINK", embedId: embed.id, display: embed.display, widget: embed.widget, config: embed.variables, tokenParams: {} };
   }
   if (isPreviewToken(raw)) {
     const preview = verifyEmbedPreviewToken(raw, context.embedPreviewKey, EMBED_PREVIEW_TTL_SECONDS);
-    return { dashboardId: preview.dashboard, kind: "PREVIEW", embedId: null, display: preview.display as EmbedDisplay, config: preview.variables as Record<string, EmbedVariableConfig>, tokenParams: {} };
+    return { dashboardId: preview.dashboard, kind: "PREVIEW", embedId: null, display: preview.display as EmbedDisplay, widget: preview.widget, config: preview.variables as Record<string, EmbedVariableConfig>, tokenParams: {} };
   }
   const [secretKey, maxTtlMinutes] = await Promise.all([
     context.settings.get("dashboards.embed_secret_key"),
@@ -72,7 +74,7 @@ async function resolve(context: AppContext, raw: string): Promise<{ dashboardId:
   const claims = verifyEmbedToken(raw, secret, maxTtlMinutes * 60);
   const embed = await context.dashboardEmbeds.findById(claims.embed);
   if (!embed || embed.type !== "SIGNED" || embed.revokedAt || (embed.expiresAt && new Date(embed.expiresAt) <= new Date())) throw notAvailable();
-  return { dashboardId: embed.dashboard, kind: "SIGNED", embedId: embed.id, display: embed.display, config: embed.variables, tokenParams: claims.params };
+  return { dashboardId: embed.dashboard, kind: "SIGNED", embedId: embed.id, display: embed.display, widget: embed.widget, config: embed.variables, tokenParams: claims.params };
 }
 
 /**
@@ -93,6 +95,10 @@ async function embedOf(context: AppContext, request: FastifyRequest): Promise<Em
   if (resolved.kind !== "PREVIEW" && !dashboard.embeddingEnabled) throw notAvailable();
   const snapshot = await context.dashboardsAdmin.getLiveSnapshot(dashboard.id);
   if (!snapshot) throw notAvailable();
+  // Its one widget gone from the live version stops it - never the whole dashboard in its place.
+  if (resolved.widget && !snapshot.widgets.some((w) => w.id === resolved.widget)) {
+    throw new TotalBaseError("EMBED_NEEDS_UPDATE", "This embed needs updating: the widget it shows is no longer in the dashboard.");
+  }
 
   const published = snapshot.variables;
   const names = new Set(published.map((v) => v.name));
@@ -128,6 +134,7 @@ async function embedOf(context: AppContext, request: FastifyRequest): Promise<Em
     kind: resolved.kind,
     embedId: resolved.embedId,
     display: resolved.display,
+    widget: resolved.widget,
     editable: published.filter((v) => !closed.has(v.name)),
     starting,
     fixed,
@@ -144,9 +151,22 @@ function peekEmbed(token: unknown): string | null {
   }
 }
 
-/** The variables an embed's visitor may change - a click may set only these (D6). */
+/**
+ * The variables a click may set (D6): those its visitor may change - none for an embed of one widget, which has no
+ * bar and no other widget a filter would reach; only its URL clicks run.
+ */
 function editableNames(embed: Embed): Set<string> {
-  return new Set(embed.editable.map((v) => v.name));
+  return embed.widget ? new Set() : new Set(embed.editable.map((v) => v.name));
+}
+
+/** The widgets an embed serves: its one widget, or the whole live version's. */
+function servedWidgets(embed: Embed) {
+  return embed.widget ? embed.snapshot.widgets.filter((w) => w.id === embed.widget) : embed.snapshot.widgets;
+}
+
+/** A widget id from the URL that this embed doesn't serve - the same 404 as an unknown one. */
+function assertServed(embed: Embed, widgetId: string): void {
+  if (embed.widget && widgetId !== embed.widget) throw new TotalBaseError("DASHBOARD_WIDGET_NOT_FOUND", `Widget not found: ${widgetId}`);
 }
 
 /** The viewer's choices for the editable variables, over their starting values, under what the embed fixes - a locked value is never the browser's. */
@@ -179,7 +199,7 @@ export async function embedFrameAncestors(context: AppContext, path: string): Pr
 }
 
 /**
- * Dashboard embeds (Specification_Dashboards.md §9.5) - the App's dashboard
+ * Dashboard embeds (Dashboards.md §9.5) - the App's dashboard
  * routes (app-dashboards.ts) for a visitor with no TotalBase account: the
  * same published snapshot, widgets run by id, never SQL; access from the
  * embed's credential instead of roles; the dashboard's id never sent.
@@ -195,7 +215,9 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
         description: embed.dashboard.description,
         refreshIntervalSeconds: embed.dashboard.refreshIntervalSeconds,
         display: embed.display,
-        tabs: embed.snapshot.tabs,
+        // One widget: the card alone - no tabs to pick between.
+        widget: embed.widget,
+        tabs: embed.widget ? [] : embed.snapshot.tabs,
         startingValues: embed.starting,
         // No user: the instance's language (a `locale` URL parameter may override it).
         language: await context.settings.get("system.language"),
@@ -206,7 +228,7 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
   app.get("/embed/api/dashboard/widgets", async (request) => {
     const embed = await embedOf(context, request);
     return {
-      data: embed.snapshot.widgets.map((widget) => {
+      data: servedWidgets(embed).map((widget) => {
         const { dashboard: _id, ...rest } = withoutQuery(widget);
         // Only the clicks an embed runs (D6): a FILTER on a variable its visitor changes, a URL marked inEmbeds.
         const { click: _click, ...config } = rest.config;
@@ -244,7 +266,8 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
     if (claims.e === "preview") return serveDashboardFile(context, reply, request.params.fileId, request.query, () => true);
     const embed = claims.e ? await context.dashboardEmbeds.findById(claims.e) : null;
     const dashboard = embed ? await context.dashboardsAdmin.get(embed.dashboard).catch(() => null) : null;
-    const live = embed && dashboard && dashboard.id === claims.d && dashboard.embeddingEnabled && !embed.revokedAt && (!embed.expiresAt || new Date(embed.expiresAt).getTime() > Date.now());
+    const live = embed && dashboard && dashboard.id === claims.d && dashboard.embeddingEnabled && !embed.revokedAt && (!embed.expiresAt || new Date(embed.expiresAt).getTime() > Date.now())
+      && (embed.widget === null || embed.widget === request.params.widgetId);
     if (!live) throw new TotalBaseError("DASHBOARD_FILE_TOKEN_INVALID", "This file's link isn't valid or has expired - reload the dashboard for a new one.");
     return serveDashboardFile(context, reply, request.params.fileId, request.query, (visibility) => visibility === "PUBLIC" || embed.display.allowFiles === true);
   });
@@ -253,6 +276,7 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
   app.post<{ Params: { widgetId: string }; Body: DataBody<ExportAuditBody> }>("/embed/api/dashboard/widgets/:widgetId/exports", async (request, reply) => {
     const embed = await embedOf(context, request);
     if (embed.display.allowExport !== true) throw new TotalBaseError("ACTION_DENIED", "This embed doesn't allow downloads (its display.allowExport is off).");
+    assertServed(embed, request.params.widgetId);
     const widget = embed.snapshot.widgets.find((w) => w.id === request.params.widgetId);
     if (!widget) throw new TotalBaseError("DASHBOARD_WIDGET_NOT_FOUND", `Widget not found: ${request.params.widgetId}`);
     const id = await recordWidgetExport(context, request, { type: "SYSTEM", id: null }, embed.dashboard.id, widget.id, request.body, embed.embedId);
@@ -262,6 +286,7 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
 
   app.post<{ Params: { widgetId: string }; Body: DataBody<VariableValues> & { fresh?: boolean } }>("/embed/api/dashboard/widgets/:widgetId/data", async (request) => {
     const embed = await embedOf(context, request);
+    assertServed(embed, request.params.widgetId);
     // Its files' links (D14): one that isn't PUBLIC only where the embed allows files.
     const result = await withFileLinks(context, await context.dashboardsAdmin.executePublishedWidget(
       embed.dashboard.id,

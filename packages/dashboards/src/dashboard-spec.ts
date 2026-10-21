@@ -3,7 +3,7 @@ import type { DashboardTab } from "./tabs.js";
 import type { DashboardVariable } from "./variables.js";
 
 /**
- * A dashboard's draft as one document (Specification_Dashboards.md §10.6, DM2): what `get_dashboard` returns and
+ * A dashboard's draft as one document (Dashboards.md §8.3, DM2): what `get_dashboard` returns and
  * `apply_dashboard` takes - the same shape both ways, so reading and applying it unchanged changes nothing. Who sees
  * it (its roles and embeds) isn't part of it: that applies at once, not on publishing.
  */

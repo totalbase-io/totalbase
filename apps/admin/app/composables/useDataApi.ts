@@ -6,7 +6,7 @@ export type DataApiResult<T> = ApiResult<T>
 
 /**
  * Typed client for the public REST Data API - `/api/:schema/table/...`
- * and `/api/:schema/view/...` (Specification_Data_API.md §2.1,
+ * and `/api/:schema/view/...` (Data_API.md §2.1,
  * confirmed against apps/server/src/routes/data-table.ts
  * / data-table-mutations.ts / data-view.ts - there is no `/api/v1/...`
  * prefix). Deliberately separate from useAdminApi() (`/admin/api/...`,
@@ -35,7 +35,7 @@ export function useDataApi() {
         headers: {
           ...apiHeaders(session.token.value),
           ...(options.idempotencyKey && { 'Idempotency-Key': options.idempotencyKey }),
-          // The row's version the caller read - a write fails 409 if it changed since (Specification_Data_API.md §5.3).
+          // The row's version the caller read - a write fails 409 if it changed since (Data_API.md §5.3).
           ...(options.ifMatch && { 'If-Match': `"${options.ifMatch}"` })
         }
       })
@@ -46,7 +46,7 @@ export function useDataApi() {
         navigateTo('/login')
       }
       // A resource an administrator marked as requiring an Idempotency-Key
-      // (Specification_Data_API.md §9.1) refuses a write without one before
+      // (Data_API.md §9.1) refuses a write without one before
       // running anything: this user action gets its own key and goes again.
       // Only those resources pay for the key's bookkeeping.
       if (method === 'POST' && !options.idempotencyKey && apiError.code === 'IDEMPOTENCY_KEY_REQUIRED') {

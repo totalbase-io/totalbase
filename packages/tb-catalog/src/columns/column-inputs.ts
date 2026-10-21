@@ -1,5 +1,5 @@
 /**
- * The column input catalog (Specification_DataViews.md §16): every control a table's column can be edited with, by
+ * The column input catalog (DataViews.md §16): every control a table's column can be edited with, by
  * name - "Number field", "Number with − and +", "Email", "Relation (searchable)" - each with its two faces:
  *
  * - **create** (Add Column): the PostgreSQL column it makes - its data type, CHECK, foreign key;
@@ -630,7 +630,7 @@ function asInput(key: ColumnInputKey, reason: ColumnInputReason): ColumnFormInpu
 }
 
 /**
- * The input a column is edited with in a form (Specification_DataViews.md §15.2): its chosen entry when it still
+ * The input a column is edited with in a form (DataViews.md §15.2): its chosen entry when it still
  * edits the column, else the rule's - a file's foreign key a file upload, any other foreign key a searchable
  * relation, a CHECK list a select (a text[]'s, checkboxes), a whole number in a CHECK range at most SMALL_RANGE wide
  * − and +, any other number a number field, a text an email's, a phone's or a URL's field by its link type or CHECK
@@ -690,7 +690,7 @@ export const KIND_INPUTS: Record<ValueKind, ColumnInputKey> = {
 
 /**
  * The widget a kind of value gets by default - derived from KIND_INPUTS, so a grid column, a form field and a
- * variable's control all follow the one catalog (Specification_DataViews.md §16.1). A column's own default goes
+ * variable's control all follow the one catalog (DataViews.md §16.1). A column's own default goes
  * through `columnFormInput` (its foreign key, CHECK list and pattern count); this is the kind's alone.
  */
 export const DEFAULT_WIDGETS: Record<ValueKind, WidgetName> = Object.fromEntries(

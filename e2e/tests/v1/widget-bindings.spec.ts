@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { addWidget, adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test, type DataViewRef } from './fixtures.js'
 
 /**
- * The widget catalog's binding review (Specification_DataViews.md §9.2,
+ * The widget catalog's binding review (DataViews.md §9.2,
  * 2026-10-02): a CUSTOM page with one widget per change, run
  * live in the App and checked in the Design form's inspector.
  *

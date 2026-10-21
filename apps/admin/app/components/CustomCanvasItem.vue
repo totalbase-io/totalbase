@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One placed widget on a CUSTOM page's canvas (Specification_DataViews.md §12.3): the real
+ * One placed widget on a CUSTOM page's canvas (DataViews.md §12.3): the real
  * widget, drawn by WidgetRenderer in design mode - its inline slots are
  * canvas areas again - wrapped with what editing needs: a click selects
  * (the widget itself doesn't react), a drag moves it, the right edge sets

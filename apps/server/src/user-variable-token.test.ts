@@ -6,8 +6,8 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * Regression: `$USER.*` resolves the token owner's real users row
- * for an API token exactly as for a session (Specification_Security.md §6.5,
- * Specification_Data_API.md §3.7). Before, a token principal carried no user
+ * for an API token exactly as for a session (Security.md §6.5,
+ * Data_API.md §3.7). Before, a token principal carried no user
  * row and every `$USER.*` - in a request filter, a row filter or a payload
  * check - failed with 400 INVALID_QUERY, so a row filter like
  * `owner = $USER.id` locked tokens out entirely.

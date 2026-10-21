@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One run beside the runs table (Specification_Workflows.md §16.3): a USlideover - looking something up, the table
+ * One run beside the runs table (Workflows.md §16): a USlideover - looking something up, the table
  * stays visible (AGENTS.md §25) - with the run's summary, its result or error, its steps, and one step's detail
  * (input, result, error) with Back. Cancel while it runs (§8.5, cooperative), and Audit entries - the audit log
  * filtered to the run (§7.4). `run` is the open run's id; none closes it.

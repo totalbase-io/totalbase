@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The company's mark on the sign-in page (Specification_Admin_UI.md §3.6, M29): its logo - else the built-in mark -
+ * The company's mark on the sign-in page (Admin_UI.md §3.6, M29): its logo - else the built-in mark -
  * with its name at its right, and optionally its headline and intro below. Over a picture or the primary color (`inverse`) the texts
  * are white.
  */

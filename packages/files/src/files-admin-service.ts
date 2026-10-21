@@ -3,9 +3,9 @@ import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import type { SettingsService } from "@totalbase/settings";
 import { readImageDimensions } from "./image-transform.js";
+import { FilesStorage } from "./files-storage.js";
 import { FilesLocalStorageProvider } from "./local-storage-provider.js";
 import { detectMimeType } from "./mime-detection.js";
-import type { FilesStorageProvider } from "./storage-provider.js";
 
 export interface FileRecord {
   id: string;
@@ -81,17 +81,8 @@ export class FilesAdminService {
   constructor(
     private readonly database: Queryable,
     private readonly settings: SettingsService,
-    private readonly storageOverride?: FilesStorageProvider,
+    private readonly storage: FilesStorage = new FilesStorage(settings),
   ) {}
-
-  async storage(): Promise<FilesStorageProvider> {
-    if (this.storageOverride) return this.storageOverride;
-    const provider = await this.settings.get("files.storage_provider");
-    if (provider !== "local") {
-      throw new TotalBaseError("INVALID_SETTING", `Unsupported files storage provider: ${provider}`);
-    }
-    return new FilesLocalStorageProvider(await this.settings.get("files.storage_local_path"));
-  }
 
   async list(folder?: string | null): Promise<FileRecord[]> {
     const params: unknown[] = [];
@@ -168,7 +159,7 @@ export class FilesAdminService {
       }
     }
 
-    const storage = await this.storage();
+    const storage = await this.storage.current();
     await storage.store(storageKey, input.content);
 
     try {
@@ -209,7 +200,7 @@ export class FilesAdminService {
 
   async readContent(id: string): Promise<{ file: FileRecord; content: Buffer }> {
     const file = await this.get(id);
-    const storage = await this.storage();
+    const storage = await this.storage.of(file.storage_provider);
     const content = await storage.read(file.storage_key);
     return { file, content };
   }
@@ -217,7 +208,7 @@ export class FilesAdminService {
   /** `updated_by` is set by PostgreSQL from the caller's transaction actor (`totalbase.actor_user_id`). */
   async updateContent(id: string, content: Buffer): Promise<FileRecord> {
     const file = await this.get(id);
-    const storage = await this.storage();
+    const storage = await this.storage.of(file.storage_provider);
     const checksum = createHash("sha256").update(content).digest("hex");
 
     let width: number | null = null;
@@ -285,7 +276,7 @@ export class FilesAdminService {
   async remove(id: string): Promise<void> {
     const file = await this.get(id);
     await this.database.query(`DELETE FROM totalbase.files WHERE id = $1`, [id]);
-    const storage = await this.storage();
+    const storage = await this.storage.of(file.storage_provider);
     await storage.delete(file.storage_key);
   }
 }

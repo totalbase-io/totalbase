@@ -6,7 +6,7 @@ import type { AppContext } from "./context.js";
 import { adminToken as loginAdmin, cleanupTracked, setupTestApp, track, uniqueSuffix, waitFor } from "./test-support.js";
 
 /**
- * Access-related events are always audited (Specification_Security.md §11.6), and repeated
+ * Access-related events are always audited (Security.md §11.6), and repeated
  * wrong passwords lock the account (auth.lockout_*).
  */
 describe("access audit and account lockout", () => {
@@ -160,7 +160,7 @@ describe("access audit and account lockout", () => {
       [JSON.stringify({ user_id: userId, reason: "locked" })],
     );
 
-    // Unlocking is a Data API row update (Specification_Security.md §10).
+    // Unlocking is a Data API row update (Security.md §10).
     const unlocked = await admin("PATCH", `/api/totalbase/table/users/${userId}`, { data: { locked_until: null, failed_login_count: 0 } });
     expect(unlocked.statusCode, unlocked.body).toBe(200);
     expect((await admin("GET", `/admin/api/users/${userId}`)).json().data.lockedUntil).toBeNull();

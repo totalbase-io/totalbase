@@ -23,13 +23,13 @@ import { countQueryNodes } from "./complexity.js";
 export interface ParserLimits {
   maxFilterDepth: number;
   maxRelationDepth: number;
-  /** Optional: when given, parseQuery() rejects a query whose total node count exceeds it (Specification_Data_API.md §12). parseFilter() alone doesn't count - a write's `where` goes through assertFilterComplexity(). */
+  /** Optional: when given, parseQuery() rejects a query whose total node count exceeds it (Data_API.md §12). parseFilter() alone doesn't count - a write's `where` goes through assertFilterComplexity(). */
   maxQueryNodes?: number | undefined;
 }
 
 /**
  * Parses an already bracket-decoded query object (e.g. from `qs.parse`)
- * into a QueryAST. See Specification_Data_API.md §3.1, §3.10.
+ * into a QueryAST. See Data_API.md §3.1, §3.10.
  *
  * This stage only validates structure (known operators, depth limits,
  * path syntax); catalog-driven validation (field existence, types,
@@ -131,7 +131,7 @@ function parseSearch(value: unknown): string | undefined {
   return value;
 }
 
-/** `search_fields=name,brand.name` - the paths `search` looks in (Specification_Data_API.md §3.5). */
+/** `search_fields=name,brand.name` - the paths `search` looks in (Data_API.md §3.5). */
 function parseSearchFields(value: unknown, limits: ParserLimits): string[][] | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "string") {

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
- * Configures a `totalbase.for-each` node's `configuration` (Specification_Workflows.md §5.11):
+ * Configures a `totalbase.for-each` node's `configuration` (Workflows.md §5.11):
  * one `items` value that must resolve to
  * an array at run time. The body itself isn't configured here - it's
  * drawn on the canvas by wiring the node's own "Item" output (see
  * WorkflowTree.vue/[id].vue's addStep(), which tags every step added under
- * that slot with `parent = this node's id`, per Specification_Workflows.md §3.4's explicit
+ * that slot with `parent = this node's id`, per Workflows.md §3.4's explicit
  * body ownership).
  *
  * `items` is a literal JSON value with `{{operation.data.field}}` support

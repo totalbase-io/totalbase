@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The first-start setup (Specification.md §14.1): an instance with no administrator asks for the code its server
+ * The first-start setup (Foundations.md §14.1): an instance with no administrator asks for the code its server
  * wrote to the log (the link carries it), then the first administrator, the public URL and the language - and
  * signs them in. Public; once an administrator exists the server answers 404 and this page sends to sign in.
  */

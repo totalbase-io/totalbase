@@ -1,4 +1,4 @@
-/** See Specification_Data_API.md §3.3. */
+/** See Data_API.md §3.3. */
 export const COMPARISON_OPERATORS = [
   "_eq",
   "_neq",

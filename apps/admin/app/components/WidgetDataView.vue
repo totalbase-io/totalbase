@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * `TDataView` (Specification_DataViews.md §9.7) - the one widget that embeds
+ * `TDataView` (DataViews.md §9.7) - the one widget that embeds
  * another published DataView in a page: its grid, cards, map, board, calendar
  * or timeline, its New and its record form for editing and deleting. Its
  * viewers' permissions decide what they read and write; `readOnly` turns
@@ -40,7 +40,7 @@ const props = withDefaults(defineProps<{
   columns?: string[]
   newLabel?: string
   paging?: boolean
-  /** Linked by a column: its rows edited in the grid and saved with the page's record (Specification_DataViews.md §6.6). */
+  /** Linked by a column: its rows edited in the grid and saved with the page's record (DataViews.md §6.6). */
   editInline?: boolean
   readOnly?: boolean
 }>(), {

@@ -6,8 +6,8 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * Regression (security defect): a CREATE with `on_conflict` action UPDATE
- * that lands on an existing row is an UPDATE (Specification_Data_API.md §5.7,
- * Specification_Security.md §6.6) - it needs the UPDATE grant, the UPDATE row
+ * that lands on an existing row is an UPDATE (Data_API.md §5.7,
+ * Security.md §6.6) - it needs the UPDATE grant, the UPDATE row
  * filter on the OLD row (the DO UPDATE's own WHERE) and on the NEW row, the
  * UPDATE field decisions for the fields it sets and the UPDATE payload checks,
  * and it is audited and published as an UPDATE. Before the fix it was
@@ -151,7 +151,7 @@ describe("ON CONFLICT DO UPDATE is authorized and audited as an UPDATE", () => {
   it("DO NOTHING is unchanged: CREATE alone suffices and an existing row is skipped", async () => {
     const id = await seed("dn-1", "original", 1);
     const res = await post(createOnlyKey, { data: { sku: "dn-1", name: "other" }, on_conflict: { target: ["sku"], action: "NOTHING" } });
-    // One shape whatever happened (Specification_Data_API.md §5.7): 201, `data: null` for the skipped row.
+    // One shape whatever happened (Data_API.md §5.7): 201, `data: null` for the skipped row.
     expect([res.statusCode, res.json()]).toEqual([201, { data: null }]);
     expect(await row(id)).toMatchObject({ name: "original" });
     expect(await logs("dn-1")).toEqual([]);
@@ -258,7 +258,7 @@ describe("ON CONFLICT DO UPDATE is authorized and audited as an UPDATE", () => {
  * payload only, never on `on_conflict.data` - a non-administrator with
  * CREATE/UPDATE on roles turned on app_access of an existing role
  * through the conflict branch. The DO UPDATE branch now passes the same
- * guardrails a plain UPDATE does (Specification_Security.md §10.2): the
+ * guardrails a plain UPDATE does (Security.md §10.2): the
  * protected columns it sets, and role ownership on the row it updated.
  */
 describe("ON CONFLICT DO UPDATE on roles passes the UPDATE guardrails", () => {

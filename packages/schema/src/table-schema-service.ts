@@ -56,7 +56,7 @@ export interface ColumnInput {
   /** A stored generated column - PostgreSQL computes it from the row (`quantity * price`); never written. */
   generated?: string | undefined;
   /**
-   * addColumn only: a UID column (Specification_DataViews.md §16.3) - the
+   * addColumn only: a UID column (DataViews.md §16.3) - the
    * shared totalbase.set_uid() trigger fills it with the slug of
    * `source`, a column of the same table, whenever a row is written with
    * it empty.
@@ -68,7 +68,7 @@ export interface CreateTableInput {
   schema: string;
   name: string;
   columns: ColumnInput[];
-  /** Table-level UNIQUE constraints over several columns, each named `<table>_<col>_<col>_key` - a junction table's pair (Specification_Administration.md §3.4). */
+  /** Table-level UNIQUE constraints over several columns, each named `<table>_<col>_<col>_key` - a junction table's pair (Administration.md §3.4). */
   uniques?: string[][] | undefined;
 }
 
@@ -166,8 +166,8 @@ function applyColumnDefinition(t: Knex.TableBuilder, table: string, column: Colu
 
 /**
  * Structured DDL for tables/columns/PK/UNIQUE/simple FK/CHECK
- * (Specification_Administration.md §3, Specification.md §7.3). The client
- * never sends raw DDL (Specification_Administration.md §3.2) - every
+ * (Administration.md §3, Foundations.md §7.3). The client
+ * never sends raw DDL (Administration.md §3.2) - every
  * method here takes structured input, validates it (validation.ts), and
  * builds the wrapping statement itself.
  *
@@ -477,7 +477,7 @@ export function buildAddCheckConstraintSql(schema: string, table: string, name: 
  */
 /**
  * A trigger that keeps a self-referencing column from making a cycle - a row under itself, at any depth
- * (Specification_DataViews.md §5.14, a TREE DataView): BEFORE INSERT OR UPDATE OF the parent column, it
+ * (DataViews.md §5.14, a TREE DataView): BEFORE INSERT OR UPDATE OF the parent column, it
  * walks up from the new parent and refuses a write that would reach the row itself (check_violation).
  * PostgreSQL enforces it for every writer; CREATE OR REPLACE, so offering it again is harmless.
  */
@@ -535,7 +535,7 @@ export function buildCommentOnConstraintSql(schema: string, table: string, name:
 /**
  * Runs the statements built above. Every method takes an optional
  * `audit` (ddl-audit.ts): the operation's audit record, written on the same
- * transaction as its DDL (Specification_Administration.md §3.14) - every
+ * transaction as its DDL (Administration.md §3.14) - every
  * method runs in a transaction for that, a single statement included.
  */
 export class TableSchemaService {

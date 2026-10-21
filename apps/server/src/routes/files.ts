@@ -51,7 +51,7 @@ async function updateFileAuthorized(
     if (!(await rowPassesGrant(client, context, dataPrincipal, grant, fileId, limits))) {
       throw new TotalBaseError("FILE_ACCESS_DENIED", "UPDATE is not authorized for Files.");
     }
-    const record = await change(new FilesAdminService(client, context.settings));
+    const record = await change(new FilesAdminService(client, context.settings, context.filesStorage));
     if (!(await rowPassesGrant(client, context, dataPrincipal, grant, fileId, limits))) {
       throw new TotalBaseError("FILE_ACCESS_DENIED", "The file would no longer satisfy your permission's row filter.");
     }

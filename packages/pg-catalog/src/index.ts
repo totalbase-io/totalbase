@@ -2,6 +2,7 @@ export * from "./catalog-snapshot.js";
 export * from "./catalog-fingerprint.js";
 export * from "./relation-detail.js";
 export * from "./relation-detail-cache.js";
+export * from "./junction.js";
 export * from "./function-detail.js";
 export * from "./ddl.js";
 export * from "./maintenance-stats.js";

@@ -21,7 +21,11 @@ import { resolveDashboardClick } from '~/utils/dashboard-click'
 import { dashboardExportTable, downloadDashboardTable, downloadImage } from '~/utils/dashboard-export'
 import type { DateDisplay } from '~/utils/dashboard-widget-render'
 
-const props = defineProps<{ widgetId: string }>()
+const props = defineProps<{
+  widgetId: string
+  /** No header - an embed of this one widget without its title (Dashboards.md §9.5). */
+  headless?: boolean
+}>()
 const { t } = useI18n()
 const errorMessage = useApiErrorMessage()
 const notifyError = useErrorToast()
@@ -120,7 +124,7 @@ watch(() => [widget.value?.query, ctx.refreshKey.value, referencedValues.value, 
   void load(fresh).finally(() => scheduler?.restart())
 }, { immediate: true })
 
-// Auto-refresh (Specification_Dashboards.md §9.4) - the App's viewer only (the editor's canvas provides no interval):
+// Auto-refresh (Dashboards.md §9.4) - the App's viewer only (the editor's canvas provides no interval):
 // re-run on the dashboard's interval, never while a run is in flight, paused while the tab is hidden.
 const refreshIntervalMs = computed(() => {
   const seconds = ctx.refreshIntervalSeconds?.value
@@ -160,7 +164,7 @@ const title = computed(() => {
   return current.label || (presentation.value ? '' : catalog.widgetLabel(current.type))
 })
 /** A presentation widget shows a header only with a title or a description to show - the editor always, to drag it by. */
-const showHeader = computed(() => !presentation.value || !ctx.readOnly.value || !!title.value || !!description.value)
+const showHeader = computed(() => !props.headless && (!presentation.value || !ctx.readOnly.value || !!title.value || !!description.value))
 const description = computed(() => (typeof config.value.description === 'string' && config.value.description.trim() ? config.value.description : null))
 // What it says with no rows: its own text, else whether it filters by a period (D23).
 const emptyText = computed(() => {

@@ -6,7 +6,7 @@ import { loadServerEnv } from "./env.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * Map tiles (Specification_DataViews.md §5.4): one instance-wide base layer -
+ * Map tiles (DataViews.md §5.4): one instance-wide base layer -
  * OpenStreetMap, or Mapbox raster tiles with a public token, which is a
  * normal setting precisely because it reaches every viewer's browser: a
  * secret (sk.) token is refused.

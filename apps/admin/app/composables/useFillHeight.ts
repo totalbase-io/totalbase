@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 
 /**
- * A sizable widget's *Fill height* (Specification_DataViews.md §12.2):
+ * A sizable widget's *Fill height* (DataViews.md §12.2):
  * the height its page has left - the frame it scrolls in,
  * minus everything else in it - so the whole page fits on screen, the
  * widget taking the slack (a Detail's rows, an editor). Never below `min`,

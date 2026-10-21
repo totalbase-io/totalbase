@@ -40,6 +40,9 @@ class CapturingEmailSender implements EmailSender {
   }
 }
 
+/** No administrator and a fixed key: MFA itself is tested in mfa-service.test.ts. */
+const MFA_OPTIONS = { masterKey: "auth-service-test-key", isAdministrator: async () => false };
+
 describe("AuthService (integration)", () => {
   let database: Database;
   let settings: SettingsService;
@@ -71,7 +74,7 @@ describe("AuthService (integration)", () => {
     await runMigrations(database, { migrationsDir: MIGRATIONS_DIR, totalbaseVersion: "0.0.0-test" });
     settings = new SettingsService(database);
     emailSender = new CapturingEmailSender();
-    auth = new AuthService(database, settings, emailSender, { publicUrl: "https://env.example.com/" });
+    auth = new AuthService(database, settings, emailSender, { publicUrl: "https://env.example.com/", ...MFA_OPTIONS });
     for (const key of SETTING_KEYS) saved.set(key, { overridden: await settings.isOverridden(key), value: await settings.get(key) });
   });
 
@@ -86,7 +89,7 @@ describe("AuthService (integration)", () => {
     // SettingsService caches reads in-process - a fresh one per test keeps
     // a deleted override from lingering.
     settings = new SettingsService(database);
-    auth = new AuthService(database, settings, emailSender, { publicUrl: "https://env.example.com/" });
+    auth = new AuthService(database, settings, emailSender, { publicUrl: "https://env.example.com/", ...MFA_OPTIONS });
   });
 
   it("rejects registration when auth.registration_enabled is false (default)", async () => {
@@ -179,7 +182,7 @@ describe("AuthService (integration)", () => {
         `INSERT INTO totalbase.settings (key, value) VALUES ('auth.registration_default_role', $1::jsonb)`,
         [JSON.stringify(reserved)],
       );
-      const fresh = new AuthService(database, new SettingsService(database), emailSender, { publicUrl: "https://env.example.com/" });
+      const fresh = new AuthService(database, new SettingsService(database), emailSender, { publicUrl: "https://env.example.com/", ...MFA_OPTIONS });
       const user = await register(fresh, { email: emailOf("defrole-reserved"), password: "supersecret123" });
       expect(await rolesOf(user.id)).toEqual([]);
     });
@@ -441,7 +444,7 @@ describe("AuthService (integration)", () => {
           throw new TotalBaseError("SMTP_NOT_CONFIGURED", "not configured");
         },
         verify: async () => {},
-      });
+      }, MFA_OPTIONS);
       const passwordHash = await hashPassword("reset-me-password");
       const user = await createUser({ email: emailOf("mail-forgot"), passwordHash, emailVerified: true });
       await expect(failing.requestPasswordReset(user.email!)).resolves.toBeUndefined();

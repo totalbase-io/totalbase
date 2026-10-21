@@ -705,7 +705,7 @@
       "autoRefresh": "Actualización automática",
       "autoRefreshHelp": "Con qué frecuencia la App vuelve a ejecutar cada widget mientras la página está abierta y su pestaña visible. Se aplica al instante, sin publicar; el editor no se actualiza automáticamente.",
       "visibleToRoles": "Visible para los roles",
-      "visibleToRolesHelp": "Quién puede ver este dashboard en Apps una vez publicado. Los administradores siempre pueden. Déjalo vacío para que solo lo vean los administradores."
+      "visibleToRolesHelp": "Quién puede ver este dashboard en la App una vez publicado. Los administradores siempre pueden. Déjalo vacío para que solo lo vean los administradores."
     },
     "widgetDrawer": {
       "query": "Consulta",
@@ -974,7 +974,13 @@
       "revokeConfirm": "¿Revocar \"{name}\"? Deja de funcionar al instante y para siempre.",
       "notPublished": "Aún no publicado",
       "notPublishedHelp": "Una inserción muestra la versión publicada - publica el dashboard primero.",
-      "previewTitle": "Vista previa de la inserción"
+      "previewTitle": "Vista previa de la inserción",
+      "shows": "Muestra",
+      "showsHelp": "El dashboard completo, o uno de sus widgets publicados solo, ocupando el marco que le dé el otro sitio.",
+      "wholeDashboard": "El dashboard completo",
+      "showWidgetTitle": "Mostrar el título del widget",
+      "showsWidget": "Muestra {widget}",
+      "widgetMissing": "El widget que muestra ya no está en el dashboard: no muestra nada hasta que se actualice."
     },
     "editor": {
       "openVersionFailed": "No se pudo abrir la versión",
@@ -999,8 +1005,8 @@
       "addWidgetFailed": "No se pudo agregar el widget",
       "canvas": "Lienzo de widgets",
       "publishAs": "¿Publicar como v{version}?",
-      "publishHelp": "Convierte la disposición actual de los widgets en la versión que ven los usuarios de Apps.",
-      "unconfigured": "{n} widgets no están configurados y no se mostrarán en Apps. | {n} widget no está configurado y no se mostrará en Apps. | {n} widgets no están configurados y no se mostrarán en Apps.",
+      "publishHelp": "Convierte la disposición actual de los widgets en la versión que se ve en la App.",
+      "unconfigured": "{n} widgets no están configurados y no se mostrarán en la App. | {n} widget no está configurado y no se mostrará en la App. | {n} widgets no están configurados y no se mostrarán en la App.",
       "brokenEmbeds": "Detiene la inserción {names}: bloquea {variables}, que el dashboard ya no tiene. Actualízala en Compartir. | Detiene {n} inserciones {names}: bloquean {variables}, que el dashboard ya no tiene. Actualízalas en Compartir.",
       "widgets": "Widgets",
       "addAWidget": "Agregar un widget",
@@ -1017,7 +1023,8 @@
       "deleteWidgetTitle": "¿Eliminar este widget?",
       "deleteWidgetHelp": "{name} y su consulta salen del borrador - publica para quitarlo del dashboard publicado.",
       "duplicate": "Duplicar…",
-      "editVariables": "Editar variables"
+      "editVariables": "Editar variables",
+      "brokenWidgetEmbeds": "Detiene la inserción {names}: el widget que muestra ya no está en el dashboard. Actualízala en Compartir. | Detiene {n} inserciones {names}: el widget que muestra cada una ya no está en el dashboard. Actualízalas en Compartir."
     },
     "tree": {
       "searchLabel": "Buscar Dashboards",
@@ -1057,7 +1064,7 @@
       "restoreDefaults": "Restaurar valores por defecto",
       "typeHelp": "Los tipos que sirven para lo que devuelve la consulta - los demás en gris, con el motivo. Al cambiar se conservan las columnas equivalentes.",
       "title": "Título",
-      "titleHelp": "Se muestra arriba del widget - vacío, ninguno.",
+      "titleHelp": "Se muestra arriba del widget. Déjalo vacío para que no tenga título.",
       "data": "Datos",
       "runToListColumns": "Ejecuta la consulta para ver sus columnas.",
       "automatic": "Automático: {columns} - {rule}.",

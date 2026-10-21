@@ -1,5 +1,5 @@
 /**
- * System emails (Specification_Administration.md §8.2, §8.3): the fixed set of
+ * System emails (Administration.md §8.2, §8.3): the fixed set of
  * messages TotalBase itself sends - invitation, password reset, email
  * verification, and three notices. Each is a typed setting
  * (`mail.templates.<slot>`) whose default lives here in code; an admin's
@@ -13,7 +13,7 @@
  * or gets lost from, an edited template.
  *
  * Templates are plain text with `{{variable}}` placeholders from a fixed,
- * per-slot list - no expressions, loops, or filters (Specification_Administration.md §8.3:
+ * per-slot list - no expressions, loops, or filters (Administration.md §8.3:
  * "arbitrary code execution inside templates is prohibited"). Unknown
  * placeholders are rejected when saving, so a typo can't silently render
  * as an empty string in a real email.

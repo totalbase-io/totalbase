@@ -17,7 +17,7 @@ interface SessionRow {
 }
 
 /**
- * The `sessions_only_revocation` trigger (Specification_Security.md §10.3):
+ * The `sessions_only_revocation` trigger (Security.md §10.3):
  * a write made on someone's behalf - `totalbase.actor_user_id` set, as every
  * Data API write is - may only revoke a session. It can't move it, extend it,
  * rewrite where it came from or un-revoke it, and the revocation time is

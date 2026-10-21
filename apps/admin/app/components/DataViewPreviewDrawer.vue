@@ -59,7 +59,7 @@ watch(open, async (isOpen) => {
 
 const confirmOpen = ref(false)
 
-// --- Device (Specification_DataViews.md §12.9): Desktop renders the draft
+// --- Device (DataViews.md §12.9): Desktop renders the draft
 // here; Tablet and Phone frame the real App - an iframe of the draft at that
 // width, same origin and session - so its phone shell and compact form are
 // the App's own, nothing simulated. ---

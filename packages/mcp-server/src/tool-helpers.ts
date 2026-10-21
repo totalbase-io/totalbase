@@ -33,7 +33,7 @@ export const columnSchema = z.object({
 /**
  * The tool's column (its own snake_case input) as the Admin API's column
  * definition: camelCase, inside the request's `{ data }`
- * (Specification_Data_API.md §2.5).
+ * (Data_API.md §2.5).
  */
 export function toColumnDefinition(column: z.infer<typeof columnSchema>) {
   return {
@@ -104,7 +104,7 @@ export async function deleteEach(client: AdminClient, base: string, target: { id
   return target.ids ? { deleted } : { deleted: target.id };
 }
 
-/** The name rule every named object shares (validateName, Specification.md §9.3) - said up front, not learned from a refusal. */
+/** The name rule every named object shares (validateName, Foundations.md §9.3) - said up front, not learned from a refusal. */
 export const NAME_RULE = "1-32 characters: letters, digits, spaces and - _ . , : ; ( ) ' & + (no / or other symbols)";
 export const confirmFlag = () => z.boolean().optional().describe("Must be true for this destructive call - ask the user first");
 
@@ -124,7 +124,7 @@ export const RESOURCES = "/totalbase/table/resources";
 /**
  * The ACTIVE resource of that name: a dropped table's resource stays as
  * MISSING beside the new one created with the same name, so the name alone
- * is not an identity (Specification.md §11.3).
+ * is not an identity (Foundations.md §11.3).
  */
 export async function findResource(client: AdminClient, schema: string, name: string, type?: ResourceRow["type"]): Promise<ResourceRow> {
   const resources = await client.data<ResourceRow[]>("GET", RESOURCES, {
@@ -142,7 +142,7 @@ export async function findResource(client: AdminClient, schema: string, name: st
 /** A resource as the tools answer it. */
 export const resourceSummary = (r: ResourceRow) => ({ id: r.id, schema: r.schema, name: r.name, type: r.type, status: r.status, exposedMethods: r.exposed_methods });
 
-/** A tool's result: compact JSON - what the agent acts on next, not whole objects (Specification_Administration.md §11.3). */
+/** A tool's result: compact JSON - what the agent acts on next, not whole objects (Administration.md §11.3). */
 export function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value ?? { ok: true }, null, 2) }] };
 }

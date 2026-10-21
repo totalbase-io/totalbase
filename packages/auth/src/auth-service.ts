@@ -5,6 +5,7 @@ import { AuthTokensService } from "./auth-tokens-service.js";
 import type { EmailSender } from "./email-sender.js";
 import { SystemMailer, type SystemEmailRecipient } from "./system-mailer.js";
 import { assertPasswordStrength, hashPassword, verifyPassword } from "./password.js";
+import { MfaService, type MfaSurface } from "./mfa-service.js";
 import { SessionsService } from "./sessions-service.js";
 import { UsersService } from "./users-service.js";
 import type { User } from "./users-service.js";
@@ -18,14 +19,26 @@ export interface AuthServiceOptions {
    * succeeds, so these are only worth logging.
    */
   onBackgroundError?: (error: unknown, context: string) => void;
+  /** TOTALBASE_MASTER_KEY - encrypts MFA secrets (Security.md §2.17). */
+  masterKey: string;
+  /** Whether the user holds the Administrators role - for `auth.mfa_required = ADMINISTRATORS`. */
+  isAdministrator: (userId: string) => Promise<boolean>;
 }
+
+/**
+ * A surface's own access rule after the password (Security.md §2.4): null admits, a reason refuses with the
+ * generic 401 - checked before any session or MFA challenge exists, and again when the challenge is completed.
+ */
+export type SignInAdmission = (userId: string) => Promise<"no_api_access" | "no_portal_access" | null>;
 
 /**
  * Why a sign-in was refused - for the audit log. The caller gets the same
  * generic 401 for every reason except `email_not_verified`, which is only
  * reached once the password matched (EMAIL_NOT_VERIFIED, 403).
  */
-export type LoginFailureReason = "unknown_email" | "no_password" | "inactive" | "cannot_login" | "locked" | "wrong_password" | "email_not_verified";
+export type LoginFailureReason =
+  | "unknown_email" | "no_password" | "inactive" | "cannot_login" | "locked" | "wrong_password" | "email_not_verified"
+  | "no_api_access" | "no_portal_access" | "mfa_code_invalid" | "mfa_challenge_invalid";
 
 /** How an admin-issued link reaches the person: emailed, or handed back to the admin to share. */
 export type LinkDelivery = "email" | "link";
@@ -37,25 +50,27 @@ export interface LoginResult {
 
 /**
  * Composes users/sessions/tokens/settings into the LOCAL authentication
- * flows described in Specification_Security.md §2.
+ * flows described in Security.md §2.
  */
 export class AuthService {
   readonly users: UsersService;
   readonly sessions: SessionsService;
   readonly authTokens: AuthTokensService;
   readonly mailer: SystemMailer;
+  readonly mfa: MfaService;
   private readonly onBackgroundError: (error: unknown, context: string) => void;
 
   constructor(
     private readonly database: Database,
     private readonly settings: SettingsService,
     emailSender: EmailSender,
-    options: AuthServiceOptions = {},
+    options: AuthServiceOptions,
   ) {
     this.users = new UsersService(database);
     this.sessions = new SessionsService(database);
     this.authTokens = new AuthTokensService(database);
     this.mailer = new SystemMailer(settings, emailSender, options.publicUrl ?? "");
+    this.mfa = new MfaService(database, settings, options.masterKey, { isAdministrator: options.isAdministrator });
     this.onBackgroundError = options.onBackgroundError ?? (() => {});
   }
 
@@ -169,8 +184,13 @@ export class AuthService {
       password: string;
       ip?: string | undefined;
       userAgent?: string | undefined;
+      /** Which sign-in this is - an MFA challenge continues on the same surface only. Default API. */
+      surface?: MfaSurface;
+      admit?: SignInAdmission;
     },
     onFailure?: (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }) => void,
+    /** The password was right and a second factor is due - who it is, for the audit row. */
+    onSecondStep?: (userId: string) => void,
   ): Promise<LoginResult> {
     const refuse = (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }): never => {
       onFailure?.(reason, details);
@@ -195,27 +215,95 @@ export class AuthService {
       refuse("wrong_password", { lockedNow: locked, userId: found.id });
     }
     await this.assertEmailVerified(found, (reason, details) => onFailure?.(reason, details));
+    const refused = input.admit ? await input.admit(found.id) : null;
+    if (refused) refuse(refused, { userId: found.id });
+
+    // A second factor due: a challenge instead of a session (Security.md §2.17).
+    const step = await this.mfa.secondStep(found.id, input.surface ?? "API");
+    if (step) {
+      onSecondStep?.(found.id);
+      throw new TotalBaseError(
+        step.purpose === "VERIFY" ? "MFA_REQUIRED" : "MFA_ENROLLMENT_REQUIRED",
+        step.purpose === "VERIFY"
+          ? "Enter the code from your authenticator app."
+          : "This instance requires two-factor authentication - set it up to finish signing in.",
+        { meta: { challenge: step.challenge, expiresAt: step.expiresAt.toISOString() } },
+      );
+    }
+
+    const { passwordHash: _omit, locked: _locked, ...publicUser } = found;
+    return this.openSession(publicUser, input, false);
+  }
+
+  /**
+   * A sign-in's second step (`POST /api/auth/mfa/verify`, `/admin/api/auth/mfa/verify`): the challenge and a
+   * code - or a recovery code; for an ENROLL challenge the new factor's first code, and its recovery codes come
+   * back once. A wrong code counts toward the account's lockout. Then the surface's access rule again, and the
+   * session, marked as MFA-verified.
+   */
+  async completeMfaSignIn(
+    input: {
+      challenge: unknown;
+      code?: unknown;
+      recoveryCode?: unknown;
+      surface: MfaSurface;
+      admit?: SignInAdmission;
+      ip?: string | undefined;
+      userAgent?: string | undefined;
+    },
+    onFailure?: (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }) => void,
+  ): Promise<LoginResult & { recoveryCodes: string[] | null; usedRecoveryCode: boolean }> {
+    let completed: { userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean };
+    try {
+      completed = await this.mfa.completeChallenge({
+        challenge: input.challenge,
+        surface: input.surface,
+        code: input.code,
+        recoveryCode: input.recoveryCode,
+        onWrongCode: async (userId) => {
+          const [maxAttempts, lockMinutes] = await Promise.all([
+            this.settings.get("auth.lockout_max_attempts"),
+            this.settings.get("auth.lockout_duration_minutes"),
+          ]);
+          const { locked } = await this.users.recordFailedLogin(userId, maxAttempts, lockMinutes);
+          onFailure?.("mfa_code_invalid", { userId, ...(locked && { lockedNow: true }) });
+        },
+      });
+    } catch (error) {
+      if (error instanceof TotalBaseError && error.code === "INVALID_MFA_CHALLENGE") onFailure?.("mfa_challenge_invalid");
+      throw error;
+    }
+    const refused = input.admit ? await input.admit(completed.userId) : null;
+    if (refused) {
+      onFailure?.(refused, { userId: completed.userId });
+      throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid email or password.", { httpStatus: 401 });
+    }
+    const user = await this.users.findById(completed.userId);
+    if (!user) throw new TotalBaseError("INVALID_MFA_CHALLENGE", "This sign-in step expired or is no longer valid - sign in again.");
+    const session = await this.openSession(user, input, true);
+    return { ...session, recoveryCodes: completed.recoveryCodes, usedRecoveryCode: completed.usedRecoveryCode };
+  }
+
+  /** The session a completed sign-in gets, `last_login_at` set and the failure count cleared. */
+  private async openSession(user: User, input: { ip?: string | undefined; userAgent?: string | undefined }, mfaVerified: boolean): Promise<LoginResult> {
     const ttlHours = await this.settings.get("auth.session_ttl_hours");
     const maxSessions = await this.settings.get("auth.max_sessions_per_user");
-
-    const { token, session: _session } = await this.sessions.create({
-      user: found.id,
+    const { token } = await this.sessions.create({
+      user: user.id,
       ip: input.ip,
       userAgent: input.userAgent,
       ttlHours,
       maxSessionsPerUser: maxSessions,
+      mfaVerified,
     });
-
-    await this.users.touchLastLogin(found.id);
-
-    const { passwordHash: _omit, locked: _locked, ...publicUser } = found;
-    return { token, user: publicUser };
+    await this.users.touchLastLogin(user.id);
+    return { token, user };
   }
 
   /**
    * The verification gate every sign-in method passes (password, portal,
    * OAuth): with auth.email_verification_required on, an account whose
-   * email isn't verified can't sign in (Specification_Security.md §2.7).
+   * email isn't verified can't sign in (Security.md §2.7).
    */
   async assertEmailVerified(
     user: Pick<User, "id" | "emailVerifiedAt">,

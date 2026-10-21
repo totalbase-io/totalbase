@@ -19,13 +19,13 @@ export async function listSchemas(database: Database): Promise<string[]> {
 }
 
 /**
- * TotalBase V1 public resource type. See Specification.md §11.1.
+ * TotalBase V1 public resource type. See Foundations.md §11.1.
  */
 export type ResourceType = "TABLE" | "VIEW" | "FUNCTION";
 
 /**
  * Underlying PostgreSQL object kind, preserved alongside the simplified
- * public resource type. See Specification.md §11.2.
+ * public resource type. See Foundations.md §11.2.
  */
 export type RelationKind =
   | "ordinary_table"
@@ -46,7 +46,7 @@ export interface CatalogObject {
 
 /**
  * Punctual exceptions to the totalbase schema's reservation
- * (Specification_Security.md §10.1): every totalbase.* table gets a real totalbase.resources
+ * (Security.md §10.1): every totalbase.* table gets a real totalbase.resources
  * row and can be granted through the ordinary ALLOW/DENY + row filter +
  * field grant model, gated by the hard-coded floor in
  * apps/server/src/totalbase-guardrails.ts (access/reserved on roles can
@@ -58,7 +58,7 @@ export interface CatalogObject {
  * `instance` is kept off this list - a single immutable
  * bootstrap row with nothing to grant.
  * `tokens` (personal access tokens) is exposable since the Admin
- * API plan (Specification_Security.md §10): listed, renamed, revoked
+ * API plan (Security.md §10): listed, renamed, revoked
  * and deleted as rows, its key_hash protected and its other columns fixed
  * by PostgreSQL; issuing and rotating stay TotalBase's.
  */
@@ -84,18 +84,18 @@ const EXPOSABLE_TOTALBASE_TABLES = [
   "sql_queries",
   "templates",
   "roles_capabilities",
-  // Access reviews (Specification_Security.md §1.8) - administrator-written attestations.
+  // Access reviews (Security.md §1.8) - administrator-written attestations.
   "roles_reviews",
   "users",
   "identities",
   "users_roles",
-  // Object access and the App menu (Specification_Security.md §7.1, §8) -
+  // Object access and the App menu (Security.md §7.1, §8) -
   // readable under ordinary permissions, written by administrators only
   // (packages/mutations' assertAdminWrittenTable).
   "dataviews_roles",
   "dashboards_roles",
   "menus",
-  // Delegated administration (Specification_Security.md §9, §9.4).
+  // Delegated administration (Security.md §9, §9.4).
   "folders",
   "roles_managers",
   "tokens",
@@ -109,7 +109,7 @@ const RELATION_KIND_BY_RELKIND: Record<string, { relationKind: RelationKind; res
 };
 
 /**
- * The relations that are resources of their own (Specification.md §12):
+ * The relations that are resources of their own (Foundations.md §12):
  * not a partition - a storage detail of its partitioned parent, which is
  * the resource; a partition registered beside it could be exposed and
  * granted apart, its rows read past the parent's grants - and not an
@@ -136,7 +136,7 @@ export function resourceFunctionSql(alias: string): string {
 
 /**
  * Introspects pg_catalog for supported tables, views and functions,
- * excluding reserved schemas. See Specification.md §12.
+ * excluding reserved schemas. See Foundations.md §12.
  *
  * Column/PK/FK/CHECK/index-level introspection belongs to later phases;
  * this snapshot only establishes object identity for resource reconciliation.
@@ -200,7 +200,7 @@ export async function buildCatalogSnapshot(database: Database): Promise<CatalogO
       schema: row.schema,
       name: row.name,
       relationKind: isProcedure ? "procedure" : "function",
-      // Procedures are introspected but not exposable in V1 (Specification.md §11.2).
+      // Procedures are introspected but not exposable in V1 (Foundations.md §11.2).
       resourceType: isProcedure ? undefined : "FUNCTION",
     });
   }

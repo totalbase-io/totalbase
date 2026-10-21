@@ -11,7 +11,7 @@ export interface WorkflowDraft {
 export interface WorkflowVersionRecord { id: string, version: number, restoredFromVersion: number | null, user: string | null, publishedAt: string, note: string | null }
 
 /**
- * A workflow's versions in its editor (Specification.md §13, shared with
+ * A workflow's versions in its editor (Foundations.md §13, shared with
  * Dashboards and DataViews): the list (newest first; the first is the live
  * one), and selecting one puts the canvas in read-only preview mode -
  * `displayedDefinition` is what every read site renders from, so the same
@@ -71,7 +71,7 @@ export async function useWorkflowVersions(options: {
     previewVersion.value = null
     previewDefinition.value = null
   }
-  // Restore (Specification.md §13.4): that version replaces the draft - nothing is published,
+  // Restore (Foundations.md §13.4): that version replaces the draft - nothing is published,
   // what runs stays the live version. VersionPreviewBanner confirms first
   // when there are unpublished (or unsaved) changes, which this replaces.
   const restoring = ref(false)
@@ -90,7 +90,7 @@ export async function useWorkflowVersions(options: {
       restoring.value = false
     }
   }
-  // Save as (Specification.md §13.4): a new, disabled, unpublished workflow from that version.
+  // Save as (Foundations.md §13.4): a new, disabled, unpublished workflow from that version.
   const saveAsOpen = ref(false)
   const savingAs = ref(false)
   async function saveAs(input: { name: string, slug: string }) {
@@ -108,7 +108,7 @@ export async function useWorkflowVersions(options: {
       savingAs.value = false
     }
   }
-  // "Delete old versions…" (Specification.md §13.4): a preview of a deleted version goes back to the draft.
+  // "Delete old versions…" (Foundations.md §13.4): a preview of a deleted version goes back to the draft.
   const deleteVersionsOpen = ref(false)
   function openDeleteVersions() {
     deleteVersionsOpen.value = true

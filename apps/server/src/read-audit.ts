@@ -7,13 +7,13 @@ import type { AppContext } from "./context.js";
 import type { DataPrincipal } from "./data-principal.js";
 
 /**
- * READ audit for the Data API (Specification_Security.md §11: "READ is
+ * READ audit for the Data API (Security.md §11: "READ is
  * configurable per resource" - resources.audit_read). Only a
  * resource with audit_read on writes anything; ResolvedApiResource already
  * carries the flag from the lookup every Data API read makes, so a resource
  * with it off costs nothing extra.
  *
- * What a READ row records is the operation, never the data (Specification_Security.md §11.5:
+ * What a READ row records is the operation, never the data (Security.md §11.5:
  * "READ never stores returned rows"): `fields` (the requested paths),
  * `where_clause` (the request's own filter, in the filter-object grammar -
  * the same shape the grid's EXPORT/PRINT events store), and in `metadata`

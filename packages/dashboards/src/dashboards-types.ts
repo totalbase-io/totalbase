@@ -13,7 +13,7 @@ import type { DashboardVariable } from "./variables.js";
 // widget catalog's (@totalbase/tb-catalog) - one catalog for the admin and here.
 export { DASHBOARD_REFRESH_INTERVALS, DASHBOARD_WIDGET_TYPES, type DashboardRefreshInterval, type DashboardWidgetType } from "@totalbase/tb-catalog";
 
-/** LISTED shows in the App's menu and list; EMBEDDED_ONLY is only mounted inside a DataView page, by a `TDashboard` widget (Specification_Dashboards.md §9.3). */
+/** LISTED shows in the App's menu and list; EMBEDDED_ONLY is only mounted inside a DataView page, by a `TDashboard` widget (Dashboards.md §9.3). */
 export type DashboardScope = "LISTED" | "EMBEDDED_ONLY";
 
 export interface AdminDashboard {
@@ -26,15 +26,15 @@ export interface AdminDashboard {
   icon: string | null;
   color: RoleColor | null;
   scope: DashboardScope;
-  /** The App viewer's auto-refresh interval in seconds (Specification_Dashboards.md §9.4); null = off. Not versioned, like scope. */
+  /** The App viewer's auto-refresh interval in seconds (Dashboards.md §9.4); null = off. Not versioned, like scope. */
   refreshIntervalSeconds: DashboardRefreshInterval | null;
-  /** Whether a signed embed token may show its published version outside TotalBase (Specification_Dashboards.md §9.5). Not versioned; off by default, and a copy starts off. */
+  /** Whether a signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). Not versioned; off by default, and a copy starts off. */
   embeddingEnabled: boolean;
   /** Draft variable definitions ($VAR.*) - see variables.ts. */
   variables: DashboardVariable[];
   /** Its tabs (D7) - none: one grid. Versioned with its widgets. */
   tabs: DashboardTab[];
-  /** list() and getWithStatus() only: the draft differs from the latest version (or there is none). Specification.md §13.5. */
+  /** list() and getWithStatus() only: the draft differs from the latest version (or there is none). Foundations.md §13.5. */
   hasUnpublishedChanges?: boolean;
   /** list() only: the live (highest) version, null until first published. */
   liveVersion?: number | null;
@@ -70,7 +70,7 @@ export interface AdminDashboardWidget extends AdminDashboardWidgetContent {
 
 /**
  * A widget whose query PostgreSQL no longer accepts - a column, a table or view, or a function it names
- * is gone (Specification_Dashboards.md §2.8). `version`: null for the draft, else the live version.
+ * is gone (Dashboards.md §2.8). `version`: null for the draft, else the live version.
  */
 export interface BrokenDashboardWidget {
   dashboard: { id: string; name: string; slug: string };
@@ -82,7 +82,7 @@ export interface BrokenDashboardWidget {
   query: string | null;
 }
 
-/** One immutable version (Specification.md §13) - summary, no snapshot payload. */
+/** One immutable version (Foundations.md §13) - summary, no snapshot payload. */
 export interface AdminDashboardVersion {
   id: string;
   dashboard: string;
@@ -90,7 +90,7 @@ export interface AdminDashboardVersion {
   restoredFromVersion: number | null;
   user: string | null;
   publishedAt: string;
-  /** The publisher's note (Specification.md §13.3). */
+  /** The publisher's note (Foundations.md §13.3). */
   note: string | null;
 }
 

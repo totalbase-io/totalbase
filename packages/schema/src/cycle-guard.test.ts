@@ -4,7 +4,7 @@ import { TableSchemaService } from "./table-schema-service.js";
 
 const T = "schema_pkg_cycle_guard_test";
 
-// A TREE DataView's table (Specification_DataViews.md §5.14): PostgreSQL itself refuses a row under itself, at any depth.
+// A TREE DataView's table (DataViews.md §5.14): PostgreSQL itself refuses a row under itself, at any depth.
 describe("cycle guard (integration)", () => {
   let database: Database;
   let service: TableSchemaService;

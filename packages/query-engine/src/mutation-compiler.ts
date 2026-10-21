@@ -48,7 +48,7 @@ export interface MutationCompileContext {
   /**
    * compileInsert with `on_conflict` action UPDATE only: the caller's UPDATE
    * authorization, which the DO UPDATE branch must satisfy (an existing row
-   * becoming an update is an UPDATE - Specification_Data_API.md §5.7). Its absence
+   * becoming an update is an UPDATE - Data_API.md §5.7). Its absence
    * makes such an on_conflict fail closed.
    */
   conflictUpdate?: ConflictUpdateAuthorization;
@@ -60,7 +60,7 @@ export interface MutationCompileContext {
   returningOld?: boolean;
   /**
    * Resolves a relation path's tables (SchemaContext.resolveRelated): with it, the grant's row filter and payload
-   * checks may follow foreign keys (`technician.user`, Specification_Security.md §6.5). Without it, they can't.
+   * checks may follow foreign keys (`technician.user`, Security.md §6.5). Without it, they can't.
    */
   related?: RelatedResolver;
 }
@@ -145,7 +145,7 @@ const TABLE_ALIAS = "t0";
 const OLD_ROWS_ALIAS = "old_rows";
 
 /**
- * Appends __authorized (row filter, Specification_Security.md §6.6 "authorize NEW") plus one
+ * Appends __authorized (row filter, Security.md §6.6 "authorize NEW") plus one
  * __payload_check_N column per payload check - each compiled to real SQL
  * and evaluated by PostgreSQL against the CTE's actual resulting row
  * (defaults, triggers, generated columns and all), not the raw payload
@@ -205,19 +205,19 @@ async function appendAuthorizationFlags(
 const INSERTED_COLUMN = "__inserted";
 
 /**
- * INSERT ... RETURNING *, with the effective row filter (Specification_Security.md §6.6:
+ * INSERT ... RETURNING *, with the effective row filter (Security.md §6.6:
  * "authorize NEW") checked via an __authorized flag column so the
  * caller can roll back the transaction if it's false.
  *
  * `on_conflict` DO UPDATE turns the statement into an upsert, authorized per
- * branch (Specification_Data_API.md §5.7): the inserted row by the CREATE grant
+ * branch (Data_API.md §5.7): the inserted row by the CREATE grant
  * (`context`), an updated existing row by the UPDATE grant
  * (`context.conflictUpdate`) - its SET fields need UPDATE field ALLOW, its
  * row filter is the DO UPDATE's own WHERE against the existing row (OLD; a
  * row it rejects stays untouched and returns nothing) and is re-evaluated,
  * with UPDATE's payload checks, against the updated row (NEW).
  * `oldValueFields` (every column - the UPDATE's audit and outbox event, spec
- * Specification_Security.md §11.4) also returns, as __old_N, the
+ * Security.md §11.4) also returns, as __old_N, the
  * updated row's values from before the update, when the conflict target's
  * values are all in `data` (the row can only be found by them).
  */
@@ -320,7 +320,7 @@ export async function compileInsert(
  * (`fields`, every item's own keys) and no `on_conflict`: one INSERT over
  * the items as a jsonb array (insertManyWithReturningCte), returning one
  * row per item in request order, each with the same __authorized and
- * __payload_check_N flags a single-row INSERT returns (Pre_Beta_Review 2.7).
+ * __payload_check_N flags a single-row INSERT returns.
  * Items with mixed field sets, an `on_conflict`, or no fields at all
  * (DEFAULT VALUES is single-row) stay on compileInsert, one per item.
  */
@@ -351,10 +351,10 @@ export async function compileInsertMany(
 /**
  * UPDATE ... RETURNING *. WHERE enforces OLD authorization (rows must
  * already satisfy the row filter to be touched); __authorized reflects
- * whether the resulting NEW row still satisfies it (Specification_Security.md §6.6).
+ * whether the resulting NEW row still satisfies it (Security.md §6.6).
  *
  * `oldValueFields` (every column - the UPDATE's audit and outbox event,
- * Specification_Security.md §11.4) also returns each of those columns' value before the UPDATE, as
+ * Security.md §11.4) also returns each of those columns' value before the UPDATE, as
  * __old_N (see oldValueColumns), in the same statement: a CTE selects and
  * locks the target rows (`FOR UPDATE OF t0`, so the values read are the
  * ones this UPDATE then overwrites, even under a concurrent writer) and
@@ -437,7 +437,7 @@ export async function compileUpdate(
   return { ...compiled, oldValueColumns };
 }
 
-/** DELETE ... RETURNING *. WHERE enforces OLD authorization only (Specification_Security.md §6.6). */
+/** DELETE ... RETURNING *. WHERE enforces OLD authorization only (Security.md §6.6). */
 export async function compileDelete(
   context: MutationCompileContext,
   where: FilterNode | undefined,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A page Table's computed columns (`TableComputedColumn`,
- * Specification_DataViews.md §15): one card each - its
+ * DataViews.md §15): one card each - its
  * title, what its formula gives (how its cells format) and its formula per
  * row, over its Rows' fields and the computed columns before it. Its name
  * is set once, when it's added, and shown: Columns sets its look under it,

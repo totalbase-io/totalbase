@@ -1,4 +1,4 @@
-// Generated images (Docs_Demo_Field_Service.md §10): equipment and vehicle photos, technician portraits,
+// Generated images (DATASET.md §10): equipment and vehicle photos, technician portraits,
 // customer signatures and work order photos - drawn as SVG, rendered to PNG by rsvg-convert, uploaded
 // through the MCP server and set on their rows. No real people or brands.
 //   TOTALBASE_TOKEN=... node 10-images.mjs

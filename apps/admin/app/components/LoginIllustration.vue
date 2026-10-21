@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The sign-in page's own illustration (Specification_Admin_UI.md §3.6, the SPLIT layout): PostgreSQL - the
+ * The sign-in page's own illustration (Admin_UI.md §3.6, the SPLIT layout): PostgreSQL - the
  * TotalBase mark - at the center, and around it what TotalBase builds from it: a REST endpoint, a DataView, a
  * Dashboard and a Workflow, each a small card joined to the center. Hand-written SVG in the theme's classes,
  * so it follows the primary color and light or dark mode; no image file.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// A published Dashboard inside the App (Specification_Security.md §8).
+// A published Dashboard inside the App (Security.md §8).
 const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 </script>

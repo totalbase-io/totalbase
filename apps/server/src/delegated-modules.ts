@@ -1,6 +1,6 @@
 import type { AppContext } from "./context.js";
 
-/** The portal modules a non-administrator can be delegated, and the table each one's visibility follows (Specification_Security.md §9.2). */
+/** The portal modules a non-administrator can be delegated, and the table each one's visibility follows (Security.md §9.2). */
 export const DELEGATED_MODULE_TABLES = {
   users: "users",
   roles: "roles",

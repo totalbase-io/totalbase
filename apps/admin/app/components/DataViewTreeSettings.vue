@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// DataView settings, TREE layout (`view_config.tree_layout`, Specification_DataViews.md §5.14): the parent - a
+// DataView settings, TREE layout (`view_config.tree_layout`, DataViews.md §5.14): the parent - a
 // foreign key of the table to itself -, the order column, each node's formulas, how it opens.
 import { isNumericDataType } from '@totalbase/tb-catalog'
 import type { TreeDisplay, TreeLayoutConfig } from '~/types/dataview'

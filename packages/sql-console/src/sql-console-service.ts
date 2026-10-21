@@ -4,7 +4,7 @@ import { TotalBaseError } from "@totalbase/errors";
 
 export interface SqlExecuteInput {
   sql: string;
-  /** Wraps the script in BEGIN/COMMIT/ROLLBACK (Specification_Administration.md §5.2: "optional transaction mode"). */
+  /** Wraps the script in BEGIN/COMMIT/ROLLBACK (Administration.md §5.2: "optional transaction mode"). */
   transactional?: boolean | undefined;
   /** Rows returned at most (sql_console.max_rows) - the statement still runs in full. */
   maxRows?: number | undefined;
@@ -69,9 +69,9 @@ function toHistoryEntry(row: HistoryRow): SqlHistoryEntry {
 }
 
 /**
- * Raw admin SQL execution (Specification_Administration.md §5). Deliberately
+ * Raw admin SQL execution (Administration.md §5). Deliberately
  * bypasses @totalbase/query-engine and the Permission Resolver
- * (Specification.md §19: "SQL Console is the explicit exception") - it runs exactly what
+ * (Foundations.md §19: "SQL Console is the explicit exception") - it runs exactly what
  * the admin typed, as the configured PostgreSQL connection role.
  */
 export class SqlConsoleService {

@@ -78,7 +78,7 @@ describe("validateVariables()", () => {
         { name: "rango", kind: "VALUE", type: "date_range", default: { source: "constant", value: { period: "this_month" } } },
         { name: "cliente", kind: "VALUE", type: "number" },
         resource("ventas", { fecha: { _gte: "{{vars.rango.from}}" }, cliente: { _eq: "{{vars.cliente.value}}" } }),
-        { name: "emitir", kind: "CALL", target: { type: "WORKFLOW", slug: "emitir-factura" }, input: { cliente: "{{vars.cliente.value}}" } },
+        { name: "emitir", kind: "CALL", target: { type: "WORKFLOW", workflow: "6a1b0d0e-1f4c-4e1a-9a0b-2f3c4d5e6f70" }, input: { cliente: "{{vars.cliente.value}}" } },
       ]),
     ).toEqual([]);
   });
@@ -122,7 +122,7 @@ describe("validateVariables()", () => {
     expect(
       validateVariables([
         { name: "v", kind: "VALUE", type: "text", emits: { "update:value": "onVChange" } },
-        { name: "c", kind: "CALL", target: { type: "WORKFLOW", slug: "w" }, emits: { load: "x", success: "" } },
+        { name: "c", kind: "CALL", target: { type: "WORKFLOW", workflow: "w" }, emits: { load: "x", success: "" } },
       ]),
     ).toEqual(['c: a Call has no event "load".', 'c: the "success" event has no function.']);
   });

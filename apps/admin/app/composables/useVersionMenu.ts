@@ -2,7 +2,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import type { VersionSummary } from '~/types/versioning'
 
 /**
- * The versions menu's items (Specification.md §13.7) - "Draft"
+ * The versions menu's items (Foundations.md §13.7) - "Draft"
  * plus every version, newest first, the live one (always the highest)
  * marked Active. VersionsMenu.vue renders them as the editor header's
  * chip on desktop; `mobileMenu` is the same list as one submenu for
@@ -12,7 +12,7 @@ export function useVersionMenu(
   versions: MaybeRefOrGetter<VersionSummary[]>,
   viewing: MaybeRefOrGetter<number | null>,
   onSelect: (version: number | null) => void,
-  /** "Delete old versions…" (Specification.md §13.4) - offered once there is more than the live version. */
+  /** "Delete old versions…" (Foundations.md §13.4) - offered once there is more than the live version. */
   onDeleteOld?: () => void
 ) {
   // Absolute dates/times in the user's zone and format (My account > Preferences).

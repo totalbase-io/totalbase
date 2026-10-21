@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * The internal schema follows its own conventions (Specification.md §9,
+ * The internal schema follows its own conventions (Foundations.md §9,
  * AGENTS.md §10), checked against PostgreSQL's catalog so a new migration
  * that breaks one fails here.
  */

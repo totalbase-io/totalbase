@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One custom action's panel (Specification_DataViews.md §3.7) - Settings › Actions › New action or ✎: its label,
+ * One custom action's panel (DataViews.md §3.7) - Settings › Actions › New action or ✎: its label,
  * icon and color; what it runs (a function or a MANUAL workflow) and what it sends (each argument a template:
  * `{{column}}` of the row, `{{ids}}` the selection's keys); where it shows; when (a filter, PostgreSQL deciding);
  * and an optional confirmation. Saved into the list it came from; the server checks it whole.

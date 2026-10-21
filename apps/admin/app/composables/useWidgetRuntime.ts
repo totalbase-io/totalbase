@@ -1,5 +1,5 @@
 /**
- * The runtime of a CUSTOM page (Specification_DataViews.md §13.1):
+ * The runtime of a CUSTOM page (DataViews.md §13.1):
  * its variables engine, its compiled Code and its controls, handed to every
  * placed widget through `provide` (WidgetRenderer.vue) - one page, one
  * runtime, whether it's the App, the Design form's Preview or a canvas card
@@ -21,7 +21,8 @@ import { createRecord, type RecordCatalog, type RecordHandle } from '~/utils/rec
 import { createVariablesEngine, formulaTypeFor, type ValueHandle, type VariableHandle, type VariablesTransport } from '~/utils/variables-engine'
 import { loadFormulaFunctions } from '~/utils/formula-engine'
 import { evaluateWidgetFormula } from '~/utils/widget-formula'
-import { fieldColumn } from '~/utils/widget-form'
+import { fieldColumn, fieldJunction } from '~/utils/widget-form'
+import { createJunctionLinks, type JunctionCatalog, type JunctionLinksHandle } from '~/utils/junction-links'
 import { currentLocation } from '~/utils/device-location'
 
 export interface WidgetControl {
@@ -39,7 +40,7 @@ export interface WidgetControl {
   locate?: () => Promise<void> | undefined
   /** A UForm's data, in the API's envelope: `{ data: { field: value } }`. */
   readonly data?: { data: Record<string, unknown> }
-  /** Its state (widgetState, Specification_DataViews.md §9.1) - also `{{controls.<name>.*}}` in formulas: what it holds, an option list's chosen row, a Table's last row clicked. */
+  /** Its state (widgetState, DataViews.md §9.1) - also `{{controls.<name>.*}}` in formulas: what it holds, an option list's chosen row, a Table's last row clicked. */
   readonly value?: unknown
   readonly item?: Record<string, unknown> | null
   readonly row?: Record<string, unknown> | null
@@ -59,14 +60,19 @@ export interface WidgetRuntime {
   notify: (message: string, color?: NotifyColor) => void
   /** The page's record, when its DataView has a source table - what a form field bound to a column edits. */
   record?: RecordHandle
+  /**
+   * Its form fields linked through a junction table (DataViews.md §8.5), by the field's id: the links they edit -
+   * null where the viewer may not read the junction, or it isn't one of the record's any more; absent while it loads.
+   */
+  junctions?: Record<string, JunctionLinksHandle | null>
   /** A Resource variable's columns, name → PostgreSQL type - how a Table formats its rows. */
   resourceColumns?: (variable: string) => Record<string, string> | undefined
   /** The fields a Resource variable reads, in its query's order - a Table's columns, rows or not. */
   resourceFields?: (variable: string) => string[] | undefined
-  /** What a Resource variable's resource columns set (Specification_DataViews.md §15) - what a Table's columns inherit. */
+  /** What a Resource variable's resource columns set (DataViews.md §15) - what a Table's columns inherit. */
   resourcePresentation?: (variable: string) => Record<string, ColumnPresentation> | undefined
   /**
-   * A Resource variable's foreign keys as they show (Specification_DataViews.md §15.5) - for `rows`, by column, each
+   * A Resource variable's foreign keys as they show (DataViews.md §15.5) - for `rows`, by column, each
    * key's text from its table's row presentation, read under the viewer's own grants: a table they may not read
    * leaves its keys as they are.
    */
@@ -145,6 +151,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
 
   const definitions = (dataview.value.viewConfig.variables ?? []) as VariableDefinition[]
   const resources = dataview.value.variableResources ?? {}
+  const workflows = dataview.value.variableWorkflows ?? {}
   const compiled = computed(() => compileCustomCode(dataview.value.code ?? '', declaredFunctions(dataview.value.code ?? '')))
   const controls = reactive<Record<string, WidgetControl>>({})
   /** What CustomPage.vue shows over the page: a confirmation, a file's preview. */
@@ -230,17 +237,19 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
       const { data, meta } = await dataApi.get<unknown[]>(path, toDataApiParams(query))
       return { data, count: meta?.count as number | undefined }
     },
-    // A Call's input is the request body as the API takes it - { data: {...} } (Specification_Data_API.md §2.4).
+    // A Call's input is the request body as the API takes it - { data: {...} } (Data_API.md §2.4).
     async call(target, input) {
       const question = target.type === 'WORKFLOW'
-        ? t('designer.useWidgetRuntime.runWorkflow', { name: target.slug })
+        ? t('designer.useWidgetRuntime.runWorkflow', { name: workflows[target.workflow]?.name ?? '' })
         : target.type === 'TABLE'
           ? t(target.action === 'CREATE' ? 'designer.useWidgetRuntime.runCreate' : target.action === 'UPDATE' ? 'designer.useWidgetRuntime.runUpdate' : 'designer.useWidgetRuntime.runDelete', { name: resources[target.resource]?.name ?? '' })
           : t('designer.useWidgetRuntime.runFunction', { name: resources[target.resource]?.name ?? '' })
       if (options.preview && !await confirm({ title: t('common.preview'), lines: [question], confirm: t('designer.useWidgetRuntime.runIt') })) throw new Error(t('designer.useWidgetRuntime.cancelledInPreview'))
       if (target.type === 'WORKFLOW') {
-        // The run's outcome { id, status, result, error } (Specification_Workflows.md §13.1) - never its steps.
-        const { data } = await dataApi.post<WorkflowRunResult>(`/workflows/${encodeURIComponent(target.slug)}/run`, input)
+        const workflow = workflows[target.workflow]
+        if (!workflow) throw new Error(t('designer.useWidgetRuntime.workflowNotAvailable'))
+        // The run's outcome { id, status, result, error } (Workflows.md §13.1) - never its steps.
+        const { data } = await dataApi.post<WorkflowRunResult>(`/workflows/${encodeURIComponent(workflow.slug)}/run`, input)
         if (data.status === 'FAILED') throw new Error(data.error?.message ?? t('designer.useWidgetRuntime.workflowFailed'))
         return data.result?.data ?? null
       }
@@ -271,7 +280,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
     return runHandler(compiled.value, handler, [context, event], message => notify(message, 'error'))
   }
 
-  // --- The record: a row of the DataView's source table (Specification_DataViews.md §8.5) ---
+  // --- The record: a row of the DataView's source table (DataViews.md §8.5) ---
 
   const recordTable = dataview.value.sourceResource && dataview.value.sourceResourceType === 'TABLE' && dataview.value.sourceResourceSchema && dataview.value.sourceResourceName
     ? { id: dataview.value.sourceResource, schema: dataview.value.sourceResourceSchema, name: dataview.value.sourceResourceName }
@@ -280,7 +289,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
   let recordFields = ''
   const recordEmits = (dataview.value.viewConfig.record as { emits?: Record<string, string> } | undefined)?.emits ?? {}
   // Each record's version as last read or written (meta.version) - sent back as If-Match, so a save over someone
-  // else's later change fails instead of overwriting it silently (T56, Specification_Data_API.md §5.3).
+  // else's later change fails instead of overwriting it silently (T56, Data_API.md §5.3).
   const rowVersions = new Map<string, string>()
   function rememberVersion(pk: unknown, meta: Record<string, unknown> | undefined) {
     if (typeof meta?.version === 'string') rowVersions.set(String(pk), meta.version)
@@ -326,7 +335,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
             rowVersions.delete(String(pk))
           },
           table: { schema: recordTable.schema, name: recordTable.name },
-          // With its lines, in one transaction (Specification_DataViews.md §6.6) - the DataView's own save.
+          // With its lines, in one transaction (DataViews.md §6.6) - the DataView's own save.
           saveTogether: async operations => (await appApi.post<Record<string, Record<string, unknown>>>(`/dataviews/${dataview.value.id}/save`, { data: { operations } })).data
         },
         emit: (event, payload) => (recordEmits[event] ? emitHandler(recordEmits[event], payload) : undefined),
@@ -337,6 +346,45 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
         close: () => (options.onClose ? options.onClose() : notify(t('designer.useWidgetRuntime.nothingToClose'), 'info'))
       })
     : null
+
+  // --- Form fields linked through a junction table (DataViews.md §8.5): their links join the record's save ---
+
+  const junctions = reactive<Record<string, JunctionLinksHandle | null>>({})
+  const junctionLoads: ((pk: unknown) => Promise<void>)[] = []
+  async function startJunctions() {
+    if (!record) return
+    const linked = fields.value.filter(f => f.kind === 'WIDGET' && fieldJunction(f))
+    await Promise.all(linked.map(async (field, index) => {
+      let junction: JunctionCatalog
+      try {
+        junction = (await appApi.get<JunctionCatalog>(`/dataviews/${dataview.value.id}/junctions/${fieldJunction(field)}`)).data
+      } catch {
+        junctions[field.id] = null
+        return
+      }
+      const links = createJunctionLinks({
+        junction,
+        keyPrefix: `junction${index + 1}`,
+        changed: () => record.handle.linesChanged(),
+        async read(key) {
+          // A record's links: as many as one save may write (dataviews.save_max_operations).
+          const { data } = await dataApi.get<Record<string, unknown>[]>(dataApi.resourcePath(junction.schema, junction.table), {
+            fields: `${junction.primaryKey},${junction.otherColumn}`,
+            [`where[${junction.column}][_eq]`]: String(key),
+            order_by: junction.primaryKey,
+            limit: 500
+          })
+          return data.map(row => ({ id: row[junction.primaryKey], other: row[junction.otherColumn] }))
+        }
+      })
+      record.handle.attach(links.lines)
+      junctions[field.id] = links.handle
+      junctionLoads.push(links.load)
+      await links.load(record.handle.pk)
+    }))
+  }
+  // Another record opened, a new one, a new one saved: its links read again.
+  watch(() => record?.handle.pk, pk => junctionLoads.forEach(load => void load(pk)))
 
   // A Value whose default is a field of the viewer the session doesn't carry - a column the project added to
   // users (AGENTS.md section 11): read once through the Data API, under the viewer's own grants (B50).
@@ -419,6 +467,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
     emit: emitHandler,
     notify,
     record: record?.handle,
+    junctions,
     resourceColumns: (variable) => {
       const definition = resourceDefinition(variable)
       return definition ? resources[definition.resource]?.columns : undefined
@@ -471,6 +520,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
     await loadUserFields()
     // The record first: a Resource may filter by it ({{vars.record.data.id}}).
     if (record) await record.start(options.params?.pk, options.recordView)
+    await startJunctions()
     await engine.start()
     if (compiled.value.functions.onLoad) await emitHandler('onLoad', {})
   }

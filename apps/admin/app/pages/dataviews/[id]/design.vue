@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Design form as its own page (Specification_DataViews.md §12.1)
+ * The Design form as its own page (DataViews.md §12.1)
  * - reached from the DataView settings page's header action
  * "Design". A page rather than the drawer it used to be: it only loads when
  * opened (GridStack and the whole designer stay out of the settings
@@ -167,7 +167,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
             :retryable="false"
           />
         </template>
-        <!-- The other screen (Specification_Admin_UI.md §3.7). -->
+        <!-- The other screen (Admin_UI.md §3.7). -->
         <UButton
           icon="i-lucide-settings"
           :label="t('common.settings')"

@@ -25,7 +25,7 @@ function chain(start: Record<string, unknown>, ops: Op[], extra: { from: Op; to:
 }
 
 /**
- * Workflow engine and lifecycle (Specification_Workflows.md §6.4, §7, §8,
+ * Workflow engine and lifecycle (Workflows.md §6.4, §7, §8,
  * §10.2, §14): the editor's Run of a CRON workflow, CRON schedule data and
  * overlap, the run deadline, cancellation from Logs, error details in an
  * error branch, audit correlation, graph validation and a no-op publish.
@@ -174,6 +174,9 @@ describe("Workflow engine and lifecycle", () => {
     ]));
     const pending = call("POST", `/workflows/${id}/run`, { data: null });
     const runId = await waitFor(async () => (await context.workflowRuns.listRuns(id)).runs[0]?.id, { intervalMs: 20 });
+    // Cancel while the first wait runs: sent as soon as the run exists, it can land before that step starts,
+    // and the run ends after Start alone - right, but not what this test checks.
+    await waitFor(async () => (await context.workflowRuns.listSteps(runId)).some((s) => s.operationType === "totalbase.wait-resume" && s.status === "RUNNING"), { intervalMs: 20 });
     const cancel = await call("POST", `/workflows/runs/${runId}/cancel`);
     expect(cancel.statusCode, cancel.body).toBe(202);
     expect(cancel.json().data).toMatchObject({ id: runId, status: "RUNNING" });

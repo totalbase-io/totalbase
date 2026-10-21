@@ -1,5 +1,5 @@
 /**
- * A dashboard widget's data as a file (Specification_Dashboards.md §9.2, D8): the columns its roles use, in their
+ * A dashboard widget's data as a file (Dashboards.md §9.2, D8): the columns its roles use, in their
  * order - a TABLE's shown columns - titled and formatted as the widget shows them, never a `_` column. CSV and
  * Excel as a DataView exports them (DataViewExportSlideover.vue): the text on screen, `xlsx` loaded on demand.
  */

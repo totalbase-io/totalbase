@@ -2,7 +2,7 @@
 /**
  * A DataView rendered as users see it - over today's live data, with
  * writes off - from a given configuration: a version's snapshot (the
- * editor's version preview, Specification.md §13.7) or the
+ * editor's version preview, Foundations.md §13.7) or the
  * current draft (DataViewPreviewDrawer.vue - see it before publishing).
  * FORM layouts reuse DataViewRecordPage with that configuration; every
  * grid-like layout reuses DataViewGrid.

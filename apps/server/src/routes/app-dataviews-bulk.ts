@@ -16,7 +16,7 @@ interface BulkUpdateBody {
 }
 
 /**
- * Bulk edit (Specification_DataViews.md §5.15): the chosen fields set on the rows the viewer chose - by their keys,
+ * Bulk edit (DataViews.md §5.15): the chosen fields set on the rows the viewer chose - by their keys,
  * never a set resolved by a filter or a search (a `query` is refused). At most `dataviews.bulk_edit_max_rows`; then
  * one transaction, an update by key per row as the viewer (the DataView's save, §6.6): a key that isn't there or is
  * outside their row filter, or a row PostgreSQL refuses (a CHECK), and none changes. Audited row by row.

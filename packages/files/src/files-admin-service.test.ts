@@ -8,6 +8,7 @@ import { runMigrations } from "@totalbase/migrations";
 import { SettingsService } from "@totalbase/settings";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FilesAdminService } from "./files-admin-service.js";
+import { FilesStorage } from "./files-storage.js";
 import { FilesLocalStorageProvider } from "./local-storage-provider.js";
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", import.meta.url));
@@ -28,7 +29,7 @@ describe("FilesAdminService (integration)", () => {
     await runMigrations(database, { migrationsDir: MIGRATIONS_DIR, totalbaseVersion: "0.0.0-test" });
 
     basePath = await mkdtemp(path.join(tmpdir(), "totalbase-files-test-"));
-    service = new FilesAdminService(database, new SettingsService(database), new FilesLocalStorageProvider(basePath));
+    service = new FilesAdminService(database, new SettingsService(database), FilesStorage.fixed(new FilesLocalStorageProvider(basePath)));
   });
 
   afterEach(async () => {

@@ -15,7 +15,7 @@ export interface FunctionDetail {
 
 /**
  * Introspects a function's IN parameters and return shape by OID. See
- * Specification.md §12 (function parameters, returns, overloads).
+ * Foundations.md §12 (function parameters, returns, overloads).
  *
  * V1 scope: only simple IN parameters are supported (no OUT/INOUT,
  * variadic, or TABLE-returning parameter lists) - see AGENTS.md
@@ -63,7 +63,7 @@ async function getReturnShape(
 /**
  * Each function's identity arguments (`pg_get_function_identity_arguments`,
  * e.g. `value integer, extra integer`), by OID - what tells one overload
- * from another when several share a name (Specification_Admin_UI.md §11.5).
+ * from another when several share a name (Admin_UI.md §11.5).
  * An OID that no longer exists is simply absent.
  */
 export async function listFunctionArguments(database: Database, oids: number[]): Promise<Map<number, string>> {

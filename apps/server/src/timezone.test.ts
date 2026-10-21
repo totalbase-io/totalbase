@@ -7,7 +7,7 @@ import { setupTestApp } from "./test-support.js";
 
 /**
  * The viewer's effective time zone is their transactions' TimeZone
- * (Specification_Security.md §4.2): their profile's, else the
+ * (Security.md §4.2): their profile's, else the
  * instance's, else the browser's `X-TotalBase-Timezone` - never the
  * server's. Read back through a function returning PostgreSQL's own
  * `current_setting('TimeZone')`, so `$PERIOD.*` and `date_trunc` cut days

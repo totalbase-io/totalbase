@@ -69,6 +69,8 @@ export interface UserListItem extends User {
   failedLoginCount: number;
   /** The picture of the user's most recently used OAuth identity, if any - offered as "Use picture from <provider>". */
   providerAvatar: { url: string; provider: string } | null;
+  /** Two-factor authentication is on: a confirmed factor (Security.md §2.17). */
+  mfaEnabled: boolean;
 }
 
 const MAX_NAME_LENGTH = 200;
@@ -133,7 +135,7 @@ const STATUS_CONDITION: Record<UserStatus, string> = {
 
 const SELECT_COLUMNS = `id, email, name, avatar_url, active, owner, can_login, email_verified_at, created_at`;
 
-/** Persistence for totalbase.users. See Specification_Security.md. */
+/** Persistence for totalbase.users. See Security.md. */
 export class UsersService {
   constructor(private readonly database: Database) {}
 
@@ -245,6 +247,7 @@ export class UsersService {
         locked_until: Date | null;
         failed_login_count: number;
         provider_avatar: { url: string; provider: string } | null;
+        mfa_enabled: boolean;
       }
     >(
       `SELECT ${SELECT_COLUMNS}, password_hash IS NOT NULL AS has_password, last_login_at, failed_login_count,
@@ -255,6 +258,7 @@ export class UsersService {
                 ORDER BY i.last_login_at DESC NULLS LAST
                 LIMIT 1) AS provider_avatar,
               CASE WHEN locked_until > now() THEN locked_until END AS locked_until,
+              EXISTS (SELECT 1 FROM totalbase.factors f WHERE f."user" = u.id AND f.confirmed_at IS NOT NULL) AS mfa_enabled,
               COALESCE(
                 (SELECT array_agg(a.role ORDER BY a.role) FROM totalbase.users_roles a WHERE a."user" = u.id),
                 '{}'
@@ -271,6 +275,7 @@ export class UsersService {
       lockedUntil: row.locked_until,
       failedLoginCount: row.failed_login_count,
       providerAvatar: row.provider_avatar,
+      mfaEnabled: row.mfa_enabled,
     }));
   }
 

@@ -3,6 +3,7 @@ import { mapPostgresError, TotalBaseError, type PostgresDriverError } from "@tot
 import type { DatabaseConfig } from "./config.js";
 import type { DatabaseTransactionContext } from "./transaction-context.js";
 import type { PostgresNotice } from "./notices.js";
+import { listen, type ListenHandlers, type Subscription } from "./listener.js";
 
 const { Pool } = pg;
 
@@ -82,7 +83,7 @@ export interface Queryable {
 /**
  * Owns the PostgreSQL connection pool and all raw `pg` access.
  * This is the only package allowed to import `pg` directly
- * (AGENTS.md section 6 / Specification.md §18).
+ * (AGENTS.md section 6 / Foundations.md §18).
  */
 /** The pool options DatabaseConfig's pool.* fields map to. */
 export type PoolSettings = Pick<DatabaseConfig, "poolMax" | "poolIdleTimeoutMs" | "poolConnectionTimeoutMs" | "poolMaxLifetimeMs">;
@@ -128,7 +129,7 @@ export class Database implements Queryable {
   /**
    * The PostgreSQL server's major version (15-18), read once and kept -
    * for version-gated SQL such as PostgreSQL 18's RETURNING OLD
-   * (Specification.md §6).
+   * (Foundations.md §6).
    */
   serverMajorVersion(): Promise<number> {
     this.serverMajor ??= this.query<{ server_version_num: string }>("SHOW server_version_num").then(
@@ -158,7 +159,7 @@ export class Database implements Queryable {
    * array alone would not), which structurally rejects stacked
    * statements; this method deliberately removes that
    * guardrail and MUST NEVER be called with anything but admin-typed
-   * SQL Console input (Specification.md §19: "SQL Console is
+   * SQL Console input (Foundations.md §19: "SQL Console is
    * the explicit exception" to "No raw Data API SQL").
    */
   async queryRaw<Row extends pg.QueryResultRow = pg.QueryResultRow>(sql: string): Promise<RawQueryResult<Row>> {
@@ -194,7 +195,7 @@ export class Database implements Queryable {
   /**
    * Runs `fn` inside a PostgreSQL transaction (BEGIN/COMMIT/ROLLBACK),
    * optionally applying a DatabaseTransactionContext as `SET LOCAL` GUCs.
-   * See Specification.md §18.
+   * See Foundations.md §18.
    */
   async transaction<T>(
     fn: (client: Queryable) => Promise<T>,
@@ -248,7 +249,23 @@ export class Database implements Queryable {
     }
   }
 
+  private readonly subscriptions = new Set<Subscription>();
+
+  /** `LISTEN` on `channel` over a connection of its own (listener.ts); ended by `close()` too. */
+  async listen(channel: string, handlers: ListenHandlers): Promise<Subscription> {
+    const subscription = await listen(this.config, channel, handlers);
+    const tracked: Subscription = {
+      close: async () => {
+        this.subscriptions.delete(tracked);
+        await subscription.close();
+      },
+    };
+    this.subscriptions.add(tracked);
+    return tracked;
+  }
+
   async close(): Promise<void> {
+    await Promise.all([...this.subscriptions].map((subscription) => subscription.close()));
     await this.pool.end();
   }
 

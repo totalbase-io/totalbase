@@ -30,7 +30,7 @@ const COLUMN_PARAMS = { ...TABLE_PARAMS, column: IDENT_PARAM };
 const CONSTRAINT_PARAMS = { ...TABLE_PARAMS, name: { description: "The constraint's name (listed by GET /admin/api/catalog/table/{id}).", schema: IDENTIFIER } };
 const COLUMNS = { ...arrayOf(IDENTIFIER), minItems: 1 };
 const FK_ACTION = { type: "string", enum: ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"] };
-/** A request body's documented shape: `{ data: <schema> }` (Specification_Data_API.md §2.5). */
+/** A request body's documented shape: `{ data: <schema> }` (Data_API.md §2.5). */
 const dataBody = (schema: Parameters<typeof dataEnvelope>[0]) => ({ schema: dataEnvelope(schema) });
 
 
@@ -58,7 +58,7 @@ interface ColumnBody {
   identity?: "ALWAYS" | "BY DEFAULT";
   generated?: string;
   /**
-   * Add Column wizard only (Specification_DataViews.md §16.2) - the column
+   * Add Column wizard only (DataViews.md §16.2) - the column
    * input catalog entry the user picked (`COLUMN_INPUTS`, its presentation's
    * `input`) and the rest of the column's presentation (`config`, §15),
    * written to totalbase.resources_columns once the column itself exists.
@@ -67,7 +67,7 @@ interface ColumnBody {
    */
   input?: string;
   config?: unknown;
-  /** Add Column only: a UID column generated from `source` (Specification_DataViews.md §16.3). */
+  /** Add Column only: a UID column generated from `source` (DataViews.md §16.3). */
   uid?: { source?: unknown };
   /**
    * Add Column only, with `input`: the entry's creation config (`CreationConfig` - min/max, options, the relation's
@@ -243,7 +243,7 @@ async function tableResourceId(client: Queryable, schema: string, table: string)
 
 /**
  * Runs one schema-management operation with its audit entry
- * (Specification_Administration.md §3.14): action `DDL`, written by the
+ * (Administration.md §3.14): action `DDL`, written by the
  * service on the DDL's own transaction (`DdlAuditor`) - the operation and
  * its statements in `metadata`, the affected resource when it already
  * exists. A CONCURRENTLY statement is recorded right after it ran. An
@@ -314,7 +314,7 @@ async function refreshCatalog(context: AppContext): Promise<void> {
 
 /**
  * Structured table/column/constraint management
- * (Specification_Administration.md §3). The spec's path template
+ * (Administration.md §3). The spec's path template
  * ("/schema/tables/{resource}") omits a schema segment even
  * though every operation is schema-qualified and a brand-new table has
  * no totalbase.resources row yet to reference by id; resolved here (per
@@ -322,7 +322,7 @@ async function refreshCatalog(context: AppContext): Promise<void> {
  * API's own {schema}/table/{resource} nesting.
  *
  * PK/UNIQUE/FK/CHECK get their own sub-resources under the table
- * (Specification_Administration.md §3.6, §3.9 each describe a distinct
+ * (Administration.md §3.6, §3.9 each describe a distinct
  * "visual editor"), rather than being folded into the table/column
  * bodies as a terser endpoint list might otherwise suggest.
  */
@@ -739,7 +739,7 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
         summary: "Protect a self-reference against cycles",
         description:
           "A trigger on the table (BEFORE INSERT OR UPDATE OF `parentColumn`) refusing a row placed under itself or under one of " +
-          "its own descendants - check_violation, for every writer - a TREE DataView's table (Specification_DataViews.md §5.14). " +
+          "its own descendants - check_violation, for every writer - a TREE DataView's table (DataViews.md §5.14). " +
           "Needs a single-column primary key; created again, it is replaced.",
         pathParameters: TABLE_PARAMS,
         requestBody: dataBody(object({ parentColumn: IDENTIFIER }, ["parentColumn"])),
@@ -837,11 +837,11 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
     },
   );
 
-  // Views/functions are otherwise introspect-only (Specification_Administration.md §4.4)
+  // Views/functions are otherwise introspect-only (Administration.md §4.4)
   // - drop is the one write operation the admin UI's Resources
   // grid needs for them (parity with the table "Drop" action). Keyed by
   // resource id (or OID, like the catalog routes), not schema+name like
-  // tables: functions can be overloaded (Specification.md §11.7), so a name alone
+  // tables: functions can be overloaded (Foundations.md §11.7), so a name alone
   // doesn't identify one.
   const RESOURCE_PATH = (what: string) => ({ id: { ...RESOURCE_ID_PARAM, description: `The ${what}'s TotalBase resource id, or its PostgreSQL OID.` } });
 

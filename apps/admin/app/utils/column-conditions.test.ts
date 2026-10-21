@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cardMark, conditionPlan, flagsByRow, rowLook } from '~/utils/column-conditions'
 
-// Specification_DataViews.md §15.7: PostgreSQL says which conditions a row meets; the first that holds wins.
+// DataViews.md §15.7: PostgreSQL says which conditions a row meets; the first that holds wins.
 describe('conditional formatting', () => {
   const plan = conditionPlan([
     { column: 'stock', conditions: [

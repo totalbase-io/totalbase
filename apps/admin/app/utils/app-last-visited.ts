@@ -1,7 +1,7 @@
 import type { MenuNode, MenuObject, MenuObjectKind } from '~/types/app-menu'
 
 /**
- * Where the App opens (Specification_Security.md §8.1): the object the viewer
+ * Where the App opens (Security.md §8.1): the object the viewer
  * last visited in this browser, remembered per user in localStorage by
  * plugins/app-last-visited.client.ts - a per-browser convenience, nothing
  * of the account -, if the menu still shows it; else the role's home; else the

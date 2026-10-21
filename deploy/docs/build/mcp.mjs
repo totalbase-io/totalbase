@@ -3,7 +3,7 @@
 //   TOTALBASE_TOKEN=... node mcp.mjs <tool> '<json arguments>'   one tool (no tool: lists them)
 //   TOTALBASE_TOKEN=... node mcp.mjs <steps.json>                 a list of [tool, arguments], in order,
 //                                                                  stopping at the first error
-// The demo is built through these tools, the way a customer's agent would (Docs_Demo_Field_Service.md §1).
+// The demo is built through these tools, the way a customer's agent would (DATASET.md §1).
 import { appendFileSync, readFileSync } from 'node:fs'
 
 const base = process.env.TOTALBASE_URL ?? 'http://localhost:3080'
@@ -18,7 +18,7 @@ async function rpc(method, params, attempt = 0) {
   })
   // Settings > MCP's per-token limit: wait as told, then again.
   if (res.status === 429 && attempt < 10) {
-    // Logged: a build on the default limits should never need one (Usability_85 §8).
+    // Logged: a build on the default limits should never need one.
     if (process.env.MCP_LOG) appendFileSync(process.env.MCP_LOG, JSON.stringify({ t: Date.now(), retry: 429 }) + '\n')
     await new Promise(r => setTimeout(r, 1000 * Number(res.headers.get('retry-after') ?? 15)))
     return rpc(method, params, attempt + 1)

@@ -5,7 +5,7 @@ import { formatCellPlainText } from '~/utils/build-dataview-columns'
 import { totalsParams, totalsPlan, type TotalEntry } from '~/utils/column-totals'
 
 /**
- * A grid's totals (Specification_DataViews.md §4.9): each shown column's, over
+ * A grid's totals (DataViews.md §4.9): each shown column's, over
  * every row its filters keep - PostgreSQL's aggregates in a read of their own,
  * read again with the rows; the TABLE's foot shows them. Read again when the
  * rows' filter or search changes, or when the rows are reread in place (a

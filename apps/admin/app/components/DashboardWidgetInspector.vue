@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A dashboard widget's inspector (Specification_Dashboards.md §10.4, D2) - the widget drawer's right column, laid out
+ * A dashboard widget's inspector (Dashboards.md §10.4, D2) - the widget drawer's right column, laid out
  * as the page designer's: its header (icon, name, description, "⋮"), Properties and Styles. All of it from the widget
  * catalog (@totalbase/tb-catalog): Type marks which types fit what the query returns (the others greyed, with why) and
  * keeps the equivalent roles on a switch; Data has a field per role - only the columns of a kind it takes, each with
@@ -239,7 +239,7 @@ function setStyle(name: string, value: unknown) {
 }
 
 /**
- * The value column's format, when its origin's presentation has one (Specification_Dashboards.md §2.3): shown
+ * The value column's format, when its origin's presentation has one (Dashboards.md §2.3): shown
  * inherited, greyed, with Edit in the table - over the drawer, the column's own panel.
  */
 const valueColumn = computed(() => {

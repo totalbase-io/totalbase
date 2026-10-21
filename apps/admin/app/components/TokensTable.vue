@@ -36,7 +36,7 @@ const props = defineProps<{
 // My account reaches the self-service /api/tokens routes (same paths
 // and bodies below /tokens), everything else the Admin API's oversight -
 // except listing, revoking and deleting, plain rows of tokens read
-// and written through the Data API (Specification_Security.md §10;
+// and written through the Data API (Security.md §10;
 // PostgreSQL keeps such a write to a rename, a deactivation or a
 // revocation). Issuing and rotating stay on the routes.
 const adminApi = useAdminApi()
@@ -293,7 +293,7 @@ const isRegenOpen = computed({
 })
 const regenTtlDays = ref<number | null>(null)
 // Stripe's "roll key": the old secret can keep working a while, so whatever
-// uses it can switch without downtime (Specification_Security.md §3.3).
+// uses it can switch without downtime (Security.md §3.3).
 const GRACE_OPTIONS = computed(() => [
   { label: t('users.tokens.grace.now'), value: 0 },
   { label: t('users.tokens.grace.hour'), value: 1 },

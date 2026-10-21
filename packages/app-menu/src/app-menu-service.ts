@@ -2,7 +2,7 @@ import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
- * The App menu (Specification_Security.md §8): one per instance,
+ * The App menu (Security.md §8): one per instance,
  * arranged by the administrator, stored in `totalbase.menus`.
  * This package owns that table only - which DataViews and Dashboards are
  * published (and what they are called) is handed in by the caller, so it

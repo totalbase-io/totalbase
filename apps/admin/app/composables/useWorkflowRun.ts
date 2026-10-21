@@ -3,7 +3,7 @@ import { manualRunBlocker } from '~/utils/workflow-runs'
 import type { WorkflowDefinition, WorkflowDraft } from '~/composables/useWorkflowVersions'
 
 /**
- * Test run / Run in the workflow editor (Specification_Workflows.md §11) -
+ * Test run / Run in the workflow editor (Workflows.md §11) -
  * one modal, its mode set by the action. Test run runs the saved draft, so
  * any pending autosave is flushed first (a failed save stops the run and says
  * so in the modal). Run runs the live version: a MANUAL or CRON trigger,
@@ -56,7 +56,7 @@ export function useWorkflowRun(options: {
   function operationNames(definition: WorkflowDefinition | undefined) {
     return (definition?.operations ?? []).map(o => ({ id: o.id, key: o.key, label: o.type === 'totalbase.start' ? t('workflows.editor.start') : o.label }))
   }
-  // A CRON live version runs on demand exactly as its schedule would (Specification_Workflows.md §11.2): no input.
+  // A CRON live version runs on demand exactly as its schedule would (Workflows.md §11.2): no input.
   const liveRunScheduled = computed(() => liveDefinition.value?.operations.find(o => o.type === 'totalbase.start')?.configuration?.trigger === 'CRON')
   const runModalOperations = computed(() => operationNames(runModalMode.value === 'TEST' ? options.draft.value?.definition : liveDefinition.value))
   const draftOperationNames = computed(() => operationNames(options.draft.value?.definition))

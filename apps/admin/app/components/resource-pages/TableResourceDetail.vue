@@ -89,7 +89,7 @@ async function toggleEndpoint(method: DataApiMethod, enabled: boolean) {
 }
 
 // Whether TotalBase's PostgreSQL role may change this table's structure
-// (Specification_Administration.md §3.15) - from the Columns section's own
+// (Administration.md §3.15) - from the Columns section's own
 // catalog read, so the page doesn't fetch it twice. Unknown until loaded:
 // nothing is disabled on a guess.
 const ownership = ref<Pick<RelationDetail, 'owner' | 'canAlter'> | null>(null)
@@ -112,7 +112,7 @@ const dataViewWizardMounted = useOpenedOnce(dataViewWizardOpen)
 const { refresh: refreshDataViews } = useAppsNavDataViews()
 
 const dashboardWizardOpen = ref(false)
-// The dashboard assistant, this table chosen (Specification_Dashboards.md §10.7) - loaded on first open.
+// The dashboard assistant, this table chosen (Dashboards.md §10.7) - loaded on first open.
 const dashboardWizardMounted = useOpenedOnce(dashboardWizardOpen)
 const { refresh: refreshDashboards } = useAppsNavDashboards()
 async function onDashboardCreated(id: string) {

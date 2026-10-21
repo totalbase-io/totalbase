@@ -8,7 +8,7 @@
  *
  * Counts come from GET /audit/logs/summary under the same filters, faceted:
  * each section ignores its own filter, so the alternatives stay visible.
- * A delegated user (Specification_Security.md §9) reads the log through
+ * A delegated user (Security.md §9) reads the log through
  * the Data API instead: the same filters, no counts and no security views -
  * those group entries by event name inside `metadata`, which the filter
  * grammar doesn't reach.

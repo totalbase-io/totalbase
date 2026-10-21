@@ -4,10 +4,10 @@ import { runDdl, type DdlAuditor } from "./ddl-audit.js";
 
 /**
  * DROP for VIEW/FUNCTION resources, requested alongside the admin UI's
- * per-resource "Drop" action (Specification_Admin_UI.md — Resources grid
+ * per-resource "Drop" action (Admin_UI.md — Resources grid
  * actions). Tables already have full DDL management (table-schema-service.ts,
- * Specification_Administration.md §3); views/functions are otherwise
- * introspect-only (Specification_Administration.md §4), but the UI needs to be able to remove a
+ * Administration.md §3); views/functions are otherwise
+ * introspect-only (Administration.md §4), but the UI needs to be able to remove a
  * stale/unwanted one same as it can a table.
  *
  * Both methods resolve the oid to its canonical, already-quoted identifier
@@ -16,7 +16,7 @@ import { runDdl, type DdlAuditor } from "./ddl-audit.js";
  * itself is the only untrusted input (an integer, not identifier text), and
  * PostgreSQL is the one producing the identifier syntax, not the caller.
  * `::regprocedure` in particular resolves overload signatures automatically
- * (Specification.md §11.7 / Specification_Data_API.md §7 — functions can be overloaded), which
+ * (Foundations.md §11.7 / Data_API.md §7 — functions can be overloaded), which
  * plain name-based DROP FUNCTION couldn't do without a separate argument-list
  * lookup.
  */

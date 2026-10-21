@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A maintenance batch (Specification_Administration.md §6.5) in three stages:
+ * A maintenance batch (Administration.md §6.5) in three stages:
  *
  * - preview: the exact list it will run, what's skipped and why - Start or
  *   Cancel. Opened by setting `plan`.

@@ -5,7 +5,7 @@ export { FRAME_URL_MAX_LENGTH };
 
 /**
  * Validates an EXTERNALFRAME DataView's `view_config.frame_url`
- * (Specification_DataViews.md, "EXTERNALFRAME security") - the shared rule,
+ * (DataViews.md, "EXTERNALFRAME security") - the shared rule,
  * `checkFrameUrl` (@totalbase/tb-catalog). Returns the URL normalized by the
  * WHATWG parser (what the browser will load).
  */
@@ -16,7 +16,7 @@ export function validateFrameUrl(raw: unknown, ownOrigin?: string): string {
 }
 
 /**
- * Validates a page Frame widget's URL template (Specification_DataViews.md §9.7):
+ * Validates a page Frame widget's URL template (DataViews.md §9.7):
  * its tokens are page values (`FRAME_URL_TOKEN` - `{{vars.*}}`,
  * `{{controls.*}}`, `{{slot.*}}`), the site written out before them
  * (`checkFrameUrlTemplate`). Empty is allowed. Returns the trimmed template.

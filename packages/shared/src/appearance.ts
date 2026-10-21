@@ -1,5 +1,5 @@
 /**
- * The operator's branding (Specification_Admin_UI.md §4.1.1): what the
+ * The operator's branding (Admin_UI.md §4.1.1): what the
  * `appearance.*` settings may hold, and the primary color's shades - shared
  * by the server (validation, /admin/theme.css) and the admin (the Appearance
  * page's preview).

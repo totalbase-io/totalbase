@@ -18,12 +18,12 @@
     "triggers": {
       "manual": {
         "title": "Manual",
-        "description": "Run this workflow on demand from the editor or a future manual action.",
+        "description": "Run this workflow on demand: from the editor, a DataView's action or page, the API or another workflow.",
         "configDescription": "No further configuration."
       },
       "dataEvent": {
         "title": "Database event",
-        "description": "Run when a table is created, updated, or deleted.",
+        "description": "Run when a table's rows are created, updated or deleted.",
         "configDescription": "Table and events that admit a run."
       },
       "cron": {
@@ -266,7 +266,7 @@
       "records": "Records",
       "aJsonArrayOneObject": "A JSON array - one object per record to insert. Reference another step's result with {c0} (Start included, as {c1}), array items with {c2}.",
       "emitDatabaseEvents": "Emit database events",
-      "letThisStepSInserts": "Let this step's inserts count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+      "letThisStepSInserts": "Let this step's inserts count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (at most Settings > Workflows > Maximum chain depth workflows deep, no repeats) prevents an accidental loop."
     },
     "deleteRecordsModal": {
       "deleteRecords": "Delete records",
@@ -276,7 +276,7 @@
       "filterWhere": "Filter (where)",
       "whichRowsToDeleteRequired": "Which rows to delete. Required unless the setting 'Require a filter for bulk delete' is off - then empty matches every row. A filter value can reference another step's result with {c0} (Start included, as {c1}).",
       "emitDatabaseEvents": "Emit database events",
-      "letThisStepSDeletions": "Let this step's deletions count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+      "letThisStepSDeletions": "Let this step's deletions count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (at most Settings > Workflows > Maximum chain depth workflows deep, no repeats) prevents an accidental loop."
     },
     "editor": {
       "notConfigured": "Not configured",
@@ -561,7 +561,7 @@
       "set": "Set",
       "aJsonObjectColumnNames": "A JSON object - column names mapped to their new values. Reference another step's result with {c0} (Start included, as {c1}).",
       "emitDatabaseEvents": "Emit database events",
-      "letThisStepSUpdates": "Let this step's updates count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (max 8 workflows deep, no repeats) prevents an accidental loop."
+      "letThisStepSUpdates": "Let this step's updates count as a database-event trigger for OTHER workflows - off by default. Immutable causal-ancestry tracking (at most Settings > Workflows > Maximum chain depth workflows deep, no repeats) prevents an accidental loop."
     },
     "validateDataModal": {
       "validateData": "Validate data",
@@ -598,7 +598,7 @@
     "workflowInvokeRolesField": {
       "rolesThatMayInvokeThis": "Roles that may invoke this workflow",
       "administratorsCanAlwaysInvokeAny": "Administrators can always invoke any workflow. With no role allowed, only they can.",
-      "onlyMattersForManualCron": "Only matters for Manual/Cron/Webhook triggers",
+      "onlyMattersForManualCron": "Only matters for Manual and Schedule triggers and authenticated webhooks",
       "aDataEventTriggerNever": "A Data event trigger never checks this - it always runs as its own configured user, regardless of who caused the underlying mutation."
     },
     "workflowRunModal": {
@@ -616,11 +616,13 @@
       "runTitle": "Run",
       "testDescription": "Runs the saved draft as you - a real run: its writes and side effects happen. Marked TEST; nothing is published or enabled.",
       "scheduledDescription": "Runs the published version{version} now, exactly as its schedule would: as its execution user, with the schedule data ({path}, started_at, timezone) as input.",
-      "productionDescription": "Runs the published version{version} in production, as you.",
+      "productionDescription": "Runs the published version{version} in production - as you, or as its Execute as user.",
       "draftNotSavedReason": "The draft could not be saved, so it was not run: {reason}",
       "draftNotSaved": "The draft could not be saved, so it was not run.",
       "couldNotStart": "The run could not start.",
-      "runTest": "Run test"
+      "runTest": "Run test",
+      "sendEmailsTo": "Send emails to",
+      "sendEmailsToHelp": "Optional. Every email this test run sends goes only to this address instead of its recipients - cc and bcc included. Empty: the steps' own recipients."
     },
     "workflowRunStepDetail": {
       "started": "Started",

@@ -10,7 +10,7 @@ const PREFIX = "email-verification-gate-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * auth.email_verification_required gates sign-in (Specification_Security.md
+ * auth.email_verification_required gates sign-in (Security.md
  * §2.7): an unverified account can't sign in by any route - a 403
  * EMAIL_NOT_VERIFIED distinct from the generic 401, audited with reason
  * `email_not_verified` - and accounts verified by construction (an

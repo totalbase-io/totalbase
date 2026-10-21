@@ -3,7 +3,7 @@ import type { DataViewType, SavedView, SavedViewConfig } from '~/types/dataview'
 import { AdminApiError } from '~/utils/admin-api-error'
 
 /**
- * A grid's saved views (features.savedViews, Specification_DataViews.md §5.9): named snapshots of the view, filter,
+ * A grid's saved views (features.savedViews, DataViews.md §5.9): named snapshots of the view, filter,
  * columns/order, sort and density, never changed once saved - what's on screen is saved as a new one, or replaces one
  * of one's own by its name. The views menu (DataViewSavedViewsMenu) opens, saves, shares and deletes them; the grid
  * captures and applies the state through `capture`/`apply` - this owns the open view and the writes with their toasts.

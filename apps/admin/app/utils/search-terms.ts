@@ -1,7 +1,7 @@
 import { format, isValid, parse } from 'date-fns'
 
 /**
- * A search as the Data API reads it (Specification_Data_API.md §3.5): it finds a day only in ISO form
+ * A search as the Data API reads it (Data_API.md §3.5): it finds a day only in ISO form
  * (`2026-10-13`), so a word typed in the viewer's own date format - `13/10/2026` with `dd/MM/yyyy`, as the grid
  * shows it - is sent as that day. Every other word goes as typed. No date format (the browser's): ISO only.
  */

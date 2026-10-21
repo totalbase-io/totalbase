@@ -3,7 +3,7 @@ import { operationDefinition, operationOutputs } from "@totalbase/tb-catalog";
 import { shapeErrors } from "@totalbase/shared";
 
 /**
- * The definition's graph rules (Specification_Workflows.md §3.3, §3.4),
+ * The definition's graph rules (Workflows.md §3.3, §3.4),
  * checked on every save and again on publish - the same rules the editor
  * keeps by construction, so a definition written through the Admin API
  * cannot be malformed either - and each step's configuration against its

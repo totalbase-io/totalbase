@@ -19,7 +19,7 @@ export interface DashboardCanvasContext {
   onDuplicate?: (widget: DashboardWidgetContent) => void
   /** Bumped by the header's Refresh action - every mounted card re-runs its query. */
   refreshKey: Ref<number>
-  /** The App's viewer only: each card re-runs its query this often (seconds; null = off) - Specification_Dashboards.md §9.4. The editor's canvas has none. */
+  /** The App's viewer only: each card re-runs its query this often (seconds; null = off) - Dashboards.md §9.4. The editor's canvas has none. */
   refreshIntervalSeconds?: Ref<number | null>
   /** The variables' definitions - a card's empty text reads whether it filters by a period (D23). */
   variables?: Readonly<Ref<DashboardVariable[]>>
@@ -31,7 +31,7 @@ export interface DashboardCanvasContext {
   variableLabels?: Readonly<Ref<Record<string, string>>>
   /** Who is viewing, as `{{user.<field>}}` reads them - none in an embed (D3). */
   user?: Readonly<Ref<Record<string, unknown> | null>>
-  /** A version is being previewed (Specification.md §13.4): no edit/remove, no drag. */
+  /** A version is being previewed (Foundations.md §13.4): no edit/remove, no drag. */
   readOnly: Ref<boolean>
   /** API path a card fetches its data from - the draft's query, the previewed version's snapshot, or (App) the published widget. */
   dataPath: (widget: DashboardWidgetContent) => string

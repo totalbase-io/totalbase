@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { decodeImage, deleteFile, drawPng, login, quadrantsPng, uploadFile } from './helpers'
+import { BASE_URL, decodeImage, deleteFile, drawPng, login, quadrantsPng, uploadFile } from './helpers'
 
 let cleanup: (() => Promise<void>) | undefined
 test.afterEach(async () => {
@@ -32,7 +32,7 @@ test('Replace image swaps the file content for a completely different picture', 
   await expect(page.getByText('File replaced', { exact: true })).toBeVisible()
 
   const contentResponse = await page.request.fetch(
-    `http://localhost:3050/api/totalbase/table/files/${fileId}`,
+    `${BASE_URL}/api/totalbase/table/files/${fileId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
   expect(contentResponse.ok()).toBeTruthy()

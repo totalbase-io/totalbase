@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * From a table to a screen in one step (Specification_DataViews.md §3.1): a Table DataView over every column, the
+ * From a table to a screen in one step (DataViews.md §3.1): a Table DataView over every column, the
  * roles that open it, published - so it is in the App at once. Every choice stays editable afterwards (the same
  * objects the wizard makes); **More options** opens the wizard itself. Lands on its settings, where the diagnosis
  * says what a role still lacks.

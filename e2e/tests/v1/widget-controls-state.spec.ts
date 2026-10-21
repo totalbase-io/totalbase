@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { addWidget, adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test } from './fixtures.js'
 
 /**
- * Another widget's state in a formula (Specification_DataViews.md §9.1),
+ * Another widget's state in a formula (DataViews.md §9.1),
  * as WaveMaker binds to `Widgets.x.selecteditem`: a customer
  * select and, beside it, an input showing the chosen customer's email -
  * `{{controls.selectCliente.item.email}}`, a computed input, read

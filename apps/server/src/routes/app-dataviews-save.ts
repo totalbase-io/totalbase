@@ -13,9 +13,10 @@ import { requestData, type DataBody } from "../request-body.js";
 const tableKey = (schema: string, name: string) => `${schema}.${name}`;
 
 /**
- * The tables a record of this DataView saves (Specification_DataViews.md §6.6): its own source and the sources of
- * the DataViews its page embeds (TDataView - a master-detail's lines). Read from what the viewer opens: the
- * published page, or an administrator's draft of one never published.
+ * The tables a record of this DataView saves (DataViews.md §6.6): its own source, the sources of
+ * the DataViews its page embeds (TDataView - a master-detail's lines) and the junction tables its form
+ * fields link through (`junction`, §8.5) - each still one of the source's, read live. Read from what the viewer
+ * opens: the published page, or an administrator's draft of one never published.
  */
 async function recordTables(context: AppContext, view: AdminDataView): Promise<Set<string>> {
   const tables = new Set<string>();
@@ -30,12 +31,20 @@ async function recordTables(context: AppContext, view: AdminDataView): Promise<S
       tables.add(tableKey(detail.sourceResourceSchema, detail.sourceResourceName));
     }
   }
+  const junctions = [...new Set(fields.flatMap((field) => {
+    const junction = field.widget === "UFormField" ? (field.config as { props?: { junction?: unknown } }).props?.junction : undefined;
+    return typeof junction === "string" && junction ? [junction] : [];
+  }))];
+  for (const id of view.sourceResource ? junctions : []) {
+    const junction = await context.dataviewsAdmin.getJunction(view.sourceResource!, id);
+    if (junction) tables.add(tableKey(junction.schema, junction.table));
+  }
   return tables;
 }
 
 /**
- * A record and its lines saved together (Specification_DataViews.md §6.6): `POST /app/api/dataviews/:slug/save`
- * runs the transactions engine (Specification_Data_API.md §8) for a DataView the caller opens - only on its own
+ * A record and its lines saved together (DataViews.md §6.6): `POST /app/api/dataviews/:slug/save`
+ * runs the transactions engine (Data_API.md §8) for a DataView the caller opens - only on its own
  * tables, each operation authorized like any write, without the public API's TRANSACTIONS capability.
  */
 export function registerAppDataViewSaveRoutes(app: FastifyInstance, context: AppContext): void {

@@ -6,7 +6,7 @@ import { TotalBaseError } from "@totalbase/errors";
  * pg_get_functiondef()'s: `CREATE OR REPLACE VIEW` (a materialized view:
  * `CREATE MATERIALIZED VIEW`, which has no OR REPLACE) with the name and
  * options quoted by PostgreSQL itself, `AS` and pg_get_viewdef()'s query.
- * Read-only introspection (Specification_Administration.md §4: "show DDL").
+ * Read-only introspection (Administration.md §4: "show DDL").
  */
 export async function getViewDdl(database: Database, oid: number): Promise<string> {
   const { rows } = await database.query<{ ddl: string | null }>(

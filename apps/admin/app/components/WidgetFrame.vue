@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Frame widget (`TFrame`, Specification_DataViews.md §9.7): another
+ * The Frame widget (`TFrame`, DataViews.md §9.7): another
  * site's page in the same fixed sandbox as an EXTERNALFRAME DataView
  * (DataViewExternalFrame.vue). Its URL arrives resolved - the page's values
  * filled in and encoded by WidgetRenderer - or null: no URL for this record

@@ -2,7 +2,7 @@ import type { ActionTarget } from '~/utils/custom-actions'
 import { DEFAULT_ROLE_COLOR, type RoleColor } from '~/types/permission'
 import { looksLikeSettingsTable, REQUIRED_SETTINGS_LAYOUT_KEYS, SETTINGS_LAYOUT_KEYS, suggestSettingsLayout, type ColumnPresentation, type SettingsLayout } from '@totalbase/tb-catalog'
 
-/** Shape of `totalbase.dataviews` rows as returned by the Admin API — Specification_DataViews.md. */
+/** Shape of `totalbase.dataviews` rows as returned by the Admin API — DataViews.md. */
 export type DataViewType = 'TABLE' | 'FORM' | 'CARDS' | 'MAP' | 'KANBAN' | 'CALENDAR' | 'GANTT' | 'TREE' | 'EXTERNALFRAME' | 'MASTER_DETAIL' | 'CUSTOM' | 'SETTINGS'
 export type DataViewScope = 'LISTED' | 'EMBEDDED_ONLY'
 
@@ -17,7 +17,7 @@ export const LINKABLE_DATAVIEW_TYPES: DataViewType[] = DATAVIEW_TYPES.filter(typ
 
 /**
  * The catalogs below keep their English as written; the UI translates them
- * (Specification_Admin_UI.md §14) through keys derived from the catalog key,
+ * (Admin_UI.md §14) through keys derived from the catalog key,
  * the English as the fallback (`useCatalogText()`):
  * `dataviews.meta.<catalog>.<key>.label|description` - catalogs `types`,
  * `formViewModes`, `openWith`, `editPresentations`, `editSizes`, `editSides`,
@@ -242,7 +242,7 @@ export const GANTT_FEATURES: DataViewFeatureMeta[] = [
   { key: 'refresh', label: 'Refresh', description: 'Manual "Refresh" button above the timeline.', default: true, group: 'table' },
   ...RECORD_FORM_FEATURES
 ]
-/** TREE's catalog (Specification_DataViews.md §5.14) - the same toolbar and record form as GANTT's. */
+/** TREE's catalog (DataViews.md §5.14) - the same toolbar and record form as GANTT's. */
 export const TREE_FEATURES: DataViewFeatureMeta[] = [
   { key: 'search', label: 'Search', description: 'Free-text search box above the tree - a match shows with its parents.', default: true, group: 'table' },
   { key: 'savedViews', label: 'Saved views', description: 'Bookmark button - named, reusable snapshots of filter/sort.', default: true, group: 'table' },
@@ -349,14 +349,14 @@ export function resolveFeatures(type: DataViewType, viewConfig: Record<string, u
 }
 
 /**
- * What changed in a grid (an embedded DataView's Rows changed, Specification_DataViews.md §9.7): a row
+ * What changed in a grid (an embedded DataView's Rows changed, DataViews.md §9.7): a row
  * created, edited (a move on a board too), deleted or rows imported - and the rows saved or deleted (an
  * import lists none: its count is in the toast and the audit).
  */
 export interface RowsChange { action: 'create' | 'update' | 'delete' | 'import', rows: Record<string, unknown>[] }
 
 /**
- * A list view's own toolbar controls (Specification_DataViews.md §5.13) - the rest of a list's `table`
+ * A list view's own toolbar controls (DataViews.md §5.13) - the rest of a list's `table`
  * features are its common toolbar, the same in every view. Settings shows these in the view's own tab.
  */
 export const LIST_VIEW_OWN_FEATURES: Partial<Record<DataViewType, string[]>> = {
@@ -374,7 +374,7 @@ export function resolveListFeatures(viewConfig: Record<string, unknown>): Record
 
 /**
  * How a `TABLE`/`CARDS` DataView opens its Edit form from the grid
- * (Specification_DataViews.md §6.3) - `DRAWER`/
+ * (DataViews.md §6.3) - `DRAWER`/
  * `MODAL`/`SIDEBAR` map 1:1 to components already in real use elsewhere
  * in the admin (`AppDrawer`/`UModal`/`USlideover`); `PAGE` instead
  * navigates to a dedicated route (`/dataviews/:slug/new` and
@@ -474,7 +474,7 @@ export function resolvePageContentWidth(viewConfig: Record<string, unknown>, fal
   return storedPageContentWidth(viewConfig) ?? fallback
 }
 /**
- * A page's content box (Specification_DataViews.md §6.7): the DataView's own width and align, else the
+ * A page's content box (DataViews.md §6.7): the DataView's own width and align, else the
  * instance's (sent with the DataView - Settings > DataViews > Page width), else the product's - a record
  * page narrow, a CUSTOM page full, centered.
  */
@@ -495,7 +495,7 @@ export function resolveFitToScreen(viewConfig: Record<string, unknown>): boolean
   return viewConfig.fit_to_screen === true
 }
 /**
- * `view_config.kiosk` (CUSTOM, Specification_DataViews.md §7.3) - the page
+ * `view_config.kiosk` (CUSTOM, DataViews.md §7.3) - the page
  * alone on screen, without the App's menu or the page header: a totem, a
  * phone used as a reader.
  */
@@ -635,7 +635,7 @@ export interface DataView {
   slug: string
   /** What the App menu shows - null: its name. Live, never versioned. */
   menuLabel?: string | null
-  /** The live (highest) version (Specification.md §13.1), null until first published. */
+  /** The live (highest) version (Foundations.md §13.1), null until first published. */
   liveVersion?: number | null
   /** The draft differs from the live version (or there is none) - `GET /dataviews` and `GET /dataviews/:id` (admin) only. */
   hasUnpublishedChanges?: boolean
@@ -645,7 +645,7 @@ export interface DataView {
   sourceResource: string | null
   sourceResourceSchema: string | null
   sourceResourceName: string | null
-  /** TABLE vs. VIEW - the write-actions gate (Specification_DataViews.md §1.2: a VIEW source stays read-only regardless of layout). */
+  /** TABLE vs. VIEW - the write-actions gate (DataViews.md §1.2: a VIEW source stays read-only regardless of layout). */
   sourceResourceType: 'TABLE' | 'VIEW' | null
   /** Needed by the Design form (and the Edit form's FK picker) to call `GET /catalog/table|view/:oid` directly. */
   sourceResourceOid: number | null
@@ -654,8 +654,10 @@ export interface DataView {
   viewConfig: Record<string, unknown>
   /** CUSTOM only: each resource its variables name (by id), with the schema and name the Data API addresses it by. */
   variableResources?: Record<string, { schema: string, name: string, type: string, columns?: Record<string, string>, relations?: Record<string, string>, displays?: Record<string, { schema: string, table: string, column: string, displayField: string, displayTemplate?: string }> }>
+  /** The workflows its Calls run, by id - the slug each runs by (a Call stores the id). */
+  variableWorkflows?: Record<string, { slug: string, name: string }>
   /**
-   * What it inherits from its resources' columns (Specification_DataViews.md §15),
+   * What it inherits from its resources' columns (DataViews.md §15),
    * by resource id and column name: live on a draft read, the
    * version's frozen copy on a published one.
    */
@@ -664,15 +666,15 @@ export interface DataView {
   deniedRelationPaths?: string[]
   /** The App's read only: what this viewer may do to its source's rows (their grants) - New, editing and Delete show only where allowed. Absent (a draft, the admin's own read): everything. */
   viewerActions?: { create: boolean, update: boolean, delete: boolean }
-  /** The most rows a viewer may choose and edit together - dataviews.bulk_edit_max_rows (Specification_DataViews.md §5.15). */
+  /** The most rows a viewer may choose and edit together - dataviews.bulk_edit_max_rows (DataViews.md §5.15). */
   bulkEditMaxRows?: number
-  /** Its custom actions this viewer may run, by id, with what each calls (Specification_DataViews.md §3.7). */
+  /** Its custom actions this viewer may run, by id, with what each calls (DataViews.md §3.7). */
   actionTargets?: Record<string, ActionTarget>
-  /** What the viewer is granted, before the DataView's own Allow - what an embed of it (TDataView) narrows with its own (Specification_DataViews.md §5.1). */
+  /** What the viewer is granted, before the DataView's own Allow - what an embed of it (TDataView) narrows with its own (DataViews.md §5.1). */
   grantedActions?: { create: boolean, update: boolean, delete: boolean }
-  /** The App's read only: the instance's toolbar default (Settings > DataViews > Toolbar) - null for automatic, the type's own (Specification_DataViews.md §5). */
+  /** The App's read only: the instance's toolbar default (Settings > DataViews > Toolbar) - null for automatic, the type's own (DataViews.md §5). */
   instanceToolbarMode?: 'full' | 'compact' | null
-  /** The App's read only: the instance's page width defaults (Settings > DataViews > Page width, Specification_DataViews.md §6.7). */
+  /** The App's read only: the instance's page width defaults (Settings > DataViews > Page width, DataViews.md §6.7). */
   instancePageLayout?: { recordWidth: PageContentWidth, customWidth: PageContentWidth, align: PageContentAlign, tableMargin?: ListMargin }
   /** Draft client-side controller code from the Studio Design drawer's Code tab. On a `/published` read, this is the latest publish's code instead of the live draft - see usePublishedDataViewBySlug's own doc comment. */
   code: string
@@ -704,7 +706,7 @@ export interface DataViewField {
   config: Record<string, unknown>
   /** A Detail widget's DataView (synced from its `dataview` prop). */
   relatedDataview: string | null
-  /** COLUMN/RELATED: what it inherits from its resource's column (Specification_DataViews.md §15) - live on a draft, frozen on a published read; its own label and config override it. */
+  /** COLUMN/RELATED: what it inherits from its resource's column (DataViews.md §15) - live on a draft, frozen on a published read; its own label and config override it. */
   inherited?: ColumnPresentation
   /** COLUMN/RELATED: its column's PostgreSQL type, read live. */
   dataType?: string
@@ -909,7 +911,7 @@ export function itemColor(formulaResult: string | undefined, defaultColor: RoleC
  * fixed `defaultIcon`/`defaultColor` chosen in the same step
  * (IconPickerField/ColorPickerField), not to some other column.
  *
- * v1 has no geometry/PostGIS column support at all (Specification_DataViews.md §5.4) -
+ * v1 has no geometry/PostGIS column support at all (DataViews.md §5.4) -
  * just two plain numeric columns nominated as lat/lng. There's no
  * sensible fallback for a missing lat/lng column (a map with no
  * position isn't a partial map, it's broken) - callers must gate on
@@ -918,7 +920,7 @@ export function itemColor(formulaResult: string | undefined, defaultColor: RoleC
  * branch both need to take).
  */
 export interface MapLayoutConfig {
-  /** One native `point` column as the location (Specification_DataViews.md §5.4) - instead of the latitude/longitude pair. */
+  /** One native `point` column as the location (DataViews.md §5.4) - instead of the latitude/longitude pair. */
   pointColumn: string | null
   latitudeColumn: string | null
   longitudeColumn: string | null
@@ -1160,7 +1162,7 @@ export function resolveGanttLayout(viewConfig: Record<string, unknown>, columns:
   }
 }
 /**
- * `view_config.tree_layout` (TREE, Specification_DataViews.md §5.14): `parentColumn` is the table's foreign key to
+ * `view_config.tree_layout` (TREE, DataViews.md §5.14): `parentColumn` is the table's foreign key to
  * itself - the server fills it in and refuses a column that isn't one; `orderColumn` a number column ordering
  * siblings (renumbered when one is dragged), none = by title. The formulas are CARDS'/MAP's; `expandLevel` how many
  * levels open on load.
@@ -1219,11 +1221,11 @@ export interface UpdateDataViewBody {
   viewConfig?: Record<string, unknown>
   /** The "Show in the App menu" switch. */
   scope?: DataViewScope
-  /** A list DataView's main view - one of its `layouts` (Specification_DataViews.md §5.13). */
+  /** A list DataView's main view - one of its `layouts` (DataViews.md §5.13). */
   viewType?: DataViewType
 }
 
-/** One row of `totalbase.dataviews_versions` - Specification.md §13. `version` only ever increases; `restoredFromVersion` is set only when this version came from restoring an older one. */
+/** One row of `totalbase.dataviews_versions` - Foundations.md §13. `version` only ever increases; `restoredFromVersion` is set only when this version came from restoring an older one. */
 export interface DataViewPublish {
   id: string
   dataview: string
@@ -1306,7 +1308,7 @@ export interface SavedViewConfig {
   columnPrefs?: Record<string, ColPref>
   sort?: string
   density?: Density
-  /** Which of the DataView's views (Specification_DataViews.md §5.13) it opens in. */
+  /** Which of the DataView's views (DataViews.md §5.13) it opens in. */
   layout?: DataViewType
 }
 
@@ -1347,7 +1349,7 @@ export function dataviewIcon(dataview: Pick<DataView, 'icon' | 'viewType'>): str
 }
 
 /**
- * `view_config.settings_layout` (SETTINGS DataViews, Specification_DataViews.md §5.12): which columns hold each
+ * `view_config.settings_layout` (SETTINGS DataViews, DataViews.md §5.12): which columns hold each
  * setting's key, value, title and description (required) and, optionally, its group and its order - and the
  * heuristic telling a parameter table, shared with the MCP (@totalbase/tb-catalog settings-layout.ts).
  */
@@ -1363,7 +1365,7 @@ export function settingsLayoutComplete(layout: SettingsLayoutConfig): boolean {
 }
 
 /**
- * `view_config.list_margin` (TABLE, CARDS, KANBAN, CALENDAR, GANTT, MAP - Specification_DataViews.md §5): the space
+ * `view_config.list_margin` (TABLE, CARDS, KANBAN, CALENDAR, GANTT, MAP - DataViews.md §5): the space
  * around the list's content. Null: a TABLE's the instance's (Settings > DataViews > Table margin - none by default,
  * the grid under the header); any other list's normal - cards and maps keep their margin.
  */
@@ -1390,7 +1392,7 @@ export function resolveListMargin(dataview: Pick<DataView, 'viewType' | 'viewCon
 }
 
 /**
- * The list types (Specification_DataViews.md §5) - a list DataView may offer several of them as its views. In their
+ * The list types (DataViews.md §5) - a list DataView may offer several of them as its views. In their
  * canonical order - from what serves any table to what needs a special column - the wizard's and the Views
  * accordion's.
  */

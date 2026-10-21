@@ -41,7 +41,7 @@ function pkEqualsFilter(pkField: string, value: unknown): FilterNode {
 
 /**
  * TABLE mutation endpoints (CREATE/UPDATE/DELETE). See
- * Specification_Data_API.md §5, §5.7.
+ * Data_API.md §5, §5.7.
  *
  * Bulk UPDATE/DELETE convention (not fully specified in the source
  * document - see AGENTS.md section 27): each item in a bulk `data` array
@@ -50,7 +50,7 @@ function pkEqualsFilter(pkField: string, value: unknown): FilterNode {
  */
 /**
  * If-Match: the version (ETag) the caller read - `"123"`, `W/"123"` or `123`; absent or `*`, no condition
- * (Specification_Data_API.md §5.3, T56).
+ * (Data_API.md §5.3, T56).
  */
 function ifMatchVersion(header: string | string[] | undefined): string | undefined {
   const value = (Array.isArray(header) ? header[0] : header)?.trim();
@@ -183,7 +183,7 @@ export function registerDataTableMutationRoutes(app: FastifyInstance, context: A
         true,
         versions,
       );
-      // The row's new version - what the next If-Match sends back (Specification_Data_API.md §5.3).
+      // The row's new version - what the next If-Match sends back (Data_API.md §5.3).
       if (versions[0]) reply.header("etag", `"${versions[0]}"`);
       return { data: results[0], ...(versions[0] && { meta: { version: versions[0] } }) };
     },

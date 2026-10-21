@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings › Share (Specification_Dashboards.md §9.5, D26): a dashboard's embeds - design one -
+ * Settings › Share (Dashboards.md §9.5, D26): a dashboard's embeds - design one -
  * its look, what each variable is (Editable, Hidden, Locked), the sites
  * that may frame it, its expiry - with a live preview of exactly that, then
  * save it as a public link or a signed embed for a portal; copy, change,
@@ -20,6 +20,8 @@ interface Embed {
   type: EmbedType
   display: { theme?: 'light' | 'dark' | 'auto', titled?: boolean, transparent?: boolean, refreshSeconds?: number | null, allowExport?: boolean, allowFiles?: boolean }
   variables: Record<string, EmbedVariableConfig>
+  /** The one widget it shows - null, the whole dashboard. */
+  widget: string | null
   origins: string[]
   expiresAt: string | null
   revokedAt: string | null
@@ -119,10 +121,21 @@ const KINDS = computed(() => [
   { label: t('dashboards.embedDrawer.kinds.signed'), value: 'SIGNED', description: t('dashboards.embedDrawer.kinds.signedHelp') }
 ])
 
+/** "The whole dashboard" in the Shows select - a select item can't hold null. */
+const WHOLE = 'WHOLE'
+const SHOWS = computed(() => [
+  { label: t('dashboards.embedDrawer.wholeDashboard'), value: WHOLE },
+  ...publishedWidgets.value.map(w => ({ label: widgetName(w), value: w.id }))
+])
+function widgetName(widget: { type: string, label: string | null }): string {
+  return widget.label || catalog.widgetLabel(widget.type as never)
+}
+
 const editingId = ref<string | null>(null)
 const form = reactive({
   name: '',
   type: 'LINK' as EmbedType,
+  widget: WHOLE as string,
   theme: 'auto' as 'auto' | 'light' | 'dark',
   titled: false,
   transparent: false,
@@ -161,6 +174,7 @@ function resetForm(embed?: Embed) {
   editingId.value = embed?.id ?? null
   form.name = embed?.name ?? ''
   form.type = embed?.type ?? 'LINK'
+  form.widget = embed?.widget ?? WHOLE
   form.theme = embed?.display.theme ?? 'auto'
   form.titled = embed?.display.titled ?? false
   form.transparent = embed?.display.transparent ?? false
@@ -175,6 +189,11 @@ function resetForm(embed?: Embed) {
     return [v.name, { mode: config?.mode ?? 'EDITABLE', text: toText(v, config?.value) }]
   }))
 }
+const widgetId = computed(() => (form.widget === WHOLE ? null : form.widget))
+// One widget shows its title unless the author turns it off - picked for a new embed, the title comes on.
+watch(() => form.widget, (value, previous) => {
+  if (!editingId.value && value !== WHOLE && previous === WHOLE) form.titled = true
+})
 // The variables arrive after the form opens: give each one its row.
 watch(published, (list) => {
   for (const v of list) form.variables[v.name] ??= { mode: 'EDITABLE', text: '' }
@@ -206,10 +225,11 @@ const display = computed(() => ({
  * The widgets whose click doesn't run in this embed (D6): an embed runs a FILTER on a variable its visitor may change
  * and a URL marked "also in embeds" - nothing that opens the App.
  */
-const clicksNotHere = computed(() => publishedWidgets.value.filter((widget) => {
+const clicksNotHere = computed(() => publishedWidgets.value.filter(widget => !widgetId.value || widget.id === widgetId.value).filter((widget) => {
   const click = widget.config.click as { action?: string, variable?: string, inEmbeds?: boolean } | undefined
   if (!click) return false
-  if (click.action === 'FILTER') return form.variables[click.variable ?? '']?.mode !== 'EDITABLE'
+  // One widget alone has no bar and nothing a filter would reach: only its URL clicks run.
+  if (click.action === 'FILTER') return Boolean(widgetId.value) || form.variables[click.variable ?? '']?.mode !== 'EDITABLE'
   if (click.action === 'URL') return click.inEmbeds !== true
   return true
 }).map(widget => widget.label || catalog.widgetLabel(widget.type as never)))
@@ -234,7 +254,7 @@ async function refreshPreview() {
   if (published.value.length === 0 && !(await hasPublishedVersion())) return
   try {
     const { data } = await api.post<{ token: string }>(`/dashboards/${props.dashboard.id}/embeds/preview`, {
-      data: { display: display.value, variables: variablesPayload(true) }
+      data: { display: display.value, variables: variablesPayload(true), widget: widgetId.value }
     })
     previewToken.value = data.token
     previewError.value = null
@@ -249,7 +269,7 @@ async function hasPublishedVersion(): Promise<boolean> {
   }
   return publishedOnce.value
 }
-watch([open, display, () => JSON.stringify(variablesPayload(true))], ([isOpen]) => {
+watch([open, display, widgetId, () => JSON.stringify(variablesPayload(true))], ([isOpen]) => {
   if (!isOpen) return
   clearTimeout(previewTimer)
   previewTimer = setTimeout(() => void refreshPreview(), 400)
@@ -301,6 +321,7 @@ async function save() {
     name: form.name.trim(),
     display: display.value,
     variables: variablesPayload(false),
+    widget: widgetId.value,
     origins: form.origins,
     expiresAt
   }
@@ -343,10 +364,13 @@ function signedPayload(embed: Embed): string {
 const missingLocked = (embed: Embed) => Object.entries(embed.variables)
   .filter(([name, c]) => c.mode === 'LOCKED' && published.value.length > 0 && !published.value.some(v => v.name === name))
   .map(([name]) => name)
+/** Its one widget, as the live version names it - undefined when that version no longer has it. */
+const shownWidget = (embed: Embed) => (embed.widget ? publishedWidgets.value.find(w => w.id === embed.widget) : undefined)
+const widgetGone = (embed: Embed) => Boolean(embed.widget) && publishedWidgets.value.length > 0 && !shownWidget(embed)
 function status(embed: Embed): { label: string, color: 'success' | 'neutral' | 'warning' | 'error' } {
   if (embed.revokedAt) return { label: t('dashboards.embedDrawer.status.revoked'), color: 'neutral' }
   if (embed.expiresAt && new Date(embed.expiresAt) <= new Date()) return { label: t('dashboards.embedDrawer.status.expired'), color: 'neutral' }
-  if (missingLocked(embed).length > 0) return { label: t('dashboards.embedDrawer.status.needsUpdate'), color: 'error' }
+  if (missingLocked(embed).length > 0 || widgetGone(embed)) return { label: t('dashboards.embedDrawer.status.needsUpdate'), color: 'error' }
   return { label: t('common.active'), color: 'success' }
 }
 /** `copied`: the toast once it's on the clipboard ("Link copied"). */
@@ -361,6 +385,8 @@ async function copy(text: string, copied: string) {
 /** A literal closing script tag would end this component's own <script> block. */
 const SCRIPT_CLOSE = '<' + '/script>'
 function iframeSnippet(embed: Embed): string {
+  // One widget fills the frame the site sizes - no resize to listen to.
+  if (embed.widget) return `<iframe src="${embedUrl(embed)}" style="width:100%;height:240px;border:0" title="${props.dashboard.name}"></iframe>`
   return `<iframe src="${embedUrl(embed)}" style="width:100%;border:0" title="${props.dashboard.name}"></iframe>
 <script>
   // Sizes the frame to the dashboard (totalbase:embed:resize).
@@ -519,6 +545,17 @@ onMounted(() => {
               :items="KINDS"
             />
           </UFormField>
+          <UFormField
+            :label="t('dashboards.embedDrawer.shows')"
+            :description="t('dashboards.embedDrawer.showsHelp')"
+          >
+            <USelect
+              v-model="form.widget"
+              :items="SHOWS"
+              class="w-full"
+              :aria-label="t('dashboards.embedDrawer.shows')"
+            />
+          </UFormField>
           <div class="flex gap-3">
             <UFormField
               :label="t('dashboards.embedDrawer.theme')"
@@ -546,7 +583,7 @@ onMounted(() => {
           <div class="flex flex-col gap-2">
             <UCheckbox
               v-model="form.titled"
-              :label="t('dashboards.embedDrawer.showTitle')"
+              :label="widgetId ? t('dashboards.embedDrawer.showWidgetTitle') : t('dashboards.embedDrawer.showTitle')"
             />
             <UCheckbox
               v-model="form.transparent"
@@ -702,6 +739,18 @@ onMounted(() => {
                 variant="subtle"
               />
             </div>
+            <p
+              v-if="shownWidget(embed)"
+              class="text-xs text-muted"
+            >
+              {{ t('dashboards.embedDrawer.showsWidget', { widget: widgetName(shownWidget(embed)!) }) }}
+            </p>
+            <p
+              v-if="widgetGone(embed)"
+              class="text-xs text-error"
+            >
+              {{ t('dashboards.embedDrawer.widgetMissing') }}
+            </p>
             <p class="text-xs text-muted">
               {{ embed.lastUsedAt ? t('dashboards.embedDrawer.lastUsed', { date: dates.dateTime(embed.lastUsedAt) }) : t('dashboards.embedDrawer.notUsed') }}{{ embed.expiresAt ? t('dashboards.embedDrawer.expiresOn', { date: dates.dateTime(embed.expiresAt) }) : '' }}
             </p>
@@ -811,7 +860,8 @@ onMounted(() => {
         />
         <div
           v-else-if="previewSrc"
-          class="relative h-full min-h-[60vh] shrink-0"
+          class="relative shrink-0"
+          :class="widgetId ? 'h-60' : 'h-full min-h-[60vh]'"
           :style="{ width: DEVICE_WIDTH[device] }"
         >
           <iframe

@@ -54,7 +54,7 @@ const PERMISSION_COLUMNS = "id, role, resource, action, effect, where_clause, fi
 
 /**
  * Admin CRUD for totalbase.permissions, including its
- * field_overrides/payload_checks jsonb columns (Specification_Security.md §5.3:
+ * field_overrides/payload_checks jsonb columns (Security.md §5.3:
  * "PUT/DELETE /roles/{role}/resources/{resource}/permissions/{action}").
  * This is the only way to grant/revoke access short of hand-editing the
  * database - @totalbase/permissions' EffectivePermissionService only
@@ -87,7 +87,7 @@ export class PermissionsService {
     return rows.map((row) => this.toPermission(row));
   }
 
-  /** Upserts one (role, resource, action) permission - the atomic unit Specification_Security.md §5.3 describes. */
+  /** Upserts one (role, resource, action) permission - the atomic unit Security.md §5.3 describes. */
   async set(
     roleId: string,
     resourceId: string,

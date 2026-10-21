@@ -182,7 +182,7 @@ function removeIndex(idx: DraftIndex) {
 }
 
 // Whether TotalBase's PostgreSQL role owns the table
-// (Specification_Administration.md §3.15). When it doesn't, the drawer still
+// (Administration.md §3.15). When it doesn't, the drawer still
 // shows the structure but offers no change - PostgreSQL would refuse it.
 const ownership = ref<Pick<RelationDetail, 'owner' | 'canAlter'> | null>(null)
 const notOwned = computed(() => ownership.value?.canAlter === false)

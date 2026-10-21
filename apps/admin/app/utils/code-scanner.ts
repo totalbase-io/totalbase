@@ -1,5 +1,5 @@
 /**
- * What the Scanner widget (TScanner, Specification_DataViews.md §9.9) reads
+ * What the Scanner widget (TScanner, DataViews.md §9.9) reads
  * codes with - kept apart from the component so the timing and the format
  * mapping are tested on their own:
  *

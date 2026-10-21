@@ -111,7 +111,7 @@ test('a report built, published and deleted through the editor', async ({ page, 
   await expect(card(page, 'Ventas')).toContainText(/1[.,]3K/)
   await expect(card(page, 'Clientes').getByRole('cell', { name: 'Acme SA' })).toBeVisible()
 
-  // --- Phone preview: a KPI half a row, any other widget the whole row (Specification_Dashboards.md §7.2) ---
+  // --- Phone preview: a KPI half a row, any other widget the whole row (Dashboards.md §7.2) ---
   await page.goto(editorUrl)
   await main.getByRole('button', { name: 'Phone' }).click()
   // Re-flowed (an animation): the table the phone canvas' width, the KPI half of it.

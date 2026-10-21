@@ -5,8 +5,8 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Regression (Beta_Findings 4.8): a grant's row filter through a relation - an order's `technician.owner`, a part's
- * `work_order.technician.owner` - holds on writes as on reads (Specification_Security.md §6.5, §6.6). The write
+ * Regression: a grant's row filter through a relation - an order's `technician.owner`, a part's
+ * `work_order.technician.owner` - holds on writes as on reads (Security.md §6.5, §6.6). The write
  * compiler refused any relation path (400 INVALID_RELATION), so a technician could update none of their orders.
  * Now the OLD row is checked in the statement's WHERE and the NEW one by __authorized, each following the foreign
  * keys; a request's own `where` on a write still names the table's own columns only.
@@ -23,8 +23,8 @@ describe("a row filter through a relation, on writes", () => {
   const TECHS = "row_filter_relation_write_techs";
   const ORDERS = "row_filter_relation_write_orders";
   const PARTS = "row_filter_relation_write_parts";
-  const send = (method: "POST" | "PATCH", url: string, payload: unknown) =>
-    app.inject({ method, url, headers: { authorization: `Bearer ${key}` }, payload: payload as Record<string, unknown> });
+  const send = (method: "POST" | "PATCH" | "DELETE", url: string, payload?: unknown) =>
+    app.inject({ method, url, headers: { authorization: `Bearer ${key}` }, ...(payload !== undefined && { payload: payload as Record<string, unknown> }) });
 
   beforeAll(async () => {
     ({ app, context, database } = await setupTestApp());
@@ -39,7 +39,7 @@ describe("a row filter through a relation, on writes", () => {
     )).rows[0]!.id;
     const techsId = await register(TECHS, ["GET"]);
     const ordersId = await register(ORDERS, ["GET", "PATCH"]);
-    const partsId = await register(PARTS, ["GET", "POST"]);
+    const partsId = await register(PARTS, ["GET", "POST", "DELETE"]);
     resourceIds.push(techsId, ordersId, partsId);
 
     roleId = (await context.roles.create("row-filter-relation-write-role", { apiAccess: true })).id;
@@ -49,6 +49,7 @@ describe("a row filter through a relation, on writes", () => {
     await context.permissions.set(roleId, ordersId, "UPDATE", { effect: "ALLOW", where: mine, fields: fields(["technician", "name"]) });
     await context.permissions.set(roleId, partsId, "CREATE", { effect: "ALLOW", where: { "work_order.technician.owner": { _eq: "$USER.id" } }, fields: fields(["work_order", "quantity"]) });
     await context.permissions.set(roleId, partsId, "READ", { effect: "ALLOW", where: { "work_order.technician.owner": { _eq: "$USER.id" } }, fields: fields(["id", "work_order", "quantity"]) });
+    await context.permissions.set(roleId, partsId, "DELETE", { effect: "ALLOW", where: { "work_order.technician.owner": { _eq: "$USER.id" } } });
     await database.query(`INSERT INTO totalbase.roles_capabilities (role, capability, effect) VALUES ($1, 'TRANSACTIONS', 'ALLOW')`, [roleId]);
 
     const caller = await createTestApiToken(context, { name: "row-filter-relation-write", roleId, email: "row-filter-relation-write@example.com" });
@@ -94,6 +95,17 @@ describe("a row filter through a relation, on writes", () => {
     const refused = await send("POST", `/api/public/table/${PARTS}`, { data: { work_order: 2, quantity: 2 } });
     expect([refused.statusCode, refused.json().errors?.[0]?.code]).toEqual([403, "ACTION_DENIED"]);
     expect((await database.query(`SELECT count(*)::int AS n FROM public.${PARTS} WHERE work_order = 2`)).rows[0]).toEqual({ n: 0 });
+  });
+
+  it("deletes a part of the caller's order through two relations, and never one of another's", async () => {
+    const [mine, theirs] = (await database.query<{ id: number }>(
+      `INSERT INTO public.${PARTS} (work_order, quantity) VALUES (1, 5), (2, 5) RETURNING id`,
+    )).rows.map((row) => row.id);
+    expect((await send("DELETE", `/api/public/table/${PARTS}/${theirs}`)).statusCode).toBe(404);
+    expect((await database.query(`SELECT count(*)::int AS n FROM public.${PARTS} WHERE id = $1`, [theirs])).rows[0]).toEqual({ n: 1 });
+    const res = await send("DELETE", `/api/public/table/${PARTS}/${mine}`);
+    expect([200, 204], res.body).toContain(res.statusCode);
+    expect((await database.query(`SELECT count(*)::int AS n FROM public.${PARTS} WHERE id = $1`, [mine])).rows[0]).toEqual({ n: 0 });
   });
 
   it("keeps a request's own where on a write to the table's columns", async () => {

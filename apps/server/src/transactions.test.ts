@@ -8,7 +8,7 @@ const SUFFIX = uniqueSuffix();
 
 /**
  * Route-level acceptance tests for Transactions
- * (Specification_Data_API.md §8).
+ * (Data_API.md §8).
  */
 describe("Transactions", () => {
   let app: FastifyInstance;

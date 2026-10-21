@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One column's value, picked as the table says, read live (Specification_DataViews.md §5.15) - a CHECK list a
+ * One column's value, picked as the table says, read live (DataViews.md §5.15) - a CHECK list a
  * select, a foreign key a select showing and searched by its row presentation, a boolean a switch, a number, a date
  * or text an input. What the bulk edit panel sets each chosen field with.
  */

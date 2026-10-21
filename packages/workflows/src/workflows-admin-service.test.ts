@@ -24,7 +24,7 @@ function definitionWith(marker: string): Record<string, unknown> {
 }
 const markerOf = (definition: Record<string, unknown>) => (definition.operations as { label: string }[])[1]?.label;
 
-describe("WorkflowsAdminService versioning (integration, Specification.md §13)", () => {
+describe("WorkflowsAdminService versioning (integration, Foundations.md §13)", () => {
   let database: Database;
   let workflows: WorkflowsAdminService;
   let id: string;

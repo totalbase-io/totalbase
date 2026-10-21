@@ -113,7 +113,7 @@ describe("POST /admin/api/users", () => {
       } },
     });
     expect(res.statusCode).toBe(400);
-    // Not INVALID_QUERY: nothing was a query (MCP_Demo_Findings.md F17).
+    // Not INVALID_QUERY: nothing was a query.
     expect(res.json().errors[0].code).toBe("PASSWORD_TOO_SHORT");
   });
 });

@@ -21,7 +21,7 @@ describe("what a formula and a filter name", () => {
   });
 });
 
-// Specification_DataViews.md §4.8: a dropped or renamed column a DataView still names.
+// DataViews.md §4.8: a dropped or renamed column a DataView still names.
 describe("brokenDataViewReferences (integration)", () => {
   let database: Database;
   let dataviews: DataViewsAdminService;

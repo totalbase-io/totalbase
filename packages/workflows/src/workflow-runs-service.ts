@@ -18,7 +18,7 @@ export interface WorkflowRunRecord {
   executor: unknown;
   result: unknown;
   error: unknown;
-  /** The run followed at least one connected `error` output (Specification_Workflows.md §8.3) - it may still have SUCCEEDED. */
+  /** The run followed at least one connected `error` output (Workflows.md §8.3) - it may still have SUCCEEDED. */
   hasHandledErrors: boolean;
   historyEnabled: boolean;
   historyLevel: "SUMMARY" | "DETAILED";
@@ -71,7 +71,7 @@ const toStep = (row: StepRow): WorkflowRunStepRecord => ({
 
 /**
  * Persistence for workflows_runs/_steps - the runtime tables
- * (specs/Specification_Workflows.md §2, §8.3). Deliberately
+ * (specs/Workflows.md §2, §8.3). Deliberately
  * has no control-flow logic of its own (no binding resolution, no graph
  * walking) - the execution engine (apps/server/src/workflow-execution/*,
  * which needs mutation-service.ts/query-engine/AppContext to actually run
@@ -98,7 +98,7 @@ export class WorkflowRunsService {
 
   /**
    * Creates a DATA_EVENT run only if its admission claim is new
-   * (Specification_Workflows.md §6.3.5): one statement inserts the claim
+   * (Workflows.md §6.3.5): one statement inserts the claim
    * into `outbox_admissions` (ON CONFLICT DO NOTHING) and the run
    * only when the claim was inserted, so PostgreSQL decides atomically -
    * a retried outbox event, or two dispatchers racing over one, never
@@ -151,7 +151,7 @@ export class WorkflowRunsService {
 
   /**
    * The newest scheduled run of a CRON workflow still RUNNING within its
-   * deadline (Specification_Workflows.md §6.4.3) - an occurrence is skipped
+   * deadline (Workflows.md §6.4.3) - an occurrence is skipped
    * while one exists. On-demand runs of the same workflow (initiator a
    * person, not the schedule) and runs past their deadline (a dead process,
    * left for recovery) do not count.
@@ -167,7 +167,7 @@ export class WorkflowRunsService {
   }
 
   /**
-   * A CRON workflow's last scheduled occurrence (Specification_Workflows.md
+   * A CRON workflow's last scheduled occurrence (Workflows.md
    * §6.4.3): the newest occurrence claim, or the newest scheduled run's
    * `scheduledAt` - whichever is later, since claims are purged after 2
    * days and runs per the history policy. Null when neither remains.
@@ -296,7 +296,7 @@ export class WorkflowRunsService {
   }
 
   /**
-   * Fail-closed crash recovery (specs/Specification_Workflows.md §8.6):
+   * Fail-closed crash recovery (specs/Workflows.md §8.6):
    * a run/step still PENDING/RUNNING past its own
    * `expires_at` deadline means the process that was executing it died
    * (today's engine is purely synchronous - nothing else ever leaves a
@@ -321,7 +321,7 @@ export class WorkflowRunsService {
   }
 
   /**
-   * History retention (Specification_Workflows.md §9.4): a disabled-history run's whole row
+   * History retention (Workflows.md §9.4): a disabled-history run's whole row
    * is purged 24h after it finishes regardless of level; an enabled-
    * history run is purged after its own level's retention window
    * (SUMMARY/DETAILED have independently configured days - DETAILED's

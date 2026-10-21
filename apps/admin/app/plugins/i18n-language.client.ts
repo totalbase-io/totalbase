@@ -2,7 +2,7 @@ import { isUiLanguage } from '@totalbase/shared'
 import { storedPublicLanguage } from '~/utils/public-language'
 
 /**
- * The UI's language (Specification_Admin_UI.md §14): the signed-in user's
+ * The UI's language (Admin_UI.md §14): the signed-in user's
  * (`display.language` from /auth/me - their choice in My account, else the
  * instance's), following it when it changes; with nobody signed in - the
  * sign-in and the other public pages - the visitor's choice in this browser (LanguageButton.vue), else the

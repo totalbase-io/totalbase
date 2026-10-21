@@ -3,7 +3,7 @@ import type { Database } from "@totalbase/database";
 
 /**
  * Registers /health/live and /health/ready.
- * See Specification.md §17.
+ * See Foundations.md §17.
  */
 export function registerHealthRoutes(app: FastifyInstance, database: Database): void {
   // Live: process alive, Fastify responds. No dependency checks.

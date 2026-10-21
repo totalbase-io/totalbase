@@ -38,7 +38,7 @@ export interface ResolvedPath {
 /**
  * Resolves a dotted field path into a table alias + column, creating
  * (or reusing) LEFT JOINs for each relation hop. See
- * Specification_Data_API.md §3.4.
+ * Data_API.md §3.4.
  */
 export async function resolvePath(
   schemaContext: SchemaContext,

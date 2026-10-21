@@ -22,7 +22,7 @@ import type { Database } from "@totalbase/database";
  * per Database instance: the flag is restricted to the reserved roles (a
  * CHECK constraint) no request can edit, so the set can't change at
  * runtime - the one definition the permission services share
- * (Specification.md §4.6 on per-process state).
+ * (Foundations.md §4.6 on per-process state).
  */
 const ADMIN_ROLE_IDS = new WeakMap<Database, Promise<Set<string>>>();
 

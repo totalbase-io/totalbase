@@ -2,7 +2,7 @@
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
  * Configures a `totalbase.send-email` node's `configuration`
- * (Specification_Workflows.md §5.16): recipients (to/cc/bcc/replyTo) and
+ * (Workflows.md §5.16): recipients (to/cc/bcc/replyTo) and
  * either an inline message - subject plus a plain-text, HTML (RichTextEditor)
  * or both body - or a MAILING `template` rendered with `data`. Every field
  * accepts `{{stepKey.data.field}}` templates, resolved at run time. A

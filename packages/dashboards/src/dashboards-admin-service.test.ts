@@ -261,7 +261,7 @@ describe("DashboardsAdminService (integration)", () => {
       expect((await dashboards.listPublished([roleA])).map((d) => d.slug)).not.toContain("dashboards-pkg-test-draft");
     });
   });
-  describe("variables ($USER.* / $VAR.*, Specification_Dashboards.md §3)", () => {
+  describe("variables ($USER.* / $VAR.*, Dashboards.md §3)", () => {
     let userId: string;
     const VARIABLES = [
       { name: "status", label: "Status", type: "SELECT", options: { source: "STATIC", values: ["PAID", "PENDING"] } },
@@ -386,7 +386,7 @@ describe("DashboardsAdminService (integration)", () => {
       await expectCode(dashboards.update(dashboardId, { variables: [{ name: "s", type: "SELECT" }] }), "DASHBOARD_VARIABLE_INVALID");
     });
   });
-  describe("versions (Specification.md §13)", () => {
+  describe("versions (Foundations.md §13)", () => {
     let id: string;
     beforeAll(async () => {
       id = (await dashboards.create({ name: "dashboards pkg test versions", slug: "dashboards-pkg-test-versions" })).id;

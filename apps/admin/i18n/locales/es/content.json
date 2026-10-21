@@ -218,7 +218,8 @@
         "AUDIT_PURGE": "Purga del registro",
         "IMPORT": "Importar",
         "EXPORT": "Exportar",
-        "PRINT": "Imprimir"
+        "PRINT": "Imprimir",
+        "BACKUP": "Backup"
       },
       "securityViews": {
         "failed-sign-ins": "Inicios de sesión fallidos",

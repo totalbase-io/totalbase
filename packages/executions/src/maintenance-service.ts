@@ -8,7 +8,7 @@ import { ExecutionsService, type ExecutionRecord } from "./executions-service.js
 import { EXECUTION_CANCELLED } from "./executor-error.js";
 
 /**
- * PostgreSQL maintenance (Specification_Administration.md §6): VACUUM /
+ * PostgreSQL maintenance (Administration.md §6): VACUUM /
  * ANALYZE / REINDEX CONCURRENTLY queued - one table, or a batch of them -
  * as MAINTENANCE executions for the dedicated maintenance worker, their
  * progress read back from pg_stat_progress_*. This service owns the queue:
@@ -30,7 +30,7 @@ export interface MaintenanceRequest {
 
 export const MAINTENANCE_EXECUTION_TYPE = "MAINTENANCE";
 
-/** Error code of a batch item an administrator stopped - its execution ends CANCELLED (Specification_Data_API.md §10.5). */
+/** Error code of a batch item an administrator stopped - its execution ends CANCELLED (Data_API.md §10.5). */
 export const MAINTENANCE_CANCELLED = EXECUTION_CANCELLED;
 
 export interface MaintenanceProgress {

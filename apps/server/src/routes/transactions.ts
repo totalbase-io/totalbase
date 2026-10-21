@@ -8,10 +8,10 @@ import { checkTransactionRequest, executeTransaction, type TransactionRequest } 
 import { queueAsyncCall, TRANSACTION_EXECUTION_TYPE, wantsAsync } from "../async-calls.js";
 
 /**
- * Transactions (Specification_Data_API.md §8): combines
+ * Transactions (Data_API.md §8): combines
  * independent CREATE/UPDATE/DELETE operations, possibly across different
  * resources, into one atomic PostgreSQL transaction. Not exposed through
- * the schema/resource convention (Specification_Data_API.md §8).
+ * the schema/resource convention (Data_API.md §8).
  */
 export function registerTransactionRoutes(app: FastifyInstance, context: AppContext): void {
   app.post<{ Body: TransactionRequest }>("/api/transactions", {
@@ -67,7 +67,7 @@ export function registerTransactionRoutes(app: FastifyInstance, context: AppCont
       context.settings.get("api.max_relation_depth"),
     ]);
     const limits = { maxFilterDepth, maxRelationDepth };
-    // `Prefer: respond-async` (Specification_Data_API.md §10.4): checked now, run by the executions worker.
+    // `Prefer: respond-async` (Data_API.md §10.4): checked now, run by the executions worker.
     const async = wantsAsync(request.headers);
 
     const response = await withIdempotency(

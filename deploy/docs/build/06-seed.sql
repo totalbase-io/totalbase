@@ -1,4 +1,4 @@
--- Seed rows (Docs_Demo_Field_Service.md §10). Dates are offsets from the demo day (today at 00:00),
+-- Seed rows (DATASET.md §10). Dates are offsets from the demo day (today at 00:00),
 -- random() runs from a fixed seed and ids are md5 of a stable key: every reset yields the same rows,
 -- only their dates move with the day.
 CREATE OR REPLACE FUNCTION pg_temp.uid(k text) RETURNS uuid LANGUAGE sql IMMUTABLE AS $$ SELECT md5('acme:' || k)::uuid $$;

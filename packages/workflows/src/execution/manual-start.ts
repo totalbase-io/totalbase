@@ -1,6 +1,6 @@
 import { TotalBaseError } from "@totalbase/errors";
 
-/** One field of a MANUAL Start's input form (Specification_Workflows.md §6.2). */
+/** One field of a MANUAL Start's input form (Workflows.md §6.2). */
 export interface ManualInputField {
   name: string;
   label?: string;

@@ -1,8 +1,9 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test'
 import { login, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
- * Settings > Appearance (Specification_Admin_UI.md §4.1.1, §3.6), through
+ * Settings > Appearance (Admin_UI.md §4.1.1, §3.6), through
  * the real UI: a primary color, the sign-in layout and custom CSS saved
  * from the page, then seen on the sign-in page itself - and `?safe-css`
  * loading without the sheet. The API only reads back and cleans up.
@@ -11,7 +12,7 @@ import { login, watchApiFailures } from './helpers.js'
 const expect = baseExpect.configure({ timeout: 15_000 })
 test.describe.configure({ timeout: 120_000 })
 
-const BASE = 'http://localhost:3050'
+const BASE = BASE_URL
 const SAVE = (page: Page) => page.getByRole('button', { name: 'Save', exact: true })
 
 async function api<T = unknown>(page: Page, token: string, method: string, path: string, data?: unknown): Promise<T> {

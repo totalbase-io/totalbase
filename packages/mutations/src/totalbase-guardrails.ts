@@ -86,7 +86,7 @@ export function protectedFieldDecision(
 
 /**
  * Tables written by administrators only, whatever a role's grant on them
- * says (Specification_Security.md §10.2, §10.3). Readable under
+ * says (Security.md §10.2, §10.3). Readable under
  * ordinary permissions like any exposed table.
  *
  * - Rows that grant access: data permissions, the transactions
@@ -117,7 +117,7 @@ const ADMIN_WRITTEN_TABLES = new Set([
   "outbox",
   "idempotency_keys",
   "executions",
-  // An attestation of who holds a role (Specification_Security.md §1.8).
+  // An attestation of who holds a role (Security.md §1.8).
   "roles_reviews",
 ]);
 
@@ -170,7 +170,7 @@ function isUsersTable(root: ResolvedResource): boolean {
 
 /**
  * Columns on totalbase.users that are account security state or
- * the sign-in identity (Specification_Security.md §10.2): only an
+ * the sign-in identity (Security.md §10.2): only an
  * administrator writes them through the Data API, whatever a role's field
  * grant says - on someone else's account and on one's own. A delegated
  * manager could otherwise verify an address, unlock an account an
@@ -309,7 +309,7 @@ export async function assertRolesAssignable(database: Queryable, roleIds: string
 }
 
 /**
- * Who is writing, for the rules that depend on it (Specification_Security.md §9.4):
+ * Who is writing, for the rules that depend on it (Security.md §9.4):
  * an administrator is exempt; anyone else acts as
  * `actorUserId` holding `roleIds`.
  */
@@ -391,7 +391,7 @@ export function assertRoleOwnership(root: ResolvedResource, row: Record<string, 
  * audit entry, like the Admin API's access events ("role.update",
  * "token.delete") - so the Logs security views, which filter by event,
  * keep showing them once these writes moved onto the Data API
- * (Specification_Security.md §10).
+ * (Security.md §10).
  */
 const ACCESS_EVENT_PREFIXES: Record<string, string> = {
   users: "user",

@@ -9,7 +9,7 @@ import { TotalBaseError } from "@totalbase/errors";
  */
 
 /** Sign-in attempts: the public API, the portal and OAuth (apps/server's ACCESS_EVENTS). */
-export const SIGN_IN_EVENTS = ["auth.login", "auth.portal_login", "auth.oauth_login"] as const;
+export const SIGN_IN_EVENTS = ["auth.login", "auth.portal_login", "auth.oauth_login", "auth.mfa_verify", "auth.portal_mfa_verify"] as const;
 
 export const MAX_INSIGHTS_DAYS = 366;
 

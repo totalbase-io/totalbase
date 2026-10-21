@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * DataView creation wizard (Specification_DataViews.md §3.1) on the product's WizardModal (AGENTS.md "Multi-step
+ * DataView creation wizard (DataViews.md §3.1) on the product's WizardModal (AGENTS.md "Multi-step
  * wizards"). Its steps are the settings page's sections, in their order and with their components (§3.6): Type
  * (only here - grouped by what each is for) · General · Data · Views · Form · Actions · Security. A step that
  * doesn't apply is skipped: a page and a frame have no Views, Form or Actions; SETTINGS no Views or Form.
@@ -165,7 +165,7 @@ watch(viewType, (type) => {
   features.value = Object.fromEntries(catalog.map(f => [f.key, f.default]))
 }, { immediate: true })
 
-// How the Edit form opens (Specification_DataViews.md §6.3) - same setting the Design form's
+// How the Edit form opens (DataViews.md §6.3) - same setting the Design form's
 // "View settings" section edits later; the wizard just picks a starting
 // value instead of leaving every new DataView to default silently.
 const editPresentation = ref<EditPresentation>('SIDEBAR')
@@ -288,7 +288,7 @@ const STEP_VALID: Record<StepKey, ComputedRef<boolean>> = {
   actions: computed(() => true),
   security: computed(() => true)
 }
-// --- Preview: what the DataView will read (Specification_DataViews.md §4) - the
+// --- Preview: what the DataView will read (DataViews.md §4) - the
 // selected columns, always with the primary key, ordered by it. A Filter
 // and a default sort come later, in Settings.
 const dataApi = useDataApi()
@@ -459,7 +459,7 @@ async function createCustom() {
 /** Each column's control and help as the Columns step left them - its title is its table's column's. */
 function fieldOverridesOf(rows: readonly WizardColumnRow[]): NonNullable<CreateDataViewBody['fieldOverrides']> {
   return Object.fromEntries(rows.map(c => [c.name, {
-    // Only a widget picked here: left as its column's, the form follows the column (Specification_DataViews.md §15.2).
+    // Only a widget picked here: left as its column's, the form follows the column (DataViews.md §15.2).
     ...(c.widget !== c.columnWidget ? { widget: c.widget } : {}),
     ...(c.help.trim() ? { help: c.help.trim() } : {})
   }]))

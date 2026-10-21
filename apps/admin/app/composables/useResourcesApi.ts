@@ -25,7 +25,7 @@ function resourceFromRow(row: Record<string, unknown>): Resource {
 
 /**
  * TotalBase's resource registry (resources) through the Data API
- * (Specification_Security.md §10) - an administrator reads every row;
+ * (Security.md §10) - an administrator reads every row;
  * anyone else, what their permissions allow. Changing a resource
  * (description, exposure, audit) still goes through the Admin API.
  */

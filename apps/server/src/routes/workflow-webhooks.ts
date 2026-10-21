@@ -13,7 +13,7 @@ interface DefinitionOperation {
 
 /**
  * Fixed 60 requests/IP/minute for PUBLIC webhook admission (specs/
- * Specification_Workflows.md §13.2) - a dedicated limiter, not
+ * Workflows.md §13.2) - a dedicated limiter, not
  * the general `security.rate_limit_*` settings (hardening.ts), which
  * govern the rest of the API and could be turned off or configured to a
  * different number entirely; this one is a mandatory, non-configurable
@@ -48,7 +48,7 @@ class PublicWebhookRateLimiter {
 const SYNC_TIMEOUT = Symbol("sync-timeout");
 
 /**
- * The WEBHOOK trigger's public HTTP surface (Specification_Workflows.md §13.2):
+ * The WEBHOOK trigger's public HTTP surface (Workflows.md §13.2):
  * `GET|POST /api/workflows/{slug}/webhook`. A workflow-authored
  * `access: PUBLIC|AUTHENTICATED` choice and `response_mode: SYNC|ASYNC`
  * choice on its own Start operation drive everything below - there is no
@@ -124,7 +124,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
     // step) - same "workflow authorship already has this trust level"
     // reasoning already applied to Execute SQL/Execute JavaScript. They
     // never come back to the caller either: a SYNC response is the run's
-    // outcome only, not its steps (Specification_Workflows.md §13.2).
+    // outcome only, not its steps (Workflows.md §13.2).
     // Deliberately WEBHOOK-only - the internal `/api/workflows/{slug}/run`
     // route already carries a real authenticated `initiator`, so caller
     // metadata there is far lower value and was left out.
@@ -163,7 +163,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
     const timeoutAction = (config.timeout_action as "CONTINUE" | "CANCEL" | undefined) ?? "CONTINUE";
     const configuredWaitSeconds = (config.wait_seconds as number | undefined) ?? 0;
     const maxSyncWaitMs = await context.settings.get("workflows.max_sync_wait_ms");
-    // "A workflow value of 0 selects this maximum" (Specification_Workflows.md §8.5) - and
+    // "A workflow value of 0 selects this maximum" (Workflows.md §8.5) - and
     // the server never honors a configured wait longer than that maximum
     // either, regardless of what a workflow's own draft was saved with.
     const effectiveWaitMs = configuredWaitSeconds > 0 ? Math.min(configuredWaitSeconds * 1000, maxSyncWaitMs) : maxSyncWaitMs;
@@ -177,9 +177,9 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
       // CONTINUE: `runPromise` above is already running independently of
       // this response and needs nothing further. CANCEL: cooperative -
       // the next step boundary inside engine.ts's `walk()` observes this
-      // and stops starting further work (Specification_Workflows.md §8.5). A client
+      // and stops starting further work (Workflows.md §8.5). A client
       // disconnect never sets this - only an explicit CANCEL timeout
-      // action does (Specification_Workflows.md §13.2: "a client disconnect is treated as
+      // action does (Workflows.md §13.2: "a client disconnect is treated as
       // Continue because it does not prove the caller asked to cancel").
       if (timeoutAction === "CANCEL") cancelToken.cancelled = true;
       reply.code(504);
@@ -191,7 +191,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
 
     // The outcome only, never the steps (their live inputs/results and this
     // request's own headers): the workflow author decides what a caller
-    // gets through the Finish step's result (Specification_Workflows.md §13.2).
+    // gets through the Finish step's result (Workflows.md §13.2).
     return { data: toRunResult((outcome as WorkflowRunOutcome).run) };
   };
 
@@ -201,7 +201,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
   /**
    * "An authenticated initiator may retrieve the final result of its own
    * run through the workflow-run result endpoint for 24 hours"
-   * (Specification_Workflows.md §13.3) - rechecks identity and the invocation grant on every call
+   * (Workflows.md §13.3) - rechecks identity and the invocation grant on every call
    * rather than trusting a knowable UUID, and returns only status/result/
    * error, never the full step history (that stays admin-only, via
    * whatever history surface exists for that - "it never returns detailed

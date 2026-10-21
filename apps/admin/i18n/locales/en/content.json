@@ -218,7 +218,8 @@
         "AUDIT_PURGE": "Log purge",
         "IMPORT": "Import",
         "EXPORT": "Export",
-        "PRINT": "Print"
+        "PRINT": "Print",
+        "BACKUP": "Backup"
       },
       "securityViews": {
         "failed-sign-ins": "Failed sign-ins",

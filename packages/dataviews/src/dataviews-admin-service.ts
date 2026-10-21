@@ -11,6 +11,7 @@ import type {
   CreateDataViewInput,
   DataViewsContext,
   DetailCandidate,
+  JunctionCandidate,
   SyncFieldsResult,
   UpdateDataViewInput,
   UpdateFieldInput,
@@ -22,6 +23,7 @@ import * as columns from "./dataviews-columns.js";
 import * as widgets from "./dataviews-widgets.js";
 import * as crud from "./dataviews-crud.js";
 import * as masterDetail from "./dataviews-master-detail.js";
+import * as junctions from "./dataviews-junctions.js";
 import * as versions from "./dataviews-versions.js";
 import * as presentation from "./dataviews-presentation.js";
 
@@ -34,7 +36,7 @@ export * from "./dataviews-types.js";
  * wizard's steps 1-2 (identity, source) plus the auto-population that
  * makes a freshly-created DataView already usable with the TABLE
  * layout, before the Design form (a later step) exists.
- * See Specification_DataViews.md.
+ * See DataViews.md.
  *
  * A façade: each responsibility lives in its own module (`dataviews-read`,
  * `-access`, `-fields`, `-columns`, `-widgets`, `-crud`, `-master-detail`,
@@ -94,7 +96,7 @@ export class DataViewsAdminService {
     return read.getWithStatus(this.ctx, id);
   }
 
-  // --- Object access (dataviews-access.ts, Specification_Security.md §7.1)
+  // --- Object access (dataviews-access.ts, Security.md §7.1)
 
   listRoles(dataviewId: string): Promise<string[]> {
     return access.listRoles(this.ctx, dataviewId);
@@ -185,6 +187,16 @@ export class DataViewsAdminService {
     return masterDetail.listDetailCandidates(this.ctx, masterResourceId);
   }
 
+  /** The junction tables linking `recordResourceId` to another table - a form field's Junction table (DataViews.md §8.5). */
+  listJunctions(recordResourceId: string): Promise<JunctionCandidate[]> {
+    return junctions.listJunctions(this.ctx, recordResourceId);
+  }
+
+  /** One junction table of `recordResourceId`, by id - null when it isn't one (any more). */
+  getJunction(recordResourceId: string, junctionResourceId: string): Promise<JunctionCandidate | null> {
+    return junctions.getJunction(this.ctx, recordResourceId, junctionResourceId);
+  }
+
   update(id: string, patch: UpdateDataViewInput): Promise<AdminDataView> {
     return crud.updateDataView(this.ctx, id, patch);
   }
@@ -198,19 +210,19 @@ export class DataViewsAdminService {
     return crud.updateCode(this.ctx, dataviewId, code);
   }
 
-  /** Save as (Specification.md §13.4): a NEW DataView whose draft is version `version`'s content - see `duplicateVersion`. */
+  /** Save as (Foundations.md §13.4): a NEW DataView whose draft is version `version`'s content - see `duplicateVersion`. */
   duplicateVersion(dataviewId: string, version: number, input: { name: string; slug?: string | undefined }): Promise<AdminDataView> {
     return crud.duplicateVersion(this.ctx, dataviewId, version, input);
   }
 
   // --- Versions (dataviews-versions.ts)
 
-  /** Specification.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
+  /** Foundations.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
   hasUnpublishedChanges(dataviewId: string): Promise<boolean> {
     return versions.hasUnpublishedChanges(this.ctx, dataviewId);
   }
 
-  /** What publishing should warn about, never refuse (Specification_DataViews.md §6.5). */
+  /** What publishing should warn about, never refuse (DataViews.md §6.5). */
   /** What stops it from working, and for whom (dataviews-diagnosis.ts) - every answer about a role from `permissions`. */
   diagnose(dataviewId: string, permissions: EffectivePermissionService): Promise<DiagnosisIssue[]> {
     return diagnoseDataView(this.ctx, permissions, dataviewId);
@@ -230,7 +242,7 @@ export class DataViewsAdminService {
     return versions.listVersions(this.ctx, dataviewId);
   }
 
-  /** Deletes every version before `before` (Specification.md §13.4) - never the live one. */
+  /** Deletes every version before `before` (Foundations.md §13.4) - never the live one. */
   deleteVersionsBefore(dataviewId: string, before: number): Promise<{ deleted: number[] }> {
     return versions.deleteDataViewVersionsBefore(this.ctx, dataviewId, before);
   }
@@ -240,12 +252,12 @@ export class DataViewsAdminService {
     return versions.getVersion(this.ctx, dataviewId, version);
   }
 
-  /** Restore (Specification.md §13.4): version `version`'s content replaces the draft; publishes nothing. */
+  /** Restore (Foundations.md §13.4): version `version`'s content replaces the draft; publishes nothing. */
   restore(dataviewId: string, version: number): Promise<AdminDataView> {
     return versions.restore(this.ctx, dataviewId, version);
   }
 
-  // --- Presentation impact (dataviews-presentation.ts, Specification_DataViews.md §15)
+  // --- Presentation impact (dataviews-presentation.ts, DataViews.md §15)
 
   /** The DataViews that show one column of a resource - what a change to its presentation reaches. */
   dataviewsShowingColumn(resourceId: string, column: string): Promise<{ id: string; name: string }[]> {

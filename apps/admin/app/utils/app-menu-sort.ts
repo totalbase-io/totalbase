@@ -5,7 +5,7 @@ export type MenuSortDirection = 'ASC' | 'DESC'
 
 /**
  * The App menu sorted at every level - the root, each group, each
- * subgroup - by the same key and direction (Specification_Security.md
+ * subgroup - by the same key and direction (Security.md
  * §8.2). Groups come first, ordered by name (they have no type); then the
  * entries, by name, or by `typeOf` (the label the editor shows) and name
  * for ties. DESC reverses the whole order. Returns a new tree.

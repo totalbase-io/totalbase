@@ -7,10 +7,10 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 const PREFIX = "read-audit-test";
 
 /**
- * Data API READ audit (Specification_Security.md §11: "READ is configurable
+ * Data API READ audit (Security.md §11: "READ is configurable
  * per resource" - resources.audit_read). A read of a resource with
  * audit_read on writes one READ row describing the operation - fields,
- * filter, row count - and never the rows themselves (Specification_Security.md §11.5); with it
+ * filter, row count - and never the rows themselves (Security.md §11.5); with it
  * off, nothing is written.
  */
 describe("Data API READ audit", () => {

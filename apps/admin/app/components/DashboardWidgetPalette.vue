@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Dashboard editor's widget bar (Specification_Dashboards.md §10, D1): the page designer's format - a search,
+ * The Dashboard editor's widget bar (Dashboards.md §10, D1): the page designer's format - a search,
  * the catalog's groups in capitals, each widget its icon and name (its description on hover). Picking one adds it at
  * the bottom of the canvas (the page does, on `add`). The editor's own column on desktop, a slideover on a phone
  * (pages/dashboards/[id].vue). Its groups are the catalog's: a new widget shows up in its own.

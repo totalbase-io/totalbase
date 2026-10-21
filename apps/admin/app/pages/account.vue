@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * My account (Specification_Security.md §4) - the signed-in
+ * My account (Security.md §4) - the signed-in
  * user's own account, for every portal user: opened from the avatar menu
- * of the one portal shell (Specification_Security.md §9). Everything
+ * of the one portal shell (Security.md §9). Everything
  * goes through /app/api/me (plus the
  * self-service /api/tokens) - never the Admin API, which an app user
  * can't reach.
@@ -10,7 +10,7 @@
  * The same tabs as a user's page for an admin (pages/users/[id].vue),
  * minus what only an admin decides (roles, permissions, activation):
  * Profile (name - saved from the header - and email, avatar, password,
- * applied at once), Sessions, Tokens (only for a user who can hold one),
+ * two-factor authentication, applied at once), Sessions, Tokens (only for a user who can hold one),
  * Preferences, Activity. The open tab lives in `?tab=`.
  */
 import type { MyAccount } from '~/types/security'
@@ -44,7 +44,7 @@ const tabs = computed(() => [
   { label: t('account.tabs.sessions'), value: 'sessions', icon: 'i-lucide-monitor-smartphone' },
   ...(canHoldTokens.value ? [{ label: t('account.tabs.tokens'), value: 'tokens', icon: 'i-lucide-key-round' }] : []),
   { label: t('account.tabs.preferences'), value: 'preferences', icon: 'i-lucide-sliders-horizontal' },
-  // One's own activity is a grant like any other (the default permissions give it, Specification_Security.md §10.5).
+  // One's own activity is a grant like any other (the default permissions give it, Security.md §10.5).
   ...(session.can('logs', 'READ') ? [{ label: t('account.tabs.activity'), value: 'activity', icon: 'i-lucide-history' }] : [])
 ])
 const tab = computed({
@@ -353,6 +353,11 @@ async function discardAndLeave() {
                 @click="resendVerification"
               />
             </dd>
+            <AccountMfa
+              :status="account.mfa"
+              :has-password="account.hasPassword"
+              @changed="refresh"
+            />
             <dt class="text-muted">
               {{ t('account.signIn.lastSignIn') }}
             </dt>

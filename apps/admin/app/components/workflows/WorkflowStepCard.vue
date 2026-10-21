@@ -98,7 +98,7 @@ const menuItems = computed(() => [
     children: catalogChildren(slot.output)
   })),
   // One Delete, always confirmed - naming how many steps below go with it. Never on
-  // Start: a definition holds exactly one (Specification_Workflows.md §3.2), so its
+  // Start: a definition holds exactly one (Workflows.md §3.2), so its
   // save would be refused - the trigger changes in Settings › Trigger instead.
   ...(props.kind === 'start'
     ? []

@@ -87,8 +87,8 @@ function pruneUndefined<T extends Record<string, unknown>>(input: T): Partial<T>
 
 /**
  * DataView management: the creation wizard's steps 1-2 (identity,
- * source) - see Specification_DataViews.md. Admin-only
- * (Specification_DataViews.md §1.5), same as every other admin-plane route (requireAdmin);
+ * source) - see DataViews.md. Admin-only
+ * (DataViews.md §1.5), same as every other admin-plane route (requireAdmin);
  * *using* an already-built DataView goes through the public REST Data
  * API instead, gated by the viewer's actual permission on the
  * underlying resource, never through this surface.
@@ -205,7 +205,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
     },
   );
 
-  // Versioning - Specification.md §13.6, same shape as Dashboards and Workflows.
+  // Versioning - Foundations.md §13.6, same shape as Dashboards and Workflows.
   app.post<{ Params: { id: string }; Body: DataBody<{ note?: string }> }>(
     "/admin/api/dataviews/:id/publish",
     {
@@ -336,7 +336,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
   );
 
   // "Add columns…" - source columns not in the DataView yet, by name
-  // (Specification_DataViews.md §4). A column leaves it
+  // (DataViews.md §4). A column leaves it
   // through DELETE .../fields/:fieldId.
   app.post<{ Params: { id: string }; Body: { data?: unknown } }>(
     "/admin/api/dataviews/:id/columns",
@@ -380,6 +380,24 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => ({ data: await context.dataviewsAdmin.listDetailCandidates(request.query.master) }),
+  );
+
+  // A form field's Junction table (DataViews.md §8.5) - the record table's junction tables.
+  app.get<{ Querystring: { record: string } }>(
+    "/admin/api/dataviews/junctions",
+    {
+      preHandler,
+      ...adminDoc("dataviews", {
+        summary: "Junction tables of a record table",
+        description:
+          "TABLE resources linking `record` to another table and holding nothing else - a single-column primary key, two NOT NULL single-column " +
+          "foreign keys (one to `record`, one to another table) and a UNIQUE over them. What a form field's Junction table offers.",
+        parameters: [{ name: "record", in: "query", required: true, description: "The record table's resource id.", schema: UUID }],
+        response: ok(arrayOf(ref("DataViewJunction"))),
+        schemas: DATAVIEW_SCHEMAS,
+      }),
+    },
+    async (request) => ({ data: await context.dataviewsAdmin.listJunctions(request.query.record) }),
   );
 
   app.post<{ Body: DataBody<CreateDataViewBody> }>("/admin/api/dataviews", {
@@ -455,7 +473,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
     },
   );
 
-  // The Design form's save action (Specification_DataViews.md §12) - one field's
+  // The Design form's save action (DataViews.md §12) - one field's
   // position/size/visibility/label/widget/config, and a widget's parent.
   app.patch<{ Params: { id: string; fieldId: string }; Body: DataBody<UpdateFieldBody> }>(
     "/admin/api/dataviews/:id/fields/:fieldId",
@@ -488,7 +506,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
   );
 
   // Places one widget of the widget catalog on a CUSTOM DataView - on the
-  // canvas, or in a slot of another widget (Specification_DataViews.md).
+  // canvas, or in a slot of another widget (DataViews.md).
   app.post<{ Params: { id: string }; Body: DataBody<AddWidgetBody> }>(
     "/admin/api/dataviews/:id/widgets",
     {
@@ -609,7 +627,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
     const view = await context.dataviewsAdmin.get(request.params.id);
     const fields = await context.dataviewsAdmin.listFields(view.id);
     // Related columns, and the paths a reference column shows its row by (`cliente.razon_social`, its Label field or
-    // template's columns) - without them a role sees the key (B44, Specification_Security.md §6.10).
+    // template's columns) - without them a role sees the key (B44, Security.md §6.10).
     const paths = new Set(fields.filter((f) => f.kind === "RELATED" && f.columnName).map((f) => f.columnName!));
     for (const field of fields) {
       const config = field.config as { display_field?: unknown; display_template?: unknown };
@@ -629,7 +647,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
     return { data: missing };
   });
 
-  // The Design form's warning (Specification_DataViews.md §8.3, "All or nothing"): for
+  // The Design form's warning (DataViews.md §8.3, "All or nothing"): for
   // each Resource variable, the roles that open this DataView but may not READ its resource, or a
   // column its query reads - the Data API would refuse the whole query for them. Decided by the
   // Permission Resolver, as the Data API decides it; never grants anything.
@@ -697,7 +715,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
       preHandler,
       ...adminDoc("dataviews", {
         summary: "Replace the roles that may open a DataView",
-        description: "Object access (Specification_Security.md §7.1): who sees and opens it in the App. Never grants data - every read and write still needs the source's permissions. Returns the role ids set.",
+        description: "Object access (Security.md §7.1): who sees and opens it in the App. Never grants data - every read and write still needs the source's permissions. Returns the role ids set.",
         pathParameters: { id: { description: "The DataView's id.", schema: UUID } },
         requestBody: { schema: dataEnvelope(object({ roleIds: arrayOf(UUID) }, ["roleIds"])) },
         response: ok(arrayOf(UUID)),

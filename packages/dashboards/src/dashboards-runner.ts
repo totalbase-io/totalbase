@@ -124,7 +124,7 @@ export async function runQuery(
 }
 
 /**
- * Every widget whose query names what PostgreSQL no longer has (Specification_Dashboards.md §2.8) - the
+ * Every widget whose query names what PostgreSQL no longer has (Dashboards.md §2.8) - the
  * draft's and the live version's. PostgreSQL decides, not a parse here: each query is planned as
  * `SELECT * FROM (query) LIMIT 0` in its own READ ONLY transaction, its variables NULL of their type -
  * nothing is read. Other failures (a timeout, a bad cast) are the editor's to show, not a lost name.

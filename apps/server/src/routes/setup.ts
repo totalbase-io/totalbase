@@ -7,9 +7,10 @@ import { createInstanceOwner } from "../admin-bootstrap.js";
 import { object, ok, created, UUID } from "../openapi-admin-docs.js";
 import { requestData, type DataBody } from "../request-body.js";
 import { finishSetup, setupCodeMatches } from "../setup.js";
+import { signal } from "../invalidations.js";
 
 /**
- * The first-start setup (Specification.md §14.1): whether the instance still needs its first administrator, and
+ * The first-start setup (Foundations.md §14.1): whether the instance still needs its first administrator, and
  * creating it with the code - from /admin/setup or from a program (TotalBase Manager). Public: the code is the
  * credential. Gone (404) once an administrator exists.
  */
@@ -78,6 +79,8 @@ export function registerSetupRoutes(app: FastifyInstance, context: AppContext): 
       throw new TotalBaseError("RESOURCE_NOT_FOUND", "This instance is already set up.");
     }
     await finishSetup(context.setup);
+    // Every other process forgets its code too (Foundations.md §4.6).
+    await signal(context, { topic: "SETUP" });
     await context.audit.record(context.database, {
       requestId: request.id,
       principal: { type: "ADMIN", id: userId },

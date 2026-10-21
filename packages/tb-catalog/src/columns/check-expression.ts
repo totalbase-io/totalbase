@@ -4,7 +4,7 @@ import { columnValueKind } from "../widgets/widget-inference.js";
  * A CHECK constraint built from conditions (Resources > a table > Constraints > Add > Build): the admin sends what
  * it built - a column, an operator, a value - and the server turns it into the boolean expression PostgreSQL gets
  * (AGENTS.md §6: the admin never constructs SQL; §7: the server builds the surrounding DDL). The operators are the
- * filter grammar's (Specification_Data_API.md §3), so the one condition builder serves a row filter, a payload
+ * filter grammar's (Data_API.md §3), so the one condition builder serves a row filter, a payload
  * check and a real CHECK - but a CHECK has no calling principal: no `$USER.*`, every value a literal.
  */
 

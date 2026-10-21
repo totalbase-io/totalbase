@@ -14,7 +14,7 @@ const PARTNER = "https://partner.example";
 const OTHER = "https://other.example";
 
 /**
- * Dashboard embeds (Specification_Dashboards.md §9.5): public links and
+ * Dashboard embeds (Dashboards.md §9.5): public links and
  * signed embeds an administrator creates, for visitors with no TotalBase
  * account - each request checked (revoked, expired, embedding on,
  * published), variables EDITABLE / HIDDEN / LOCKED with locked values never
@@ -106,7 +106,7 @@ describe("Dashboard embeds", () => {
     signedId = signed.json().data.id;
     expect(signed.json().data.link).toBeNull();
     // Its page under the public URL - system.public_url, else TOTALBASE_PUBLIC_URL - an absolute
-    // address even while the setting is empty (MCP_Demo_Findings.md F30, Docs_Writing_Findings.md #29).
+    // address even while the setting is empty.
     const publicUrl = await context.auth.mailer.publicUrl();
     expect(publicUrl).toMatch(/^https?:\/\//);
     expect(created.json().data.url).toBe(`${publicUrl}/admin/embed/${link}`);
@@ -155,6 +155,41 @@ describe("Dashboard embeds", () => {
     // A token naming a link's embed, or signed with another secret, gets nowhere.
     expect((await get("/embed/api/dashboard", token({ customer: "x" }, linkId))).statusCode).toBe(404);
     expect((await get("/embed/api/dashboard", signEmbedToken({ embed: signedId, params: { customer: "x" }, exp: exp() }, "another-secret"))).statusCode).toBe(401);
+  });
+
+  it("an embed of one widget serves that widget alone - any other is 404 - and fails closed once it's gone", async () => {
+    expect((await admin("POST", "", { name: "Bad widget", type: "LINK", widget: "00000000-0000-4000-8000-000000000000" })).statusCode).toBe(422);
+    const created = await admin("POST", "", { name: "KPI", type: "SIGNED", widget: varsWidget, variables: { customer: { mode: "LOCKED" } } });
+    expect(created.statusCode, created.body).toBe(201);
+    const kpi = created.json().data;
+    expect(kpi.widget).toBe(varsWidget);
+    const token = signEmbedToken({ embed: kpi.id, params: { customer: "initech" }, exp: exp() }, SECRET);
+
+    expect((await get("/embed/api/dashboard", token)).json().data).toMatchObject({ widget: varsWidget, tabs: [] });
+    expect((await get("/embed/api/dashboard/widgets", token)).json().data.map((w: { id: string }) => w.id)).toEqual([varsWidget]);
+    expect(await rows(varsWidget, token, { customer: "evil" })).toEqual([{ customer: "initech", region: null }]);
+    const other = await post(`/embed/api/dashboard/widgets/${rangeWidget}/data`, token);
+    expect([other.statusCode, other.json().errors[0].code]).toEqual([404, "DASHBOARD_WIDGET_NOT_FOUND"]);
+
+    const preview = (await admin("POST", "/preview", { widget: rangeWidget })).json().data.token;
+    expect((await get("/embed/api/dashboard/widgets", preview)).json().data.map((w: { id: string }) => w.id)).toEqual([rangeWidget]);
+
+    // Back to the whole dashboard: the same token.
+    expect((await admin("PATCH", `/${kpi.id}`, { widget: null })).json().data.widget).toBeNull();
+    expect((await get("/embed/api/dashboard/widgets", token)).json().data).toHaveLength(3);
+
+    // Its widget leaves the draft: the editor says so before publishing; published, it stops.
+    const extra = (await context.dashboardsAdmin.addWidget(dashboardId, { type: "TABLE", gridX: 6, gridY: 4, gridW: 6, gridH: 4 })).id;
+    await context.dashboardsAdmin.updateWidget(dashboardId, extra, { query: "SELECT 1 AS one" });
+    await context.dashboardsAdmin.publish(dashboardId, null);
+    await admin("PATCH", `/${kpi.id}`, { widget: extra });
+    await context.dashboardsAdmin.deleteWidget(dashboardId, extra);
+    const impact = (await admin("GET", "/impact")).json().data as Array<{ name: string; widgetMissing: boolean }>;
+    expect(impact.filter((e) => e.widgetMissing).map((e) => e.name)).toEqual(["KPI"]);
+    await context.dashboardsAdmin.publish(dashboardId, null);
+    const stopped = await get("/embed/api/dashboard", token);
+    expect([stopped.statusCode, stopped.json().errors[0].code]).toEqual([409, "EMBED_NEEDS_UPDATE"]);
+    await admin("POST", `/${kpi.id}/revoke`);
   });
 
   it("frames an embed only from its sites, within the instance's - TotalBase itself always", async () => {

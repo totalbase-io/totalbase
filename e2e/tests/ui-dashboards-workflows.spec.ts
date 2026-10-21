@@ -1,5 +1,6 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test'
 import { apiRequest as sharedApiRequest, login as loginAsAdmin, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every write action of the Dashboards and Workflows editors, driven through
@@ -66,7 +67,7 @@ async function login(page: Page) {
 
 
 test.beforeAll(async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   const token = await loginAsAdmin(page)
   const admins = await apiRequest<{ id: string }[]>(page, token, 'GET', '/api/totalbase/table/roles?fields=id&where[name][_eq]=Administrators&limit=1')
@@ -79,7 +80,7 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   const token = await loginAsAdmin(page)
   for (const id of cleanup.dashboards) await apiRequest(page, token, 'DELETE', `/admin/api/dashboards/${id}`).catch(() => undefined)
@@ -91,7 +92,7 @@ test.afterAll(async ({ browser }) => {
 
 /** The status of a GET - for asserting a deleted object is gone. */
 async function statusOf(page: Page, token: string, path: string) {
-  const response = await page.request.get(`http://localhost:3050${path}`, { headers: { Authorization: `Bearer ${token}` } })
+  const response = await page.request.get(`${BASE_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } })
   return response.status()
 }
 
@@ -318,7 +319,7 @@ test('a widget\'s SQL: Optional filter writes the standard pattern for a variabl
   await page.getByRole('option', { name: /Tags/ }).click()
   await popover.getByLabel('Column').click()
   await page.keyboard.type('tag')
-  await expect(popover.getByText('($VAR.tags IS NULL OR tag = ANY($VAR.tags))')).toBeVisible()
+  await expect(popover.getByText('($VAR.tags IS NULL OR tag::text = ANY($VAR.tags))')).toBeVisible()
   await popover.getByRole('button', { name: 'Insert', exact: true }).click()
   // Unset, the filter keeps every row.
   await drawer.getByRole('button', { name: 'Run' }).click()
@@ -326,7 +327,7 @@ test('a widget\'s SQL: Optional filter writes the standard pattern for a variabl
   await drawer.getByRole('button', { name: 'Save' }).click()
   await expect(drawer).toBeHidden()
   const saved = await apiRequest<Array<{ id: string, query: string | null }>>(page, token, 'GET', `/admin/api/dashboards/${dashboard.id}/widgets`)
-  expect(saved.find(w => w.id === widget.id)?.query).toContain('($VAR.tags IS NULL OR tag = ANY($VAR.tags))')
+  expect(saved.find(w => w.id === widget.id)?.query).toContain('($VAR.tags IS NULL OR tag::text = ANY($VAR.tags))')
   expect(failures).toEqual([])
   void main
 })
@@ -504,7 +505,7 @@ async function publishWorkflow(page: Page, version: number) {
   await expect(page.locator('main').getByRole('button', { name: new RegExp(`Active: v${version}`) })).toBeVisible()
 }
 
-/** The settings page (Specification_Workflows.md §16.6) from the canvas' header, at one of its sections. */
+/** The settings page (Workflows.md §16) from the canvas' header, at one of its sections. */
 async function openWorkflowSettings(page: Page, section?: 'General' | 'Trigger' | 'Security' | 'Runs' | 'Versions') {
   const main = page.locator('main')
   await main.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -597,14 +598,14 @@ test('a MANUAL workflow: created with invoke roles, trigger edited, a step added
   await page.waitForURL(/section=runs/)
   const detail = page.getByRole('dialog', { name: 'Run', exact: true })
   await expect(detail).toContainText('MANUAL · PRODUCTION')
-  // Beta_Findings 1.16: reached through Open in Runs, its Close doesn't close it - the list opened anew.
+  // A run reached through Open in Runs, its Close doesn't close it - the list opened anew.
   await page.goto(`/admin/workflows/${id}/settings?section=runs`)
   await expect(detail).toBeHidden()
 
   // --- Runs: both, the total in meta ---
   await expect(main.getByRole('table')).toContainText('Production')
   await expect(main.getByRole('table')).toContainText('Test')
-  const runsResponse = await page.request.get(`http://localhost:3050/admin/api/workflows/${id}/runs`, { headers: { Authorization: `Bearer ${token}` } })
+  const runsResponse = await page.request.get(`${BASE_URL}/admin/api/workflows/${id}/runs`, { headers: { Authorization: `Bearer ${token}` } })
   expect((await runsResponse.json()).meta).toEqual({ total: 2 })
   await backToDesign(page)
 
@@ -662,7 +663,7 @@ test('a WEBHOOK workflow: created, published, enabled, called by its URL - the r
   await main.getByRole('switch', { name: 'Enabled' }).click()
   await expect.poll(async () => (await workflowDraft(page, token, id)).workflow.enabled, POLL).toBe(true)
 
-  const response = await page.request.post(`http://localhost:3050/api/workflows/${workflow.slug}/webhook?source=ui-e2e`, {
+  const response = await page.request.post(`${BASE_URL}/api/workflows/${workflow.slug}/webhook?source=ui-e2e`, {
     headers: { Authorization: `Bearer ${token}` },
     data: { hello: 'world' }
   })
@@ -790,7 +791,7 @@ test('the step limit: at 100 operations every Add step entry is disabled, saying
   const steps = Array.from({ length: 99 }, (_, i) => ({ id: crypto.randomUUID(), type: 'totalbase.wait-resume', key: `wait_${i}`, label: `Wait ${i}`, configuration_version: 1, configuration: { waitSeconds: 1 } }))
   const chain = [start, ...steps]
   const revision = (await apiRequest<{ revision: string }>(page, token, 'GET', `/admin/api/workflows/${id}`)).revision
-  const saved = await page.request.put(`http://localhost:3050/admin/api/workflows/${id}/draft`, {
+  const saved = await page.request.put(`${BASE_URL}/admin/api/workflows/${id}/draft`, {
     headers: { Authorization: `Bearer ${token}` },
     data: { data: { revision, definition: { operations: chain, connections: steps.map((step, i) => ({ source: chain[i]!.id, output: 'next', target: step.id })) } } }
   })

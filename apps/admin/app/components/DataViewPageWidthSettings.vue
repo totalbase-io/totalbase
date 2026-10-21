@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A page's Content width and Content align (Specification_DataViews.md §6.7) -
+ * A page's Content width and Content align (DataViews.md §6.7) -
  * a record page's (Form features) or a CUSTOM page's (its Page section). Null
  * is Default: the instance's (Settings > DataViews > Page width), so changing
  * that setting reaches every DataView left on it.

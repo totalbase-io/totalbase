@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { apiRequest, login, publishDataView, watchApiFailures } from './helpers.js'
 
 /**
- * A TREE DataView (Specification_DataViews.md §5.14): rows under their parent, as a tree and as an org chart; a
+ * A TREE DataView (DataViews.md §5.14): rows under their parent, as a tree and as an org chart; a
  * drag moves a row under another (its parent column, its siblings' order); the cycle guard refuses a loop.
  */
 const NAME = 'Tree Smoke Test'

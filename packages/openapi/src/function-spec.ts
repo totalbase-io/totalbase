@@ -3,7 +3,7 @@ import type { JsonSchema, PathItem } from "./openapi-types.js";
 import { errorResponses, idempotencyKeyHeader, operationId, PREFER_RESPOND_ASYNC_HEADER, QUEUED_EXECUTION_RESPONSE, WRITE_ERROR_STATUSES } from "./common-components.js";
 import { postgresTypeToSchema } from "./postgres-type-schema.js";
 
-/** An administrator's classification of a FUNCTION resource (Specification_Data_API.md §7). */
+/** An administrator's classification of a FUNCTION resource (Data_API.md §7). */
 export type FunctionClass = "UNCLASSIFIED" | "QUERY" | "ACTION";
 
 const FUNCTION_CLASS_DESCRIPTION: Record<FunctionClass, string> = {
@@ -20,7 +20,7 @@ export interface FunctionSpecInput {
   functionClass: FunctionClass;
   /** openapi.include_examples: a sample value on every argument schema. */
   includeExamples?: boolean | undefined;
-  /** The resource requires an Idempotency-Key (Specification_Data_API.md §9.1). */
+  /** The resource requires an Idempotency-Key (Data_API.md §9.1). */
   requireIdempotencyKey?: boolean | undefined;
 }
 
@@ -31,8 +31,8 @@ export interface FunctionSpecOutput {
 
 /**
  * Builds the OpenAPI path for one FUNCTION resource's EXECUTE endpoint
- * (Specification_Data_API.md §14.1's "Generated from: catalog"). Each PostgreSQL
- * overload is a distinct TotalBase resource (Specification.md §11.7) and gets its
+ * (Data_API.md §14.1's "Generated from: catalog"). Each PostgreSQL
+ * overload is a distinct TotalBase resource (Foundations.md §11.7) and gets its
  * own operation description via the `summary`, since OpenAPI 3.1 has no
  * native concept of the same path resolving to different bodies by
  * argument-name-set.

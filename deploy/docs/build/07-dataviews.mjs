@@ -1,4 +1,4 @@
-// DataViews (Docs_Demo_Field_Service.md §5) - created, configured and published through the MCP server.
+// DataViews (DATASET.md §5) - created, configured and published through the MCP server.
 //   TOTALBASE_TOKEN=... node 07-dataviews.mjs
 import { call } from './mcp.mjs'
 

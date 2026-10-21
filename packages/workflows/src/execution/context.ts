@@ -32,7 +32,7 @@ export interface WorkflowEngineContext extends MutationsContext {
   templatesAdmin: Pick<TemplatesAdminService, "get">;
   sqlConsole: Pick<SqlConsoleService, "execute">;
   emailSender: Pick<EmailSender, "send">;
-  /** An HTTP request's secret headers (Specification_Workflows.md §5.15) - read at run time, never stored. */
+  /** An HTTP request's secret headers (Workflows.md §5.15) - read at run time, never stored. */
   secrets: { decrypt(key: string): Promise<string> };
   /** `totalbase.execute-workflow`'s recursive call - indirected through the context (not imported by handlers.ts) to avoid a circular import: engine.ts already imports OPERATION_HANDLERS from handlers.ts. See execute-workflow.ts. */
   invokeSubWorkflow: (params: { callerPrincipal: DataPrincipal; callerWorkflowId: string; ancestry: string[]; targetWorkflowId: string; input: unknown }) => Promise<WorkflowRunOutcome>;
@@ -43,7 +43,7 @@ export interface WorkflowEngineContext extends MutationsContext {
  * all configure one, never an authenticated bearer token) into the same
  * `DataPrincipal` shape a session resolves to - every operation handler
  * only knows how to check permissions against a `DataPrincipal`.
- * Revalidated fresh on every admission (Specification_Workflows.md §7.2: "the configured
+ * Revalidated fresh on every admission (Workflows.md §7.2: "the configured
  * execution user is revalidated at admission") rather than cached.
  */
 export async function resolveDataPrincipalForConfiguredUser(

@@ -29,7 +29,7 @@ import {
 import { buildHierarchy, type HierarchyNode } from '~/utils/dashboard-hierarchy'
 
 /**
- * One builder per dashboard widget (Specification_Dashboards.md §5, D1): its query's typed result, its roles and its
+ * One builder per dashboard widget (Dashboards.md §5, D1): its query's typed result, its roles and its
  * props in, what it draws out - an ECharts option, or the model of one of the App's own renderers (KPI, ranking, map,
  * table). Adding a widget is its catalog entry (@totalbase/tb-catalog) and its builder here - the editor, the guide and the
  * MCP read the catalog.
@@ -998,7 +998,7 @@ export function firstDayOfWeek(locale?: string): number {
 
 /**
  * A calendar's day and month names in the UI's language (ECharts' nameMap: days from Sunday, months from January),
- * its week's first day from the viewer's regional settings (Specification_Dashboards.md §5, DB33/DB34).
+ * its week's first day from the viewer's regional settings (Dashboards.md §5, DB33/DB34).
  */
 export function calendarNames(language?: string, regional?: string): { days: string[], months: string[], firstDay: number } {
   const weekday = new Intl.DateTimeFormat(language, { weekday: 'narrow', timeZone: 'UTC' })

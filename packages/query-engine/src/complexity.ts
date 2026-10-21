@@ -13,7 +13,7 @@ export function countFilterNodes(node: FilterNode | undefined): number {
 }
 
 /**
- * Structural complexity of a parsed query, per Specification_Data_API.md §12:
+ * Structural complexity of a parsed query, per Data_API.md §12:
  * "must count structural query complexity, including at
  * minimum: comparison nodes; logical nodes; relation traversal nodes;
  * aggregate nodes; group fields; order fields."
@@ -36,7 +36,7 @@ export function countQueryNodes(ast: QueryAST): number {
 /**
  * `api.max_query_nodes` for a request filter parsed on its own - a write's
  * `where` (collection UPDATE/DELETE), which parseQuery() never sees. The same
- * count and error as a read (Specification_Data_API.md §12).
+ * count and error as a read (Data_API.md §12).
  */
 export function assertFilterComplexity(node: FilterNode | undefined, maxQueryNodes: number): void {
   if (countFilterNodes(node) > maxQueryNodes) {

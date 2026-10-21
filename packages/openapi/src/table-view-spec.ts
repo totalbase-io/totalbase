@@ -20,7 +20,7 @@ export interface TableViewSpecInput {
   passwordColumns: ReadonlySet<string>;
   /** openapi.include_examples: a sample value on every column schema. */
   includeExamples?: boolean | undefined;
-  /** The resource requires an Idempotency-Key on CREATE (Specification_Data_API.md §9.1). */
+  /** The resource requires an Idempotency-Key on CREATE (Data_API.md §9.1). */
   requireIdempotencyKey?: boolean | undefined;
 }
 
@@ -68,7 +68,7 @@ function writeSchema(input: TableViewSpecInput, decision: FieldDecision, action:
     type: "object",
     properties,
     ...(required.length > 0 ? { required } : {}),
-    // Nested writes (Specification_Data_API.md §6; CREATE-only, not with bulk=true): "$<child_table>" -> child rows.
+    // Nested writes (Data_API.md §6; CREATE-only, not with bulk=true): "$<child_table>" -> child rows.
     ...(action === "CREATE"
       ? { patternProperties: { "^\\$": { type: "array", items: { type: "object" }, description: "Nested child rows, keyed by `$<child_table>`." } } }
       : {}),
@@ -91,7 +91,7 @@ function jsonBody(schema: JsonSchema, required = true): NonNullable<OperationObj
 /**
  * Builds OpenAPI paths + component schemas for one TABLE or VIEW
  * resource, restricted to what the requesting principal can actually do
- * (Specification_Data_API.md §14.1: "principal-effective spec"):
+ * (Data_API.md §14.1: "principal-effective spec"):
  *
  * - `{schema}_{name}`: the row as returned by every operation (the READ
  *   grant's fields, or just the primary key without one; password columns
@@ -189,7 +189,7 @@ export function buildTableOrViewSpec(input: TableViewSpecInput): TableViewSpecOu
           on_conflict: {
             type: "object",
             description:
-              "INSERT ... ON CONFLICT (Specification_Data_API.md §5.7): `target` names a PRIMARY KEY/UNIQUE column set; " +
+              "INSERT ... ON CONFLICT (Data_API.md §5.7): `target` names a PRIMARY KEY/UNIQUE column set; " +
               "`action` is NOTHING or UPDATE, with `data` values that may reference `$INSERT.<field>`. " +
               "UPDATE also needs the UPDATE grant: a row it updates is authorized and audited as an UPDATE. " +
               "A row NOTHING skips answers `null` (still 201).",

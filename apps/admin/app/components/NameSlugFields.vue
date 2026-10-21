@@ -3,7 +3,7 @@
 // the Triggers wizard, Mailings templates, Integrations, and API
 // Keys forms. `slug` auto-proposes live from `name` as the user types
 // (client-side slugify(), see ~/utils/slugify.ts) and stops
-// auto-updating the moment the user edits it by hand (Specification.md §9.3's
+// auto-updating the moment the user edits it by hand (Foundations.md §9.3's
 // stability rule) - editing an existing row starts with slug already
 // "touched" so a saved slug is never silently overwritten.
 const props = withDefaults(defineProps<{

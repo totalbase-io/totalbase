@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Organize menu's Edit on a DataView or a dashboard (Specification_Security.md §8.2): how it shows in the menu -
+ * Organize menu's Edit on a DataView or a dashboard (Security.md §8.2): how it shows in the menu -
  * its label there (empty: its name), its description (the tooltip), its icon and color. They are its own fields,
  * the same as its settings', saved at once and live, no publish. Open settings leads there; Remove from the menu
  * takes it out (EMBEDDED_ONLY) without deleting it - Organize menu's Hidden list puts it back.

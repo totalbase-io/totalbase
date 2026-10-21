@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Control-first Add Column (Specification_DataViews.md §16.2) - two steps:
+ * Control-first Add Column (DataViews.md §16.2) - two steps:
  * pick a control of the column input catalog (@totalbase/tb-catalog'
  * COLUMN_INPUTS - "Number field", "Email", "Relation"), then configure it.
  * The entry derives dataType/check/foreignKey (buildColumnCreationBody) and
@@ -43,7 +43,7 @@ const filteredGroups = computed(() => GROUPS
   .map(group => ({ group, entries: ENTRIES.value.filter(e => e.group === group && matchesTypeSearch(e)) }))
   .filter(g => g.entries.length > 0))
 const hasTypeSearchResults = computed(() => filteredGroups.value.length > 0)
-// Enter in the search box takes the first match (Specification_DataViews.md
+// Enter in the search box takes the first match (DataViews.md
 // §16.2) and moves on to its configuration - type, Enter, configure.
 const wizard = useTemplateRef<{ next: () => void }>('wizard')
 function pickFirstMatch() {
@@ -75,7 +75,7 @@ const name = ref('')
 const notNull = ref(false)
 const defaultExpr = ref('')
 
-// --- Step 2: presentation (Specification_DataViews.md §15)
+// --- Step 2: presentation (DataViews.md §15)
 // - never touches DDL: how the column reads in every view that shows
 // it, stored in its resources_columns row. ---
 const presentation = ref<ColumnPresentation>({})
@@ -99,7 +99,7 @@ const ratingLength = ref<number | undefined>(undefined)
 const pinLength = ref<number | undefined>(undefined)
 
 // --- Step 2: UID config - the column of this table its slug comes from
-// (Specification_DataViews.md §16.3). ---
+// (DataViews.md §16.3). ---
 const uidSource = ref('')
 const ownColumns = ref<string[]>([])
 watch(() => strategy.value?.kind === 'uid', async (isUid) => {
@@ -249,7 +249,7 @@ const presentationKind = computed(() => {
 
 /**
  * The column's presentation, pushed alongside it into resources_columns
- * (Specification_DataViews.md §16.2). A choice's labels come
+ * (DataViews.md §16.2). A choice's labels come
  * from its options editor; its values themselves go to the CHECK only.
  */
 function buildPresentation(): ColumnPresentation {
@@ -398,7 +398,7 @@ async function save() {
 
           <!-- A UID column is always nullable, UNIQUE and without a
           default: its trigger fills it, and a row whose source is empty
-          stays empty (Specification_DataViews.md §16.3). -->
+          stays empty (DataViews.md §16.3). -->
           <UFormField
             v-if="strategy?.kind === 'uid'"
             :label="t('database.addColumn.generatedFrom')"

@@ -9,7 +9,7 @@ import { findDeclaration } from '~/utils/declares-function'
  * A designed page's Code (CustomDesigner.vue's Code tab): the text, saved a
  * moment after a change; the functions it declares; its Reference; and how
  * handlers get into it - a scaffold for an event, or a snippet as its body
- * (Specification_DataViews.md §11.2) - with "Create handler" from the
+ * (DataViews.md §11.2) - with "Create handler" from the
  * inspector landing on the new function.
  */
 export function useDesignerCode(options: {

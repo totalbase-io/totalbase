@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Scanner widget (TScanner, Specification_DataViews.md §9.9): reads a
+ * The Scanner widget (TScanner, DataViews.md §9.9): reads a
  * QR code, a PDF417 (the Argentine DNI) or a barcode and emits `scan`
  * `{ value, format, source }`, keeping the code in its Value.
  *

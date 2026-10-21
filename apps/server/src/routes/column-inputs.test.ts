@@ -13,7 +13,7 @@ const TARGET = `ci_brands_${RUN}`;
 const RAW = `ci_raw_${RUN}`;
 
 /**
- * The column input catalog both ways (Specification_DataViews.md §16.1): every entry Add Column creates reads back
+ * The column input catalog both ways (DataViews.md §16.1): every entry Add Column creates reads back
  * as itself - stored, and one the rule accepts for the column PostgreSQL made - and a table made in plain SQL gets
  * the rule's entry for each column (Automatic), with the entries that edit it.
  */

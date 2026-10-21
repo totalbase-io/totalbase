@@ -6,7 +6,7 @@ import type { Database } from "@totalbase/database";
 import { hasAdministrator } from "./admin-bootstrap.js";
 
 /**
- * The first-start setup (Specification.md §14.1): an instance with no administrator, started without
+ * The first-start setup (Foundations.md §14.1): an instance with no administrator, started without
  * TOTALBASE_ADMIN_*, is set up from the browser - or by a program, through POST /api/setup - with a single-use
  * code only someone with access to the server has. The code: TOTALBASE_SETUP_CODE when set, else the one kept
  * in the data directory (stable across restarts), else a new one written there. Gone once an administrator
@@ -34,7 +34,11 @@ function normalize(code: string): string {
   return code.toUpperCase().replace(/[\s-]/g, "");
 }
 
-export async function resolveSetup(database: Database, envCode: string | undefined, dataDir: string, logger: pino.Logger, link: string): Promise<SetupState> {
+/**
+ * `link` is where the instance answers; `linkIsGuess` when it isn't TOTALBASE_PUBLIC_URL but this process's own
+ * port - behind Docker or a proxy the address a person opens differs, and the log line says so.
+ */
+export async function resolveSetup(database: Database, envCode: string | undefined, dataDir: string, logger: pino.Logger, link: string, linkIsGuess = false): Promise<SetupState> {
   const file = join(dataDir, "setup-code");
   if (await hasAdministrator(database)) {
     await rm(file, { force: true });
@@ -62,7 +66,8 @@ export async function resolveSetup(database: Database, envCode: string | undefin
   if (source !== "ENV") {
     // One line: the log is JSON, where a framed banner would read as escaped newlines.
     const url = `${link}/admin/setup?code=${encodeURIComponent(code)}`;
-    logger.warn({ setupUrl: url }, `TotalBase needs its first administrator - open ${url}`);
+    const hint = linkIsGuess ? " (this process's own port: behind Docker or a proxy, open the same path on the address you published, or set TOTALBASE_PUBLIC_URL)" : "";
+    logger.warn({ setupUrl: url }, `TotalBase needs its first administrator - open ${url}${hint}`);
   } else {
     logger.warn("TotalBase needs its first administrator: POST /api/setup with TOTALBASE_SETUP_CODE, or open /admin/setup");
   }

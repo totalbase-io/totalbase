@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A role for a delegated user (pages/roles/[id].vue; Specification_Security.md §9.4):
+ * A role for a delegated user (pages/roles/[id].vue; Security.md §9.4):
  * its details and members, all through the Data API. They may
  * rename or delete a role they created, and assign it when they created it
  * or one of their roles manages it - the server's guardrails decide, this
@@ -72,7 +72,7 @@ const loadError = ref<string | null>(null)
 const search = ref('')
 const debouncedSearch = useDebouncedRef(() => search.value.trim())
 
-/** Ids of the users matching `term`, among those the caller may read - searched in every text column they may read (no `fields`: a search looks only at the text fields asked for, Specification_Data_API.md §3.5). */
+/** Ids of the users matching `term`, among those the caller may read - searched in every text column they may read (no `fields`: a search looks only at the text fields asked for, Data_API.md §3.5). */
 async function matchingUserIds(term: string, limit: number): Promise<string[]> {
   const { data } = await dataApi.get<Array<{ id: string }>>(dataApi.resourcePath('totalbase', 'users'), { search: term, limit })
   return data.map(user => user.id)

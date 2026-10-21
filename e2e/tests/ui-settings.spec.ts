@@ -1,5 +1,6 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test'
 import { login, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every write action of the Settings area, driven through the real UI:
@@ -14,7 +15,7 @@ const expect = baseExpect.configure({ timeout: 15_000 })
 test.describe.configure({ timeout: 90_000 })
 
 const SUFFIX = Math.random().toString(36).slice(2, 8)
-const BASE = 'http://localhost:3050'
+const BASE = BASE_URL
 
 /** One API call with a bearer token - PUT included, the status kept. */
 async function api<T = unknown>(page: Page, token: string, method: string, path: string, data?: unknown): Promise<T> {
@@ -249,7 +250,8 @@ test('secrets: create, replace the value, delete', async ({ page }) => {
   const find = async () => (await api<SecretMetadata[]>(page, token, 'GET', '/admin/api/secrets')).find(s => s.key === key)
   try {
     await page.goto('/admin/settings/secrets')
-    await page.getByRole('button', { name: 'New secret' }).click()
+    // The header's, and on an instance with no secret yet the empty state's too - both open the same form.
+    await page.getByRole('button', { name: 'New secret' }).first().click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Key').fill(key)
     await dialog.getByRole('textbox', { name: 'Value' }).fill('first-value')

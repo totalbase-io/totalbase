@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the documentation demo from nothing (Docs_Demo_Field_Service.md §11): a fresh stack, then
+# Builds the documentation demo from nothing (DATASET.md §11): a fresh stack, then
 # everything through the MCP server in the build guide's order. Re-running a step is safe; the
 # whole build on an existing stack: ./build.sh --keep.
 set -euo pipefail

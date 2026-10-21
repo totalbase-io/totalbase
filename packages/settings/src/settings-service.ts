@@ -1,7 +1,8 @@
 import { isIP } from "node:net";
+import { isAbsolute } from "node:path";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { HEX_COLOR, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
+import { HEX_COLOR, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
 import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistry } from "./registry.js";
 import {
   SYSTEM_EMAIL_SLOTS,
@@ -34,7 +35,7 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "system.instance_name": (value) =>
     typeof value === "string" && value.trim() && value.length <= 64 ? null : "Expected a name of 1-64 characters.",
   "workflows.http_allowed_hosts": validateAllowedHosts,
-  // Specification_Admin_UI.md §4.1.1 - every one of these is public.
+  // Admin_UI.md §4.1.1 - every one of these is public.
   "system.logo": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a file id, or empty."),
   "appearance.login_background": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a file id, or empty."),
   "appearance.neutral_color": (value) => ((NEUTRAL_COLORS as readonly unknown[]).includes(value) ? null : `Expected one of ${NEUTRAL_COLORS.join(", ")}.`),
@@ -94,7 +95,40 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "system.language": (value) => (isUiLanguage(value) ? null : `Expected one of ${UI_LANGUAGES.map((l) => l.code).join(", ")}.`),
   "app.menu_groups_open": (value) => (value === "CURRENT" || value === "OPEN" || value === "CLOSED" ? null : 'Expected "CURRENT", "OPEN" or "CLOSED".'),
   "app.menu_search": (value) => (value === "AUTO" || value === "ALWAYS" || value === "NEVER" ? null : 'Expected "AUTO", "ALWAYS" or "NEVER".'),
+  "auth.mfa_required": (value) => (value === "NONE" || value === "ADMINISTRATORS" || value === "EVERYONE" ? null : 'Expected "NONE", "ADMINISTRATORS" or "EVERYONE".'),
   "app.menu_mode": (value) => (value === "TREE" || value === "SIDEBAR" ? null : 'Expected "TREE" or "SIDEBAR".'),
+  "files.storage_provider": (value) => (value === "local" || value === "s3" ? null : 'Expected "local" or "s3".'),
+  "backups.destination": (value) => (value === "local" || value === "s3" ? null : 'Expected "local" or "s3".'),
+  "backups.schedule": (value) => {
+    try {
+      parseCronExpression(value as string);
+      return null;
+    } catch (error) {
+      return (error as Error).message;
+    }
+  },
+  "backups.local_path": (value) => (isAbsolute(value as string) ? null : "Expected an absolute path, e.g. /var/lib/totalbase/backups."),
+  "s3.endpoint": (value) => {
+    if (value === "") return null;
+    try {
+      const url = new URL(value as string);
+      if ((url.protocol === "https:" || url.protocol === "http:") && !url.search && !url.hash && !url.username) return null;
+    } catch {
+      // falls through
+    }
+    return "Expected the service's URL, e.g. https://s3.us-east-1.amazonaws.com or http://minio:9000.";
+  },
+  "s3.region": (value) => (/^[a-z0-9-]{1,32}$/.test(value as string) ? null : "Expected a region such as us-east-1 or auto."),
+  // S3's bucket naming rules, the subset every compatible service accepts.
+  "s3.bucket": (value) => (value === "" || /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(value as string) ? null : "Expected a bucket name: 3-63 lowercase letters, digits, dots and hyphens."),
+  "s3.prefix": (value) => {
+    const prefix = value as string;
+    if (prefix === "") return null;
+    if (prefix.startsWith("/") || prefix.split("/").some((segment) => segment === "." || segment === "..") || prefix.length > 256) {
+      return "Expected a folder path such as production/ - no leading slash, no . or .. segments.";
+    }
+    return null;
+  },
   "files.transforms.presets_json": (value) => {
     try {
       const parsed: unknown = JSON.parse(value as string);
@@ -133,7 +167,32 @@ async function validatePublicImage(client: Queryable, value: unknown): Promise<s
 const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryable, value: unknown) => Promise<string | null>>> = {
   "system.logo": validatePublicImage,
   "appearance.login_background": validatePublicImage,
-  // Specification_Security.md §2.7: a role a self-registered account may
+  // Administration.md §7.9: Files stores in S3 only through an enabled connection,
+  // and the connection stays on while anything is stored there.
+  "files.storage_provider": async (client, value) => {
+    if (value !== "s3") return null;
+    const { rows } = await client.query(`SELECT 1 FROM totalbase.settings WHERE key = 's3.enabled' AND value = 'true'::jsonb`);
+    return rows[0] ? null : "Enable S3 storage (Settings › S3 storage) before storing files in it.";
+  },
+  "s3.enabled": async (client, value) => {
+    if (value !== false) return null;
+    const { rows } = await client.query<{ provider: boolean; stored: boolean; backups: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM totalbase.settings WHERE key = 'files.storage_provider' AND value = '"s3"'::jsonb) AS provider,
+              EXISTS (SELECT 1 FROM totalbase.files WHERE storage_provider = 's3') AS stored,
+              EXISTS (SELECT 1 FROM totalbase.settings WHERE key = 'backups.destination' AND value = '"s3"'::jsonb) AS backups`,
+    );
+    if (rows[0]!.provider) return "Files stores new uploads in S3 storage - switch its storage provider back to Local disk first.";
+    if (rows[0]!.stored) return "Files still holds files stored in S3 storage - they would no longer be served.";
+    if (rows[0]!.backups) return "Backups are written to S3 storage - switch their destination back to Local disk first.";
+    return null;
+  },
+  // Administration.md §12.3: backups go to S3 only through an enabled connection.
+  "backups.destination": async (client, value) => {
+    if (value !== "s3") return null;
+    const { rows } = await client.query(`SELECT 1 FROM totalbase.settings WHERE key = 's3.enabled' AND value = 'true'::jsonb`);
+    return rows[0] ? null : "Enable S3 storage (Settings › S3 storage) before writing backups to it.";
+  },
+  // Security.md §2.7: a role a self-registered account may
   // be given - never one that grants administration.
   "auth.registration_default_role": async (client, value) => {
     if (value === "") return null;
@@ -207,16 +266,14 @@ function typeProblem(key: SettingKey, value: unknown): string | null {
 
 /**
  * Reads/writes typed setting overrides in totalbase.settings.
- * See Specification_Administration.md §7.1.
+ * See Administration.md §7.1.
  *
  * `get` is called on essentially every request path (Data API limits,
  * idempotency, audit, ...), so reads are cached in-process indefinitely
- * and invalidated on `set`/`setGroup` - same single-process V1 scope
- * as the admin-role cache in EffectivePermissionService
- * (Specification.md §4.6: a multi-instance deployment would need a shared
- * invalidation signal, out of scope here). A setting changed directly in
- * the database, bypassing this service, won't be picked up until restart -
- * an accepted staleness caveat, not a supported way to change settings.
+ * and invalidated on `set`/`setGroup`. A write anywhere else - another
+ * server process, the SQL Console - reaches `forget()` through the
+ * SETTINGS signal a trigger on totalbase.settings sends at commit
+ * (Foundations.md §4.6, apps/server's invalidations.ts).
  *
  * The cache fills as a whole: the first miss loads every stored override
  * in one statement and caches every registry key (its override or its
@@ -273,6 +330,18 @@ export class SettingsService {
     this.droppedDuringLoad?.add(key);
   }
 
+  /**
+   * Another process (or the SQL Console) changed `key` - every key when none is given or it isn't in the
+   * registry: the next read loads it again (Foundations.md §4.6, the SETTINGS signal).
+   */
+  forget(key?: string): void {
+    if (key !== undefined && key in SETTINGS_DEFAULTS) {
+      this.invalidate(key as SettingKey);
+      return;
+    }
+    for (const known of Object.keys(SETTINGS_DEFAULTS) as SettingKey[]) this.invalidate(known);
+  }
+
   async set<K extends SettingKey>(
     key: K,
     value: SettingsRegistry[K],
@@ -289,6 +358,8 @@ export class SettingsService {
 
   /** Drops a stored override, so the key reads its registry default again. */
   async reset(key: SettingKey, client: Queryable = this.database): Promise<void> {
+    // The default goes through the same database checks: resetting s3.enabled turns it off.
+    await validateInDatabase(client, key, SETTINGS_DEFAULTS[key]);
     await client.query(`DELETE FROM totalbase.settings WHERE key = $1`, [key]);
     this.invalidate(key);
   }
@@ -299,7 +370,7 @@ export class SettingsService {
     return rows.length > 0;
   }
 
-  /** All registered setting keys, defaults merged with any stored override (Specification_Administration.md §7.2: "GET /settings"). */
+  /** All registered setting keys, defaults merged with any stored override (Administration.md §7.2: "GET /settings"). */
   async getAll(): Promise<Record<SettingKey, unknown>> {
     const keys = Object.keys(SETTINGS_DEFAULTS) as SettingKey[];
     // One load when any key is missing (a cold cache, or keys dropped by writes) - never a query per key.
@@ -321,7 +392,7 @@ export class SettingsService {
    * Applies a partial patch to one group. Keys may be given either fully
    * dotted ("audit.enabled") or bare ("enabled") - both resolve against
    * the same group. Unknown keys are rejected rather than silently
-   * stored (Specification_Administration.md §7.1: registry definitions live in code).
+   * stored (Administration.md §7.1: registry definitions live in code).
    *
    * All or nothing: every key is checked before anything is written, and
    * the writes share one transaction - a patch with one bad value leaves

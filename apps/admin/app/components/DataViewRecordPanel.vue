@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A grid's record form when it's a page (Specification_DataViews.md §6.1):
+ * A grid's record form when it's a page (DataViews.md §6.1):
  * the DataView's generated page (CustomPage.vue) in the
  * container its Edit presentation says - drawer, modal or sidebar
  * (EditFormShell.vue) - framed header-body-footer (AGENTS.md section 25):
@@ -70,7 +70,7 @@ function close() {
   } else open.value = false
 }
 
-// --- PAGE: the record page's options (Specification_DataViews.md §6.7) ---------------
+// --- PAGE: the record page's options (DataViews.md §6.7) ---------------
 const pageConfig = computed(() => props.dataview.viewConfig ?? {})
 const contentClass = computed(() => pageContentClassOf(props.dataview, 'record'))
 const isCompact = useCompactUi()
@@ -154,7 +154,7 @@ const title = computed(() => t(mode.value === 'create' ? 'dataviews.record.title
 const canWrite = computed(() => props.mode !== 'view')
 /** An edit in progress: only the footer's Cancel and Save show. */
 const editingNow = computed(() => (record.value ? isEditing(record.value) : props.mode === 'create'))
-/** The DataView's own actions on this record (Specification_DataViews.md §3.7) - done, the list behind reloads too. */
+/** The DataView's own actions on this record (DataViews.md §3.7) - done, the list behind reloads too. */
 const customActions = useRecordCustomActions(toRef(props, 'dataview'), record, () => emit('changed'))
 const headerMenu = computed<DropdownMenuItem[][]>(() => {
   const current = record.value

@@ -2,7 +2,7 @@ import { TotalBaseError } from "@totalbase/errors";
 
 /**
  * Shared `name`/`description`/`slug` validation and slug generation
- * (Specification.md §9.3), reused by every table following the
+ * (Foundations.md §9.3), reused by every table following the
  * convention: `dataviews`, `dashboards`, `workflows`, `templates`.
  */
 
@@ -17,7 +17,7 @@ const SLUG_MAX_LENGTH = 32;
 const NAME_PUNCTUATION = "-_.,:;()'&+";
 const NAME_ALLOWED_CHARACTER = /^[\p{L}\p{N}\p{M} \-_.,:;()'&+]$/u;
 
-/** Specification.md §9.3: required, trimmed, max 32 chars, Unicode letters/digits/separators only. */
+/** Foundations.md §9.3: required, trimmed, max 32 chars, Unicode letters/digits/separators only. */
 export function validateName(raw: unknown): string {
   // A body without a name (or with a number there) is the caller's mistake, not a server error.
   if (typeof raw !== "string") throw new TotalBaseError("INVALID_NAME", "name is required");
@@ -49,7 +49,7 @@ export function validateMenuLabel(raw: string | null | undefined): string | null
   return label;
 }
 
-/** Specification.md §9.3: optional free text, max 128 chars, trimmed. */
+/** Foundations.md §9.3: optional free text, max 128 chars, trimmed. */
 export function validateDescription(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
   const description = raw.trim();
@@ -65,7 +65,7 @@ export function validateDescription(raw: string | null | undefined): string | nu
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** Specification.md §9.3: lowercase ASCII letters/digits/hyphen only, max 32 chars. */
+/** Foundations.md §9.3: lowercase ASCII letters/digits/hyphen only, max 32 chars. */
 export function validateSlug(raw: string): string {
   const slug = raw.trim();
   if (slug.length === 0) {
@@ -84,7 +84,7 @@ export function validateSlug(raw: string): string {
 }
 
 /**
- * Proposes a valid slug from a display name (Specification.md §9.3). This is a
+ * Proposes a valid slug from a display name (Foundations.md §9.3). This is a
  * convenience for the Admin UI/server defaults only - the caller must
  * still run the result through validateSlug (or accept a manually-edited
  * value) before persisting.

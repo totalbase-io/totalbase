@@ -1,5 +1,5 @@
 /**
- * The base layer every map in the instance draws (Specification_DataViews.md
+ * The base layer every map in the instance draws (DataViews.md
  * §5.4) - MAP DataViews, the map widgets, dashboard MAP widgets - built from
  * the `maps.tiles` / `maps.mapbox_token` / `maps.mapbox_style` settings.
  * Mapbox comes as raster tiles (its Static Tiles API) in the same Leaflet

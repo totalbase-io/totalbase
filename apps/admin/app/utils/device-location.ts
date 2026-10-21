@@ -1,5 +1,5 @@
 /**
- * The device's position (Specification_DataViews.md §9.9, *Location*): one
+ * The device's position (DataViews.md §9.9, *Location*): one
  * call to the browser's Geolocation API, shared by the Location widget
  * (`TGeolocation`), the map field's *My location* (`TLeafletMap.locate()`)
  * and the Code's `dataview.device.location()`. A point is `{ lng, lat }`,

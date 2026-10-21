@@ -32,7 +32,7 @@ describe("App dashboards (/app/api/dashboards)", () => {
 
   const get = (url: string, token?: string) =>
     app.inject({ method: "GET", url, headers: token ? { authorization: `Bearer ${token}` } : {} });
-  /** `payload` is the request's content - sent as `{ data: payload }` (Specification_Data_API.md §2.5). */
+  /** `payload` is the request's content - sent as `{ data: payload }` (Data_API.md §2.5). */
   const post = (url: string, token: string, payload: unknown) =>
     app.inject({ method: "POST", url, headers: { authorization: `Bearer ${token}` }, payload: { data: payload } });
 

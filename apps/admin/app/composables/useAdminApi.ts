@@ -11,7 +11,7 @@ export type AdminApiResult<T> = ApiResult<T>
  * `Authorization: Bearer <token>` when a session exists, unwraps the
  * envelope (`apiRequest`), and on a 401 clears the session and goes to
  * /login (session expired or never existed - there is no refresh-token
- * flow, Specification_Admin_UI.md §2.3). `onForbidden` runs on a 403.
+ * flow, Admin_UI.md §2.3). `onForbidden` runs on a 403.
  */
 export function createSessionApi(prefix: string, onForbidden?: (session: ReturnType<typeof useSession>) => void) {
   const session = useSession()
@@ -74,7 +74,7 @@ async function recheckAccess(session: ReturnType<typeof useSession>) {
   }
 }
 
-/** Typed Admin API client (Specification_Admin_UI.md §2): `/admin/api/*`, same-origin in prod, proxied in dev (nuxt.config.ts). */
+/** Typed Admin API client (Admin_UI.md §2): `/admin/api/*`, same-origin in prod, proxied in dev (nuxt.config.ts). */
 export function useAdminApi() {
   return createSessionApi('/admin/api', recheckAccess)
 }

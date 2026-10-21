@@ -1,5 +1,5 @@
 /**
- * The widget catalog (Specification_DataViews.md §9, §14.1,
+ * The widget catalog (DataViews.md §9, §14.1,
  * 11): every widget a DataView or Dashboard canvas offers, and the one
  * source of truth for it - the Design form's palette, the generic
  * inspector, a column's widget choices (`compatibleWidgets`), the column
@@ -25,7 +25,7 @@
  * use for (`as`, `portal`, `autofocusDelay`…). Slots are only the areas a
  * component lays content out in (a Card's header/body/footer, a Modal's body,
  * an overlay's trigger) - each is a free layout grid, like a container today
- * (Specification_DataViews.md §9.3); small slots (`leading`/`trailing`, `item-label`, a table's
+ * (DataViews.md §9.3); small slots (`leading`/`trailing`, `item-label`, a table's
  * `<column>-cell`) are covered by props and formulas instead.
  */
 
@@ -58,7 +58,7 @@ export type ValueKind =
 
 /**
  * What a widget asks for when it's placed, before it exists: `resource` - the
- * Resource its data comes from (Specification_DataViews.md §9.2); `input` - a form field's input
+ * Resource its data comes from (DataViews.md §9.2); `input` - a form field's input
  * widget, and the Value it keeps its value in.
  */
 export type WidgetSetup = "resource" | "input";
@@ -69,7 +69,8 @@ export type WidgetGroup = "form" | "input" | "display" | "embed" | "container" |
 /** How the inspector edits a prop. */
 /** `attributes`: name/value rows (HTML attributes), stored as an object; `function`: a Code function, by name. */
 /**
- * `column` - a column of the page's record; `dataview` - another DataView, by
+ * `column` - a column of the page's record; `junction` - a junction table of
+ * the page's record table, by its resource id; `dataview` - another DataView, by
  * id (the server keeps it as the field's `related_dataview`, a foreign key);
  * `detailColumn` - the column of that DataView's table that points at the
  * page's record; `dataviewView` - one of that DataView's views (its
@@ -85,7 +86,7 @@ export type WidgetGroup = "form" | "input" | "display" | "embed" | "container" |
  * Tabs', an Accordion's or a Dropdown menu's items (`WidgetItem`), what each
  * holds named by the prop's `itemFields`.
  */
-export type PropEditor = "text" | "textarea" | "number" | "boolean" | "select" | "color" | "icon" | "json" | "attributes" | "function" | "column" | "dataview" | "detailColumn" | "dataviewView" | "dataviewColumns" | "dataviewTools" | "dataviewAllow" | "image" | "dashboard" | "dashboardVariables" | "regex" | "tableColumns" | "actions" | "resourceField" | "items" | "computedColumns";
+export type PropEditor = "text" | "textarea" | "number" | "boolean" | "select" | "color" | "icon" | "json" | "attributes" | "function" | "column" | "junction" | "dataview" | "detailColumn" | "dataviewView" | "dataviewColumns" | "dataviewTools" | "dataviewAllow" | "image" | "dashboard" | "dashboardVariables" | "regex" | "tableColumns" | "actions" | "resourceField" | "items" | "computedColumns";
 
 /** Widgets whose value is a file's id (a uuid foreign key to files): shown as its image or its name, never the bare id. */
 export const FILE_VALUE_WIDGETS: readonly string[] = ["UFileUpload", "TCamera", "TSignature"];
@@ -113,7 +114,7 @@ export const EMBED_TOOL_DEFAULTS: Readonly<Record<string, boolean>> = {
 export const EMBED_ACTIONS = ["create", "update", "delete"] as const;
 
 /**
- * What a prop can be bound to besides its literal value (Specification_DataViews.md §9.2):
+ * What a prop can be bound to besides its literal value (DataViews.md §9.2):
  * `formula` - a formula over variables/slot props; `value` - a Value variable
  * (a control's `modelValue`, two-way); `resource` - a Resource variable's rows
  * (`items`, `data`); `option` - an option list's field (a Label field) that
@@ -145,7 +146,7 @@ export type PropSection = keyof typeof PROP_SECTIONS;
 
 /**
  * One item of a Tabs, an Accordion or a Dropdown menu (the `items` editor,
- * Specification_DataViews.md §9.2): its literals, and formulas
+ * DataViews.md §9.2): its literals, and formulas
  * over the page (`{{vars.*}}`) for what may follow it - its label, whether
  * it's off, whether it shows at all.
  */
@@ -187,7 +188,7 @@ export interface TableAction {
 export const COMPUTED_COLUMN_TYPES = ["text", "number", "date", "timestamp", "boolean"] as const;
 
 /**
- * A page Table's computed column (Specification_DataViews.md §15):
+ * A page Table's computed column (DataViews.md §15):
  * one more column after its Resource's, its value a formula per row -
  * `{{quantity}} * {{unit_price}}`, the page as `{{vars.*}}`. Presentation only:
  * what must filter, sort, add up or stay consistent belongs in PostgreSQL (a
@@ -206,7 +207,7 @@ export interface WidgetSlot {
   /** Slot props offered to controls inside the slot as `{{slot.<name>}}` (never `ui`). */
   slotProps?: readonly string[];
   /**
-   * Where the Design form edits it (Specification_DataViews.md §12.4): inline on the canvas (the
+   * Where the Design form edits it (DataViews.md §12.4.1): inline on the canvas (the
    * default), or `own` - its own canvas, entered with Open (an overlay's
    * content: not on the page until it opens).
    */
@@ -241,7 +242,7 @@ export interface WidgetDefinition {
   formField?: boolean;
   /**
    * Has no content to size it (an editor, a map, a table): its height is set
-   * on the canvas, in rows (Specification_DataViews.md §12.2). Everything else grows with what it holds.
+   * on the canvas, in rows (DataViews.md §12.2). Everything else grows with what it holds.
    */
   sizable?: boolean;
   /**
@@ -255,12 +256,12 @@ export interface WidgetDefinition {
   props: Readonly<Record<string, WidgetProp>>;
   slots: Readonly<Record<string, WidgetSlot>>;
   emits: Readonly<Record<string, WidgetEmit>>;
-  /** Methods reachable as `dataview.controls.<name>.*` (Specification_DataViews.md §9.1). */
+  /** Methods reachable as `dataview.controls.<name>.*` (DataViews.md §9.1). */
   expose?: readonly ("open" | "close" | "focus" | "submit" | "validate" | "clear" | "show" | "reset" | "locate")[];
 }
 
 /**
- * A token a Frame's URL may hold (Specification_DataViews.md §9.7): a page
+ * A token a Frame's URL may hold (DataViews.md §9.7): a page
  * value - `{{vars.<name>.<path>}}`, `{{controls.<name>.<path>}}`,
  * `{{slot.<prop>.<path>}}` - replaced by that value, URL-encoded. A source,
  * not a RegExp: each user builds its own (`new RegExp(FRAME_URL_TOKEN, "g")`).
@@ -290,7 +291,7 @@ const variant = (options: readonly string[]) => ({ label: "Variant", editor: "se
 const INPUT_VARIANTS = ["outline", "soft", "subtle", "ghost", "none"] as const;
 const SOLID_VARIANTS = ["solid", "outline", "soft", "subtle"] as const;
 
-/** A value control's `modelValue` - two-way with a Value variable, or a formula: a computed input, read only (Specification_DataViews.md §9.2). */
+/** A value control's `modelValue` - two-way with a Value variable, or a formula: a computed input, read only (DataViews.md §9.2). */
 const modelValue = {
   label: "Value",
   editor: "text",
@@ -346,7 +347,7 @@ const overlayEmits = {
 } as const;
 
 /**
- * The codes a Scanner reads (Specification_DataViews.md §9.9), by the
+ * The codes a Scanner reads (DataViews.md §9.9), by the
  * BarcodeDetector API's names - a camera reads them with the browser's own
  * detector where it knows them, else with zxing-wasm; a USB reader in
  * keyboard mode types whatever it reads. `pdf417` is the Argentine DNI's.
@@ -396,6 +397,12 @@ export const WIDGET_CATALOG = {
         editor: "column",
         description:
           "A column of the page's record: its input edits record.data.<column>. PostgreSQL's NOT NULL makes it required, and it's read-only where the viewer may not write it.",
+      },
+      junction: {
+        label: "Junction table",
+        editor: "junction",
+        description:
+          "Instead of a column: a junction table between the page's record and another table. Its input picks several of the other table's rows, and the record's Save adds and removes the junction's rows, as the viewer, in the same transaction.",
       },
       label: text("Label"),
       block: { label: "Full width", editor: "boolean", default: true, description: "Its input fills the field - set the field's width and the input follows." },
@@ -1330,7 +1337,7 @@ export const WIDGET_CATALOG = {
     setup: "resource",
     props: {
       data: { label: "Rows", editor: "json", binding: "resource" },
-      // TotalBase's own (Specification_DataViews.md §15): each column's settings, Nuxt UI never sees them.
+      // TotalBase's own (DataViews.md §15): each column's settings, Nuxt UI never sees them.
       columnSettings: {
         label: "Columns",
         editor: "tableColumns",
@@ -1743,7 +1750,7 @@ export const COMMON_WIDGET_PROPS = {
 } as const satisfies Record<string, WidgetProp>;
 
 /**
- * The Style tab (Specification_DataViews.md §12.6): the box around
+ * The Style tab (DataViews.md §12.6): the box around
  * any placed widget - spacing, border, background, shadow, alignment - from
  * fixed scales of the theme's own tokens, so a page stays consistent, dark
  * mode included. Unset is none. The renderer turns each into Tailwind classes
@@ -1781,7 +1788,7 @@ export const COMMON_INPUT_PROPS = {
   readonly: { label: "Read only", editor: "boolean", binding: "formula", description: "Shown, but can't be changed." },
 } as const satisfies Record<string, WidgetProp>;
 
-/** Common to sizable widgets only - they have a height of their own (Specification_DataViews.md §12.2). */
+/** Common to sizable widgets only - they have a height of their own (DataViews.md §12.2). */
 export const COMMON_SIZABLE_PROPS = {
   fillHeight: {
     label: "Fill height",
@@ -1813,7 +1820,7 @@ export function commonWidgetProps(name: WidgetName): Readonly<Record<string, Wid
 export const WIDGET_NAMES = Object.keys(WIDGET_CATALOG) as WidgetName[];
 
 /**
- * A CUSTOM page's header (Specification_DataViews.md §12.2):
+ * A CUSTOM page's header (DataViews.md §12.2):
  * widgets on the page with this slot show in the App page's own header,
  * beside its title - its actions, so only those that act.
  */
@@ -1821,7 +1828,7 @@ export const PAGE_HEADER_SLOT = "header";
 export const PAGE_HEADER_WIDGETS: readonly WidgetName[] = ["UButton", "UDropdownMenu"];
 
 /**
- * A CUSTOM page's footer (Specification_DataViews.md §12.2):
+ * A CUSTOM page's footer (DataViews.md §12.2):
  * widgets on the page with this slot show pinned under it - the page
  * scrolls, they stay (totals and an action). A low band: buttons, menus,
  * text, badges, and a Box to group more (its own content is free). Nothing
@@ -1846,7 +1853,7 @@ export function itemSlot(slot: string, item: unknown, index: number): string {
   return `${slot}:${typeof value === "string" || typeof value === "number" ? value : index}`;
 }
 
-/** What a named widget holds, read by formulas as `{{controls.<name>.*}}` (Specification_DataViews.md §9.2). */
+/** What a named widget holds, read by formulas as `{{controls.<name>.*}}` (DataViews.md §9.2). */
 export interface WidgetStateEntry {
   label: string;
   description: string;

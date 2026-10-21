@@ -5,7 +5,7 @@ import { columnInputWidgets, columnValueKind, looksLikeSettingsTable, suggestSet
 import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, schemaName } from "./tool-helpers.js";
 
 /**
- * DataViews (Specification_DataViews.md, Specification_Administration.md
+ * DataViews (DataViews.md, Administration.md
  * §11.3): created over a table or view in one call - the creation wizard's
  * own endpoint, fields from the source's columns - read back with the roles
  * that open it and what those roles may do on its source, changed (settings,

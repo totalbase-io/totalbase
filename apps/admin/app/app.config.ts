@@ -1,4 +1,4 @@
-// Design principles: Specification_Admin_UI.md §1.2 — simple, sober,
+// Design principles: Admin_UI.md §1.2 — simple, sober,
 // professional, table-oriented. Reference style: Tailscale Admin, GitHub
 // Settings. Sky/slate (Nuxt UI's dashboard template) keeps that register instead of a CMS-like green.
 export default defineAppConfig({

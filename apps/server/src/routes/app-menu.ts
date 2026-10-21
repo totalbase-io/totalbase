@@ -40,7 +40,7 @@ async function menuMode(context: AppContext): Promise<"TREE" | "SIDEBAR"> {
   return (await context.settings.get("app.menu_mode")) === "SIDEBAR" ? "SIDEBAR" : "TREE";
 }
 
-/** Whether the menu offers its search box (app.menu_search) - AUTO: past 15 entries the viewer sees (Specification_Security.md §8.2). */
+/** Whether the menu offers its search box (app.menu_search) - AUTO: past 15 entries the viewer sees (Security.md §8.2). */
 async function menuSearch(context: AppContext): Promise<"AUTO" | "ALWAYS" | "NEVER"> {
   return context.settings.get("app.menu_search");
 }
@@ -51,7 +51,7 @@ async function menuGroupsOpen(context: AppContext): Promise<"CURRENT" | "OPEN" |
 }
 
 
-/** Where the App opens for the caller (Specification_Security.md §8.1): their first role's home, by role name, that they see in the menu. */
+/** Where the App opens for the caller (Security.md §8.1): their first role's home, by role name, that they see in the menu. */
 async function homeOf(context: AppContext, roleIds: string[], objects: MenuObject[], visible: (object: MenuObject) => boolean): Promise<{ kind: MenuObject["kind"]; slug: string } | null> {
   for (const home of await context.roles.homes(roleIds)) {
     const object = objects.find((candidate) => candidate.kind === home.kind && candidate.id === home.id);
@@ -61,7 +61,7 @@ async function homeOf(context: AppContext, roleIds: string[], objects: MenuObjec
 }
 
 /**
- * The App menu (Specification_Security.md §8). Viewers get it
+ * The App menu (Security.md §8). Viewers get it
  * filtered through both access levels - a DataView needs its object
  * access and READ on its source, a Dashboard its object access; the
  * administrator reads and replaces the whole arrangement.

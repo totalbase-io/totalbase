@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A Tabs', an Accordion's or a Dropdown menu's items (the `items` editor,
- * Specification_DataViews.md §9.2): one card each - its
+ * DataViews.md §9.2): one card each - its
  * icon, its label (or a formula for it), and what its prop's `itemFields`
  * give it: a color, a Code function, Disabled and Visible formulas over the
  * page. Each item's key is set once, when it's added, and shown - Code

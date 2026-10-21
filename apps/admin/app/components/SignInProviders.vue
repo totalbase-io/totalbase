@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The sign-in page's provider buttons (Specification_Security.md §2.11): one per provider an
+ * The sign-in page's provider buttons (Security.md §2.11): one per provider an
  * administrator shows there, up to three; more than three fold into one "Sign in with…" menu so the
  * card keeps its size. Each leads to the provider through /api/auth/oauth/{slug}, which comes back to
  * pages/auth/oauth.vue with the session.

@@ -4,7 +4,7 @@ import type { ComparisonOperator } from "./operators.js";
 
 /**
  * Query language features an instance can switch off for Data API callers
- * (Specification_Data_API.md §3.12: api.allow_count, query.allow_regex/_contains/_having) -
+ * (Data_API.md §3.12: api.allow_count, query.allow_regex/_contains/_having) -
  * typically the ones that can get expensive on large tables without the
  * right index. Applies only to what a caller sends; row filters, payload
  * checks and workflow steps are written by an admin and stay unrestricted.

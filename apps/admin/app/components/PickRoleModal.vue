@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Picks one role for a bulk membership action (Specification_Security.md
+ * Picks one role for a bulk membership action (Security.md
  * §9.4) - "Add to role", "Move to role"... Roles listed as everywhere: name
  * in bold, description beneath (AGENTS.md section 10.1).
  */

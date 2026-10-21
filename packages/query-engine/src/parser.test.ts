@@ -209,7 +209,7 @@ describe("parseQuery: pagination / count", () => {
   });
 });
 
-describe("parseQuery: maxQueryNodes (Specification_Data_API.md §12)", () => {
+describe("parseQuery: maxQueryNodes (Data_API.md §12)", () => {
   it("does not enforce a complexity limit when maxQueryNodes is omitted", () => {
     expect(() => parseQuery({ fields: "a,b,c,d,e,f,g,h,i,j" }, limits)).not.toThrow();
   });
@@ -225,7 +225,7 @@ describe("parseQuery: maxQueryNodes (Specification_Data_API.md §12)", () => {
   });
 });
 
-describe("assertFilterComplexity: a write's where (Specification_Data_API.md §12)", () => {
+describe("assertFilterComplexity: a write's where (Data_API.md §12)", () => {
   const where = { a: { _eq: "1" }, b: { _eq: "2" }, c: { _eq: "3" } };
 
   it("rejects a filter whose node count exceeds api.max_query_nodes", () => {

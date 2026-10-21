@@ -273,7 +273,6 @@
       "modified": "Modified",
       "unsaved": "Unsaved",
       "unsavedCount": "{n} unsaved change | {n} unsaved changes",
-      "noEffectWhileOff": "No effect while “{setting}” is off.",
       "noSecrets": "No secrets yet - create one under {link}.",
       "secretsLink": "Settings › Secrets",
       "restartPending": "Saved - the server still runs with {value} until it restarts.",
@@ -363,6 +362,13 @@
       "sendToDescription": "Uses the saved settings - save any change first.",
       "send": "Send"
     },
+    "s3": {
+      "testConnection": "Test connection",
+      "connectionWorks": "Connection works",
+      "connectionWorksDescription": "A test file was written to the bucket, read back and deleted.",
+      "connectionFailed": "Connection failed",
+      "unreachable": "Could not reach the S3 service."
+    },
     "metadata": {
       "groups": {
         "api": {
@@ -396,6 +402,10 @@
         "smtp": {
           "label": "SMTP",
           "description": "The mail relay for system emails and Workflow \"Send email\" steps."
+        },
+        "s3": {
+          "label": "S3 storage",
+          "description": "A connection to an S3-compatible bucket - Amazon S3, Cloudflare R2, MinIO and others - where Files can store uploads."
         },
         "security": {
           "label": "Network",
@@ -460,6 +470,10 @@
         "mcp": {
           "label": "MCP",
           "description": "The MCP server an AI agent builds and operates this instance through - served at this instance's own address, /mcp, with an administrator's token."
+        },
+        "backups": {
+          "label": "Backups",
+          "description": "Scheduled backups of the database and the stored files, kept on the local disk or in S3 storage. The master key is never in them - keep it apart."
         }
       },
       "sections": {
@@ -496,7 +510,10 @@
         "agent": "Agent",
         "toolbar": "Toolbar",
         "pageWidth": "Page width",
-        "color": "Color"
+        "color": "Color",
+        "schedule": "Schedule",
+        "destination": "Destination",
+        "content": "Content"
       },
       "units": {
         "bytes": "bytes",
@@ -531,7 +548,7 @@
         },
         "api__max_relation_depth": {
           "label": "Maximum relation depth",
-          "description": "How many levels of related resources a single request can expand (?expand=a.b.c)."
+          "description": "How many foreign keys a dotted path may follow in one request (order.customer.email follows two)."
         },
         "api__max_filter_depth": {
           "label": "Maximum filter depth",
@@ -623,14 +640,15 @@
         },
         "files__storage_provider": {
           "label": "Storage provider",
-          "description": "Where uploaded files are stored. Local storage is the only provider available in this first version.",
+          "description": "Where new uploads are stored. A file already uploaded stays where it was written and is still served from there. S3 storage must be enabled first.",
           "options": {
-            "local": "Local disk"
+            "local": "Local disk",
+            "s3": "S3 storage"
           }
         },
         "files__storage_local_path": {
           "label": "Local storage path",
-          "description": "Filesystem directory files are written to when the storage provider is local."
+          "description": "Where local files are kept - including those uploaded before switching to S3 storage, still served from here."
         },
         "files__transforms__enabled": {
           "label": "Enable image transforms",
@@ -732,6 +750,15 @@
           "label": "Lockout duration",
           "description": "How long a locked account stays locked. A password reset or an admin's unlock ends it sooner."
         },
+        "auth__mfa_required": {
+          "label": "Require two-factor authentication",
+          "description": "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in; sessions already open stay.",
+          "options": {
+            "NONE": "No one",
+            "ADMINISTRATORS": "Administrators",
+            "EVERYONE": "Everyone"
+          }
+        },
         "auth__links__invitation": {
           "label": "Invitation link",
           "description": "Where an invitation email's link points. {'{'}{'{'}public_url{'}'}{'}'} and {'{'}{'{'}token{'}'}{'}'} are filled in by TotalBase - point it at your own app's page if it handles invitations itself."
@@ -815,6 +842,38 @@
         "smtp__from": {
           "label": "From address",
           "description": "The envelope/header From address outgoing mail is sent as."
+        },
+        "s3__enabled": {
+          "label": "Enable S3 storage",
+          "description": "Turns the connection on. Can't be turned off while Files stores new uploads in it or still holds files there."
+        },
+        "s3__endpoint": {
+          "label": "Endpoint",
+          "description": "The service's base URL, e.g. https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com or http://minio:9000."
+        },
+        "s3__region": {
+          "label": "Region",
+          "description": "The bucket's region, part of every request's signature - us-east-1 for most services that don't have regions, auto for Cloudflare R2."
+        },
+        "s3__bucket": {
+          "label": "Bucket",
+          "description": "The bucket to write to. It must exist; TotalBase doesn't create it."
+        },
+        "s3__prefix": {
+          "label": "Key prefix",
+          "description": "A folder inside the bucket for this instance, e.g. production/ - so several instances can share one bucket. Each use writes under its own folder in it (files/). Empty: the bucket's root."
+        },
+        "s3__path_style": {
+          "label": "Path-style addressing",
+          "description": "Address the bucket as endpoint/bucket instead of bucket.endpoint - MinIO and most self-hosted services need it on."
+        },
+        "s3__access_key_id": {
+          "label": "Access key ID",
+          "description": "The access key's ID. Its secret goes in the next setting, as a secret."
+        },
+        "s3__secret_key": {
+          "label": "Secret access key (secret key)",
+          "description": "The key of a Settings → Secrets entry holding the secret access key - never stored here in plaintext."
         },
         "security__rate_limit_enabled": {
           "label": "Enable rate limiting",
@@ -1328,6 +1387,34 @@
             "ALWAYS": "Always",
             "NEVER": "Never"
           }
+        },
+        "backups__enabled": {
+          "label": "Backups",
+          "description": "Backs the instance up on the schedule below, and lets an administrator Back up now. Off: no new backup - those made stay listed, to download or delete."
+        },
+        "backups__schedule": {
+          "label": "Schedule",
+          "description": "When, as a cron expression in the instance's timezone (Settings › General). 0 3 * * *: every day at 03:00."
+        },
+        "backups__keep": {
+          "label": "Backups to keep",
+          "description": "The most recent completed backups kept; an older one is deleted after each new one completes."
+        },
+        "backups__destination": {
+          "label": "Destination",
+          "description": "Where new backups are written. A backup already made stays where it was written.",
+          "options": {
+            "local": "Local disk",
+            "s3": "S3 storage"
+          }
+        },
+        "backups__local_path": {
+          "label": "Local backups path",
+          "description": "The directory local backups are written to - mount a volume there, on another disk than the database's."
+        },
+        "backups__include_files": {
+          "label": "Include stored files",
+          "description": "The files Files keeps on the local disk go into each backup. Files kept in S3 storage never do - back the bucket up with the service's own versioning or replication."
         }
       }
     },
@@ -1378,6 +1465,86 @@
       "mcpJsonHelp": "Or this file in the project folder - the token is read from TOTALBASE_TOKEN.",
       "copy": "Copy",
       "copied": "Copied"
+    },
+    "backups": {
+      "backUpNow": "Back up now",
+      "queued": "Backup queued",
+      "queueFailed": "Could not queue the backup",
+      "downloadFailed": "Could not download the backup",
+      "deleteFailed": "Could not delete the backup",
+      "deleteTitle": "Delete backup",
+      "deleteBody": "{name} and its archive are deleted. This cannot be undone.",
+      "nextAt": "Next backup: {when} ({timezone}).",
+      "scheduleOff": "Backups are off - turn them on to back up on a schedule or now. Those made stay below.",
+      "scheduled": "Scheduled",
+      "manual": "Back up now",
+      "local": "Local disk",
+      "s3": "S3 storage",
+      "empty": "No backups yet",
+      "emptyDescription": "Back up now, or turn on scheduled backups below.",
+      "masterKeyApart": "A backup never holds the master key: keep it apart - restoring needs it.",
+      "columns": {
+        "backup": "Backup",
+        "status": "Status",
+        "size": "Size"
+      },
+      "status": {
+        "PENDING": "Queued",
+        "RUNNING": "Running",
+        "COMPLETED": "Completed",
+        "FAILED": "Failed"
+      },
+      "listTitle": "Backups",
+      "pager": {
+        "noun": "backup",
+        "plural": "backups"
+      },
+      "restore": {
+        "menu": "Restore…",
+        "title": "Restore a backup",
+        "description": "The backup of {when} ({name}): the commands that restore it, to run where the instance runs.",
+        "before": "Before you start",
+        "beforeHelp": "What a restore does",
+        "options": "Your setup",
+        "optionsHelp": "Where the backup goes",
+        "commands": "Commands",
+        "commandsHelp": "Run them in order",
+        "what": "Nothing runs from here. The next steps give the commands that restore this backup into a new, empty database and switch the instance to it:",
+        "whatDatabase": "The current database, {database}, is left as it is - switching back undoes the restore.",
+        "whatFiles": "The stored files go back to the backup's; the current ones are moved aside, never deleted.",
+        "whatStopped": "TotalBase is stopped while it runs: plan a short pause.",
+        "whatSince": "Whatever changed after {when} is not in the backup.",
+        "masterKey": "The same master key",
+        "masterKeyHelp": "The instance must start with the master key this backup was taken with - TOTALBASE_MASTER_KEY, or master.key in its data volume. The restore checks it before writing anything.",
+        "database": "New database",
+        "databaseHelp": "Created empty for the backup. Lowercase letters, digits and _.",
+        "user": "Database user",
+        "userHelp": "The role TotalBase connects as (POSTGRES_USER) - the new database's owner.",
+        "postgres": "PostgreSQL",
+        "postgresInCompose": "In the same Docker Compose",
+        "postgresInComposeHelp": "As in the installation guide's first setup: the database is created through its service.",
+        "postgresElsewhere": "Elsewhere",
+        "postgresElsewhereHelp": "A managed service or a server of your own: whoever administers it creates the database.",
+        "appService": "TotalBase's service",
+        "dbService": "PostgreSQL's service",
+        "identifierError": "Lowercase letters, digits and _, starting with a letter or _.",
+        "serviceError": "A Compose service name: letters, digits, ., _ and -.",
+        "sameDatabase": "Use a new database - never the one in use.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "done": "Done",
+        "rollbackTitle": "To go back",
+        "steps": {
+          "create": "Create the empty database, as PostgreSQL's superuser:",
+          "createSql": "Have the empty database created, by someone with the right to - TotalBase's user can't:",
+          "download": "Download {name} into the folder you run the next commands from:",
+          "stop": "Stop TotalBase:",
+          "restore": "Restore the backup into the new database - it checks the master key, the versions and that the database is empty first:",
+          "switch": "In docker-compose.yml, point TotalBase at the new database:",
+          "start": "Start TotalBase - it applies any newer migration:",
+          "rollback": "Point TotalBase back at the previous database and put its files back:"
+        }
+      }
     }
   }
 }

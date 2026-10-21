@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Specification_Security.md §11.4: an UPDATE on a table without a primary
+ * Security.md §11.4: an UPDATE on a table without a primary
  * key records old and new of what it changed on PostgreSQL 18+ (RETURNING
  * OLD); on PostgreSQL 15-17 the old row isn't known - the entry keeps the
  * resulting row only. Runs against whatever

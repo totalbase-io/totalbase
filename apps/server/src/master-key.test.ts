@@ -8,7 +8,7 @@ import { resolveMasterKey } from "./master-key.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * The master key (Specification.md §15): the variable when set, else the file in the data directory, else - only
+ * The master key (Foundations.md §15): the variable when set, else the file in the data directory, else - only
  * for an installation with none yet - a new one kept there. Never a new key for an installation that has one.
  */
 describe("the master key", () => {

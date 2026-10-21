@@ -1,6 +1,6 @@
 /**
- * What a framed URL may be (Specification_DataViews.md §9.7, "EXTERNALFRAME
- * security"; Specification_Dashboards.md §5.11): the rule an EXTERNALFRAME
+ * What a framed URL may be (DataViews.md §9.7, "EXTERNALFRAME
+ * security"; Dashboards.md §5.11): the rule an EXTERNALFRAME
  * DataView, a page's Frame and a dashboard's Frame share. Plain functions
  * returning the problem, no error type: each owner raises its own code
  * (@totalbase/dataviews, @totalbase/dashboards).

@@ -2,11 +2,12 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Database } from "@totalbase/database";
 import { DASHBOARD_REFRESH_INTERVALS } from "@totalbase/tb-catalog";
 import { TotalBaseError } from "@totalbase/errors";
+import { UUID_PATTERN } from "@totalbase/shared";
 import { isEmbedVariableValue } from "./embed-token.js";
 import type { DashboardVariable } from "./variables.js";
 
 /**
- * Dashboard embeds (Specification_Dashboards.md §9.5): each way a published
+ * Dashboard embeds (Dashboards.md §9.5): each way a published
  * dashboard is shown outside TotalBase - a public LINK, or a SIGNED embed a
  * portal's backend signs tokens for. An embed holds how it looks
  * (`display`), what each variable is (`variables`), the sites that may frame
@@ -47,6 +48,8 @@ export interface DashboardEmbed {
   type: EmbedType;
   display: EmbedDisplay;
   variables: Record<string, EmbedVariableConfig>;
+  /** The one widget it shows (Dashboards.md §9.5) - null, the whole dashboard. */
+  widget: string | null;
   origins: string[];
   expiresAt: string | null;
   revokedAt: string | null;
@@ -62,6 +65,8 @@ export interface EmbedInput {
   type?: EmbedType;
   display?: unknown;
   variables?: unknown;
+  /** A widget of the published version, or null for the whole dashboard. */
+  widget?: string | null;
   origins?: unknown;
   expiresAt?: string | null;
 }
@@ -79,6 +84,7 @@ interface EmbedRow {
   type: EmbedType;
   display: EmbedDisplay;
   variables: Record<string, EmbedVariableConfig>;
+  widget: string | null;
   origins: string[];
   link_ciphertext: string | null;
   expires_at: string | null;
@@ -88,7 +94,7 @@ interface EmbedRow {
   updated_at: string;
 }
 
-const COLUMNS = "id, dashboard, name, type, display, variables, origins, link_ciphertext, expires_at, revoked_at, last_used_at, created_at, updated_at";
+const COLUMNS = "id, dashboard, name, type, display, variables, widget, origins, link_ciphertext, expires_at, revoked_at, last_used_at, created_at, updated_at";
 export const EMBED_LINK_PREFIX = "tbe_";
 const THEMES = new Set(["light", "dark", "auto"]);
 const MODES = new Set(["EDITABLE", "HIDDEN", "LOCKED"]);
@@ -187,6 +193,7 @@ export class DashboardEmbedsService {
       type: row.type,
       display: row.display ?? {},
       variables: row.variables ?? {},
+      widget: row.widget,
       origins: row.origins ?? [],
       expiresAt: row.expires_at,
       revokedAt: row.revoked_at,
@@ -232,21 +239,43 @@ export class DashboardEmbedsService {
     return (rows[0]?.variables ?? []).map((v) => v.name);
   }
 
+  /** The widgets an embed may show: the live version's - the draft's while it has none. */
+  private async widgetIds(dashboardId: string): Promise<string[]> {
+    const { rows } = await this.database.query<{ id: string }>(
+      `SELECT w->>'id' AS id FROM jsonb_array_elements(coalesce(
+         (SELECT v.widgets_snapshot FROM totalbase.dashboards_versions v WHERE v.dashboard = $1 ORDER BY v.version DESC LIMIT 1),
+         (SELECT jsonb_agg(jsonb_build_object('id', dw.id)) FROM totalbase.dashboards_widgets dw WHERE dw.dashboard = $1),
+         '[]'::jsonb)) w`,
+      [dashboardId],
+    );
+    return rows.map((r) => r.id);
+  }
+
+  /** An embed's (or a preview's) widget: null for the whole dashboard, else one of the published version's. */
+  async validateWidget(dashboardId: string, raw: unknown): Promise<string | null> {
+    if (raw === undefined || raw === null || raw === "") return null;
+    if (typeof raw !== "string" || !UUID_PATTERN.test(raw) || !(await this.widgetIds(dashboardId)).includes(raw)) {
+      throw invalid(`The dashboard has no widget ${String(raw)} - an embed shows one of its published widgets, or null for the whole dashboard.`);
+    }
+    return raw;
+  }
+
   async create(dashboardId: string, input: EmbedInput, createdBy: string | null, allowedOrigins: readonly string[]): Promise<DashboardEmbed> {
     const type = input.type;
     if (type !== "LINK" && type !== "SIGNED") throw invalid("type is LINK or SIGNED.");
     const name = validateName(input.name);
     const display = validateDisplay(input.display);
     const variables = validateVariables(input.variables, type, await this.variableNames(dashboardId));
+    const widget = await this.validateWidget(dashboardId, input.widget);
     const origins = validateOrigins(input.origins, allowedOrigins);
     const expiresAt = validateExpiry(input.expiresAt);
     const secret = type === "LINK" ? `${EMBED_LINK_PREFIX}${randomBytes(24).toString("base64url")}` : null;
     try {
       const { rows } = await this.database.query<EmbedRow>(
-        `INSERT INTO totalbase.dashboards_embeds (dashboard, name, type, display, variables, origins, link_hash, link_ciphertext, expires_at, created_by)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, $10)
+        `INSERT INTO totalbase.dashboards_embeds (dashboard, name, type, display, variables, widget, origins, link_hash, link_ciphertext, expires_at, created_by)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, $10, $11)
          RETURNING ${COLUMNS}`,
-        [dashboardId, name, type, JSON.stringify(display), JSON.stringify(variables), origins, secret ? hashEmbedLink(secret) : null, secret ? this.cipher.encrypt(secret) : null, expiresAt, createdBy],
+        [dashboardId, name, type, JSON.stringify(display), JSON.stringify(variables), widget, origins, secret ? hashEmbedLink(secret) : null, secret ? this.cipher.encrypt(secret) : null, expiresAt, createdBy],
       );
       return this.toEmbed(rows[0]!);
     } catch (error) {
@@ -267,6 +296,8 @@ export class DashboardEmbedsService {
     if (patch.name !== undefined) set("name", validateName(patch.name));
     if (patch.display !== undefined) set("display", JSON.stringify(validateDisplay(patch.display)), "::jsonb");
     if (patch.variables !== undefined) set("variables", JSON.stringify(validateVariables(patch.variables, current.type, await this.variableNames(dashboardId))), "::jsonb");
+    // The whole dashboard or one widget: changed like its display - the same link and tokens show the new one.
+    if (patch.widget !== undefined) set("widget", await this.validateWidget(dashboardId, patch.widget));
     if (patch.origins !== undefined) set("origins", validateOrigins(patch.origins, allowedOrigins));
     if (patch.expiresAt !== undefined) set("expires_at", validateExpiry(patch.expiresAt));
     if (sets.length === 0) return current;
@@ -320,20 +351,27 @@ export class DashboardEmbedsService {
   }
 
   /**
-   * The embeds a set of variable definitions would break: a variable they
-   * lock is gone, and an embed fails closed rather than show the dashboard
-   * without its restriction. The editor asks before a publish that does this.
+   * The embeds a draft would break: a variable they lock is gone, or the one
+   * widget they show - an embed fails closed rather than show the dashboard
+   * without its restriction, or the whole dashboard instead of its widget.
+   * The editor asks before a publish that does this.
    */
-  async brokenBy(dashboardId: string, variables: readonly DashboardVariable[]): Promise<Array<{ id: string; name: string; missing: string[] }>> {
+  async brokenBy(
+    dashboardId: string,
+    variables: readonly DashboardVariable[],
+    widgetIds: readonly string[],
+  ): Promise<Array<{ id: string; name: string; missing: string[]; widgetMissing: boolean }>> {
     const names = new Set(variables.map((v) => v.name));
+    const widgets = new Set(widgetIds);
     return (await this.list(dashboardId))
       .filter((embed) => !embed.revokedAt)
       .map((embed) => ({
         id: embed.id,
         name: embed.name,
         missing: Object.entries(embed.variables).filter(([name, config]) => config.mode === "LOCKED" && !names.has(name)).map(([name]) => name),
+        widgetMissing: embed.widget !== null && !widgets.has(embed.widget),
       }))
-      .filter((embed) => embed.missing.length > 0);
+      .filter((embed) => embed.missing.length > 0 || embed.widgetMissing);
   }
 }
 

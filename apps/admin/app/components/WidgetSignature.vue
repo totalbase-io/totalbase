@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { photoFileName } from '~/utils/photo-capture'
 /**
- * The Signature widget (TSignature, Specification_DataViews.md §9.9): a pad to sign on with a finger, a pen or
+ * The Signature widget (TSignature, DataViews.md §9.9): a pad to sign on with a finger, a pen or
  * the mouse - stored as a PNG file, its value the file's id, so a file column (a uuid foreign key to
  * files) keeps it like the Camera's and UFileUpload's (the same multipart POST to
  * /api/totalbase/table/files, under the viewer's own CREATE grant).

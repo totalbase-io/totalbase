@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * An object's Versions section (Specification.md §13.7, Specification_Admin_UI.md §3.7): its history as a timeline,
+ * An object's Versions section (Foundations.md §13.7, Admin_UI.md §3.7): its history as a timeline,
  * newest first - the draft on top while it differs from the live version, then every version with who published it,
  * when, its note, and Active / restored-from badges. A version opens read-only (`open`), restores into the draft
  * (confirmed, never published) or becomes a new object (Save as) from its row's "⋮"; Delete old versions at the
@@ -46,7 +46,7 @@ const publisher = (version: VersionSummary) => ({
   description: dates.dateTime(version.publishedAt, { dateStyle: 'medium', timeStyle: 'short' })
 })
 
-// --- Restore (Specification.md §13.4): the draft replaced, nothing published; confirmed in a popover. ---
+// --- Restore (Foundations.md §13.4): the draft replaced, nothing published; confirmed in a popover. ---
 const restoring = ref<number | null>(null)
 const restoreVersion = ref<number | null>(null)
 async function confirmRestore() {

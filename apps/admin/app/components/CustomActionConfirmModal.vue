@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A custom action's confirmation (Specification_DataViews.md §3.7): its text, the row's values in it, and the
+ * A custom action's confirmation (DataViews.md §3.7): its text, the row's values in it, and the
  * action's own button - red when it reads as destructive. Opened through Nuxt UI's useOverlay; closes with whether
  * to run it.
  */

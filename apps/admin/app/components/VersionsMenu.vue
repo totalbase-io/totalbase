@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The editor header's versions chip - shared by the Dashboards, Workflows
- * and DataViews editors (Specification.md §13.7). Shows
+ * and DataViews editors (Foundations.md §13.7). Shows
  * "Draft" or "Viewing vN"; the menu (useVersionMenu.ts) lists every
  * version plus "Draft" to leave a preview. Purely presentational: the
  * host loads versions and decides what opening one means.

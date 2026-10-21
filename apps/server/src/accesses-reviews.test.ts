@@ -9,7 +9,7 @@ const P = "access-review-test";
 const REVIEWS = "/api/totalbase/table/roles_reviews";
 
 /**
- * Periodic access review (Specification_Security.md §1.8): an attestation
+ * Periodic access review (Security.md §1.8): an attestation
  * recorded through the Data API by administrators only, whose reviewer and
  * member snapshot PostgreSQL fills in, immutable once written.
  */

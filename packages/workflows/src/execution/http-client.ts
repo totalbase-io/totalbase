@@ -6,7 +6,7 @@ import zlib from "node:zlib";
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
- * The HTTP request step's outbound client (Specification_Workflows.md §5.15):
+ * The HTTP request step's outbound client (Workflows.md §5.15):
  * refuses a destination that resolves to a non-public address (SSRF) unless
  * `workflows.http_allowed_hosts` lists it.
  *
@@ -88,7 +88,7 @@ export interface OutboundRequest {
   body?: string | undefined;
   timeoutMs: number;
   maxRedirects?: number;
-  /** The run's cancellation (Specification_Workflows.md §8.5) - aborts the exchange at once. */
+  /** The run's cancellation (Workflows.md §8.5) - aborts the exchange at once. */
   signal?: AbortSignal | undefined;
   /** The most bytes read from a response (compressed or not); past it the transfer is cut. */
   maxResponseBytes?: number;

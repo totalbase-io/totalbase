@@ -1,6 +1,6 @@
 /**
- * totalbase://guide/pdf-templates - what designing a pdfme template without the admin's visual designer takes
- * (MCP_Demo_Findings.md F24): the rules learned from pdfme's behavior, and one complete example a test renders
+ * totalbase://guide/pdf-templates - what designing a pdfme template without the admin's visual designer takes:
+ * the rules learned from pdfme's behavior, and one complete example a test renders
  * (guides-pdf.test.ts), so the example can't stop working unnoticed.
  */
 

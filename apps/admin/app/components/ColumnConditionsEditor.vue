@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A column's Conditions (Specification_DataViews.md §15.7): how it looks when something holds - an ordered list of
+ * A column's Conditions (DataViews.md §15.7): how it looks when something holds - an ordered list of
  * named cards, the first that holds winning (per cell and per row; a cell's over a row's), added on top of its base
  * style. Each: a filter in the `where` grammar (WhereField - $ROW, $USER, $CURRENT_DATE, $PERIOD, paths by FK), where
  * it applies (the cell or the whole row) and its look (TableCellStyleFields, plus an icon, a badge or dimmed). Cards

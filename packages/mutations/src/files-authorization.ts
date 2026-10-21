@@ -11,7 +11,7 @@ import { resolveTableGrant, rowFilterLimits, rowPassesGrant, type TableAuthoriza
  * has its own real totalbase.resources row, so there is no
  * files-specific permission table - one engine for every table. Used by
  * apps/server's Files routes and by the workflow file operations
- * (Specification_Workflows.md §5.20), so both apply one rule.
+ * (Workflows.md §5.20), so both apply one rule.
  */
 
 /** CREATE has no row yet to scope a filter against - a plain action check. */

@@ -9,7 +9,7 @@ const P = "app-users-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * Delegated user administration (Specification_Security.md §9.3 and
+ * Delegated user administration (Security.md §9.3 and
  * 6.8): inviting through /app/api/users, authorized like a Data API write
  * and limited to roles the caller may assign; and an administrator's
  * account, which no delegated user may change, delete or send a link to -

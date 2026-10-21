@@ -6,7 +6,7 @@ import { validateDefinitionLimits } from "./execution/definition-limits.js";
 import { validateWorkflowGraph } from "./execution/graph-validation.js";
 
 /**
- * Workflows follow the unified versioning model (Specification.md §13):
+ * Workflows follow the unified versioning model (Foundations.md §13):
  * the workflow row holds identity + the DRAFT `definition`; every published
  * version is an immutable row of workflows_versions, and the live
  * (running) one is always MAX(version) - going back to an old version (Restore, then Publish) creates a new one, so
@@ -26,7 +26,7 @@ export interface WorkflowRecord {
   publishedVersion: string | null;
   /** The live version's number; null = never published. */
   liveVersion: number | null;
-  /** The draft differs from the live version (or there's none yet) - Specification.md §13.5. */
+  /** The draft differs from the live version (or there's none yet) - Foundations.md §13.5. */
   hasUnpublishedChanges: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -83,7 +83,7 @@ const TRIGGER_TYPE_SELECT = `(SELECT op->'configuration'->>'trigger' FROM jsonb_
 const startDefinition = (configuration: Record<string, unknown>) => ({ operations: [{ id: randomUUID(), type: "totalbase.start", configuration_version: 1, label: "Start", key: "start", configuration }], connections: [] });
 
 /**
- * Design rules every saved draft must satisfy (Specification_Workflows.md
+ * Design rules every saved draft must satisfy (Workflows.md
  * §3.3, §3.4, §3.6) - the definition limits first (they bound the work the
  * graph walk does), then the graph; never configuration completeness.
  */
@@ -92,7 +92,7 @@ function validateDefinition(definition: Record<string, unknown>): void {
   validateWorkflowGraph(definition);
 }
 
-/** What a data event is (Specification_Workflows.md §6.3.1): a table's row created, updated or deleted. */
+/** What a data event is (Workflows.md §6.3.1): a table's row created, updated or deleted. */
 const DATA_EVENTS = ["CREATE", "UPDATE", "DELETE"];
 /** How long `hasEnabledPublishedDataEventStart()` trusts its last answer without an invalidation. */
 const DATA_EVENT_START_CACHE_MS = 5_000;
@@ -137,7 +137,7 @@ export class WorkflowsAdminService {
     return toRecord(rows[0]);
   }
 
-  /** Creates the workflow with a draft only - publishing is always explicit (Specification.md §13.1). */
+  /** Creates the workflow with a draft only - publishing is always explicit (Foundations.md §13.1). */
   async create(input: { name: string; description?: string | null; slug?: string; historyEnabled?: boolean; historyLevel?: "SUMMARY" | "DETAILED"; startConfiguration?: Record<string, unknown>; definition?: Record<string, unknown> }): Promise<WorkflowRecord> {
     const name = validateName(input.name);
     const description = validateDescription(input.description);
@@ -160,7 +160,7 @@ export class WorkflowsAdminService {
   async update(id: string, input: { revision: string; name?: string; description?: string | null; slug?: string; historyEnabled?: boolean; historyLevel?: "SUMMARY" | "DETAILED"; enabled?: boolean }): Promise<WorkflowRecord> {
     const current = await this.get(id);
     if (current.revision !== input.revision) throw new TotalBaseError("WORKFLOW_REVISION_CONFLICT", "Workflow was changed by another request.");
-    // Specification_Workflows.md §10.3: "Activating a workflow is allowed only when it has a
+    // Workflows.md §10.3: "Activating a workflow is allowed only when it has a
     // published version" - enabled with no version would accept trigger
     // admissions against nothing.
     if ((input.enabled ?? current.enabled) && !current.publishedVersion) {
@@ -224,7 +224,7 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Every workflow that can accept an automatic admission (Specification_Workflows.md §10.3:
+   * Every workflow that can accept an automatic admission (Workflows.md §10.3:
    * published AND enabled) - the scan set the CRON/DATA_EVENT dispatchers
    * filter their own Start-configuration match against.
    */
@@ -320,9 +320,9 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Publishing (Specification_Workflows.md §10.2): a draft equal to the live
+   * Publishing (Workflows.md §10.2): a draft equal to the live
    * version is a no-op answering the workflow as it is (like DataViews and
-   * Dashboards, Specification.md §13.4). Otherwise it re-checks the graph
+   * Dashboards, Foundations.md §13.4). Otherwise it re-checks the graph
    * rules, then execution readiness (the injected `validate`: which
    * operation types have a runtime handler), and snapshots the draft as the
    * next version. Does not enable the workflow; that's a separate PATCH.
@@ -362,7 +362,7 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Deletes every version before `before` (Specification.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
+   * Deletes every version before `before` (Foundations.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
    * and a number is never reused. A version deleted can't be restored.
    * One that still has runs in the history is kept and reported: a run's
    * foreign key to its version cascades, so deleting it would delete them.
@@ -395,7 +395,7 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Restore (Specification.md §13.4): version `version`'s definition replaces the draft.
+   * Restore (Foundations.md §13.4): version `version`'s definition replaces the draft.
    * Publishes nothing - what runs stays the live version until publish(),
    * which records `restored_from_version` if the draft is still that
    * version's definition. The UI confirms first when the draft had
@@ -412,7 +412,7 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Save as (Specification.md §13.4): a NEW workflow whose draft is version `version`'s
+   * Save as (Foundations.md §13.4): a NEW workflow whose draft is version `version`'s
    * definition - history settings copied, disabled, unpublished, and no
    * invoke-role grants (starts admin-only).
    */

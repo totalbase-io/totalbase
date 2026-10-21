@@ -5,7 +5,7 @@ import { whereParams, type AdminClient } from "./admin-client.js";
 import { DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, RESOURCES, result, roleId, schemaName, type ResourceRow } from "./tool-helpers.js";
 
 /**
- * Permissions (Specification_Security.md §5-§7, Specification_Administration.md
+ * Permissions (Security.md §5-§7, Administration.md
  * §11.3): one grant per (role, resource, action) - its effect, row filter,
  * field grants and payload checks, written through the Admin API, which
  * parses the filters with the Data API's own parser. Every field must be
@@ -64,8 +64,8 @@ async function writableColumnsOf(client: AdminClient, resource: ResourceRow): Pr
 /**
  * The relation paths a reference column shows a row by - `cliente.razon_social`, from the target table's row
  * presentation (its Label field or every column of its template), else its name/label/title column, else its first
- * text column (Specification_DataViews.md §4.4, §15.5). A role reading the table reads them through its own grant
- * (Specification_Security.md §6.10), so READ "every field" includes them - without them the App shows keys (B44).
+ * text column (DataViews.md §4.4, §15.5). A role reading the table reads them through its own grant
+ * (Security.md §6.10), so READ "every field" includes them - without them the App shows keys (B44).
  */
 async function referencePaths(client: AdminClient, resource: ResourceRow): Promise<string[]> {
   if (resource.type === "FUNCTION") return [];
@@ -106,7 +106,7 @@ interface GrantOptions {
 
 /**
  * One grant, written as the Admin API takes it. Fields have no wildcard
- * (Specification_Security.md §6.4): omitted, a new grant gets every current
+ * (Security.md §6.4): omitted, a new grant gets every current
  * column and an existing one keeps its own - also when only deny_fields
  * changes, since fields are replaced as a set.
  */
@@ -358,8 +358,8 @@ export function registerPermissionTools(server: McpServer, client: AdminClient):
     "revoke_permission",
     {
       title: "Revoke permission",
-      description: "Remove a role's grant for one action on a table, view or function - the action becomes undefined for that role (denied, unless another of a user's roles allows it). To refuse it outright whatever other roles allow, grant DENY instead.",
-      inputSchema: { role_id: roleId(), schema: schemaName(), name: z.string(), action: z.enum(["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"]) },
+      description: "Remove a role's grant for one action on a table, view or function - the action becomes undefined for that role (denied, unless another of a user's roles allows it). To refuse it outright whatever other roles allow, grant DENY instead. Requires confirm=true.",
+      inputSchema: { role_id: roleId(), schema: schemaName(), name: z.string(), action: z.enum(["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"]), confirm: z.literal(true).describe("Must be true") },
       annotations: DESTRUCTIVE,
     },
     async ({ role_id, schema, name, action }) => {

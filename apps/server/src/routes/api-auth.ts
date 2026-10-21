@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
 import { TotalBaseError } from "@totalbase/errors";
 import { portalAccessOf } from "@totalbase/permissions";
+import type { LoginFailureReason, SignInAdmission } from "@totalbase/auth";
+import type { FastifyRequest } from "fastify";
 import { dataEnvelope, type JsonSchema, type RouteDoc } from "@totalbase/openapi";
 import { extractBearerToken, requireUser } from "../auth-guards.js";
 import { SESSION_REF, SESSION_SCHEMAS, USER_REF, USER_SCHEMA } from "../openapi-docs.js";
@@ -10,35 +12,77 @@ const TAG = ["auth"];
 const doc = (openapi: RouteDoc) => ({ config: { openapi } });
 const object = (properties: Record<string, JsonSchema>, required = Object.keys(properties)): JsonSchema => ({ type: "object", required, properties });
 const STRING: JsonSchema = { type: "string" };
-/** Done, nothing to return (Specification_Data_API.md §2.5). */
+/** Done, nothing to return (Data_API.md §2.5). */
 const noContent = { status: "204" as const };
 
 /**
- * Whether the user's active roles grant API access -
- * required for every route here that hands out a session: the data-plane
- * login, invitation acceptance and the OAuth callback. The session was
- * already created by the time this runs; a user without API access has
- * it revoked immediately instead of receiving it. (The portal logs in
+ * Whether the user's active roles grant API access - required for every route here that hands out a session:
+ * the data-plane login and its MFA step, invitation acceptance and the OAuth callback. (The portal signs in
  * through /admin/api/auth/login, gated on admin/app access instead.)
  */
-async function keepSessionIfApiAccess(context: AppContext, userId: string, sessionToken: string): Promise<boolean> {
+export async function hasApiAccess(context: AppContext, userId: string): Promise<boolean> {
   const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
-  if ((await context.roles.effectiveAccess(roleIds)).apiAccess) return true;
-  await context.auth.sessions.revokeByToken(sessionToken);
-  return false;
+  return (await context.roles.effectiveAccess(roleIds)).apiAccess;
 }
 
-/** The portal's own provider sign-in: the same rule as its password sign-in (admin-auth.ts) - admin or app access. */
-async function keepSessionIfPortalAccess(context: AppContext, userId: string, sessionToken: string): Promise<boolean> {
+/** The portal's rule (admin-auth.ts): admin or app access. */
+export async function hasPortalAccess(context: AppContext, userId: string): Promise<boolean> {
   const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
-  if (portalAccessOf(await context.roles.effectiveAccess(roleIds))) return true;
-  await context.auth.sessions.revokeByToken(sessionToken);
-  return false;
+  return portalAccessOf(await context.roles.effectiveAccess(roleIds)) !== null;
+}
+
+/** The data-plane sign-in's admission: checked before a session or an MFA challenge exists. */
+export function apiAdmission(context: AppContext): SignInAdmission {
+  return async (userId) => ((await hasApiAccess(context, userId)) ? null : "no_api_access");
+}
+
+/** Only the audit log learns why a sign-in was refused - the caller gets the same 401. */
+export function recordSignInFailure(request: FastifyRequest) {
+  return (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }) => {
+    request.auditMetadata = {
+      ...request.auditMetadata,
+      reason,
+      ...(details?.lockedNow && { locked_now: true }),
+      ...(details?.userId && { user_id: details.userId }),
+    };
+  };
+}
+
+/** Who passed the password step of a sign-in that now waits for its second factor. */
+export function recordSecondStep(request: FastifyRequest) {
+  return (userId: string) => {
+    request.auditPrincipal = { type: "USER", id: userId };
+  };
 }
 
 /**
+ * A correct password answered with an MFA challenge (MFA_REQUIRED / MFA_ENROLLMENT_REQUIRED, 403): audited as
+ * the step it is, `auth.mfa_challenge` EXECUTED, not as a refused sign-in - then rethrown for the caller.
+ */
+export function auditMfaChallenge(request: FastifyRequest, error: unknown): never {
+  if (error instanceof TotalBaseError && (error.code === "MFA_REQUIRED" || error.code === "MFA_ENROLLMENT_REQUIRED")) {
+    request.auditOutcome = { event: "auth.mfa_challenge", status: "EXECUTED" };
+    request.auditMetadata = { ...request.auditMetadata, mfa: error.code === "MFA_REQUIRED" ? "VERIFY" : "ENROLL" };
+  }
+  throw error;
+}
+
+/** The body of a sign-in's second step - an authentication route's own fields, not the `data` envelope. */
+interface MfaVerifyBody { challenge?: unknown; code?: unknown; recoveryCode?: unknown }
+
+const MFA_VERIFY_BODY: JsonSchema = {
+  type: "object",
+  required: ["challenge"],
+  properties: {
+    challenge: { type: "string", description: "The `meta.challenge` of the sign-in's MFA_REQUIRED or MFA_ENROLLMENT_REQUIRED error." },
+    code: { type: "string", description: "The six digits the authenticator app shows now." },
+    recoveryCode: { type: "string", description: "Instead of `code`: one of the account's unused recovery codes (VERIFY only)." },
+  },
+};
+
+/**
  * Public Data-Plane authentication routes.
- * See Specification_Security.md §2.5.
+ * See Security.md §2.5.
  */
 export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext): void {
   app.post<{ Body: { email: string; password: string } }>(
@@ -57,28 +101,71 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     }),
     async (request) => {
       request.auditMetadata = { email: request.body?.email };
+      // Without API access: the same generic 401 as a wrong password - it doesn't reveal the account exists.
       const result = await context.auth.login({
         email: request.body.email,
         password: request.body.password,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
-      }, (reason, details) => {
-        // Only the audit log learns why - the caller gets the same 401.
-        request.auditMetadata = {
-          ...request.auditMetadata,
-          reason,
-          ...(details?.lockedNow && { locked_now: true }),
-          ...(details?.userId && { user_id: details.userId }),
-        };
-      });
-      // Same generic 401 as a wrong password - doesn't reveal that the
-      // account exists but lacks API access.
+        surface: "API",
+        admit: apiAdmission(context),
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: result.user.id };
-      if (!(await keepSessionIfApiAccess(context, result.user.id, result.token))) {
-        request.auditMetadata = { ...request.auditMetadata, reason: "no_api_access" };
-        throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid email or password.", { httpStatus: 401 });
-      }
       return { data: result };
+    },
+  );
+
+  // Two-factor authentication's second step (Security.md §2.17).
+  app.post<{ Body: { challenge?: unknown } }>(
+    "/api/auth/mfa/enroll",
+    doc({
+      summary: "Set up an authenticator app during sign-in",
+      description:
+        "For an MFA_ENROLLMENT_REQUIRED sign-in (the instance requires two-factor authentication and the account has none): a new " +
+        "secret and its `otpauth://` link (a QR code's content) for the app. Finish with `POST /api/auth/mfa/verify` and the app's " +
+        "first code. 401 INVALID_MFA_CHALLENGE when the challenge is expired, used or not an enrollment.",
+      tags: TAG,
+      access: "public",
+      requestBody: { schema: object({ challenge: STRING }) },
+      response: { status: "200", schema: dataEnvelope(object({ secret: STRING, otpauthUrl: STRING })) },
+    }),
+    async (request) => ({ data: await context.auth.mfa.startChallengeEnrollment(request.body?.challenge) }),
+  );
+
+  app.post<{ Body: MfaVerifyBody }>(
+    "/api/auth/mfa/verify",
+    doc({
+      summary: "Finish a sign-in with a two-factor code",
+      description:
+        "The second step after `403 MFA_REQUIRED` (or `MFA_ENROLLMENT_REQUIRED`, after `POST /api/auth/mfa/enroll`): the challenge " +
+        "and the app's current code, or a recovery code. Returns the session, as a sign-in does; `recoveryCodes` only when this " +
+        "step finished an enrollment - shown once. A wrong code is 401 INVALID_MFA_CODE and counts toward the account's lockout; " +
+        "an expired, used or exhausted challenge is 401 INVALID_MFA_CHALLENGE - sign in again.",
+      tags: TAG,
+      access: "public",
+      requestBody: { schema: MFA_VERIFY_BODY },
+      response: {
+        status: "200",
+        schema: dataEnvelope({
+          allOf: [SESSION_REF, object({ recoveryCodes: { type: ["array", "null"], items: STRING } })],
+        }),
+      },
+      schemas: SESSION_SCHEMAS,
+    }),
+    async (request) => {
+      const result = await context.auth.completeMfaSignIn({
+        challenge: request.body?.challenge,
+        code: request.body?.code,
+        recoveryCode: request.body?.recoveryCode,
+        surface: "API",
+        admit: apiAdmission(context),
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
+      }, recordSignInFailure(request));
+      request.auditPrincipal = { type: "USER", id: result.user.id };
+      if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
+      if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
+      return { data: { token: result.token, user: result.user, recoveryCodes: result.recoveryCodes } };
     },
   );
 
@@ -243,15 +330,18 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       const result = await context.auth.acceptInvitation(request.body.token, request.body.password);
       request.auditPrincipal = { type: "USER", id: result.user.id };
       // The account is ready either way; only a user with API access also
-      // gets a session back (an app-only user signs in through the portal).
-      if (!(await keepSessionIfApiAccess(context, result.user.id, result.token))) {
+      // gets a session back (an app-only user signs in through the portal) - and
+      // not one the instance requires a second factor for: they set it up at
+      // their first sign-in (Security.md §2.17).
+      if (!(await hasApiAccess(context, result.user.id)) || (await context.auth.mfa.required(result.user.id))) {
+        await context.auth.sessions.revokeByToken(result.token);
         return { data: { user: result.user } };
       }
       return { data: result };
     },
   );
 
-  // OAuth/OIDC (Specification_Security.md §2.5). The caller's own system
+  // OAuth/OIDC (Security.md §2.5). The caller's own system
   // links straight to this route with its own callback as `redirect_to`
   // (validated against that provider's admin-configured allowlist,
   // oauth-redirect.ts) - TotalBase is the only party that ever talks to
@@ -310,7 +400,14 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
           }],
         };
       }
-      const result = await context.oauth.callback(request.params.provider, request.query.code, request.query.state);
+      // The portal's own sign-in page needs portal access (admin or app), as a password sign-in there does;
+      // an application's redirect needs API access - checked before any session or MFA challenge exists.
+      const result = await context.oauth.callback(
+        request.params.provider,
+        request.query.code,
+        request.query.state,
+        (userId, portal) => (portal ? hasPortalAccess(context, userId) : hasApiAccess(context, userId)),
+      );
       const separatorFor = (url: string) => (url.includes("#") ? "&" : "#");
       if (result.error) {
         // No session: the provider shared no email for a new account
@@ -318,18 +415,19 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         // its email isn't verified while verification is required.
         if (result.error === "email_not_verified") {
           request.auditMetadata = { reason: "email_not_verified", user_id: result.userId };
+        } else if (result.error === "access_denied" && result.userId) {
+          request.auditMetadata = { reason: result.portal ? "no_portal_access" : "no_api_access", user_id: result.userId };
         }
         return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}error=${result.error}`, 302);
       }
       request.auditPrincipal = { type: "USER", id: result.user.id };
-      // The portal's own sign-in page needs portal access (admin or app), as a password sign-in there does;
-      // an application's redirect needs API access.
-      const kept = result.portal
-        ? await keepSessionIfPortalAccess(context, result.user.id, result.token)
-        : await keepSessionIfApiAccess(context, result.user.id, result.token);
-      if (!kept) {
-        // RFC 6749's own error code, in the fragment like the token would be.
-        return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}error=access_denied`, 302);
+      if (result.mfa) {
+        // A second factor is due (Security.md §2.17): the page completes the challenge with
+        // POST /api/auth/mfa/verify (/admin/api/auth/mfa/verify for the portal), in the fragment like a token.
+        request.auditOutcome = { event: "auth.mfa_challenge", status: "EXECUTED" };
+        request.auditMetadata = { ...request.auditMetadata, mfa: result.mfa.purpose };
+        const fragment = `mfa_challenge=${encodeURIComponent(result.mfa.challenge)}&mfa_purpose=${result.mfa.purpose}`;
+        return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}${fragment}`, 302);
       }
       // The token travels in the fragment, not the query string, so it
       // never reaches the caller's own server logs or a Referer header -

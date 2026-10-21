@@ -1,8 +1,9 @@
 import type { Page } from '@playwright/test'
 import { addDashboardWidget, addWidget, adminSession, api, createDashboard, createDataView, deleteDashboardsNamed, deleteDataViewsNamed, expect, publish, publishDashboard, test, type DashboardRef } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
- * A report as it's read: a TABLE widget's SQL conventions (Specification_Dashboards.md §6
+ * A report as it's read: a TABLE widget's SQL conventions (Dashboards.md §6
  * - `_` columns never shown, `_color` tinting a row, `_<column>_color`
  * as badges, a totals row, sorting, a column's own title and format); the
  * layout re-flowed for a tablet and a phone (0.2.1); versions published and
@@ -85,7 +86,7 @@ test.describe('on a tablet and on a phone', () => {
 
   test('a tablet (a 6-column grid): the quarter-wide KPIs two to a row', async ({ browser, token: _ }) => {
     // The viewer re-flows by its grid's own width (641-800px: 6 columns) - a tablet held upright, the App compact.
-    const context = await browser.newContext({ baseURL: 'http://localhost:3050', viewport: { width: 820, height: 1180 }, hasTouch: true })
+    const context = await browser.newContext({ baseURL: BASE_URL, viewport: { width: 820, height: 1180 }, hasTouch: true })
     const page = await context.newPage()
     const { login } = await import('../helpers.js')
     await login(page)
@@ -100,13 +101,13 @@ test.describe('on a tablet and on a phone', () => {
   })
 
   test('a phone: KPIs two to a row, every other widget the screen\'s width', async ({ browser, token: _ }) => {
-    const context = await browser.newContext({ baseURL: 'http://localhost:3050', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+    const context = await browser.newContext({ baseURL: BASE_URL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
     const page = await context.newPage()
     const { login } = await import('../helpers.js')
     await login(page)
     await page.goto(`/admin/app/dashboards/${report.slug}`)
     await expect(card(page, 'Cuatro')).toContainText('4')
-    // Specification_Dashboards.md §7.2: a phone has 2 columns - Uno and Dos share a row, Pedidos takes it whole.
+    // Dashboards.md §7.2: a phone has 2 columns - Uno and Dos share a row, Pedidos takes it whole.
     await expect.poll(async () => Math.abs(await topOf(page, 'Uno') - await topOf(page, 'Dos'))).toBeLessThan(4)
     expect(await widthOf(page, 'Uno')).toBeLessThan((await widthOf(page, 'Pedidos')) * 0.6)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)

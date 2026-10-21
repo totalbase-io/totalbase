@@ -11,7 +11,7 @@ export const VERSION_COLUMNS = `id, dataview, version, restored_from_version, "u
 export const DATAVIEW_VERSIONS: VersionsTable = { table: "totalbase.dataviews_versions", owner: "dataview", ownerTable: "totalbase.dataviews", columns: VERSION_COLUMNS };
 
 /**
- * Specification.md §13.5 as one SQL expression over a
+ * Foundations.md §13.5 as one SQL expression over a
  * `dataviews` row aliased `d`: the draft differs from the latest
  * version, or there is none. The draft's field rows are aggregated in the
  * same order and columns `draftSnapshot()` stores, and compared with jsonb's
@@ -80,7 +80,7 @@ export async function draftSnapshot(ctx: DataViewsContext, dataviewId: string, o
   return { viewConfigJson: JSON.stringify(row.view_config), fieldsJson: JSON.stringify(fieldRows), code: row.code };
 }
 
-/** Specification.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
+/** Foundations.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
 export async function hasUnpublishedChanges(ctx: DataViewsContext, dataviewId: string): Promise<boolean> {
   const { rows } = await ctx.database.query<{ changed: boolean }>(
     `SELECT ${HAS_UNPUBLISHED_CHANGES_SQL} AS changed FROM totalbase.dataviews d WHERE d.id = $1`,
@@ -91,7 +91,7 @@ export async function hasUnpublishedChanges(ctx: DataViewsContext, dataviewId: s
 }
 
 /**
- * What publishing should warn about, never refuse (Specification_DataViews.md §6.5): a FORM in SINGLE mode over
+ * What publishing should warn about, never refuse (DataViews.md §6.5): a FORM in SINGLE mode over
  * a table with more than one row opens only the first by key.
  */
 export async function publishWarnings(ctx: DataViewsContext, dataviewId: string): Promise<string[]> {
@@ -108,7 +108,7 @@ export async function publishWarnings(ctx: DataViewsContext, dataviewId: string)
 /**
  * Snapshots the draft (`view_config`, `dataviews_fields`, `code`) as the
  * next version - a no-op (returns the latest version) when the draft
- * equals it. A draft equal to an OLDER version (Restore, Specification.md §13.4) records it
+ * equals it. A draft equal to an OLDER version (Restore, Foundations.md §13.4) records it
  * as `restored_from_version` - the newest such version.
  */
 export async function publish(ctx: DataViewsContext, dataviewId: string, userId: string | null, note: string | null = null): Promise<AdminDataViewPublish> {
@@ -170,7 +170,7 @@ export async function listVersions(ctx: DataViewsContext, dataviewId: string): P
 }
 
 /**
- * Deletes every version before `before` (Specification.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
+ * Deletes every version before `before` (Foundations.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
  * and a number is never reused. A version deleted can't be restored.
  */
 export async function deleteDataViewVersionsBefore(ctx: DataViewsContext, dataviewId: string, before: number): Promise<{ deleted: number[] }> {
@@ -217,7 +217,7 @@ export async function getVersion(
 }
 
 /**
- * Restore (Specification.md §13.4): version `version`'s
+ * Restore (Foundations.md §13.4): version `version`'s
  * content replaces the draft (`view_config`, `code`, and the field rows
  * wholesale). Publishes nothing - the next `publish()` does, recording
  * `restored_from_version` if the draft is still that version's content.

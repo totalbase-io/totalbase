@@ -2,7 +2,7 @@
 import { useApiErrorMessage } from '~/utils/api-error-message'
 import type { RelationDetail } from '~/types/schema'
 /**
- * New Table (Specification_Administration.md §3.4: a minimal wizard, not a
+ * New Table (Administration.md §3.4: a minimal wizard, not a
  * full schema designer - name, description, PK strategy, nothing else; the
  * rest of the columns get added afterward from the table's own detail
  * page). TableDrawer is the EDIT side only (columns/PK/FK/CHECK/indexes/
@@ -45,7 +45,7 @@ function pkTypeToColumn(type: PkType): { dataType: string, default?: string } {
   }
 }
 
-// --- A junction table (Specification_Administration.md §3.4): a many-to-many
+// --- A junction table (Administration.md §3.4): a many-to-many
 // relation modelled as an ordinary table - `id`, one foreign key per related
 // table (ON DELETE CASCADE), a UNIQUE over them. Two or three tables, the
 // same one twice for a self-relation. ---

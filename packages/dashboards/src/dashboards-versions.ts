@@ -19,7 +19,7 @@ export const VERSION_COLUMNS = `id, dashboard, version, restored_from_version, "
 export const DASHBOARD_VERSIONS: VersionsTable = { table: "totalbase.dashboards_versions", owner: "dashboard", ownerTable: "totalbase.dashboards", columns: VERSION_COLUMNS };
 
 /**
- * Specification.md §13.5 as one SQL expression over a
+ * Foundations.md §13.5 as one SQL expression over a
  * `dashboards` row aliased `d`: the draft differs from the latest
  * version, or there is none. The draft's widgets are aggregated in the same
  * order and columns `draftSnapshot()` stores and compared with jsonb's
@@ -40,7 +40,7 @@ export const HAS_UNPUBLISHED_CHANGES_SQL = `
     LIMIT 1
   ), false) = false`;
 
-// --- Versions (Specification.md §13) ---
+// --- Versions (Foundations.md §13) ---
 
 /** The draft as a version would snapshot it - content only (WIDGET_SNAPSHOT_COLUMNS), deterministic order. */
 export async function draftSnapshot(ctx: DashboardsContext, dashboard: AdminDashboard, on: Queryable = ctx.database): Promise<{ widgetsJson: string; variablesJson: string }> {
@@ -59,7 +59,7 @@ export async function latestVersionNumber(ctx: DashboardsContext, dashboardId: s
   return rows[0]?.max ?? null;
 }
 
-/** Specification.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
+/** Foundations.md §13.5 - see `HAS_UNPUBLISHED_CHANGES_SQL`. */
 export async function hasUnpublishedChanges(ctx: DashboardsContext, dashboardId: string): Promise<boolean> {
   const { rows } = await ctx.database.query<{ changed: boolean }>(
     `SELECT ${HAS_UNPUBLISHED_CHANGES_SQL} AS changed FROM totalbase.dashboards d WHERE d.id = $1`,
@@ -71,7 +71,7 @@ export async function hasUnpublishedChanges(ctx: DashboardsContext, dashboardId:
 /**
  * Snapshots the draft as the next version - a no-op (returns the latest
  * version) when the draft equals it. A draft equal to an OLDER version
- * (Restore, Specification.md §13.4) records it as `restored_from_version` - the newest one.
+ * (Restore, Foundations.md §13.4) records it as `restored_from_version` - the newest one.
  */
 export async function publish(ctx: DashboardsContext, dashboardId: string, userId: string | null, note: string | null = null): Promise<AdminDashboardVersion> {
   const dashboard = await getDashboard(ctx, dashboardId);
@@ -122,7 +122,7 @@ export async function listVersions(ctx: DashboardsContext, dashboardId: string):
 }
 
 /**
- * Deletes every version before `before` (Specification.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
+ * Deletes every version before `before` (Foundations.md §13.4) - never the live (latest) one, so the next Publish stays latest + 1
  * and a number is never reused. A version deleted can't be restored.
  */
 export async function deleteDashboardVersionsBefore(ctx: DashboardsContext, dashboardId: string, before: number): Promise<{ deleted: number[] }> {
@@ -198,7 +198,7 @@ export async function getPublishedWidgets(ctx: DashboardsContext, dashboardId: s
 }
 
 /**
- * Restore (Specification.md §13.4): version `version`'s content replaces the draft. Publishes
+ * Restore (Foundations.md §13.4): version `version`'s content replaces the draft. Publishes
  * nothing - the next publish() does, recording `restored_from_version`
  * if the draft is still that version's content ("v8 · restored from v4").
  * The UI confirms first when the draft had unpublished changes.
@@ -226,7 +226,7 @@ export async function restore(ctx: DashboardsContext, dashboardId: string, versi
 }
 
 /**
- * Save as (Specification.md §13.4): a NEW dashboard whose draft is version `version`'s
+ * Save as (Foundations.md §13.4): a NEW dashboard whose draft is version `version`'s
  * content - fresh widget ids, identity (description/icon/color) and the auto-refresh interval copied,
  * no versions (unpublished) and no role grants (starts admin-only).
  */

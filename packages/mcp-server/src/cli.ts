@@ -7,7 +7,7 @@ import { createTotalBaseMcpServer } from "./server.js";
 /**
  * TotalBase MCP server over stdio - the transport a local MCP client
  * (Claude Code, Claude Desktop) launches a subprocess with
- * (Specification_Administration.md §11.5). TOTALBASE_URL and TOTALBASE_TOKEN
+ * (Administration.md §11.5). TOTALBASE_URL and TOTALBASE_TOKEN
  * (a plane="ADMIN" personal access token) configure it. A remote agent
  * uses the instance's own /mcp instead, served by the TotalBase server.
  *

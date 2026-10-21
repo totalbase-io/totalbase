@@ -25,7 +25,7 @@ export interface OperationOutcome {
 /**
  * What a mutating handler (create/update/delete-records) needs to decide
  * what causal-ancestry chain (if any) to attach to its own audit row
- * (specs/Specification_Workflows.md §6.3, §5.1) - "workflow-origin
+ * (specs/Workflows.md §6.3, §5.1) - "workflow-origin
  * mutations default to no event emission. [opting in]... permits the
  * event path. The immutable causal ancestry then rejects a run whose
  * workflow UUID already appears, or whose next depth would exceed eight."
@@ -42,17 +42,19 @@ export interface OperationOutcome {
 export interface WorkflowRunContext {
   workflowId: string;
   ancestry: string[];
-  /** The run, the step being executed and who caused the run - the correlation every audit row a step writes carries (Specification_Workflows.md §7.4). Set by the engine only, never from a payload. */
+  /** The run, the step being executed and who caused the run - the correlation every audit row a step writes carries (Workflows.md §7.4). Set by the engine only, never from a payload. */
   runId: string;
   stepId: string;
   initiator: unknown;
-  /** Aborted when the run is cancelled - a step waiting on I/O (an HTTP request) stops at once (Specification_Workflows.md §8.5). */
+  /** Aborted when the run is cancelled - a step waiting on I/O (an HTTP request) stops at once (Workflows.md §8.5). */
   signal?: AbortSignal;
+  /** A TEST run's one address every Send email step goes to instead of its recipients (Workflows.md §11.1). Never set on a PRODUCTION run. */
+  emailRedirect?: string;
 }
 
 /**
  * The `metadata` keys an audit row written by a workflow step carries
- * (Specification_Workflows.md §7.4): the workflow, the run (also the
+ * (Workflows.md §7.4): the workflow, the run (also the
  * `logs.workflow_run` column), the step and the run's initiator.
  * The actor stays the executor.
  */

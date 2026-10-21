@@ -1,5 +1,5 @@
 /**
- * A grid's totals (Specification_DataViews.md §4.9): a column's `config.total` - sum, average, minimum, maximum or
+ * A grid's totals (DataViews.md §4.9): a column's `config.total` - sum, average, minimum, maximum or
  * count - over every row the list's filters keep, not only the page: PostgreSQL computes it, as the Data API's
  * aggregates (§3.8 there), in a read of its own beside the rows'.
  */

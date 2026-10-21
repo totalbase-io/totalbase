@@ -3,7 +3,7 @@ import vueI18n from '@intlify/eslint-plugin-vue-i18n'
 import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt(
-  // The UI is translated (Specification_Admin_UI.md §14): a text a template
+  // The UI is translated (Admin_UI.md §14): a text a template
   // shows - its content or a label/title/description/aria-label/text/
   // placeholder attribute - comes from the locale files, never written in
   // place. What reads the same in every language (symbols, product and

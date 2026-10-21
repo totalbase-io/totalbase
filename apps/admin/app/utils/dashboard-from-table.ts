@@ -1,5 +1,5 @@
 /**
- * The dashboard assistant's screen (Specification_Dashboards.md §10.7, D27): the shapes
+ * The dashboard assistant's screen (Dashboards.md §10.7, D27): the shapes
  * `POST /admin/api/dashboards/suggest` answers and the pure steps between its proposal and
  * the spec `POST /admin/api/dashboards/spec` creates - which widgets are ticked, keeping
  * them across a security option, and the final spec. Nothing here decides a widget or a

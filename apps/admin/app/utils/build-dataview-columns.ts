@@ -28,7 +28,7 @@ export interface BuildDataViewColumnsOpts {
   displayFormatDefaults?: DisplayFormatDefaults
   /** A palette color's shade in the viewer's mode - a column's text color (its cell style). */
   shade?: (color: string) => string | undefined
-  /** The condition a cell meets, if any (Specification_DataViews.md §15.7) - its look, over the column's. */
+  /** The condition a cell meets, if any (DataViews.md §15.7) - its look, over the column's. */
   cellLook?: (row: Record<string, unknown>, column: string) => ConditionStyle | undefined
 }
 
@@ -124,10 +124,10 @@ export function buildDataViewColumns(
     .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.visible && f.columnName)
     .map((field) => {
       const key = field.columnName!
-      // Its header, where room is short: its short label first (Specification_DataViews.md §15).
+      // Its header, where room is short: its short label first (DataViews.md §15).
       const label = (field.config as { shortLabel?: string } | undefined)?.shortLabel ?? field.label ?? key
       const sortBy = sortKey(field)
-      // Its cells' look (Specification_DataViews.md §15) - only what it sets; the grid's own defaults otherwise.
+      // Its cells' look (DataViews.md §15) - only what it sets; the grid's own defaults otherwise.
       // A yes/no column (its check) sits centered unless its presentation aligns it.
       const isBoolean = field.widget === 'USwitch' || field.widget === 'UCheckbox'
       const style = { ...(field.config as CellStyle), ...(isBoolean && !(field.config as CellStyle).align ? { align: 'center' as const } : {}) }
@@ -175,7 +175,7 @@ export function buildDataViewColumns(
 }
 
 /**
- * A cell a condition holds for (Specification_DataViews.md §15.7): its content in the condition's look - an icon
+ * A cell a condition holds for (DataViews.md §15.7): its content in the condition's look - an icon
  * before it, as a badge, dimmed.
  */
 function conditionedCell(content: unknown, look: ConditionStyle, shade?: (color: string) => string | undefined): VNode {
@@ -286,7 +286,7 @@ export function formatCellPlainText(field: DataViewField, raw: unknown, row: Rec
     return shown ?? String(raw)
   }
 
-  // A CHECK value's label (its column's `options`, Specification_DataViews.md §15).
+  // A CHECK value's label (its column's `options`, DataViews.md §15).
   const optionLabel = (field.config as { options?: Record<string, ColumnOptionPresentation> }).options?.[String(raw)]?.label
   if (optionLabel) return optionLabel
 
@@ -374,7 +374,7 @@ function renderCell(
   const text = formatCellPlainText(field, raw, row, displayFormatDefaults)
   const config = field.config as { truncate?: boolean, copyable?: boolean, linkType?: 'url' | 'email' | 'tel', booleanLabels?: { true?: string, false?: string } }
 
-  // A CHECK value with a color or an icon (its column's `options`, Specification_DataViews.md §15) - a badge.
+  // A CHECK value with a color or an icon (its column's `options`, DataViews.md §15) - a badge.
   const badge = raw === null || raw === undefined ? null : optionBadge(text, (field.config as { options?: Record<string, ColumnOptionPresentation> }).options?.[String(raw)], name => h(UIcon, { name, class: 'size-3.5' }))
 
   let content: unknown

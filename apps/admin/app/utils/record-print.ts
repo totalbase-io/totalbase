@@ -17,7 +17,7 @@ export interface RecordPrintOptions {
   fields: DataViewField[]
   values: Record<string, unknown>
   displayFormatDefaults?: DisplayFormatDefaults
-  /** The UI's language (Specification_Admin_UI.md §14): the table's headers, the page footer and the Intl locale of the printed-at time. */
+  /** The UI's language (Admin_UI.md §14): the table's headers, the page footer and the Intl locale of the printed-at time. */
   labels: { field: string, value: string, page: (page: number, pages: number) => string, locale: string }
 }
 

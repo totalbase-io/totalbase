@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * How a record form opens (Specification_DataViews.md §6.3, §6.7): a list type's mode, size and side; a FORM's mode;
+ * How a record form opens (DataViews.md §6.3, §6.7): a list type's mode, size and side; a FORM's mode;
  * a Master-detail's opening and its New button's label; a record page's width, alignment and fit to screen; a
  * CUSTOM page's width and alignment. One set of controls for Settings › Form (DataViewFormSettings.vue) and the
  * Design form's toolbar (CustomDesigner.vue, a popover) - the host owns every value (each a `v-model`).
@@ -46,7 +46,7 @@ const pageContentAlign = defineModel<PageContentAlign | null>('pageContentAlign'
 const fitToScreen = defineModel<boolean>('fitToScreen', { required: true })
 
 const isCustom = computed(() => props.dataview.viewType === 'CUSTOM')
-/** A record page - FORM, MASTER_DETAIL, or a list whose Edit form opens on its own route (PAGE) - has the page options (Specification_DataViews.md §6.7). */
+/** A record page - FORM, MASTER_DETAIL, or a list whose Edit form opens on its own route (PAGE) - has the page options (DataViews.md §6.7). */
 const isRecordPage = computed(() => FORM_LIKE_DATAVIEW_TYPES.includes(props.dataview.viewType) || editPresentation.value === 'PAGE')
 
 const { t } = useI18n()

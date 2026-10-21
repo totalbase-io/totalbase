@@ -1,4 +1,4 @@
-/** The App menu (Specification_Security.md §8) - mirrors @totalbase/app-menu's shapes. */
+/** The App menu (Security.md §8) - mirrors @totalbase/app-menu's shapes. */
 export type MenuObjectKind = 'DATAVIEW' | 'DASHBOARD'
 export type MenuMode = 'TREE' | 'SIDEBAR'
 /** How the tree menu's groups start (app.menu_groups_open): CURRENT - only the one holding the page. */
@@ -39,7 +39,7 @@ export interface AppMenu {
   /** Whether it offers a search box (app.menu_search) - AUTO: past MENU_SEARCH_THRESHOLD entries the viewer sees. */
   search?: 'AUTO' | 'ALWAYS' | 'NEVER'
   nodes: MenuNode[]
-  /** Where the App opens for this user (Specification_Security.md §8.1) - their first role's home they see; null: the App's own page. Not on the admin's arrangement. */
+  /** Where the App opens for this user (Security.md §8.1) - their first role's home they see; null: the App's own page. Not on the admin's arrangement. */
   home?: { kind: MenuObjectKind, slug: string } | null
 }
 

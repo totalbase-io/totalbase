@@ -31,7 +31,7 @@ function parseDelivery(value: unknown, administrator: boolean): LinkDelivery {
 /**
  * The user `id`, when the caller's UPDATE grant on users reaches
  * that row - sending them a link acts on their account. Never an
- * administrator's account, unless the caller is one (Specification_Security.md §10.2).
+ * administrator's account, unless the caller is one (Security.md §10.2).
  */
 async function userReachable(context: AppContext, principal: DataPrincipal, administrator: boolean, id: string) {
   const grant = await resolveTableGrant(context, principal, "users", "UPDATE", DENIED);
@@ -48,7 +48,7 @@ async function userReachable(context: AppContext, principal: DataPrincipal, admi
 
 /**
  * User actions for delegated users that are not a plain row write
- * (Specification_Security.md §9.3) - inviting someone, and sending an
+ * (Security.md §9.3) - inviting someone, and sending an
  * existing user an invitation or password reset link - through the same
  * services as the Admin API, authorized like a Data API write. Listing,
  * editing and deleting users, and their role assignments, go through the

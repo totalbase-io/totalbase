@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CustomAction } from '@totalbase/tb-catalog'
 import { actionFlags, actionInput, actionsAt, fillText, runnableActions } from '~/utils/custom-actions'
 
-// A DataView's custom actions (Specification_DataViews.md §3.7, T72).
+// A DataView's custom actions (DataViews.md §3.7, T72).
 describe('custom actions', () => {
   const issue: CustomAction = { id: 'issue', label: 'Issue', target: { kind: 'FUNCTION', resource: '00000000-0000-0000-0000-000000000001' }, args: { factura: '{{id}}' }, places: ['row', 'record'], where: { estado: { _eq: 'BORRADOR' } } }
   const remind: CustomAction = { id: 'remind', label: 'Remind', target: { kind: 'WORKFLOW', workflow: '00000000-0000-0000-0000-000000000002' }, places: ['selection'] }

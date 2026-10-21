@@ -54,7 +54,7 @@ async function expectDrawn(page: Page, type: string) {
   const box = card(page, type)
   await box.scrollIntoViewIfNeeded()
   switch (type) {
-    // Compact by default (Specification_Dashboards.md §5.10): 1250 reads 1.3K.
+    // Compact by default (Dashboards.md §5.10): 1250 reads 1.3K.
     case 'KPI': return expect(box).toContainText(/1[.,]3K/)
     case 'GAUGE': return expect(box.locator('canvas').first()).toBeVisible()
     // Nuxt UI's UProgress, no chart (§5.15).

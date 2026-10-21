@@ -10,7 +10,7 @@ export function generateOpaqueToken(): string {
 
 /**
  * Non-reversible hash used to look up/validate opaque tokens without
- * storing them in plaintext. See Specification_Security.md:
+ * storing them in plaintext. See Security.md:
  * sessions.token_hash, auth_tokens.token_hash, api_keys.key_hash.
  */
 export function hashToken(token: string): string {

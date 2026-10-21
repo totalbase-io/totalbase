@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Acceptance tests for nested writes (Specification_Data_API.md §6).
+ * Acceptance tests for nested writes (Data_API.md §6).
  * Only nested CREATE is implemented in this release (Roadmap_v3.md §2.1)
  * - nested UPDATE cases are intentionally not covered here.
  */
@@ -158,7 +158,7 @@ describe("Nested writes (CREATE only)", () => {
     });
 
     it("answers the parent as its children's triggers left it, not the INSERT's RETURNING from before them", async () => {
-      // An order's totals recalculated from its lines (MCP_Demo_Findings.md F14).
+      // An order's totals recalculated from its lines.
       await database.query(`
         CREATE FUNCTION public.nw_pkg_test_count_items() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN

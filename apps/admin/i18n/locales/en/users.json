@@ -511,6 +511,17 @@
         "title": "Additional data",
         "saveError": "Some additional data was not saved - see the fields",
         "notSet": "The user was created, but not its additional data"
+      },
+      "mfa": {
+        "label": "Two-factor authentication",
+        "on": "On",
+        "off": "Off",
+        "reset": "Reset two-factor authentication",
+        "resetTitle": "Reset two-factor authentication",
+        "resetDescription": "{name}'s authenticator app and recovery codes are removed - for a lost phone. Their sessions stay; they set it up again (at their next sign-in, when the instance requires it).",
+        "resetButton": "Reset",
+        "resetDone": "Two-factor authentication reset",
+        "resetError": "Could not reset two-factor authentication."
       }
     },
     "userCreate": {

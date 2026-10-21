@@ -10,7 +10,7 @@ export interface SyncColumnsResult {
 }
 
 /**
- * Pull direction of pg-sync (Specification.md §11.8):
+ * Pull direction of pg-sync (Foundations.md §11.8):
  * the resource-level sibling of reconcileResources(), one level down. Keeps
  * totalbase.resources_columns in step with a TABLE or VIEW resource's real
  * Postgres columns. Push (the CREATE TABLE wizard / add-column modal writing this
@@ -31,7 +31,7 @@ export async function syncResourceColumns(
 ): Promise<SyncColumnsResult> {
   const detail = await getRelationDetail(database, postgresOid);
 
-  // Set-based (Pre_Beta_Review 2.9): the catalog's columns as one jsonb array, one UPDATE for the renames, one
+  // Set-based: the catalog's columns as one jsonb array, one UPDATE for the renames, one
   // INSERT for the new ones - two syncs at once both see no row for a new column: PostgreSQL decides who writes
   // it, never a UNIQUE violation (AGENTS.md section 16).
   const input = JSON.stringify(detail.columns.map((column) => ({ attnum: column.attnum, name: column.name })));
@@ -81,10 +81,10 @@ export interface PushColumnPresentationInput {
 }
 
 /**
- * Push direction of pg-sync (Specification.md §11.8) -
+ * Push direction of pg-sync (Foundations.md §11.8) -
  * the path syncResourceColumns' own doc comment above calls "a separate,
  * not-yet-built path". Called right after the Add Column wizard's own
- * `ADD COLUMN` succeeds (Specification_DataViews.md §16.2), with the
+ * `ADD COLUMN` succeeds (DataViews.md §16.2), with the
  * column's presentation - the entry the user picked (`input`) among it:
  * the real choice is already known, never re-decided by the rule.
  *
@@ -156,7 +156,7 @@ export interface SyncDescriptionsResult {
 
 /**
  * A second Pull/Push pair, at the resource level rather than the column
- * level: keeps `description` (Specification.md §11,
+ * level: keeps `description` (Foundations.md §11,
  * the superseded-design note) and Postgres's own native `COMMENT ON` in
  * step, restoring the external-tool-interop property that note said was
  * traded away when `description` became a plain column - without
@@ -225,7 +225,7 @@ export async function syncResourceDescriptions(database: Database): Promise<Sync
  * Runs syncResourceColumns() for every ACTIVE TABLE and VIEW resource - the
  * bulk entry point paired with reconcileResources() at the "Sync resources"
  * action (admin-catalog.ts's POST /admin/api/catalog/refresh). A VIEW's
- * columns carry a presentation too (Specification_DataViews.md §15)
+ * columns carry a presentation too (DataViews.md §15)
  * - a DataView over a view inherits it the same way.
  * FUNCTION has no columns.
  */

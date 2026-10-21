@@ -21,7 +21,7 @@ function pageOf(query: { limit?: string; offset?: string }, defaultLimit: number
 }
 
 /**
- * My account (Specification_Security.md §4): a portal user -
+ * My account (Security.md §4): a portal user -
  * admin or app access - manages their own account. Every route acts on
  * the caller only (no user id in the path) and needs a session: a
  * plane="ADMIN" token is refused, the way creating tokens on /api/tokens
@@ -42,10 +42,11 @@ export function registerAppMeRoutes(app: FastifyInstance, context: AppContext): 
     const user = await context.auth.users.findForAdmin(userId);
     if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
     const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
-    const [access, administrator, passwordMinLength] = await Promise.all([
+    const [access, administrator, passwordMinLength, mfa] = await Promise.all([
       context.roles.effectiveAccess(roleIds),
       context.roles.holdsAdministratorsRole(roleIds),
       context.settings.get("auth.password_min_length"),
+      context.auth.mfa.status(userId),
     ]);
     return {
       id: user.id,
@@ -61,7 +62,15 @@ export function registerAppMeRoutes(app: FastifyInstance, context: AppContext): 
       passwordMinLength,
       // Which personal access tokens this account can hold (UsersApisService's own rules).
       tokens: { api: access.apiAccess, admin: administrator },
+      // Two-factor authentication (Security.md §2.17): on or not, recovery codes left, whether the instance requires it.
+      mfa,
     };
+  }
+
+  /** An account with a password confirms with it; one without (OAuth only) has only its session to show. */
+  async function confirmIdentity(userId: string, currentPassword: unknown): Promise<void> {
+    const user = await context.auth.users.findForAdmin(userId);
+    if (user?.hasPassword) await context.auth.assertCurrentPassword(userId, currentPassword);
   }
 
   app.get("/app/api/me", { preHandler }, async (request) => ({ data: await account(me(request)) }));
@@ -116,6 +125,37 @@ export function registerAppMeRoutes(app: FastifyInstance, context: AppContext): 
       reply.code(204);
     },
   );
+
+  // Two-factor authentication (Security.md §2.17): set up (a secret for the app, then its first code
+  // confirms it and the recovery codes are shown once), turn off, new recovery codes.
+  app.post<{ Body: { data?: { currentPassword?: unknown } } | undefined }>("/app/api/me/mfa", { preHandler }, async (request, reply) => {
+    await confirmIdentity(me(request), request.body?.data?.currentPassword);
+    const user = await context.auth.users.findById(me(request));
+    const enrollment = await context.auth.mfa.startEnrollment(me(request), user!.email);
+    reply.code(201);
+    return { data: enrollment };
+  });
+
+  app.post<{ Body: { data?: { code?: unknown } } | undefined }>("/app/api/me/mfa/confirm", { preHandler }, async (request) => {
+    const recoveryCodes = await context.auth.mfa.confirmEnrollment(me(request), request.body?.data?.code);
+    return { data: { recoveryCodes } };
+  });
+
+  app.post<{ Body: { data?: { currentPassword?: unknown; code?: unknown; recoveryCode?: unknown } } | undefined }>(
+    "/app/api/me/mfa/disable",
+    { preHandler },
+    async (request, reply) => {
+      const body = request.body?.data;
+      await confirmIdentity(me(request), body?.currentPassword);
+      await context.auth.mfa.disable(me(request), { code: body?.code, recoveryCode: body?.recoveryCode });
+      reply.code(204);
+    },
+  );
+
+  app.post<{ Body: { data?: { code?: unknown } } | undefined }>("/app/api/me/mfa/recovery-codes", { preHandler }, async (request) => {
+    const recoveryCodes = await context.auth.mfa.regenerateRecoveryCodes(me(request), request.body?.data?.code);
+    return { data: { recoveryCodes } };
+  });
 
   // Avatar - the same handling as the admin's (user-avatars.ts).
   app.register(async (scoped) => {

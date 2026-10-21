@@ -11,7 +11,7 @@ const PASSWORD = "a-strong-enough-password";
 const CUSTOM_COLUMN = "default_grants_test_department";
 
 /**
- * POST /admin/api/roles/{id}/totalbase-defaults (Specification_Security.md
+ * POST /admin/api/roles/{id}/totalbase-defaults (Security.md
  * §10.5): what an ordinary App user gets on TotalBase's own tables - and
  * that each "own" grant really stops at the user's own rows and columns.
  */

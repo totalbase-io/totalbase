@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The App's landing page (Specification_Security.md §8): the menu
+// The App's landing page (Security.md §8): the menu
 // lives in the panel beside it (AppMenuPanel.vue); an administrator
 // arranges it here, in edit mode (`?edit`).
 import { menuObjectPath } from '~/types/app-menu'
@@ -9,7 +9,7 @@ const route = useRoute()
 const session = useSession()
 const { t } = useI18n()
 const editing = computed(() => session.access.value === 'ADMIN' && route.query.edit !== undefined)
-// Where the App opens (Specification_Security.md §8.1), in place of this page: the object last visited in this
+// Where the App opens (Security.md §8.1), in place of this page: the object last visited in this
 // browser, else the role's home, else the first of the menu - this page only stays when the menu is empty.
 const { menu, loading } = useAppMenu()
 const opening = computed(() => {

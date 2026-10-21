@@ -2,7 +2,7 @@
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
  * Configures a `totalbase.soap-request` node's `configuration`
- * (Specification_Workflows.md §5.15.1): the endpoint, the SOAP version,
+ * (Workflows.md §5.15.1): the endpoint, the SOAP version,
  * the operation and its namespace, the SOAPAction, and the parameters as
  * a JSON object the server turns into the operation's XML. Every field is
  * literal text/JSON with `{{...}}` support, resolved at run time like HTTP

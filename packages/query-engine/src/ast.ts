@@ -42,7 +42,7 @@ export interface QueryAST {
   fields: FieldNode[] | undefined;
   where: FilterNode | undefined;
   search: string | undefined;
-  /** `search_fields=a,b.c` (Specification_Data_API.md §3.5): the fields `search` looks in, a subset of what it would otherwise. */
+  /** `search_fields=a,b.c` (Data_API.md §3.5): the fields `search` looks in, a subset of what it would otherwise. */
   searchFields?: string[][] | undefined;
   groupBy: string[][] | undefined;
   having: FilterNode | undefined;
@@ -51,7 +51,7 @@ export interface QueryAST {
   limit: number | undefined;
   offset: number | undefined;
   count: boolean;
-  /** `flags[<name>]=<filter>` (Specification_Data_API.md §3.9): which of these each row meets - answered in `meta.flags`. */
+  /** `flags[<name>]=<filter>` (Data_API.md §3.9): which of these each row meets - answered in `meta.flags`. */
   flags?: FlagNode[] | undefined;
 }
 

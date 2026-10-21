@@ -1,7 +1,7 @@
 import type { TemplateKind, TemplateSummary } from '~/utils/templates'
 
 /**
- * Templates for every portal user (Specification_Security.md §9.3):
+ * Templates for every portal user (Security.md §9.3):
  * read and written through the Data API (templates - only the
  * rows and columns the caller may use; the name and slug rules are
  * PostgreSQL CHECKs). An administrator uses the same

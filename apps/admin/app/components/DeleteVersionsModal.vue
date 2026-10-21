@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * "Delete old versions…" (Specification.md §13.4), shared by the three
+ * "Delete old versions…" (Foundations.md §13.4), shared by the three
  * editors: pick the version to keep from, and every earlier one is deleted -
  * never the live one. Irreversible, so a modal listing what goes, with the
  * Confirm checkbox. A workflow version that still has runs is kept by the

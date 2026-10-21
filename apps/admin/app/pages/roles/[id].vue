@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // An administrator edits the whole role (permissions, access, managers);
-// a delegated user sees its details and members (Specification_Security.md §9.4).
+// a delegated user sees its details and members (Security.md §9.4).
 const route = useRoute()
 const session = useSession()
 const roleId = computed(() => route.params.id as string)

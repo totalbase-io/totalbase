@@ -7,6 +7,8 @@ export * from "./auth-tokens-service.js";
 export * from "./email-sender.js";
 export * from "./system-mailer.js";
 export * from "./auth-service.js";
+export * from "./mfa-service.js";
+export { otpauthUrl, totpCode, totpStep } from "./totp.js";
 export * from "./auth-providers-service.js";
 export * from "./oauth-service.js";
 export * from "./oauth-redirect.js";

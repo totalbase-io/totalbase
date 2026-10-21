@@ -8,7 +8,7 @@ import { setupTestApp } from "../test-support.js";
 const RUN = Date.now().toString(36);
 
 /**
- * A dashboard as one document (Specification_Dashboards.md §10.6, DM2) and the reasons of its automatic decisions
+ * A dashboard as one document (Dashboards.md §8.3, DM2) and the reasons of its automatic decisions
  * (§5.19, DM3): get returns the draft as a spec, apply replaces it in one transaction - every problem at once, each
  * at its path - and a run says which column each role took and why.
  */

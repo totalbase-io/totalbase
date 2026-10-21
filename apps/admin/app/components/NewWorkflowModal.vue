@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Creation wizard (Specification_Workflows.md §16.1) on the
+ * Creation wizard (Workflows.md §16) on the
  * product's WizardModal (AGENTS.md "Multi-step wizards"):
  * 1) identification (name/description/slug), 2) triggering event - a bare
  * card picker, 3) that trigger's own configuration (its shape depends on
@@ -11,7 +11,7 @@
  *
  * Steps 2/3 delegate to WorkflowTriggerFields.vue (cards + per-kind config,
  * shared with EditWorkflowTriggerModal.vue's edit wizard) - see that
- * file's own doc comment for the Specification_Workflows.md §6 reasoning
+ * file's own doc comment for the Workflows.md §6 reasoning
  * behind each trigger kind's fields.
  */
 import WorkflowTriggerFields from '~/components/WorkflowTriggerFields.vue'

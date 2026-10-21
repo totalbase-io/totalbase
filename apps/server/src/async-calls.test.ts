@@ -7,7 +7,7 @@ import { createTestApiToken, setupTestApp, waitFor } from "./test-support.js";
 const PREFIX = "async-calls-test";
 
 /**
- * Asynchronous calls (Specification_Data_API.md §10.4): `Prefer:
+ * Asynchronous calls (Data_API.md §10.4): `Prefer:
  * respond-async` on a function call or a transaction is checked at once,
  * queued, answered 202, run by the executions worker as the caller
  * resolved again, and polled at /api/executions/{id} by that caller only.
@@ -165,7 +165,7 @@ describe("Asynchronous function calls and transactions", () => {
     expect(res.json().errors[0].code).toBe("TRANSACTION_EXECUTION_DENIED");
   });
 
-  describe("cancellation (Specification_Data_API.md §10.5)", () => {
+  describe("cancellation (Data_API.md §10.5)", () => {
     const cancel = (id: string, token: string) =>
       app.inject({ method: "POST", url: `/api/executions/${id}/cancel`, headers: { authorization: `Bearer ${token}` } });
     const labelCount = async (label: string) =>

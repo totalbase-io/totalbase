@@ -24,6 +24,7 @@ const EMBED_SCHEMAS = {
       description: "By variable name: { mode: EDITABLE | HIDDEN | LOCKED, value? }. A LOCKED variable with no value takes it from a SIGNED token; a published variable not listed is EDITABLE.",
       additionalProperties: true,
     },
+    widget: { type: ["string", "null"], format: "uuid", description: "The one published widget it shows, alone and sized to its frame; null = the whole dashboard." },
     origins: { type: "array", items: { type: "string" }, description: "Sites that may frame it, within dashboards.embed_allowed_origins; empty = all of those." },
     expiresAt: { type: ["string", "null"], format: "date-time" },
     revokedAt: { type: ["string", "null"], format: "date-time" },
@@ -43,17 +44,18 @@ const EMBED_INPUT = object({
   type: { type: "string", enum: ["LINK", "SIGNED"], description: "Set when it's created; never changes." },
   display: { type: "object", additionalProperties: true },
   variables: { type: "object", additionalProperties: true },
+  widget: { type: ["string", "null"], format: "uuid", description: "A widget of the published version to show alone; null = the whole dashboard." },
   origins: { type: "array", items: { type: "string" } },
   expiresAt: { type: ["string", "null"], format: "date-time", description: "null = never." },
 });
 
-/** Embed writes are recorded like any administrative change (Specification_Dashboards.md §9.5). */
+/** Embed writes are recorded like any administrative change (Dashboards.md §9.5). */
 async function audit(context: AppContext, request: FastifyRequest, event: string, embed: { id: string; dashboard: string; name: string }) {
   try {
     await context.audit.record(context.database, {
       requestId: request.id,
       principal: { type: "ADMIN", id: request.admin!.id },
-      // An access event (Specification_Security.md §11.6): an embed decides who may see a dashboard's data.
+      // An access event (Security.md §11.6): an embed decides who may see a dashboard's data.
       action: "AUTH",
       status: "EXECUTED",
       source: "admin",
@@ -67,7 +69,7 @@ async function audit(context: AppContext, request: FastifyRequest, event: string
 }
 
 /**
- * A dashboard's embeds (Specification_Dashboards.md §9.5) - administrators
+ * A dashboard's embeds (Dashboards.md §9.5) - administrators
  * only: create a public link or a signed embed, change how it looks and
  * what it locks, revoke or delete it, preview one being designed, and see
  * which embeds a draft's variables would break before publishing it.
@@ -104,7 +106,7 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     ...adminDoc("dashboards", {
       summary: "Create an embed",
       description:
-        "A public LINK (its secret generated here) or a SIGNED embed. A LOCKED variable of a link needs its value; " +
+        "A public LINK (its secret generated here) or a SIGNED embed, of the whole dashboard or of one published widget. A LOCKED variable of a link needs its value; " +
         "origins must be among dashboards.embed_allowed_origins. 409 DASHBOARD_EMBED_NAME_DUPLICATE for a name the dashboard already uses.",
       pathParameters: ID,
       requestBody: { schema: { type: "object", properties: { data: EMBED_INPUT } } },
@@ -123,7 +125,7 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     preHandler,
     ...adminDoc("dashboards", {
       summary: "Change an embed",
-      description: "Its name, display, variables, origins or expiry - applies at once, the same link and the same tokens. Its type never changes.",
+      description: "Its name, display, variables, widget, origins or expiry - applies at once, the same link and the same tokens. Its type never changes.",
       pathParameters: EMBED_ID,
       requestBody: { schema: { type: "object", properties: { data: EMBED_INPUT } } },
       response: ok(ref("DashboardEmbed")),
@@ -160,15 +162,15 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     reply.code(204);
   });
 
-  app.post<{ Params: { id: string }; Body: DataBody<{ display?: unknown; variables?: unknown }> }>(`${base}/preview`, {
+  app.post<{ Params: { id: string }; Body: DataBody<{ display?: unknown; variables?: unknown; widget?: unknown }> }>(`${base}/preview`, {
     preHandler,
     ...adminDoc("dashboards", {
       summary: "Preview an embed being designed",
       description:
-        "A token for /admin/embed/preview#<token> showing the published dashboard with this display and these variables - " +
+        "A token for /admin/embed/preview#<token> showing the published dashboard (or its one widget) with this display and these variables - " +
         "signed by TotalBase with a key derived from the master key, valid 10 minutes, whether or not embedding is on.",
       pathParameters: ID,
-      requestBody: { schema: { type: "object", properties: { data: object({ display: { type: "object", additionalProperties: true }, variables: { type: "object", additionalProperties: true } }) } } },
+      requestBody: { schema: { type: "object", properties: { data: object({ display: { type: "object", additionalProperties: true }, variables: { type: "object", additionalProperties: true }, widget: { type: ["string", "null"], format: "uuid" } }) } } },
       response: ok(object({ token: { type: "string" }, expiresAt: DATE_TIME })),
     }),
   }, async (request) => {
@@ -177,10 +179,11 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     // The same checks as an embed's - a SIGNED one's locked values may be left out (shown as nothing).
     const display = validateEmbedDisplay(body.display);
     const variables = validateEmbedVariables(body.variables, "SIGNED", dashboard.variables.map((v) => v.name));
+    const widget = await context.dashboardEmbeds.validateWidget(dashboard.id, body.widget);
     const exp = Math.floor(Date.now() / 1000) + EMBED_PREVIEW_TTL_SECONDS;
     return {
       data: {
-        token: signEmbedPreviewToken({ dashboard: dashboard.id, display: display as Record<string, unknown>, variables, exp }, context.embedPreviewKey),
+        token: signEmbedPreviewToken({ dashboard: dashboard.id, display: display as Record<string, unknown>, variables, widget, exp }, context.embedPreviewKey),
         expiresAt: new Date(exp * 1000).toISOString(),
       },
     };
@@ -191,13 +194,14 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     ...adminDoc("dashboards", {
       summary: "Embeds the draft would break",
       description:
-        "The active embeds that lock a variable the draft no longer has - publishing it would stop them (they fail closed, " +
-        "never showing the dashboard without their restriction). The editor asks before such a publish.",
+        "The active embeds that lock a variable the draft no longer has, or show one widget it no longer has - publishing it would stop them " +
+        "(they fail closed, never showing the dashboard without their restriction, or the whole dashboard instead of its widget). The editor asks before such a publish.",
       pathParameters: ID,
-      response: ok(arrayOf(object({ id: UUID, name: { type: "string" }, missing: { type: "array", items: { type: "string" } } }))),
+      response: ok(arrayOf(object({ id: UUID, name: { type: "string" }, missing: { type: "array", items: { type: "string" } }, widgetMissing: { type: "boolean" } }))),
     }),
   }, async (request) => {
     const dashboard = await dashboardOf(request.params.id);
-    return { data: await context.dashboardEmbeds.brokenBy(dashboard.id, dashboard.variables) };
+    const widgetIds = (await context.dashboardsAdmin.listWidgets(dashboard.id)).map((w) => w.id);
+    return { data: await context.dashboardEmbeds.brokenBy(dashboard.id, dashboard.variables, widgetIds) };
   });
 }

@@ -1,5 +1,6 @@
 import { test as base, expect, type Page } from '@playwright/test'
 import { apiRequest, login } from '../helpers.js'
+import { BASE_URL } from '../helpers'
 
 /**
  * The DataViews V1 acceptance suite's shared ground (e2e/tests/v1): an
@@ -174,7 +175,7 @@ export const TABLES = ['e2e_v1_categorias', 'e2e_v1_clientes', 'e2e_v1_pedidos',
 /**
  * Recreates the e2e_v1 schema with its rows and makes TotalBase see it - once
  * per file (beforeAll). A new table isn't exposed until an administrator says
- * so (Specification.md §11.5): each is exposed for every method, as the Resources
+ * so (Foundations.md §11.5): each is exposed for every method, as the Resources
  * screen does.
  */
 export async function resetSchema(page: Page, token: string) {
@@ -194,7 +195,7 @@ export async function resetSchema(page: Page, token: string) {
 
 /** A fresh page logged in as admin - for beforeAll/afterAll, which have no `page` fixture. */
 export async function adminSession(browser: import('@playwright/test').Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   const token = await login(page)
   return { context, page, token }

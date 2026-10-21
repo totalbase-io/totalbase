@@ -8,7 +8,7 @@ const SUFFIX = uniqueSuffix();
 
 /**
  * Route-level acceptance tests for Idempotency Keys on the CREATE endpoint
- * (Specification_Data_API.md §9).
+ * (Data_API.md §9).
  */
 describe("Idempotency Keys (POST create)", () => {
   let app: FastifyInstance;

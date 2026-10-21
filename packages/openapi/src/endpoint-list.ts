@@ -5,7 +5,7 @@ export type ApiEndpointKind = "TABLE" | "VIEW" | "FUNCTION" | "WORKFLOW" | "SYST
 
 /**
  * One route of the instance's developer-facing HTTP surface, as the admin's
- * Endpoints screen lists it (Specification_Admin_UI.md §12): every
+ * Endpoints screen lists it (Admin_UI.md §12): every
  * Data API route of every ACTIVE resource - a method outside its
  * `exposed_methods` listed as disabled -, every workflow's run/webhook
  * route, and every fixed `/api/*` route that declares `config.openapi`.

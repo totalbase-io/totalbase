@@ -50,7 +50,7 @@ export async function apiRequest<T>(
 }
 
 /**
- * DataViews are drafts until explicitly published (Specification.md §13.1)
+ * DataViews are drafts until explicitly published (Foundations.md §13.1)
  * - the consumer pages (`/admin/dataviews/:slug`, `/new`, `/:pk/edit`)
  * render the live version, so publish whatever the test just set up first.
  */
@@ -65,7 +65,7 @@ export async function publishDataView(page: Page, token: string, dataviewId: str
  */
 export function watchApiFailures(page: Page, expected: RegExp[] = []) {
   const failures: string[] = []
-  // Monaco's own "Canceled" when an editor closes mid-request (Beta_Findings 1.19) - not the page's.
+  // Monaco's own "Canceled" when an editor closes mid-request - not the page's.
   page.on('pageerror', (error) => { if (error.message !== 'Canceled') failures.push(`uncaught: ${error.message}`) })
   page.on('response', (response) => {
     const url = new URL(response.url())

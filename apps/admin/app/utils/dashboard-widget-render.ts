@@ -7,7 +7,7 @@ import { compareDimension, type DimensionOrder, type PivotLeaf, type PivotSpec }
 import { clockOptions } from '~/utils/datetime-local'
 
 /**
- * What every dashboard widget's builder shares (Specification_Dashboards.md §5, D1): a result column's
+ * What every dashboard widget's builder shares (Dashboards.md §5, D1): a result column's
  * title and number format - its presentation when its origin has one - the 17-color palette, row colors,
  * dates in the viewer's format, and the TABLE widget's cells. Pure functions; each widget's own drawing is
  * its builder's (dashboard-builders.ts).
@@ -24,7 +24,7 @@ export function isNumericColumn(result: DashboardQueryResult, name: string): boo
   return Boolean(column && NUMERIC_TYPES.test(column.dataType))
 }
 
-/** A column's title: its presentation's label (its origin's, Specification_Dashboards.md §2.3), else its name in the query. */
+/** A column's title: its presentation's label (its origin's, Dashboards.md §2.3), else its name in the query. */
 export function columnTitle(result: DashboardQueryResult, name: string): string {
   return resultColumn(result, name)?.presentation?.label ?? name
 }
@@ -51,7 +51,7 @@ export function widgetNumberPattern(config: Record<string, unknown>, presentatio
 }
 
 /**
- * A widget's number, as text (Specification_Dashboards.md §5, D4): its Format (`displayFormat`, else its column's
+ * A widget's number, as text (Dashboards.md §5, D4): its Format (`displayFormat`, else its column's
  * presentation's), Compact on top of it (11.6M - on by default only when no format applies; with a format it keeps the
  * format's text and fixed decimals: "$ #,##0" reads "$ 1.3M"). Without a format, the locale's number. A lossy column's
  * exact decimal text is formatted exactly (Intl formats a decimal string without rounding it first).

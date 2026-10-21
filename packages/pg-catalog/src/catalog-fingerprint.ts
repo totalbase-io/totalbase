@@ -1,7 +1,7 @@
 import type { Database } from "@totalbase/database";
 
 /**
- * A cheap summary of the catalog rows a sync reads (Specification.md §12.4):
+ * A cheap summary of the catalog rows a sync reads (Foundations.md §12.4):
  * schemas, relations, columns, functions, constraints, types, enum labels,
  * view rules and comments. DDL adds, removes or rewrites one of those rows,
  * and a rewritten row carries the newest transaction id as its xmin - so the

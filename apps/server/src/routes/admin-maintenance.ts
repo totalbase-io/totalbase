@@ -8,7 +8,7 @@ import { dataEnvelope } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, object, ok, ref, UUID } from "../openapi-admin-docs.js";
 
 /**
- * PostgreSQL maintenance (Specification_Administration.md §6) - Settings >
+ * PostgreSQL maintenance (Administration.md §6) - Settings >
  * General > Maintenance. Sizes and vacuum/analyze state from PostgreSQL's
  * own statistics; VACUUM / ANALYZE / REINDEX CONCURRENTLY queued - one
  * table, or a batch of them - to the dedicated maintenance worker

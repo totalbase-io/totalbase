@@ -2,7 +2,7 @@
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
  * Configures a `totalbase.sign` node's `configuration`
- * (Specification_Workflows.md §5.15.2): the text to sign (with `{{...}}`)
+ * (Workflows.md §5.15.2): the text to sign (with `{{...}}`)
  * and the secrets holding the certificate, its private key and, when the
  * key is encrypted, its passphrase. Only the secrets' names are stored -
  * their values are read when the step runs.

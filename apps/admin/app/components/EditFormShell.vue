@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Picks the actual container for a `TABLE`/`CARDS` DataView's Edit form
- * based on its `view_config.edit_presentation` (Specification_DataViews.md §6.3)
+ * based on its `view_config.edit_presentation` (DataViews.md §6.3)
  * - `AppDrawer`/`UModal`/`USlideover`, all
  * three already in real use elsewhere in the admin, none new. Kept as
  * its own component (rather than three v-if blocks inline in

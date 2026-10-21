@@ -1,5 +1,5 @@
 /**
- * Thrown by an execution executor (Specification_Data_API.md §10.2)
+ * Thrown by an execution executor (Data_API.md §10.2)
  * to tell ExecutionsWorker whether the failure is worth
  * retrying. Any other thrown error is treated as non-retryable by
  * default - the safe default matches the spec's own non-retry list
@@ -17,7 +17,7 @@ export class RetryableExecutionExecutorError extends Error {
   }
 }
 
-/** The error code an executor throws to end its execution CANCELLED rather than FAILED (Specification_Data_API.md §10.5). */
+/** The error code an executor throws to end its execution CANCELLED rather than FAILED (Data_API.md §10.5). */
 export const EXECUTION_CANCELLED = "CANCELLED";
 
 export class ExecutionExecutorError extends Error {

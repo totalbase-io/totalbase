@@ -1,11 +1,11 @@
 import { randomUUID, randomBytes } from "node:crypto";
 import Fastify from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
-import { relationDetailCache } from "@totalbase/pg-catalog";
 import type { DocumentedRoute, RouteInfo } from "@totalbase/openapi";
 import { registerAdminUi } from "./admin-ui.js";
 import { registerMcpEndpoint } from "./mcp-endpoint.js";
 import type { AppContext } from "./context.js";
+import { catalogChanged } from "./invalidations.js";
 import { FASTIFY_BODY_LIMIT_CEILING, maxHeaderSizeFor, parseQueryString, registerHardeningHooks } from "./hardening.js";
 import { registerAccessAudit } from "./access-audit.js";
 import { registerHealthRoutes } from "./health.js";
@@ -44,6 +44,7 @@ import { registerAdminAuditRoutes } from "./routes/admin-audit.js";
 import { registerAdminAuthProvidersRoutes } from "./routes/admin-auth-providers.js";
 import { registerAdminSecretsRoutes } from "./routes/admin-secrets.js";
 import { registerAdminMaintenanceRoutes } from "./routes/admin-maintenance.js";
+import { registerAdminBackupsRoutes } from "./routes/admin-backups.js";
 import { registerAdminSettingsRoutes } from "./routes/admin-settings.js";
 import { registerAdminSystemEmailsRoutes } from "./routes/admin-system-emails.js";
 import { registerAdminDashboardRoutes } from "./routes/admin-dashboard.js";
@@ -78,19 +79,19 @@ export async function buildServer(
   adminUi: { enabled: boolean; dir?: string | undefined; devProxyTarget?: string | undefined } = { enabled: true },
 ) {
   // A Fastify construction option, so read once: security.trust_proxy
-  // applies after a restart (Specification_Administration.md §7.5, §7.7).
+  // applies after a restart (Administration.md §7.5, §7.7).
   // Every other hardening setting is read per request (hardening.ts).
   const trustProxy = await context.settings.get("security.trust_proxy");
   // Node's header limit, also read once: big enough for a query string of
   // api.max_query_string_bytes to reach the hardening hook (and its
   // QUERY_STRING_TOO_LARGE) instead of Node's raw 431. Raising the setting
-  // live past it takes a restart (Specification_Data_API.md §12.1).
+  // live past it takes a restart (Data_API.md §12.1).
   const maxHeaderSize = maxHeaderSizeFor(await context.settings.get("api.max_query_string_bytes"));
 
   const app = Fastify({
     logger: {
       level: logLevel,
-      // What a request line logs (Pre_Beta_Review 1.8): never its query string - a password-reset,
+      // What a request line logs: never its query string - a password-reset,
       // invitation or verification token travels in `?token=`, OAuth's callback carries `code` and `state`
       // - and never a public embed's key, which is its path (`/admin/embed/tbe_…`).
       serializers: {
@@ -156,17 +157,16 @@ export async function buildServer(
   // change a document - both used to drop every cached document, on every
   // failed login too. Any other admin write may (a setting, a permission,
   // a resource, DDL), and telling those apart per route isn't worth a
-  // stale document, so the rest of the plane still flushes.
+  // stale document, so the rest of the plane still flushes. Same reasoning
+  // for what getRelationDetail() introspected (@totalbase/pg-catalog's
+  // relation-detail-cache.ts) and widget plans - a backstop: the DDL paths
+  // themselves (schema management's reconcile, the SQL Console service)
+  // already clear them. Every other process is told too (invalidations.ts).
   app.addHook("onResponse", async (request, reply) => {
     if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
     if (reply.statusCode < 200 || reply.statusCode >= 300) return;
     if (!request.url.startsWith("/admin/api/") || request.url.startsWith("/admin/api/auth/")) return;
-    context.openApiCache.invalidate();
-    // Same reasoning for what getRelationDetail() introspected
-    // (@totalbase/pg-catalog's relation-detail-cache.ts) - a backstop: the
-    // DDL paths themselves (schema management's reconcile, the SQL
-    // Console service) already clear it.
-    relationDetailCache.clear();
+    await catalogChanged(context).catch((error: unknown) => request.log.warn({ error }, "catalog invalidation signal failed"));
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -175,7 +175,7 @@ export async function buildServer(
       reply.code(error.httpStatus).send({ errors: error.toPublicErrors().map((e) => ({ ...e, message: nameRolesInRefusal(request, String(e.message)) })) });
       return;
     }
-    // Fastify's own bodyLimit rejection (Specification_Data_API.md §12: REQUEST_BODY_TOO_LARGE).
+    // Fastify's own bodyLimit rejection (Data_API.md §12: REQUEST_BODY_TOO_LARGE).
     if ((error as { code?: string }).code === "FST_ERR_CTP_BODY_TOO_LARGE") {
       reply.code(413).send({
         errors: [{ source: "TOTALBASE", code: "REQUEST_BODY_TOO_LARGE", message: "Request body exceeds the configured size limit." }],
@@ -239,6 +239,7 @@ export async function buildServer(
   registerAdminSchemaRoutes(app, context);
   registerAdminSqlConsoleRoutes(app, context);
   registerAdminMaintenanceRoutes(app, context);
+  registerAdminBackupsRoutes(app, context);
   registerAdminWorkflowsRoutes(app, context);
   registerMcpEndpoint(app, context, internalKey);
   registerWorkflowWebhookRoutes(app, context);

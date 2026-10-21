@@ -10,7 +10,7 @@ const CITIES = "dashboards_d22_cities";
 const LIMITS = { timeoutMs: 5_000, maxRows: 100 };
 
 /**
- * Variables, more complete (Specification_Dashboards.md §3, D22): the previous period, short presets, a default from
+ * Variables, more complete (Dashboards.md §3, D22): the previous period, short presets, a default from
  * the viewer's user row, a fixed list with labels, a list from a table - its key and row presentation, chained.
  */
 describe("dashboard variables (D22, integration)", () => {

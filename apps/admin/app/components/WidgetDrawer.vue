@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * TDrawer - a page's drawer, TotalBase's own (Specification_DataViews.md §9):
+ * TDrawer - a page's drawer, TotalBase's own (DataViews.md §9):
  * AppDrawer, the drawer every admin screen uses - its title and
  * caption, Expand and Close, its widths - with the page's widgets in its Body
  * and Footer. Opened like a Modal: `dataview.controls.<name>.open()`.

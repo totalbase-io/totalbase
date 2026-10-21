@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hexToOklch, primaryColorCss, primaryShades, validateCustomCss } from "./appearance.js";
 
-describe("primary color shades (Specification_Admin_UI.md §4.1.1)", () => {
+describe("primary color shades (Admin_UI.md §4.1.1)", () => {
   it("keeps the color as shade 500 and its hue on every shade, lighter toward 50 and darker toward 950", () => {
     const { l, c, h } = hexToOklch("#0f766e");
     const shades = primaryShades("#0f766e");

@@ -21,7 +21,7 @@ import {
 } from "./mutation-service.js";
 
 /**
- * Nested writes (Specification_Data_API.md §6). This is a SEPARATE
+ * Nested writes (Data_API.md §6). This is a SEPARATE
  * entry point from mutation-service.ts, not a modification of
  * executeCreate: a nested write needs ONE transaction shared across every
  * node in the tree, so it calls compileInsert directly per node instead
@@ -68,7 +68,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * Preflight: walks the payload, splits scalar columns from `$relation`
  * properties, resolves each relation against real PostgreSQL foreign
  * keys, and enforces depth/record limits - all before any write executes
- * (Specification_Data_API.md §6.3). Runs against `context.database` directly (not a
+ * (Data_API.md §6.3). Runs against `context.database` directly (not a
  * transaction client); the actual writes happen later, inside one
  * transaction, in executeNode.
  */
@@ -136,7 +136,7 @@ async function buildPlanNode(
  * Resolves, for every node of the plan, what its INSERT needs that isn't
  * the transaction's own: its permission, password columns, response
  * projection and caller - all through the pool, all before BEGIN, so the
- * transaction never waits on a second connection (Pre_Beta_Review 1.2).
+ * transaction never waits on a second connection.
  */
 async function prepareNode(deps: NestedWriteDeps, node: NestedPlanNode, caller: PreparedNode["caller"]): Promise<void> {
   const permission = await resolvePermissionOrThrow(deps.context, deps.dataPrincipal, node.resource, node.resourceId, "CREATE");
@@ -148,7 +148,7 @@ async function prepareNode(deps: NestedWriteDeps, node: NestedPlanNode, caller: 
       rowFilter: buildRowFilter(permission, deps.limits),
       payloadChecks: buildPayloadChecks(permission, deps.limits),
       resolveUserVariable: userVariableResolver(deps.dataPrincipal),
-      // The grant's row filter and payload checks may follow foreign keys (Specification_Security.md §6.5).
+      // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
       related: relatedResolver(new SchemaContext(deps.context.database)),
     },
     passwordColumns,
@@ -164,7 +164,7 @@ async function prepareNode(deps: NestedWriteDeps, node: NestedPlanNode, caller: 
 /**
  * Executes one plan node's INSERT (propagating the parent key when this
  * is a child) and recurses into its own children, all on the SAME
- * transaction client (Specification_Data_API.md §6.4: one logical operation, one
+ * transaction client (Data_API.md §6.4: one logical operation, one
  * transaction). Reuses the exact permission/column/audit machinery
  * executeCreate uses per row, just without executeCreate's own
  * transaction boundary.
@@ -255,7 +255,7 @@ export async function executeNestedCreate(
     audit: deps.audit,
   };
 
-  // 1-3, enforced by the settings registry (Specification_Data_API.md §6.3).
+  // 1-3, enforced by the settings registry (Data_API.md §6.3).
   const maxDepth = await deps.context.settings.get("api.nested_write_max_depth");
   const maxRecords = await deps.context.settings.get("api.nested_write_max_records");
 
@@ -281,7 +281,7 @@ export async function executeNestedCreate(
 
 /**
  * A nested CREATE on a transaction already open - a `POST /api/transactions`
- * insert operation carrying `$child` arrays (Specification_Data_API.md §8):
+ * insert operation carrying `$child` arrays (Data_API.md §8):
  * the same plan, limits and per-node authorization as executeNestedCreate.
  * Planned and prepared before that transaction begins (planNestedCreate),
  * executed on the caller's client (executeNestedPlan), so the whole tree

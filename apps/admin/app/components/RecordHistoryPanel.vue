@@ -22,7 +22,7 @@
  *
  * Per-entry diffs: an UPDATE's from its own `changes` - old and new of
  * every column it changed, read in the same statement
- * (Specification_Security.md §11.4, utils/audit-changes.ts); CREATE and
+ * (Security.md §11.4, utils/audit-changes.ts); CREATE and
  * DELETE from their full-row `payload` (the resulting row, or the row as
  * it existed right before). An UPDATE without `changes` (a table without a
  * primary key on PostgreSQL 15-17) falls back to consecutive `payload`

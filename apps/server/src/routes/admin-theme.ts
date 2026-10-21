@@ -4,7 +4,7 @@ import { neutralColorCss, primaryColorCss } from "@totalbase/shared";
 import type { AppContext } from "../context.js";
 
 /**
- * The operator's stylesheet (Specification_Admin_UI.md §4.1.1): the primary
+ * The operator's stylesheet (Admin_UI.md §4.1.1): the primary
  * color's shades, the neutral's, then `appearance.custom_css` verbatim. Linked from the
  * SPA's <head> on every page it serves - the admin, the App, sign-in, the
  * public auth pages, embeds - so it is public, before any sign-in, and

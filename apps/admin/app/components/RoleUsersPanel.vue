@@ -126,7 +126,7 @@ function formatDate(value: string | null) {
   return value ? dates.dateTime(value) : t('users.common.never')
 }
 
-// --- Bulk membership (Specification_Security.md §9.4): check members, then
+// --- Bulk membership (Security.md §9.4): check members, then
 // move them to another role, add another role, or remove them from this one.
 // Members this role can't lose (the owner of Administrators, a system role)
 // can't be checked. ---

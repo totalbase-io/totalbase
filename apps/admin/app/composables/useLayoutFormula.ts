@@ -38,7 +38,7 @@ export function useLayoutFormula(fields: () => DataViewField[], formulas: () => 
     return applyRelationFieldValues(values, relationRefs.value, row)
   }
 
-  /** The foreign keys a formula shows by their row (Specification_DataViews.md §15.5). */
+  /** The foreign keys a formula shows by their row (DataViews.md §15.5). */
   const foreignKeys = computed(() => foreignKeyDisplayFields(fields()))
 
   function run(source: string, row: Record<string, unknown>) {

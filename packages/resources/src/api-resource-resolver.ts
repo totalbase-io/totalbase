@@ -8,15 +8,15 @@ export interface ResolvedApiResource {
   schema: string;
   name: string;
   /**
-   * resources.audit_read (Specification_Security.md §11.5: "READ is configurable
+   * resources.audit_read (Security.md §11.5: "READ is configurable
    * per resource") - loaded by the same lookup that resolves the resource,
    * so a Data API read learns whether to audit itself without a query of
    * its own.
    */
   auditRead: boolean;
-  /** resources.require_idempotency_key (Specification_Data_API.md §9.1): its write never runs without an Idempotency-Key. */
+  /** resources.require_idempotency_key (Data_API.md §9.1): its write never runs without an Idempotency-Key. */
   requireIdempotencyKey: boolean;
-  /** resources.default_sort (Specification.md §11.7): the order a read without `order_by` uses. */
+  /** resources.default_sort (Foundations.md §11.7): the order a read without `order_by` uses. */
   defaultSort: { column: string; direction: "asc" | "desc" }[];
 }
 
@@ -67,7 +67,7 @@ async function resolveSingle(
  * "DELETE never exists for this table") lives here, in the one place every
  * Data API route already funnels through. Hidden/MISSING/wrong-type/
  * disabled-method resources are all indistinguishable from "does not
- * exist" (Specification_Data_API.md §11.5).
+ * exist" (Data_API.md §11.5).
  */
 export async function resolveTableResource(
   context: { database: Queryable },
@@ -91,7 +91,7 @@ export async function resolveViewResource(
  * Resolves {schema}/function/{resource} to every ACTIVE, exposed, POST-
  * mounted FUNCTION resource sharing that schema+name - each PostgreSQL
  * overload is its own TotalBase resource (identity is per-OID,
- * Specification.md §11.7), so a name can match zero, one, or several candidates.
+ * Foundations.md §11.7), so a name can match zero, one, or several candidates.
  */
 export async function resolveFunctionCandidates(
   context: { database: Queryable },

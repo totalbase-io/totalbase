@@ -9,7 +9,7 @@ const PREFIX = "dv-actions-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * A DataView's custom actions (Specification_DataViews.md §3.7, T72): checked when written, and offered to a viewer
+ * A DataView's custom actions (DataViews.md §3.7, T72): checked when written, and offered to a viewer
  * only when they may run what each one runs.
  */
 describe("custom actions", () => {

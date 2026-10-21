@@ -1,18 +1,19 @@
 import { createHmac } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { adminSession, api, expect, test } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
- * Dashboard embeds (Specification_Dashboards.md §9.5), end to end: an
+ * Dashboard embeds (Dashboards.md §9.5), end to end: an
  * administrator designs an embed in the editor's Embed drawer with a live
  * preview and creates a public link; another site frames it with the
  * locked value bound and the embed's look; a signed embed for a portal;
  * only the embed's sites may frame it; the dashboard's id never in an
  * address; a publish that would break an embed is flagged first.
  */
-// Another origin than the instance's (localhost:3050): local and http like the dev server - Chrome refuses a public
+// Another origin than the instance's (BASE_URL's localhost): local and http like the dev server - Chrome refuses a public
 // site framing localhost, and an https page an http frame. Its page is answered by page.route, never by the server.
-const HOST = 'http://127.0.0.1:3050'
+const HOST = BASE_URL.replace('localhost', '127.0.0.1')
 const SECRET_KEY = 'e2e-embed-secret'
 const SECRET = 'e2e-embed-secret-value-0123456789'
 const NAME = 'V1 Embed Ventas'
@@ -35,7 +36,7 @@ async function openHost(page: Page, path: string) {
     contentType: 'text/html',
     body: `<!doctype html><title>Partner</title><output id="height"></output>
       <script>addEventListener('message', e => { if (e.data && e.data.type === 'totalbase:embed:resize') document.getElementById('height').textContent = String(e.data.height) })</script>
-      <iframe title="Sales" style="width:1000px;height:600px" src="http://localhost:3050${path}"></iframe>`
+      <iframe title="Sales" style="width:1000px;height:600px" src="${BASE_URL}${path}"></iframe>`
   }))
   await page.goto(`${HOST}/partner/report`)
   return page.frameLocator('iframe[title="Sales"]')
@@ -129,9 +130,9 @@ test('a signed embed for a portal: the token names the embed and gives the visit
 
 test('only the embed\'s sites may frame it; opened on its own, a public link says so', async ({ browser, page, token }) => {
   const [link] = (await embeds(page, token)).filter(e => e.name === 'Sitio web')
-  const res = await page.request.get(`http://localhost:3050/admin/embed/${link!.link}`)
+  const res = await page.request.get(`${BASE_URL}/admin/embed/${link!.link}`)
   expect(res.headers()['content-security-policy']).toBe(`frame-ancestors 'self' ${HOST}`)
-  const other = await page.request.get('http://localhost:3050/admin/')
+  const other = await page.request.get(`${BASE_URL}/admin/`)
   expect(other.headers()['content-security-policy']).toBe('frame-ancestors \'self\'')
 
   const context = await browser.newContext()

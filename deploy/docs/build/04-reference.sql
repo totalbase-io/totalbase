@@ -1,4 +1,4 @@
--- Reference data (Docs_Demo_Field_Service.md §2, §10): fixed ids (md5 of a stable key), so every reset
+-- Reference data (DATASET.md §2, §10): fixed ids (md5 of a stable key), so every reset
 -- rebuilds the same rows.
 CREATE OR REPLACE FUNCTION pg_temp.uid(k text) RETURNS uuid LANGUAGE sql IMMUTABLE AS $$ SELECT md5('acme:' || k)::uuid $$;
 

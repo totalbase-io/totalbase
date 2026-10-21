@@ -12,7 +12,7 @@ const PASSWORD = "a-strong-enough-password";
 const REQUEST_ID = randomUUID();
 
 /**
- * Specification_Security.md §10.3 step 3: account and role rules the
+ * Security.md §10.3 step 3: account and role rules the
  * services enforced alone, now PostgreSQL's - so a
  * write through the Data API, by an administrator included, obeys them.
  */

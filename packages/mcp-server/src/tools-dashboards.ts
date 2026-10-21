@@ -4,9 +4,10 @@ import { DASHBOARD_WIDGET_CATALOG, DASHBOARD_WIDGET_TYPES, dashboardValueKind, i
 import { AdminApiError, type AdminClient } from "./admin-client.js";
 import { ADDITIVE, DESTRUCTIVE, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId } from "./tool-helpers.js";
 import { dashboardWidgetSection } from "./guides-text.js";
+import { FULL_POLICY, refuseDestructive, type McpPolicy } from "./policy.js";
 
 /**
- * Dashboards (Specification_Dashboards.md, Specification_Administration.md
+ * Dashboards (Dashboards.md, Administration.md
  * §11.3): a draft built from SQL widgets, tried with preview_query, saved with
  * save_widget - which runs what it saved, so a widget whose query fails says
  * so - and published for the roles that may view it. The SQL is the
@@ -107,7 +108,7 @@ const gridSchema = z
   .object({ x: z.number().int().min(0).max(11), y: z.number().int().min(0), w: z.number().int().min(1).max(12), h: z.number().int().min(1) })
   .describe("Position on the 12-column canvas: x 0-11, w 1-12 (6 = half, 4 = a third, 3 = a quarter), y and h in rows");
 
-export function registerDashboardTools(server: McpServer, client: AdminClient): void {
+export function registerDashboardTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
   server.registerTool(
     "describe_dashboard_widgets",
     {
@@ -150,7 +151,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient): 
     {
       title: "Apply dashboard",
       description:
-        "Create a dashboard (no id) or replace its whole draft with a spec - get_dashboard's shape - in one transaction: a widget with an id is that widget (kept: clicks and links point at it), one without is new, one left out is DELETED. Widgets without grid are placed in order at their type's size. Every problem comes back at once, each with its path and code (widgets[3].config.roles.value), and nothing is applied. dry_run: only check and get the difference. Pass the draftVersion get_dashboard gave you: if someone changed the draft since, it's refused (DASHBOARD_DRAFT_CHANGED). The answer gives each widget's id, columns (kind, origin) and roles (which column each took and why); rows: n adds each widget's first rows. Then publish_dashboard. For one small change, save_widget.",
+        "Create a dashboard (no id) or replace its whole draft with a spec - get_dashboard's shape - in one transaction: a widget with an id is that widget (kept: clicks and links point at it), one without is new, one left out is DELETED. Widgets without grid are placed in order at their type's size. Every problem comes back at once, each with its path and code (widgets[3].config.roles.value), and nothing is applied. dry_run: only check and get the difference. Pass the draftVersion get_dashboard gave you: if someone changed the draft since, it's refused (DASHBOARD_DRAFT_CHANGED). The answer gives each widget's id, columns (kind, origin) and roles (which column each took and why); rows: n adds each widget's first rows. Then publish_dashboard. For one small change, save_widget. Outside FULL mode, a spec that would delete widgets is refused.",
       inputSchema: {
         id: z.string().optional().describe("The dashboard to replace - omit to create one"),
         draft_version: z.string().optional().describe("From get_dashboard - refused if the draft changed since"),
@@ -161,8 +162,20 @@ export function registerDashboardTools(server: McpServer, client: AdminClient): 
       annotations: DESTRUCTIVE,
     },
     async ({ id, draft_version, spec, dry_run, rows }) => {
-      const body = { data: { spec, ...(draft_version && { draftVersion: draft_version }), ...(dry_run && { dryRun: true }), ...(rows && { rows }) } };
+      let draftVersion = draft_version;
       try {
+        // Outside FULL mode a spec that leaves widgets out - deleting them - is refused: checked first, then applied
+        // against the draft that check saw (a change in between is DASHBOARD_DRAFT_CHANGED).
+        if (id && !dry_run && policy.mode !== "FULL") {
+          const check = await client.put<{ draftVersion: string | null; diff: { widgets: { deleted: { label: string | null; type: string }[] } } }>(
+            `/dashboards/${id}/spec`,
+            { data: { spec, ...(draftVersion && { draftVersion }), dryRun: true } },
+          );
+          const deleted = check.diff.widgets.deleted;
+          if (deleted.length > 0) refuseDestructive(policy, `Deleting widgets (${deleted.map((w) => w.label ?? w.type).join(", ")}) - keep them in the spec`);
+          draftVersion = check.draftVersion ?? draftVersion;
+        }
+        const body = { data: { spec, ...(draftVersion && { draftVersion }), ...(dry_run && { dryRun: true }), ...(rows && { rows }) } };
         return result(id ? await client.put(`/dashboards/${id}/spec`, body) : await client.post(`/dashboards/spec`, body));
       } catch (error) {
         // Every problem at once, each at its path - nothing was applied.
@@ -322,7 +335,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient): 
     },
   );
 
-  // --- Embeds (DM7, Specification_Dashboards.md §9.5): the same validation as Settings › Share ---
+  // --- Embeds (DM7, Dashboards.md §9.5): the same validation as Settings › Share ---
 
   const embedVariablesSchema = z
     .record(z.string(), strict({ mode: z.enum(["EDITABLE", "HIDDEN", "LOCKED"]), value: z.unknown().optional() }))
@@ -354,42 +367,44 @@ export function registerDashboardTools(server: McpServer, client: AdminClient): 
     {
       title: "Create embed",
       description:
-        "Share a published dashboard outside TotalBase: LINK - a public URL (public to whoever has it: for data that may be public), or SIGNED - a portal's backend signs a short-lived token per visit (dashboards.embed_secret_key) and may give LOCKED values in it. Nothing in it is the viewer's: no $USER.*. Its dashboard needs embedding_enabled (update_dashboard). Everything its queries return reaches the browser.",
+        "Share a published dashboard outside TotalBase: LINK - a public URL (public to whoever has it: for data that may be public), or SIGNED - a portal's backend signs a short-lived token per visit (dashboards.embed_secret_key) and may give LOCKED values in it. Nothing in it is the viewer's: no $USER.*. Its dashboard needs embedding_enabled (update_dashboard). Everything its queries return reaches the browser. With widget, it shows that one published widget alone (a KPI in a portal's header), its URL clicks only.",
       inputSchema: {
         dashboard_id: z.string(),
         name: z.string().max(32).describe("Unique in the dashboard - who it is for (Website, Partner portal)"),
         type: z.enum(["LINK", "SIGNED"]),
         variables: embedVariablesSchema.optional(),
         display: embedDisplaySchema.optional(),
+        widget: z.string().nullable().optional().describe("One published widget's id (get_dashboard) to show alone, filling the frame - its title by display.titled; null or omitted: the whole dashboard"),
         origins: z.array(z.string()).optional().describe("The sites that may frame it, among dashboards.embed_allowed_origins - none: all of those"),
         expires_at: z.string().nullable().optional().describe("ISO timestamp it stops working at; null: never"),
       },
       annotations: ADDITIVE,
     },
-    async ({ dashboard_id, name, type, variables, display, origins, expires_at }) =>
-      result(await client.post(`/dashboards/${dashboard_id}/embeds`, { data: { name, type, ...(variables && { variables }), ...(display && { display }), ...(origins && { origins }), ...(expires_at !== undefined && { expiresAt: expires_at }) } })),
+    async ({ dashboard_id, name, type, variables, display, widget, origins, expires_at }) =>
+      result(await client.post(`/dashboards/${dashboard_id}/embeds`, { data: { name, type, ...(variables && { variables }), ...(display && { display }), ...(widget !== undefined && { widget }), ...(origins && { origins }), ...(expires_at !== undefined && { expiresAt: expires_at }) } })),
   );
 
   server.registerTool(
     "update_embed",
     {
       title: "Update embed",
-      description: "Change an embed's name, variables, display (allowExport, theme...), sites or expiry - each given replaces that part whole. Its type and a link's URL stay.",
+      description: "Change an embed's name, variables, display (allowExport, theme...), widget (one to show alone, or null for the whole dashboard), sites or expiry - each given replaces that part whole. Its type and a link's URL stay.",
       inputSchema: {
         dashboard_id: z.string(),
         embed_id: z.string(),
         name: z.string().max(32).optional(),
         variables: embedVariablesSchema.optional(),
         display: embedDisplaySchema.optional(),
+        widget: z.string().nullable().optional().describe("One published widget's id (get_dashboard) to show alone, filling the frame - its title by display.titled; null or omitted: the whole dashboard"),
         origins: z.array(z.string()).optional(),
         expires_at: z.string().nullable().optional(),
       },
       annotations: IDEMPOTENT,
     },
-    async ({ dashboard_id, embed_id, name, variables, display, origins, expires_at }) =>
+    async ({ dashboard_id, embed_id, name, variables, display, widget, origins, expires_at }) =>
       result(
         await client.patch(`/dashboards/${dashboard_id}/embeds/${embed_id}`, {
-          data: { ...(name !== undefined && { name }), ...(variables && { variables }), ...(display && { display }), ...(origins && { origins }), ...(expires_at !== undefined && { expiresAt: expires_at }) },
+          data: { ...(name !== undefined && { name }), ...(variables && { variables }), ...(display && { display }), ...(widget !== undefined && { widget }), ...(origins && { origins }), ...(expires_at !== undefined && { expiresAt: expires_at }) },
         }),
       ),
   );

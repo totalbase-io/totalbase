@@ -8,7 +8,7 @@ import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
 
 /**
- * What stops an App object from working, and for whom (Specification_DataViews.md §18): a DataView's, a
+ * What stops an App object from working, and for whom (DataViews.md §18): a DataView's, a
  * dashboard's, and every one at once - what the admin's warnings, the publish dialog and the MCP's `check_app`
  * read. The checks are @totalbase/dataviews'; every answer about a role is the Permission Resolver's.
  */
@@ -90,7 +90,7 @@ export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppC
 }
 
 /**
- * Starting See as (Specification_Security.md §8.4): checks the role or user and records who previews whom in the
+ * Starting See as (Security.md §8.4): checks the role or user and records who previews whom in the
  * audit log - an access event, like a session. The preview itself is the header the admin then sends (view-as.ts).
  */
 export function registerViewAsRoute(app: FastifyInstance, context: AppContext): void {

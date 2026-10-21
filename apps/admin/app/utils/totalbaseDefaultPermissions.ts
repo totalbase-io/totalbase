@@ -7,7 +7,7 @@ export interface ApplyTotalbaseDefaultsResult {
   missing: string[]
 }
 
-/** Applies the default permissions on TotalBase's own tables to one role (Specification_Security.md §10.5). */
+/** Applies the default permissions on TotalBase's own tables to one role (Security.md §10.5). */
 export async function applyTotalbaseDefaultPermissions(api: ReturnType<typeof useAdminApi>, roleId: string): Promise<ApplyTotalbaseDefaultsResult> {
   return (await api.post<ApplyTotalbaseDefaultsResult>(`/roles/${roleId}/totalbase-defaults`)).data
 }

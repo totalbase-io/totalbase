@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * `totalbase.instance` is a singleton whose `id` is the installation's
- * stable identifier (Specification.md §10.1): its id is
+ * stable identifier (Foundations.md §10.1): its id is
  * immutable (trigger `instance_protect_id_trg`) and the row can't be
  * deleted (rule `instance_no_delete`), so a stray statement can't
  * change or erase the instance's identity. Each check runs in a transaction

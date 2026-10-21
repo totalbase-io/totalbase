@@ -15,7 +15,7 @@ const PREFIX = "audit-protected-columns-test";
  * user's password_hash in logs.payload, which delegated log readers
  * read through the Data API, and in the outbox, which webhooks deliver.
  * Audited writes keep the full resulting row minus Password and protected
- * columns (Specification_Security.md §11.3).
+ * columns (Security.md §11.3).
  */
 describe("Audit and outbox never record protected columns", () => {
   let app: FastifyInstance;

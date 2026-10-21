@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A table's per-column settings (`Record<column, TableColumnSettings>` -
- * Specification_DataViews.md §15, "A table's columns, one
+ * DataViews.md §15, "A table's columns, one
  * model"), for a narrow properties panel: one row per column - its name and
  * a summary of what it sets - opened in place (TableColumnFields.vue), with
  * Hide. Order is the query's. A column left with no settings is dropped

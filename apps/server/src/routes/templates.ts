@@ -9,7 +9,7 @@ import { assertTemplateReadAllowed } from "@totalbase/mutations";
 
 /**
  * Rendering a PDF over totalbase.templates is reading it
- * (Specification_Administration.md §9.4): READ on the template within the
+ * (Administration.md §9.4): READ on the template within the
  * grant's row filter, checked by @totalbase/mutations'
  * assertTemplateReadAllowed - the same check, and the same
  * TEMPLATE_ACCESS_DENIED, as the workflow steps that render templates.

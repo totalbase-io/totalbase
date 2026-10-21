@@ -5,7 +5,7 @@ import type { AdminClient } from "./admin-client.js";
 import { ADDITIVE, defined, IDEMPOTENT, NAME_RULE, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
- * Templates (Specification_Administration.md §9): rows of
+ * Templates (Administration.md §9): rows of
  * templates, written through the Data API like any row - a
  * MAILING template's subject and message with {{placeholders}}, a PDF
  * template's pdfme design - and tried before a workflow uses them.

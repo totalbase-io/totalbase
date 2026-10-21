@@ -13,7 +13,7 @@ const TABLE = "wf_outbox_test_items";
 
 /**
  * Outbox delivery guarantees for DATA_EVENT admission
- * (Specification_Data_API.md §13.3, Specification_Workflows.md §6.3.5):
+ * (Data_API.md §13.3, Workflows.md §6.3.5):
  * a retried event admits each workflow run once, a PROCESSING event whose
  * lease expired is retried, and dispatchers racing over one event never
  * process it twice.

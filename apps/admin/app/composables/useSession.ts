@@ -14,7 +14,7 @@ export interface DisplayPreferences {
   dateFormat: string
   timeFormat: string
   datetimeFormat: string
-  /** The UI's language - the user's, else the instance's (Specification_Admin_UI.md §14). */
+  /** The UI's language - the user's, else the instance's (Admin_UI.md §14). */
   language?: string
 }
 
@@ -40,7 +40,7 @@ export interface AdminAccount {
  * Session state: the bearer token (persisted to localStorage so a page
  * reload doesn't log the admin out) and the current admin profile
  * (populated from GET /admin/api/auth/me, not decoded from the token —
- * the UI never inspects the token's contents, per Specification_Admin_UI.md §1.2).
+ * the UI never inspects the token's contents, per Admin_UI.md §1.2).
  */
 export function useSession() {
   const token = useState<string | null>('admin-session-token', () => null)

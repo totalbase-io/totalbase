@@ -6,7 +6,7 @@ const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 /**
  * Every API request's headers: the session's bearer token, and the
  * browser's zone - the server's last resort for this viewer's time zone
- * (their profile's, then the instance's, come first), Specification_Security.md §4.2.
+ * (their profile's, then the instance's, come first), Security.md §4.2.
  */
 export function apiHeaders(token: string | null | undefined): Record<string, string> {
   return {

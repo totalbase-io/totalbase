@@ -1451,6 +1451,10 @@
             "labelWidth": {
               "description": "Horizontal: la etiqueta toma esta parte del campo y el input el resto - con el mismo valor en campos vecinos, sus valores quedan alineados. En un celular se apila, con la etiqueta arriba.",
               "label": "Ancho de la etiqueta"
+            },
+            "junction": {
+              "label": "Tabla intermedia",
+              "description": "En lugar de una columna: una tabla intermedia entre el registro de la página y otra tabla. Su entrada elige varias filas de la otra tabla, y el Guardar del registro agrega y quita las filas de la intermedia, como el usuario, en la misma transacción."
             }
           },
           "slots": {
@@ -1984,7 +1988,10 @@
         "sourceValueHelp": "Se guarda en un Valor - para filtros y todo lo que no se guarda tal cual.",
         "title": "Nuevo campo de formulario",
         "variable": "Variable",
-        "variableHelp": "Letras, dígitos y _, empezando por una letra minúscula."
+        "variableHelp": "Letras, dígitos y _, empezando por una letra minúscula.",
+        "sourceJunction": "Vínculos con otra tabla",
+        "sourceJunctionHelp": "Varias filas de otra tabla, por una tabla intermedia - se guardan con el registro, una fila intermedia por vínculo.",
+        "junction": "Tabla intermedia"
       },
       "hideProperties": "Ocultar propiedades",
       "hideWidgets": "Ocultar widgets",
@@ -2445,18 +2452,6 @@
       "showRecords": "Mostrar registros",
       "size": "Tamaño",
       "steps": {
-        "calendarLayout": {
-          "description": "Qué columna de fecha ubica las filas, y el contenido/color de cada evento.",
-          "title": "Diseño del calendario"
-        },
-        "cardLayout": {
-          "description": "Qué columnas se muestran en cada tarjeta.",
-          "title": "Diseño de tarjeta"
-        },
-        "columns": {
-          "description": "Qué columnas usa esta vista - todas, salvo las que desmarques.",
-          "title": "Columnas"
-        },
         "detail": {
           "description": "La tabla que contiene las filas de detalle de cada registro.",
           "title": "Detalle"
@@ -2465,53 +2460,17 @@
           "description": "Qué columnas muestra cada fila de detalle.",
           "title": "Columnas del detalle"
         },
-        "formFeatures": {
-          "description": "Comportamiento del formulario de edición y acciones del registro.",
-          "title": "Funciones del formulario"
-        },
         "frame": {
           "description": "La página https que se inserta, y sus botones de cabecera.",
           "title": "Marco"
-        },
-        "ganttLayout": {
-          "description": "Columnas de fecha de inicio/fin de cada barra, una columna de agrupación opcional, y el contenido/color de cada barra.",
-          "title": "Diseño del Gantt"
-        },
-        "treeLayout": {
-          "title": "Diseño del árbol",
-          "description": "La columna padre, el orden de cada nivel y lo que muestra cada nodo."
-        },
-        "identity": {
-          "description": "Nombre, descripción, slug, icono y color.",
-          "title": "Identidad"
-        },
-        "kanbanLayout": {
-          "description": "Qué columna FK agrupa los registros en carriles, y el contenido de cada tarjeta.",
-          "title": "Diseño del Kanban"
-        },
-        "mapLayout": {
-          "description": "Posición, ventana emergente e icono/color del marcador de cada fila.",
-          "title": "Diseño del mapa"
         },
         "master": {
           "description": "La tabla en la que se crea cada registro nuevo, y sus columnas.",
           "title": "Maestro"
         },
-        "preview": {
-          "description": "La consulta que leerá este DataView, y sus registros.",
-          "title": "Vista previa"
-        },
         "record": {
           "description": "Una tabla como su registro - opcional.",
           "title": "Registro"
-        },
-        "source": {
-          "description": "La tabla o vista sobre la que se construye este DataView.",
-          "title": "Origen"
-        },
-        "tableFeatures": {
-          "description": "Controles de la barra de herramientas y de la lista del DataView.",
-          "title": "Funciones de la tabla"
         },
         "type": {
           "description": "¿Qué tipo de vista vas a crear?",
@@ -2628,7 +2587,6 @@
       "firstTimeViewer": "Con lo que empieza quien la ve por primera vez (o quien nunca personalizó nada).",
       "fitToScreen": "Ajustar a la pantalla",
       "fitToScreenDescription": "El formulario ocupa la página en lugar de desplazarla - la fila con un widget con Llenar altura toma la altura restante y se desplaza por dentro. Se ignora en un teléfono o una tableta.",
-      "formFeatures": "Funciones del formulario",
       "formFeaturesDescription": "Comportamiento del formulario de edición y acciones del registro.",
       "formModeDescription": "Cómo se abre el formulario de este DataView.",
       "instanceDefault": "Por defecto",
@@ -2640,13 +2598,12 @@
       "position": "Posición",
       "runtimeDefault": "Predeterminado del runtime ({value})",
       "size": "Tamaño",
-      "tableFeatures": "Funciones de la tabla",
       "tableFeaturesDescription": "Barra de herramientas y controles de lista del DataView.",
       "toolbarCompact": "Compacta",
       "toolbarFull": "Completa",
       "toolbarInstance": "La de la instancia (Configuración > DataViews)",
       "listMargin": "Margen de la lista",
-      "listMarginHelp": "El espacio alrededor de la lista - Por defecto: una tabla, sin margen (Settings > DataViews > Margen de las tablas); el resto de las listas, normal.",
+      "listMarginHelp": "El espacio alrededor de la lista - Por defecto: una tabla toma Settings > DataViews > Margen de las tablas; el resto de las listas, normal.",
       "listMargins": {
         "none": "Sin margen",
         "compact": "Compacto",
@@ -2745,7 +2702,9 @@
       "uploadImage": "Subir una imagen - un archivo público, la ve cualquiera que abra la página",
       "uploadImageFailed": "No se pudo subir la imagen",
       "unknownField": "«{field}» no es un campo que lea su Recurso: cada opción se vería vacía. Una fórmula va en la ƒ de al lado.",
-      "inheritedStateSame": "Igual a la de la columna"
+      "inheritedStateSame": "Igual a la de la columna",
+      "junctionLinks": "Vincula con {table}",
+      "noJunction": "La tabla de registro de la página no tiene tabla intermedia - se crea desde Nueva tabla › Tabla intermedia, y no tiene más que las dos claves."
     },
     "palette": {
       "search": "Buscar widgets…"
@@ -2839,6 +2798,7 @@
     "useWidgetRuntime": {
       "cancelledInPreview": "Cancelado en la vista previa.",
       "deleteNamesRow": "Una eliminación de tabla indica su fila: \"pk\" o \"where\" en la entrada.",
+      "workflowNotAvailable": "El workflow no está disponible.",
       "functionNotAvailable": "La función no está disponible.",
       "notAFile": "El resultado no es un archivo.",
       "nothingToClose": "No hay nada que cerrar aquí.",

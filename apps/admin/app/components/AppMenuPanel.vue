@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue'
 /**
  * The App rail group's panel (layouts/default.vue's aside): the menu the
- * administrator arranged (Specification_Security.md §8), already
+ * administrator arranged (Security.md §8), already
  * filtered for this user by the server. TREE shows collapsible groups;
  * SIDEBAR the same menu flat, each group a section heading. An
  * administrator gets the way into edit mode.
@@ -115,7 +115,7 @@ function resetGroups() {
   memory.value = { v: configVersion.value, open: [], closed: [] }
   resets.value++
 }
-// --- The search box (Specification_Security.md §8.2): over the menu the viewer sees - an AUTO menu past
+// --- The search box (Security.md §8.2): over the menu the viewer sees - an AUTO menu past
 // MENU_SEARCH_THRESHOLD entries; its results the matching entries in their groups, open, what matched marked.
 const query = ref('')
 const term = computed(() => query.value.trim())
@@ -229,7 +229,7 @@ useMenuChevronA11y(menuRef)
         class="flex-1"
         to="/app?edit"
       />
-      <!-- See as (Specification_Security.md §8.4): the App as a user or a role sees it, read-only. -->
+      <!-- See as (Security.md §8.4): the App as a user or a role sees it, read-only. -->
       <UTooltip
         v-if="isAdmin"
         :text="t('shell.viewAs.title')"
@@ -335,7 +335,7 @@ useMenuChevronA11y(menuRef)
           :class="ui.linkLeadingIcon({ class: [item.ui?.linkLeadingIcon, 'hidden group-data-[state=open]/menu-group:inline-block'], active, disabled: !!item.disabled })"
         />
       </template>
-      <!-- An item's description, on hover (Specification_Security.md §8). -->
+      <!-- An item's description, on hover (Security.md §8). -->
       <template #item-label="{ item }">
         <UTooltip
           v-if="item.tooltipText && !isTouch"

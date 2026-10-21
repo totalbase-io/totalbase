@@ -207,7 +207,7 @@ describe("compileSelect (integration)", () => {
     expect(rows.map((r) => r.name).sort()).toEqual(["Gadget", "Widget"]);
   });
 
-  it("a row filter on a relation path needs no field grant, only never a DENY (B45, Specification_Security.md §6.5)", async () => {
+  it("a row filter on a relation path needs no field grant, only never a DENY (B45, Security.md §6.5)", async () => {
     const ast = parseQuery({ fields: "name" }, LIMITS);
     const rowFilter: FilterNode = { type: "comparison", path: ["brand", "name"], operator: "_eq", value: "Acme" };
     const onlyName = (path: string): PermissionDecision => (path === "name" ? "ALLOW" : "UNDEFINED");
@@ -232,7 +232,7 @@ describe("compileSelect (integration)", () => {
     await expect(compile(parseQuery({ fields: "name", order_by: "id" }, LIMITS), { fieldDecision: onlyName })).rejects.toMatchObject({ code: "FIELD_PERMISSION_DENIED" });
   });
 
-  it("search: a number also finds a numeric field of the projection holding exactly it (Specification_Data_API.md §3.5)", async () => {
+  it("search: a number also finds a numeric field of the projection holding exactly it (Data_API.md §3.5)", async () => {
     const run = async (query: Record<string, unknown>) => {
       const compiled = await compile(parseQuery(query, LIMITS));
       return (await database.query<{ name: string }>(compiled.sql, compiled.params)).rows.map((r) => r.name);
@@ -244,7 +244,7 @@ describe("compileSelect (integration)", () => {
     expect(await run({ fields: "name", search: "150" })).toEqual([]);
   });
 
-  it("search: every word is a term, each found in some field; case and accents don't matter (Specification_Data_API.md §3.5)", async () => {
+  it("search: every word is a term, each found in some field; case and accents don't matter (Data_API.md §3.5)", async () => {
     const run = async (query: Record<string, unknown>) => {
       const compiled = await compile(parseQuery(query, LIMITS));
       return (await database.query<{ name: string }>(compiled.sql, compiled.params)).rows.map((r) => r.name).sort();
@@ -262,7 +262,7 @@ describe("compileSelect (integration)", () => {
     expect(await run({ fields: "name", search: "   " })).toEqual(["Gadget", "Gizmo", "Widget"]);
   });
 
-  it("search: a whole UUID finds a uuid field of the projection holding exactly it - a row by its id (Specification_Data_API.md §3.5)", async () => {
+  it("search: a whole UUID finds a uuid field of the projection holding exactly it - a row by its id (Data_API.md §3.5)", async () => {
     const { rows: [gadget] } = await database.query<{ id: string }>(`SELECT id FROM public.qe_test_products WHERE name = 'Gadget'`);
     const run = async (query: Record<string, unknown>) => {
       const compiled = await compile(parseQuery(query, LIMITS));
@@ -274,7 +274,7 @@ describe("compileSelect (integration)", () => {
     expect(await run({ fields: "name", search: gadget!.id })).toEqual([]);
   });
 
-  it("search_fields names exactly the fields searched - read or not, never a silent widening (Specification_Data_API.md §3.5)", async () => {
+  it("search_fields names exactly the fields searched - read or not, never a silent widening (Data_API.md §3.5)", async () => {
     const run = async (query: Record<string, unknown>) => {
       const compiled = await compile(parseQuery(query, LIMITS));
       return (await database.query<{ name: string }>(compiled.sql, compiled.params)).rows.map((r) => r.name).sort();
@@ -288,7 +288,7 @@ describe("compileSelect (integration)", () => {
     await expect(run({ fields: "name", search: "acme", search_fields: "nope" })).rejects.toMatchObject({ code: "INVALID_FIELD" });
   });
 
-  it("search: a day (ISO) finds a date or timestamp field on that whole day, a time HH:mm that minute (Specification_Data_API.md §3.5)", async () => {
+  it("search: a day (ISO) finds a date or timestamp field on that whole day, a time HH:mm that minute (Data_API.md §3.5)", async () => {
     const { rows: [day] } = await database.query<{ today: string; before: string }>(
       `SELECT to_char(now(), 'YYYY-MM-DD') AS today, to_char(now() - interval '48 hours', 'YYYY-MM-DD') AS before`,
     );
@@ -305,7 +305,7 @@ describe("compileSelect (integration)", () => {
     expect(await run({ fields: "name,updated_at", search: "10:30" })).toEqual([]);
   });
 
-  it("search with nothing to search in matches no row - never the whole table (Specification_Data_API.md §3.5)", async () => {
+  it("search with nothing to search in matches no row - never the whole table (Data_API.md §3.5)", async () => {
     const compiled = await compile(parseQuery({ fields: "id", search: "Widg" }, LIMITS));
     expect((await database.query(compiled.sql, compiled.params)).rows).toEqual([]);
   });

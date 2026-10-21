@@ -1,5 +1,5 @@
 /**
- * The instance's public presentation (Specification_Admin_UI.md §4.1.1):
+ * The instance's public presentation (Admin_UI.md §4.1.1):
  * GET /api/instance once at boot, before the first page - its name, its
  * mark, the sign-in layout and the language of the pages with no user
  * (i18n-language.client.ts reads it from here). Awaited: the sign-in page

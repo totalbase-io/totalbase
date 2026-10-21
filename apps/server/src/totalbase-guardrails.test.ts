@@ -279,7 +279,7 @@ describe("protectedFieldDecision - Files storage columns", () => {
 });
 
 /**
- * Access tables (Specification_Security.md §10.2, guardrails 1 and 5):
+ * Access tables (Security.md §10.2, guardrails 1 and 5):
  * readable under ordinary permissions, written by administrators only -
  * writing one IS granting access. A role holding an over-permissive grant
  * on one (the misconfiguration this exists for) is still refused.
@@ -410,7 +410,7 @@ describe("assertGuardedColumnsWriteAllowed - users security columns", () => {
 });
 
 /**
- * Specification_Security.md §10.2 guardrail 9: a delegated user manager
+ * Security.md §10.2 guardrail 9: a delegated user manager
  * with UPDATE/CREATE and field grants on every column of
  * users (the misconfiguration this exists for) still can't
  * write an account's security state or sign-in identity - not on another

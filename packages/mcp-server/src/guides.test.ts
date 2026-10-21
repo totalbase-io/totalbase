@@ -81,7 +81,7 @@ describe("guides", () => {
     }
   });
 
-  // At 83 KB, every widget type's contract in it, the guide was past what an MCP client reads at once (MCP_Demo_Findings.md F29).
+  // At 83 KB, every widget type's contract in it, the guide was past what an MCP client reads at once.
   it("keep the dashboards guide short, each widget type's contract read on its own", () => {
     expect(dashboardsGuide().length).toBeLessThan(32_000);
     for (const type of DASHBOARD_WIDGET_TYPES) {

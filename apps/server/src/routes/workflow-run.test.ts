@@ -10,7 +10,7 @@ import { createTestApiToken, setupTestApp } from "../test-support.js";
 const PREFIX = "wf-run-test";
 
 /**
- * POST /api/workflows/{slug}/run (Specification_Workflows.md §13.1) and the
+ * POST /api/workflows/{slug}/run (Workflows.md §13.1) and the
  * file operations it can reach (§5.17-§5.20). Two security regressions:
  *
  * - the response is the run's outcome only, `{ id, status, result, error }`
@@ -107,7 +107,7 @@ describe("POST /api/workflows/{slug}/run", () => {
     await app.close();
   });
 
-  describe("MANUAL Start options (Specification_Workflows.md §6.2)", () => {
+  describe("MANUAL Start options (Workflows.md §6.2)", () => {
     const JS = { type: "totalbase.execute-javascript", configuration: { code: "return 1" } };
 
     it("Execute as: runs as the configured user, the caller still recorded as the initiator", async () => {

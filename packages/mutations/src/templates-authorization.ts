@@ -4,9 +4,9 @@ import { resolveTableGrant, rowFilterLimits, rowPassesGrant, type TableAuthoriza
 
 /**
  * Using a template (rendering a PDF, sending a MAILING) is reading it
- * (Specification_Administration.md §9.4): READ on templates within
+ * (Administration.md §9.4): READ on templates within
  * the grant's row filter, through the same resolver as any other table. Used
- * by the workflow steps that render templates (Specification_Workflows.md
+ * by the workflow steps that render templates (Workflows.md
  * §5.16, §5.22), as the run's executor; an administrator executor passes.
  */
 export async function assertTemplateReadAllowed(context: TableAuthorizationContext, dataPrincipal: DataPrincipal, templateId: string): Promise<void> {

@@ -17,7 +17,7 @@ import type { DashboardSpec, DashboardSpecWidget } from "./dashboard-spec.js";
 import type { DashboardVariable } from "./variables.js";
 
 /**
- * The dashboard assistant (Specification_Dashboards.md §10.7, D27): one table or view read from the catalog -
+ * The dashboard assistant (Dashboards.md §10.7, D27): one table or view read from the catalog -
  * types, constraints, foreign keys, a view's origins, `pg_stats` and `pg_class.reltuples`, never a row of it, never
  * a column's name - and a dashboard proposed for it in the DashboardSpec shape (§8.3), every role set explicitly.
  * Nothing is applied. Every choice says why as a decision (`{code, message, detail?}`, §5.19, DM3).

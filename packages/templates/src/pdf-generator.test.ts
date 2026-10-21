@@ -22,7 +22,7 @@ describe("generateTemplatePdf", () => {
   });
 
   // The PDF route passed values as they came, so data a workflow step renders failed there
-  // ("invalid JSON string '[object Object]'") - every caller now gets the same JSON text (MCP_Demo_Findings.md F22).
+  // ("invalid JSON string '[object Object]'") - every caller now gets the same JSON text.
   it("sends a value that isn't a string to its field as JSON text", async () => {
     const content = {
       basePdf,

@@ -21,7 +21,7 @@ describe("{{...}} templates", () => {
     expect(resolve("{{rows.data.length}}")).toBe(1);
   });
 
-  // A typo in a path wrote NULL into business data and the run succeeded (MCP_Demo_Findings.md F25).
+  // A typo in a path wrote NULL into business data and the run succeeded.
   it("fails on a path a step's result doesn't have, naming what it has", () => {
     expect(() => resolve({ set: { pdf: "{{file.data.id}}" } })).toThrow(
       "{{file.data.id}}: file.data has no id - it has asset, name, mimeType, size.",

@@ -7,13 +7,16 @@ import { syncCatalog, syncCatalogIfChanged } from "./catalog-refresh.js";
 import { getCatalogFingerprint } from "@totalbase/pg-catalog";
 import { requeueFailedOutbox, runRetention } from "./retention.js";
 import { runCronTick } from "@totalbase/workflows";
+import { listenForInvalidations } from "./invalidations.js";
 
 async function main() {
   const env = loadServerEnv();
   const logger = pino({ level: env.logLevel });
 
   const { database, masterKey, masterKeyOrigin, setup } = await bootstrap(env, logger);
-  const context = buildContext(database, logger, masterKey, publicUrlFor(env), env.nodeEnv, masterKeyOrigin, setup);
+  const context = buildContext(database, logger, masterKey, publicUrlFor(env), env.nodeEnv, masterKeyOrigin, setup, env.dataDir);
+  // Before the first request: what another process changes from now on reaches this one (Foundations.md §4.6).
+  await listenForInvalidations(context);
   const app = await buildServer(
     context,
     env.logLevel,
@@ -23,11 +26,10 @@ async function main() {
   await app.listen({ host: env.host, port: env.port });
   logger.info({ host: env.host, port: env.port }, "TotalBase server ready");
 
-  // In-process Executions worker (Specification_Data_API.md §10.2:
+  // In-process Executions worker (Data_API.md §10.2:
   // no Redis/RabbitMQ/Kafka required). Recommended over a
-  // separate deployable process for v1 - consistent with how TotalBase
-  // is deployed today (single server process); see
-  // Specification_Data_API.md §10.2.
+  // separate deployable process; every server process runs it, its
+  // claims in PostgreSQL (Foundations.md §4.5); see Data_API.md §10.2.
   let pollTimer: NodeJS.Timeout | undefined;
   const scheduleNextPoll = () => {
     context.settings.get("async_executions.poll_interval_ms").then((intervalMs) => {
@@ -75,7 +77,7 @@ async function main() {
   // Automatic retention, every 6 hours: SQL Console history, then ended
   // sessions (auth.session_retention_days).
   //
-  // SQL Console history retention (Specification_Administration.md §5.4:
+  // SQL Console history retention (Administration.md §5.4:
   // sql_console.history_retention_days). A fixed interval is enough here -
   // unlike the executions queue this isn't latency-sensitive, so it
   // doesn't need its own configurable poll_interval setting. The manual
@@ -106,7 +108,7 @@ async function main() {
   };
   scheduleNextHistoryPurge();
 
-  // Workflow run maintenance (specs/Specification_Workflows.md §8.6, §9.4):
+  // Workflow run maintenance (specs/Workflows.md §8.6, §9.4):
   // fail-closed crash recovery first (an expired PENDING/
   // RUNNING run means its process died - see reclaimExpired's own doc
   // comment), then history retention purge, same fixed-interval shape as
@@ -197,7 +199,7 @@ async function main() {
   };
   scheduleNextOutboxPoll();
 
-  // CRON trigger scan (specs/Specification_Workflows.md §6.4) -
+  // CRON trigger scan (specs/Workflows.md §6.4) -
   // ticks every 15s, well under the finest cron granularity (one minute),
   // so a workflow scheduled for a given minute gets several chances to be
   // caught even if one tick runs a little late. Correctness doesn't depend
@@ -218,6 +220,25 @@ async function main() {
     }, CRON_POLL_INTERVAL_MS);
   };
   scheduleNextCronTick();
+
+  // Built-in backups (Administration.md §12): every 15 s - the schedule's tick (an occurrence queued once,
+  // whatever the number of processes), a backup the server stopped in the middle of marked failed, then the
+  // queued one run to its end. Never two at once: one is queued or running per instance (backups_one_active).
+  const BACKUPS_POLL_INTERVAL_MS = 15_000;
+  let backupsTimer: NodeJS.Timeout | undefined;
+  const scheduleNextBackupsPoll = () => {
+    backupsTimer = setTimeout(async () => {
+      try {
+        await context.backups.scheduleTick();
+        await context.backups.reclaimStale();
+        await context.backups.processNext();
+      } catch (error) {
+        logger.error({ error }, "backups worker poll failed");
+      }
+      scheduleNextBackupsPoll();
+    }, BACKUPS_POLL_INTERVAL_MS);
+  };
+  scheduleNextBackupsPoll();
 
   // Scheduled catalog sync (catalog.refresh_interval_minutes): picks up
   // DDL made outside TotalBase - psql, a migration tool - which nothing
@@ -277,6 +298,7 @@ async function main() {
     logger.info({ signal }, "shutting down");
     if (pollTimer) clearTimeout(pollTimer);
     if (maintenanceTimer) clearTimeout(maintenanceTimer);
+    if (backupsTimer) clearTimeout(backupsTimer);
     if (historyPurgeTimer) clearTimeout(historyPurgeTimer);
     if (workflowMaintenanceTimer) clearTimeout(workflowMaintenanceTimer);
     if (retentionTimer) clearTimeout(retentionTimer);

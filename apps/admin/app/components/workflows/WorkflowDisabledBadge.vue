@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A workflow that is not enabled says so by its title, on its design and settings screens
- * (Specification_Workflows.md §16.2): Disabled, or Auto-disabled in warning with the failure count; before the first
+ * (Workflows.md §16): Disabled, or Auto-disabled in warning with the failure count; before the first
  * publish the tooltip says to publish first. Enabling is done in Settings › General. Enabled shows nothing.
  */
 const props = defineProps<{

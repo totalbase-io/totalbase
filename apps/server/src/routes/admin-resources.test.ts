@@ -7,7 +7,7 @@ import { setupTestApp } from "../test-support.js";
 const TABLE = "admin_resources_route_test";
 
 /**
- * A column's presentation over HTTP (Specification_DataViews.md §15):
+ * A column's presentation over HTTP (DataViews.md §15):
  * administrators only, the body is all of it, and a value its
  * type doesn't take is refused. Validation and storage are covered against
  * PostgreSQL in packages/resources/src/column-presentation.test.ts.
@@ -154,7 +154,7 @@ describe("admin resource column routes", () => {
     expect(res.json().data).toMatchObject({ exposedMethods: ["GET"], auditRead: true, description: "Route test" });
   });
 
-  // Suggest presentation (Specification_DataViews.md §15.6) from the default known column names.
+  // Suggest presentation (DataViews.md §15.6) from the default known column names.
   it("suggests by type and constraints - never by name - and applies what was accepted, merged into each presentation", async () => {
     const headers = { authorization: `Bearer ${adminToken}` };
     const url = `/admin/api/resources/${resourceId}/columns/suggested-presentation`;

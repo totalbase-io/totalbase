@@ -118,7 +118,7 @@ describe("Files public API (/api/totalbase/table/files)", () => {
 
   it("enforces a row filter: a role scoped by created_by = $USER.id can't read another user's file (token principals resolve $USER.*)", async () => {
     // Both callers are API tokens: $USER.* resolves the token owner's row
-    // exactly as for a session (Specification_Security.md §6.6).
+    // exactly as for a session (Security.md §6.6).
     await context.permissions.set(roleId, filesResourceId, "READ", { effect: "ALLOW", where: { created_by: { _eq: "$USER.id" } } });
     await context.permissions.set(otherRoleId, filesResourceId, "READ", { effect: "ALLOW", where: { created_by: { _eq: "$USER.id" } } });
 

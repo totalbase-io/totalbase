@@ -1,7 +1,7 @@
 import { parsePgRange, rangeElement, rangeTimestampIso } from '~/utils/pg-range'
 /**
- * The form widgets' logic (Specification_DataViews.md §9 and
- * Specification_Data_API.md §2.4): which fields a `UForm` holds, each
+ * The form widgets' logic (DataViews.md §9 and
+ * Data_API.md §2.4): which fields a `UForm` holds, each
  * field's name in the form's data, the required and pattern checks, and
  * errors in the API's shape - `{ errors: [{ field, message }] }`.
  *
@@ -49,6 +49,12 @@ export function fieldVariable(fields: readonly DataViewField[], field: DataViewF
 export function fieldColumn(field: DataViewField | undefined): string | null {
   const column = (field?.config as FieldConfig | undefined)?.props?.column
   return field?.widget === 'UFormField' && typeof column === 'string' && column ? column : null
+}
+
+/** The junction table a form field links the record through (its resource id, DataViews.md §8.5), or null. */
+export function fieldJunction(field: DataViewField | undefined): string | null {
+  const junction = (field?.config as FieldConfig | undefined)?.props?.junction
+  return field?.widget === 'UFormField' && typeof junction === 'string' && junction ? junction : null
 }
 
 /** The record's column an input edits: its form field's, or null. */

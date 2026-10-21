@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // DataView wizard, KANBAN layout step: the column whose values become the lanes - a
 // foreign key (a lane per related row) or a CHECK list (a lane per value), never
-// free-text values (Specification_DataViews.md §5.5) - plus each card's content.
+// free-text values (DataViews.md §5.5) - plus each card's content.
 import type { KanbanLayoutConfig } from '~/types/dataview'
 import type { WizardColumn } from '~/utils/dataview-wizard-layouts'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Which roles open an object - a DataView, a Dashboard (Specification_Security.md §7.1): a switch per role, as a
+ * Which roles open an object - a DataView, a Dashboard (Security.md §7.1): a switch per role, as a
  * role's members are listed. Object access only, never data. Administrators always see it - a fixed "Always". With
  * `access` (a DataView over a table), each role says what it may do there, trimmed by the DataView's Allow, and
  * warns when it can't read it. Its host decides when a change is saved (at once in Settings, on create in the wizard).

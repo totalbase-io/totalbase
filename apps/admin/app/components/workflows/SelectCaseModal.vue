@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
- * Configures a `totalbase.select-case` node's `configuration` (Specification_Workflows.md §5.10):
+ * Configures a `totalbase.select-case` node's `configuration` (Workflows.md §5.10):
  * an `input` plus an ORDERED list of named
  * cases, each its own filter (same grammar as Condition's, via
  * WhereField.vue) - the first case whose filter matches wins. An optional

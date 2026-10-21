@@ -20,10 +20,10 @@ import { insertSnapshotFields, versionSnapshot } from "./dataviews-versions.js";
 /** The types whose main view is a grid of rows (table, cards, board, calendar, map, timeline) - each opens a record form. */
 export const GRID_VIEW_TYPES: readonly DataViewType[] = ["TABLE", "CARDS", "KANBAN", "CALENDAR", "MAP", "GANTT", "TREE"];
 
-/** Every layout (Specification_DataViews.md §1.3) - an unknown `viewType` is a 422, not a CHECK violation from the row insert. */
+/** Every layout (DataViews.md §1.3) - an unknown `viewType` is a 422, not a CHECK violation from the row insert. */
 export const DATAVIEW_TYPES: readonly DataViewType[] = ["TABLE", "FORM", "CARDS", "MAP", "KANBAN", "CALENDAR", "GANTT", "TREE", "EXTERNALFRAME", "MASTER_DETAIL", "CUSTOM", "SETTINGS"];
 
-/** Source types a DataView may be built on (Specification_DataViews.md §1.2) - a FUNCTION is never a source. */
+/** Source types a DataView may be built on (DataViews.md §1.2) - a FUNCTION is never a source. */
 export const ALLOWED_SOURCE_TYPES = ["TABLE", "VIEW"] as const;
 
 /** `view_config`'s keys and shapes (view-config.ts), plus `base_where` parsed by the Data API's own filter grammar. */
@@ -39,7 +39,7 @@ export function assertViewConfigValid(viewType: DataViewType, viewConfig: Record
 }
 
 /**
- * A SETTINGS DataView's columns (Specification_DataViews.md §5.12): key, value, title and description
+ * A SETTINGS DataView's columns (DataViews.md §5.12): key, value, title and description
  * required, group and order optional - each a column of its source.
  */
 export function assertSettingsLayout(viewConfig: Record<string, unknown>, columns: string[]): void {
@@ -99,7 +99,7 @@ export async function createDataView(ctx: DataViewsContext, input: CreateDataVie
     }
   }
 
-  // Over a table, its record form is a generated page (Specification_DataViews.md §6.1):
+  // Over a table, its record form is a generated page (DataViews.md §6.1):
   // a FORM's is the page itself; a grid type's opens from its grid.
   const recordPage = source.type === "TABLE" && (input.viewType === "FORM" || GRID_VIEW_TYPES.includes(input.viewType))
     ? generateRecordPage({
@@ -126,7 +126,7 @@ export async function createDataView(ctx: DataViewsContext, input: CreateDataVie
       remapDataViewUniqueViolation(error);
     }
 
-    // A grid's record form in a Sidebar or a Modal (the default, Specification_DataViews.md §6.3) is narrow: its
+    // A grid's record form in a Sidebar or a Modal (the default, DataViews.md §6.3) is narrow: its
     // fields in one column, however many. A Drawer, a Page or a FORM's own page lay out by field count.
     const presentation = viewConfig.edit_presentation ?? "SIDEBAR";
     const narrowOverlay = GRID_VIEW_TYPES.includes(input.viewType) && (presentation === "SIDEBAR" || presentation === "MODAL");
@@ -138,7 +138,7 @@ export async function createDataView(ctx: DataViewsContext, input: CreateDataVie
     if (recordPage) await insertGeneratedPage(ctx, client, dataviewId, recordPage);
     return dataviewId;
   });
-  // Nothing is published implicitly (Specification.md §13.1):
+  // Nothing is published implicitly (Foundations.md §13.1):
   // the new DataView is a draft until its first explicit Publish. Returned as a read returns it.
   return getDataView(ctx, createdId);
 }
@@ -165,9 +165,9 @@ export async function createExternalFrame(
 }
 
 /**
- * CUSTOM (Specification_DataViews.md): a blank canvas whose
+ * CUSTOM (DataViews.md): a blank canvas whose
  * widgets (`addWidget`) bind to the variables in `view_config.variables`.
- * Its source, when it names one, is its record's table (Specification_DataViews.md §8.5) - a
+ * Its source, when it names one, is its record's table (DataViews.md §8.5) - a
  * table, since a record is written; without one the page has no record.
  */
 export async function createCustom(
@@ -300,7 +300,7 @@ export async function updateCode(ctx: DataViewsContext, dataviewId: string, code
 }
 
 /**
- * Save as (Specification.md §13.4): a NEW DataView (same source and layout; icon/color/
+ * Save as (Foundations.md §13.4): a NEW DataView (same source and layout; icon/color/
  * description and `owner` copied - a copy of a Detail's DataView belongs to the same
  * master) whose draft is version `version`'s content, with
  * no versions (unpublished). Field ids are regenerated, and every
@@ -340,9 +340,9 @@ export async function duplicateVersion(ctx: DataViewsContext, dataviewId: string
   return getDataView(ctx, newId);
 }
 
-/** Resolves and validates a source resource for the TABLE/VIEW-only rule (Specification_DataViews.md §1.2), ACTIVE-only (a MISSING resource has no live columns to introspect). */
+/** Resolves and validates a source resource for the TABLE/VIEW-only rule (DataViews.md §1.2), ACTIVE-only (a MISSING resource has no live columns to introspect). */
 /**
- * A new DataView starts from its source's default order (Specification.md §11.7) when its `default_state` sets no
+ * A new DataView starts from its source's default order (Foundations.md §11.7) when its `default_state` sets no
  * `sort` of its own - from then on the order is the DataView's, as the rest of its default state.
  */
 function seedDefaultSort(viewConfig: Record<string, unknown>, defaultSort: readonly { column: string; direction: "asc" | "desc" }[]): void {
@@ -383,7 +383,7 @@ export async function getSourceForCreate(
 /**
  * A field's own title: what the author typed, unless it is the one it would
  * inherit anyway - the column's (`seed.config.label`), else its name
- * humanized. Null inherits (Specification_DataViews.md §15).
+ * humanized. Null inherits (DataViews.md §15).
  */
 
 export function remapDataViewUniqueViolation(error: unknown): never {

@@ -1,5 +1,5 @@
 /**
- * How a foreign key's target row reads where a value is picked (Specification_DataViews.md §4.4): its row
+ * How a foreign key's target row reads where a value is picked (DataViews.md §4.4): its row
  * presentation's template (`{{codigo}} · {{nombre}}`), else its display field, else its key - the columns to read
  * and search, and the text.
  */

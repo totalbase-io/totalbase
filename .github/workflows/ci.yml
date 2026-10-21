@@ -1,12 +1,24 @@
-# Continuous integration (Pre_Beta_Review 5.1): typecheck, build, the admin's unit tests, and the PostgreSQL
+# Continuous integration: typecheck, build, the admin's unit tests, and the PostgreSQL
 # integration suite on every supported major (AGENTS.md §4A: 15-18). The Playwright e2e suite isn't run here -
 # it needs a running instance and is exercised by hand before a release.
+#
+# Where it runs (Foundations.md §21.4): on the public repository, on every push and pull request - free on
+# GitHub's runners. On the private development repository, only when started by hand (Actions > CI > Run
+# workflow), on its self-hosted runner by default: its minutes come out of the account's quota, so before a
+# publish the same matrix runs locally with scripts/test-matrix.sh.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Where the jobs run - the self-hosted runner, or GitHub's (spends the account's minutes)
+        type: choice
+        options: [self-hosted, ubuntu-latest]
+        default: self-hosted
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,7 +27,8 @@ concurrency:
 jobs:
   check:
     name: Typecheck, build, admin unit tests
-    runs-on: ubuntu-latest
+    if: github.repository == 'totalbase-io/totalbase' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ github.repository == 'totalbase-io/totalbase' && 'ubuntu-latest' || inputs.runner }}
     env:
       # The admin's `nuxt typecheck` (vue-tsc) peaks around 2.6 GB, over Node's default heap.
       NODE_OPTIONS: --max-old-space-size=4096
@@ -35,7 +48,7 @@ jobs:
 
   integration:
     name: Integration tests (PostgreSQL ${{ matrix.postgres }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository == 'totalbase-io/totalbase' && 'ubuntu-latest' || inputs.runner }}
     needs: check
     strategy:
       fail-fast: false
@@ -48,7 +61,8 @@ jobs:
           POSTGRES_USER: totalbase
           POSTGRES_PASSWORD: totalbase
           POSTGRES_DB: totalbase_test
-        ports: ["5432:5432"]
+        # A free host port, read back below: a self-hosted runner's machine may already use 5432.
+        ports: ["5432"]
         options: >-
           --health-cmd "pg_isready -U totalbase"
           --health-interval 5s
@@ -62,14 +76,23 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # PostgreSQL 18's client tools, as the image carries them - the built-in backups' tests run pg_dump and pg_restore.
+      - name: PostgreSQL 18 client tools
+        # A self-hosted runner brings its own, or the backups' tests are skipped (TOTALBASE_TEST_PG_BIN below).
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-18
       # files.storage_local_path's default, as the Dockerfile creates it.
-      - run: sudo mkdir -p /var/lib/totalbase/files && sudo chown -R "$USER" /var/lib/totalbase
+      - run: mkdir -p /var/lib/totalbase/files 2>/dev/null || { sudo -n mkdir -p /var/lib/totalbase/files && sudo -n chown -R "$USER" /var/lib/totalbase; }
       # scripts/test-integration.sh sources .env and points POSTGRES_DB at the test database itself.
       - name: Write .env
         run: |
           cat > .env <<'ENV'
           POSTGRES_HOST=localhost
-          POSTGRES_PORT=5432
+          POSTGRES_PORT=${{ job.services.postgres.ports['5432'] }}
           POSTGRES_DB=totalbase_test
           POSTGRES_USER=totalbase
           POSTGRES_PASSWORD=totalbase
@@ -82,4 +105,6 @@ jobs:
           NODE_ENV=test
           LOG_LEVEL=warn
           ENV
+          # The backups' tests need pg_dump 18; without it they're skipped.
+          if [ -x /usr/lib/postgresql/18/bin/pg_dump ]; then echo "TOTALBASE_TEST_PG_BIN=/usr/lib/postgresql/18/bin" >> .env; fi
       - run: bash scripts/test-integration.sh

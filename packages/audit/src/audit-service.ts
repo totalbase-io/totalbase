@@ -2,7 +2,7 @@ import type { Queryable } from "@totalbase/database";
 import type { SettingsService } from "@totalbase/settings";
 import type { Principal } from "@totalbase/shared";
 
-export type AuditAction = "CREATE" | "READ" | "UPDATE" | "DELETE" | "EXECUTE" | "AUTH" | "SQL_EXECUTE" | "SQL_HISTORY_PURGE" | "IMPORT" | "EXPORT" | "PRINT" | "MAINTENANCE" | "DDL" | "AUDIT_PURGE";
+export type AuditAction = "CREATE" | "READ" | "UPDATE" | "DELETE" | "EXECUTE" | "AUTH" | "SQL_EXECUTE" | "SQL_HISTORY_PURGE" | "IMPORT" | "EXPORT" | "PRINT" | "MAINTENANCE" | "BACKUP" | "DDL" | "AUDIT_PURGE";
 export type AuditStatus = "DENIED" | "EXECUTED" | "FAILED";
 
 export interface AuditErrorDetail {
@@ -37,9 +37,9 @@ export interface AuditLogEntry {
 }
 
 /**
- * Writes totalbase.logs (Specification_Security.md §11.2).
+ * Writes totalbase.logs (Security.md §11.2).
  *
- * Mandatory invariant (Specification_Data_API.md §13.1): "business mutation + audit + outbox
+ * Mandatory invariant (Data_API.md §13.1): "business mutation + audit + outbox
  * event = same transaction" - callers pass the same `client` they used
  * for the mutation itself, never a separate connection.
  */
@@ -56,7 +56,7 @@ export class AuditService {
   /**
    * `record` for every row one operation wrote - a bulk CREATE's items, a
    * PATCH's matched rows, a transaction's operations - in ONE statement on
-   * the caller's transaction client (Pre_Beta_Review 2.7: one round trip
+   * the caller's transaction client (one round trip
    * per row held locks for the whole batch). Returns the entries' ids in
    * the order given; every id is null when the audit log is disabled.
    */

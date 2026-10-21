@@ -21,7 +21,7 @@ export interface PostgresDriverError {
 
 /**
  * Maps a raw PostgreSQL driver error into a TotalBaseError.
- * See Specification_Data_API.md §11.2 (PostgreSQL mappings).
+ * See Data_API.md §11.2 (PostgreSQL mappings).
  *
  * Only @totalbase/database should construct raw PostgreSQL errors;
  * every other package receives a TotalBaseError.

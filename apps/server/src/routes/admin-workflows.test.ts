@@ -83,7 +83,7 @@ describe("Admin workflows (/admin/api/workflows)", () => {
     expect(res.json().data.run).toMatchObject({ mode: "TEST", status: "SUCCEEDED", result: { data: { from: "v1" } }, error: null });
   });
 
-  // Read records reads a VIEW as well as a TABLE (Specification_Workflows.md §5.2), a PDF
+  // Read records reads a VIEW as well as a TABLE (Workflows.md §5.2), a PDF
   // step's data comes from earlier steps through {{...}} templates, and
   // Create file stores that binary PDF (base64) intact, in the chosen folder.
   it("test-runs a draft that reads a view, fills a PDF from its rows and stores it as a file", async () => {

@@ -120,7 +120,7 @@ export interface EvaluateFormulaOptions {
   returnType?: FormulaReturnType
   /**
    * What each foreign key column among `values` shows - its referenced row's presentation
-   * (Specification_DataViews.md §15.5), keyed by column name. A token naming one is that text wherever
+   * (DataViews.md §15.5), keyed by column name. A token naming one is that text wherever
    * the formula makes text (the result, `+` with text, a function's argument), and still the key in a
    * comparison or arithmetic - `{{work_order}} == "..."` compares the key.
    */
@@ -267,7 +267,7 @@ class FormulaPendingError extends Error {}
 /** Exported so `BindingButton.vue` can split its Functions sidebar section from a separate Format one, without hand-duplicating this exact name list a second time. */
 export const FORMAT_FUNCTION_NAMES = new Set(['BOLD', 'ITALIC', 'UNDERLINE', 'STRIKETHROUGH', 'COLOR', 'BADGE', 'LINK', 'NEW_LINE', 'ICON'])
 /**
- * Text from a number or a date, in the viewer's language (T52, Specification_DataViews.md §10) - the same
+ * Text from a number or a date, in the viewer's language (T52, DataViews.md §10) - the same
  * engine as a column's displayFormat (format-pattern.ts): FORMAT_NUMBER(v, 2 | "#,##0.00"), CURRENCY(v, "ARS"),
  * FORMAT_DATE(d, "dd/MM/yyyy"). Own functions, never formula.js - {{precio}} alone stays the raw number.
  */

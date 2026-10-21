@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One area on a CUSTOM page's canvas (Specification_DataViews.md §12.2)
+ * One area on a CUSTOM page's canvas (DataViews.md §12.2)
  * - the page, or one slot of a widget - drawn in flow as the
  * App draws it (a 12-column grid, rows as tall as their content), with its
  * widgets as canvas items. It takes drops: a line shows where the widget

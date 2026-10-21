@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The generic inspector for a widget placed on a canvas (Specification_DataViews.md §9, §12.6):
+ * The generic inspector for a widget placed on a canvas (DataViews.md §9, §12.6):
  * Props · Events, read from the widget
  * catalog (`WIDGET_CATALOG`, @totalbase/tb-catalog) instead of written per
  * control type. Every prop gets the editor the catalog names; a `formula`
@@ -32,6 +32,7 @@ import {
   type VariableRef, PROP_SECTIONS } from '@totalbase/tb-catalog'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDefinition } from '~/types/schema'
+import type { JunctionCandidate } from '~/utils/junction-links'
 import { humanizeColumnName } from '~/utils/humanize-column-name'
 import DesignerClassListEditor from '~/components/DesignerClassListEditor.vue'
 import TableActionsEditor from '~/components/TableActionsEditor.vue'
@@ -54,6 +55,8 @@ const props = defineProps<{
   relations?: RelationDefinition[]
   /** The page's record table - what a Detail's linking column points at. */
   recordTable?: { schema: string, name: string } | null
+  /** The record table's junction tables - a form field's Junction table. */
+  junctions?: readonly JunctionCandidate[]
   /** The page's DataView - whose roles an embedded Dashboard's warning checks. */
   dataviewId?: string
   /** A Resource variable's fields, in order - a Table's Columns. */
@@ -88,6 +91,8 @@ const { boundColumns, fieldItems, unknownField, boundFieldColumns, computedColum
 })
 /** A column prop's choices: the record's columns, with their type. */
 const columnItems = computed(() => (props.columns ?? []).map(c => ({ label: c.name, description: c.dataType, value: c.name })))
+/** A junction prop's choices: the record table's junction tables, each with the table it links to. */
+const junctionItems = computed(() => (props.junctions ?? []).map(j => ({ label: j.table, description: t('designer.inspector.junctionLinks', { table: j.target.table }), value: j.resourceId })))
 const emit = defineEmits<{
   /** "Create handler": the host scaffolds a function in the Code, sets it on the event and shows it. */
   createHandler: [event: string]
@@ -145,7 +150,7 @@ const tabs = computed(() => [
   { label: t('designer.inspector.tabs.props'), value: 'props' },
   { label: t('designer.inspector.tabs.style'), value: 'style', badge: styleKeys.value.length || undefined },
   { label: t('designer.inspector.tabs.events'), value: 'events', badge: Object.keys(config.value.emits).length || undefined },
-  // A form field bound to a column: the column's presentation, read only (Specification_DataViews.md §15.4).
+  // A form field bound to a column: the column's presentation, read only (DataViews.md §15.4).
   ...(fieldColumn.value && props.presentationResource ? [{ label: t('designer.inspector.tabs.column'), value: 'column' }] : [])
 ])
 
@@ -159,11 +164,14 @@ function withKey<T>(record: Record<string, T>, key: string, value: T | undefined
 }
 
 function setProp(name: string, value: unknown) {
-  config.value = { ...config.value, props: withKey(config.value.props, name, value === '' ? undefined : value) }
+  let next = withKey(config.value.props, name, value === '' ? undefined : value)
+  // A form field edits a column or a junction's links, never both.
+  if (config.value.widget === 'UFormField' && value && (name === 'column' || name === 'junction')) next = withKey(next, name === 'column' ? 'junction' : 'column', undefined)
+  config.value = { ...config.value, props: next }
   if (name === 'searchWindow' && value === true && boundVariable.value) emit('widenResource', boundVariable.value)
 }
 
-// --- A form field bound to a column: its texts inherit the column's presentation (Specification_DataViews.md §15).
+// --- A form field bound to a column: its texts inherit the column's presentation (DataViews.md §15).
 // Three states - inherited (unset), its own, none ("": shown nowhere, the column untouched).
 const INHERITABLE_TEXTS = ['label', 'description', 'hint', 'help'] as const
 const fieldColumn = computed(() => (config.value.widget === 'UFormField' && typeof config.value.props.column === 'string' ? config.value.props.column : null))
@@ -252,7 +260,7 @@ function bindKind(prop: WidgetProp): 'text' | 'boolean' | 'value' {
 
 /** The editors that show a formula binding beside their own control (the generic field and the icon picker). */
 function bindsBesideControl(prop: WidgetProp): boolean {
-  return !variableKindForProp(prop) && !['dataview', 'detailColumn', 'dataviewView', 'dataviewColumns', 'dataviewTools', 'dataviewAllow', 'dashboard', 'dashboardVariables', 'column', 'function', 'items', 'computedColumns'].includes(prop.editor)
+  return !variableKindForProp(prop) && !['dataview', 'detailColumn', 'dataviewView', 'dataviewColumns', 'dataviewTools', 'dataviewAllow', 'dashboard', 'dashboardVariables', 'column', 'junction', 'function', 'items', 'computedColumns'].includes(prop.editor)
 }
 
 /** An input's Value: a Value variable, or a formula - `{{controls.selectCliente.item.cuit}}` - shown read only. */
@@ -423,7 +431,7 @@ function setHandler(event: string, handler: string | undefined) {
                   :aria-label="t('designer.inspector.newVariableOfKind', { kind: variableKindForProp(prop) })"
                   @click="emit('newVariable', variableKindForProp(prop)!, name)"
                 />
-                <!-- An input's Value may be a formula instead: a computed input, read only (Specification_DataViews.md §9.2). -->
+                <!-- An input's Value may be a formula instead: a computed input, read only (DataViews.md §9.2). -->
                 <BindingButton
                   v-if="computesValue(name, prop)"
                   :model-value="formulaOf(name)"
@@ -567,6 +575,23 @@ function setHandler(event: string, handler: string | undefined) {
                 :items="columnItems"
                 value-key="value"
                 :disabled="!columns?.length"
+                clear
+                class="w-full"
+                @update:model-value="setProp(name, $event || undefined)"
+              />
+            </UFormField>
+
+            <!-- A junction table of the page's record table: the field edits its links. -->
+            <UFormField
+              v-else-if="prop.editor === 'junction'"
+              :label="prop.label"
+              :description="junctions?.length ? prop.description : t('designer.inspector.noJunction')"
+            >
+              <USelectMenu
+                :model-value="stringProp(name)"
+                :items="junctionItems"
+                value-key="value"
+                :disabled="!junctions?.length"
                 clear
                 class="w-full"
                 @update:model-value="setProp(name, $event || undefined)"

@@ -9,7 +9,7 @@ const size = { width: 280, height: 260 }
 type Option = { series: Record<string, unknown>[], color: string[], legend: Record<string, unknown>, grid?: Record<string, unknown>, tooltip: { formatter: (p: unknown) => string }, xAxis: unknown, yAxis: unknown, dataZoom?: Record<string, unknown>[] }
 const option = (built: ReturnType<typeof buildWidget>) => (built.built as unknown as { option: Option }).option
 
-// Specification_Dashboards.md §5 (D1): each builder draws from its roles - never a column's name.
+// Dashboards.md §5 (D1): each builder draws from its roles - never a column's name.
 describe('dashboard builders', () => {
   const ages: DashboardQueryResult = {
     columns: [{ name: 'rango', dataType: 'text' }, { name: 'personas', dataType: 'integer' }],
@@ -191,7 +191,7 @@ describe('dashboard builders - tanda 2b', () => {
   })
 })
 
-// Tanda 3 (Specification_Dashboards.md §5.15): the new widgets' pure pieces.
+// Tanda 3 (Dashboards.md §5.15): the new widgets' pure pieces.
 describe('tanda 3 builders', () => {
   const result = (columns: { name: string, dataType: string }[], rows: Record<string, unknown>[]): DashboardQueryResult => ({ columns, rows, truncated: false, durationMs: 0, cached: false })
 

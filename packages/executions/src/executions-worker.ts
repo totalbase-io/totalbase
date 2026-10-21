@@ -20,13 +20,13 @@ export type Executor = (
 ) => Promise<unknown>;
 
 /**
- * PostgreSQL-based execution queue worker (Specification_Data_API.md §10.2).
+ * PostgreSQL-based execution queue worker (Data_API.md §10.2).
  * Uses `FOR UPDATE SKIP LOCKED` exactly like
  * @totalbase/webhooks' OutboxConsumer, so multiple worker instances can run
- * concurrently without a broker (Specification_Data_API.md §10.2).
+ * concurrently without a broker (Data_API.md §10.2).
  *
  * `executors` is a type -> handler registry so new execution sources
- * (Functions, Transactions - Specification_Data_API.md §10) plug in without touching this
+ * (Functions, Transactions - Data_API.md §10) plug in without touching this
  * class; v1 only registers "PROXY" (see
  * apps/server/src/context.ts).
  */
@@ -40,7 +40,7 @@ export class ExecutionsWorker {
 
   /**
    * Reclaims executions stuck in `running` past the staleness timeout -
-   * crash recovery (Specification_Data_API.md §10.2). Measured from
+   * crash recovery (Data_API.md §10.2). Measured from
    * locked_at, set when claimed and renewed by ExecutionsService.heartbeat()
    * - an execution that legitimately runs longer than the timeout (a
    * VACUUM of a large table) keeps it fresh and is never run twice.
@@ -118,7 +118,7 @@ export class ExecutionsWorker {
         principalType: row.principal_type,
       });
       await this.database.query(
-        // Fenced on locked_by (Specification_Data_API.md §10.2): a worker that lost its claim to reclaimStale never overwrites the new holder's outcome.
+        // Fenced on locked_by (Data_API.md §10.2): a worker that lost its claim to reclaimStale never overwrites the new holder's outcome.
         `UPDATE totalbase.executions SET status = 'COMPLETED', result = $2, completed_at = now() WHERE id = $1 AND locked_by = $3 AND status = 'RUNNING'`,
         [row.id, JSON.stringify(result ?? null), this.workerId],
       );

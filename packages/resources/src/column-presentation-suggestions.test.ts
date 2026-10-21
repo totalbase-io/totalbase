@@ -7,7 +7,7 @@ import { ResourcesAdminService } from "./resources-admin-service.js";
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", import.meta.url));
 const TABLE = "colsuggest_test_invoices";
 
-// Suggest presentation (Specification_DataViews.md §15.6, T69): by type and constraints, against a real table.
+// Suggest presentation (DataViews.md §15.6, T69): by type and constraints, against a real table.
 describe("ResourcesAdminService suggested presentation (integration)", () => {
   let database: Database;
   let service: ResourcesAdminService;

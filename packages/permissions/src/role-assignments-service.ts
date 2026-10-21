@@ -4,7 +4,7 @@ import { WORKFLOWS_ROLE_NAME, WORKFLOWS_SYSTEM_USER_EMAIL } from "@totalbase/sha
 
 /**
  * User<->role and API Key<->role assignment.
- * See Specification_Security.md §1.5.
+ * See Security.md §1.5.
  */
 export class RoleAssignmentsService {
   constructor(private readonly database: Database) {}

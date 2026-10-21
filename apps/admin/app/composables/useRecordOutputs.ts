@@ -27,7 +27,7 @@ export function useRecordOutputs(options: {
 
   /** The columns the page's form fields are bound to, in their order, labelled as on the page - else the visible columns. */
   const printedFields = computed<DataViewField[]>(() => {
-    // Each column titled as it shows - its table column's (Specification_DataViews.md §15).
+    // Each column titled as it shows - its table column's (DataViews.md §15).
     const resolved = options.fields.value.map(resolveFieldPresentation)
     const columns = new Map(resolved.filter(f => f.kind === 'COLUMN' && f.columnName).map(f => [f.columnName!, f]))
     const onPage = options.fields.value

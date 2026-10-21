@@ -1,5 +1,6 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
+import { UUID_PATTERN } from "@totalbase/shared";
 import { parseFilter } from "@totalbase/query-engine";
 import { isWidgetName, LIST_VIEW_TYPES, slotBase, widgetDefinition, type TableCallAction, type VariableDefinition, type WidgetName } from "@totalbase/tb-catalog";
 import { assertWidgetConfigValid, assertWidgetName, assertWidgetPlacement, variableRefs, widgetRelatedDashboard, widgetRelatedDataview, type WidgetFieldConfig } from "./widget-fields.js";
@@ -105,7 +106,7 @@ export async function addWidgetOn(ctx: DataViewsContext, on: Queryable, dataview
   if (parentId && parent) await assertInputSlotFree(ctx, dataviewId, parentId, parent.widget, config.slot, null, on);
 
   const { rows: yRows } = await on.query<{ next: number }>(
-    // Widgets lay out in flow (Specification_DataViews.md §12.2): grid_y is only an order.
+    // Widgets lay out in flow (DataViews.md §12.2): grid_y is only an order.
     `SELECT coalesce(max(grid_y) + 1, 0) AS next FROM totalbase.dataviews_fields
      WHERE dataview = $1 AND kind = 'WIDGET' AND parent IS NOT DISTINCT FROM $2::uuid AND coalesce(config->>'slot', '') = $3`,
     [dataviewId, parentId, config.slot ?? ""],
@@ -169,8 +170,8 @@ export async function assertVariablesInDatabase(ctx: DataViewsContext, variables
       const { rows } = await ctx.database.query<{ trigger: string | null }>(
         `SELECT (SELECT op->'configuration'->>'trigger' FROM jsonb_array_elements(definition->'operations') op
                  WHERE op->>'type' = 'totalbase.start' LIMIT 1) AS trigger
-         FROM totalbase.workflows WHERE slug = $1`,
-        [variable.target.slug],
+         FROM totalbase.workflows WHERE id = $1`,
+        [UUID_PATTERN.test(variable.target.workflow) ? variable.target.workflow : null],
       );
       if (!rows[0]) errors.push(`${variable.name}: the workflow doesn't exist.`);
       else if (rows[0].trigger !== "MANUAL") errors.push(`${variable.name}: only a MANUAL workflow runs from a page, as the viewer.`);
@@ -256,7 +257,7 @@ export async function assertWidgetPatch(ctx: DataViewsContext, dataview: AdminDa
 }
 
 /**
- * A form field holds one input (Specification_DataViews.md §12.2): a slot
+ * A form field holds one input (DataViews.md §12.2): a slot
  * whose catalog entry `holds: "input"` refuses a second widget - placed, or
  * moved in. `fieldId` is the widget being moved, which may already be there.
  */

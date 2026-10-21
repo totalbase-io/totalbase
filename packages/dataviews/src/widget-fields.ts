@@ -17,7 +17,7 @@ import {
 
 /**
  * Placed widgets (`kind = 'WIDGET'` fields) and a CUSTOM DataView's
- * variables - Specification_DataViews.md §8, §9, §13.2. The
+ * variables - DataViews.md §8, §9, §13.2. The
  * widget catalog and the variable catalog (@totalbase/tb-catalog) are the
  * rules; this file applies them to what the Admin API stores, so the
  * Design form and a direct API call are held to the same checks.
@@ -32,7 +32,7 @@ export interface WidgetFieldConfig {
   emits?: Record<string, unknown>;
   /** The parent widget's slot it lives in (`parent` names the parent). */
   slot?: string;
-  /** A form field's input that follows its column's input (`columnFormInput`, Specification_DataViews.md §15.2) - until one of its own is picked. */
+  /** A form field's input that follows its column's input (`columnFormInput`, DataViews.md §15.2) - until one of its own is picked. */
   fromColumn?: boolean;
 }
 

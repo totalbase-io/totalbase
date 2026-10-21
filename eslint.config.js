@@ -1,4 +1,4 @@
-// Root ESLint (Pre_Beta_Review 5.7): the packages and the server have no linter of their own - this one is
+// Root ESLint: the packages and the server have no linter of their own - this one is
 // deliberately small, the type-aware rules that catch the mistakes a review keeps finding by hand (a promise
 // left floating in a scheduler or a route). The admin keeps its own Nuxt ESLint config (apps/admin).
 import tseslint from "typescript-eslint";

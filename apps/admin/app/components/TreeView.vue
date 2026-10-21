@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 /**
- * The one tree of the admin and the App (Specification_Admin_UI.md §5.9, T70) - the App menu's Organize, the
+ * The one tree of the admin and the App (Admin_UI.md §5.9, T70) - the App menu's Organize, the
  * Design form's Structure, a TREE DataView: generic, it knows nothing of menus, widgets or tables. Each use
  * passes its nodes, renders a row's content in `#row` (and its buttons in `#actions`), decides what may go
  * where (`canDrop`) and saves a `move` its own way.

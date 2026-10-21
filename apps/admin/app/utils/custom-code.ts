@@ -1,5 +1,5 @@
 /**
- * A CUSTOM DataView's Code (Specification_DataViews.md §11.1):
+ * A CUSTOM DataView's Code (DataViews.md §11.1):
  * real JavaScript an administrator writes, compiled once with
  * `new Function` - the same deliberate trust decision as every DataView's
  * code (useDataViewController.ts) - and resolved by name: each widget and

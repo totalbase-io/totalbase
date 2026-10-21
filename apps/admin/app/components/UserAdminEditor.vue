@@ -234,7 +234,7 @@ async function save() {
 
 // --- Actions on the user itself (the header's "⋯" menu) ---
 const actionLoading = ref(false)
-// Revoking every open session is a plain row update (Specification_Security.md §10):
+// Revoking every open session is a plain row update (Security.md §10):
 // the Data API, where PostgreSQL stamps the time.
 async function runAction(path: 'invite' | 'reset-password' | 'revoke-sessions', successTitle: string, failureTitle: string) {
   actionLoading.value = true
@@ -271,6 +271,28 @@ async function unlock() {
   }
 }
 
+// Reset two-factor authentication (Security.md §2.17): a lost phone - the app and recovery codes go,
+// the user sets it up again. Confirmed first: it can't be undone.
+const mfaResetOpen = ref(false)
+const mfaResetConfirmed = ref(false)
+const mfaResetting = ref(false)
+watch(mfaResetOpen, (isOpen) => {
+  if (isOpen) mfaResetConfirmed.value = false
+})
+async function resetMfa() {
+  mfaResetting.value = true
+  try {
+    await api.del(`/users/${userId}/mfa`)
+    mfaResetOpen.value = false
+    toast.add({ title: t('users.userEditor.mfa.resetDone'), color: 'success' })
+    await Promise.all([refresh(), refreshUsersData()])
+  } catch (err) {
+    notifyError(err, t('users.userEditor.mfa.resetError'))
+  } finally {
+    mfaResetting.value = false
+  }
+}
+
 async function toggleActive() {
   if (!user.value) return
   actionLoading.value = true
@@ -300,7 +322,8 @@ const menuItems = computed(() => {
             { label: t('users.userEditor.menu.copyInvite'), icon: 'i-lucide-link', disabled: !canEmail, onSelect: () => copyLink(userId, 'invite') }
           ]),
       { label: t('users.userEditor.menu.revokeSessions'), icon: 'i-lucide-log-out', onSelect: () => runAction('revoke-sessions', t('users.userEditor.menu.sessionsRevoked'), t('users.userEditor.menu.sessionsError')) },
-      ...(u.lockedUntil ? [{ label: t('users.userEditor.menu.unlock'), icon: 'i-lucide-lock-open', onSelect: unlock }] : [])
+      ...(u.lockedUntil ? [{ label: t('users.userEditor.menu.unlock'), icon: 'i-lucide-lock-open', onSelect: unlock }] : []),
+      ...(u.mfaEnabled ? [{ label: t('users.userEditor.mfa.reset'), icon: 'i-lucide-shield-off', onSelect: () => { mfaResetOpen.value = true } }] : [])
     ]
     // Deactivate / Delete live in Profile's Danger zone only - one place
     // for the destructive actions.
@@ -588,6 +611,21 @@ function formatDate(value: string | null) {
                 {{ user.emailVerifiedAt ? t('users.userEditor.signIn.verifiedOn', { date: formatDate(user.emailVerifiedAt) }) : t('users.userEditor.signIn.notVerified') }}
               </dd>
               <dt class="text-muted">
+                {{ t('users.userEditor.mfa.label') }}
+              </dt>
+              <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{{ user.mfaEnabled ? t('users.userEditor.mfa.on') : t('users.userEditor.mfa.off') }}</span>
+                <UButton
+                  v-if="user.mfaEnabled"
+                  :label="t('users.userEditor.mfa.reset')"
+                  icon="i-lucide-shield-off"
+                  color="neutral"
+                  variant="outline"
+                  size="xs"
+                  @click="mfaResetOpen = true"
+                />
+              </dd>
+              <dt class="text-muted">
                 {{ t('users.userEditor.signIn.lastSignIn') }}
               </dt>
               <dd>{{ user.lastLoginAt ? formatDate(user.lastLoginAt) : t('users.common.never') }}</dd>
@@ -766,6 +804,37 @@ function formatDate(value: string | null) {
       v-else
       :user-id="userId"
     />
+
+    <UModal
+      v-model:open="mfaResetOpen"
+      :title="t('users.userEditor.mfa.resetTitle')"
+      :description="t('users.userEditor.mfa.resetDescription', { name: user?.name || user?.email || '' })"
+    >
+      <template #footer>
+        <div class="flex w-full items-center justify-between gap-2">
+          <UCheckbox
+            v-model="mfaResetConfirmed"
+            :label="t('common.confirm')"
+          />
+          <div class="flex gap-2">
+            <UButton
+              :label="t('common.cancel')"
+              color="neutral"
+              variant="ghost"
+              :disabled="mfaResetting"
+              @click="mfaResetOpen = false"
+            />
+            <UButton
+              :label="t('users.userEditor.mfa.resetButton')"
+              color="error"
+              :loading="mfaResetting"
+              :disabled="!mfaResetConfirmed"
+              @click="resetMfa"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="deleteOpen"

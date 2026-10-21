@@ -1,5 +1,5 @@
 /**
- * The App menu's search box (Specification_Security.md §8.2): finds a screen of the menu the viewer may open - by an
+ * The App menu's search box (Security.md §8.2): finds a screen of the menu the viewer may open - by an
  * entry's menu label, its full name, its description (the tooltip) or its group's name, ignoring case and accents. A
  * group that matches keeps all its entries. Only the menu the server already filtered for the viewer is searched.
  */

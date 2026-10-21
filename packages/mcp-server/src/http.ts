@@ -5,7 +5,7 @@ import type { McpPolicy } from "./policy.js";
 import { createTotalBaseMcpServer } from "./server.js";
 
 /**
- * Answers one MCP request over HTTP (Specification_Administration.md
+ * Answers one MCP request over HTTP (Administration.md
  * §11.5) - what the TotalBase server's POST /mcp hands over once it has
  * authenticated the caller and read the policy. Stateless: a fresh server
  * and transport per request, closed with its response, so nothing is shared

@@ -4,7 +4,7 @@ import { isRedactedKey, type Principal } from "@totalbase/shared";
 import type { AppContext } from "./context.js";
 
 /**
- * Audit of access-related events (Specification_Security.md §11: "Always
+ * Audit of access-related events (Security.md §11: "Always
  * audit ... AUTH-related events"): sign-in and everything that decides who
  * can do what - users, roles, permissions, tokens, sessions, auth
  * settings, providers, secrets. One `AUTH` row per request to a route in
@@ -28,6 +28,11 @@ declare module "fastify" {
   interface FastifyRequest {
     auditPrincipal?: Principal;
     auditMetadata?: Record<string, unknown>;
+    /**
+     * The event and status when the route's own would mislead: a correct password answered with an MFA
+     * challenge is `auth.mfa_challenge`, EXECUTED - a step of a sign-in, neither a sign-in nor a refusal.
+     */
+    auditOutcome?: { event: string; status: AuditStatus };
     /** The error code/message sent back, captured for the audit row. */
     auditError?: { code?: string | undefined; message?: string | undefined };
   }
@@ -46,11 +51,14 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /api/auth/email/resend": "auth.email_resend",
   "POST /api/auth/invitations/accept": "auth.invitation_accept",
   "GET /api/auth/oauth/:provider/callback": "auth.oauth_login",
+  // Two-factor authentication (Security.md §2.17): the second step of a sign-in, and setting it up there
+  "POST /api/auth/mfa/verify": "auth.mfa_verify",
+  "POST /api/auth/mfa/enroll": "auth.mfa_enroll",
   "POST /api/tokens": "token.create",
   "DELETE /api/tokens/:id": "token.delete",
   "POST /api/tokens/:id/rotate": "token.rotate",
   "POST /api/tokens/:id/revoke": "token.revoke",
-  // My account (a portal user's own account, Specification_Security.md §4)
+  // My account (a portal user's own account, Security.md §4)
   "PATCH /app/api/me": "account.update",
   "PUT /app/api/me/email": "account.email_change",
   "PUT /app/api/me/password": "account.password_change",
@@ -59,9 +67,14 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "DELETE /app/api/me/avatar": "account.avatar_remove",
   "DELETE /app/api/me/sessions/:id": "session.revoke",
   "POST /app/api/me/sessions/revoke-others": "account.sessions_revoke",
+  "POST /app/api/me/mfa": "account.mfa_start",
+  "POST /app/api/me/mfa/confirm": "account.mfa_enable",
+  "POST /app/api/me/mfa/disable": "account.mfa_disable",
+  "POST /app/api/me/mfa/recovery-codes": "account.mfa_recovery_codes",
   // Portal sign-in
   "POST /admin/api/auth/login": "auth.portal_login",
   "POST /admin/api/auth/logout": "auth.portal_logout",
+  "POST /admin/api/auth/mfa/verify": "auth.portal_mfa_verify",
   // Users
   "POST /admin/api/users": "user.create",
   "PUT /admin/api/users/:id/email": "user.email_change",
@@ -73,7 +86,8 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /admin/api/users/:id/invite": "user.invite",
   "POST /admin/api/users/:id/reset-password": "user.password_reset",
   "PUT /admin/api/users/:id/roles": "user.roles_set",
-  // Delegated user administration (Specification_Security.md §9.3)
+  "DELETE /admin/api/users/:id/mfa": "user.mfa_reset",
+  // Delegated user administration (Security.md §9.3)
   "POST /app/api/users/invitations": "user.invite",
   "DELETE /app/api/users/:id": "user.delete",
   "POST /app/api/users/:id/invite": "user.invite",
@@ -82,7 +96,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "PUT /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.set",
   "PUT /admin/api/roles/:role/permissions": "permission.set",
   "DELETE /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.clear",
-  // Object access (Specification_Security.md §7): who may open a published DataView or Dashboard, invoke a Workflow
+  // Object access (Security.md §7): who may open a published DataView or Dashboard, invoke a Workflow
   "PUT /admin/api/dataviews/:id/roles": "dataview.roles_set",
   "PUT /admin/api/dashboards/:id/roles": "dashboard.roles_set",
   "PUT /admin/api/workflows/:id/roles": "workflow.roles_set",
@@ -103,7 +117,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
 
 const MAX_STRING = 500;
 
-/** What the caller sent: a `{ data }` envelope's content (Specification_Data_API.md §2.5); an auth route's own fields as they are. */
+/** What the caller sent: a `{ data }` envelope's content (Data_API.md §2.5); an auth route's own fields as they are. */
 function bodyContent(body: unknown): unknown {
   return typeof body === "object" && body !== null && !Array.isArray(body) && Object.keys(body).length === 1 && "data" in body
     ? (body as { data: unknown }).data
@@ -159,15 +173,16 @@ export function registerAccessAudit(app: FastifyInstance, context: AppContext): 
   });
 
   app.addHook("onResponse", async (request, reply) => {
-    const event = ACCESS_EVENTS[`${request.method} ${request.routeOptions.url}`];
-    if (!event) return;
+    const routeEvent = ACCESS_EVENTS[`${request.method} ${request.routeOptions.url}`];
+    if (!routeEvent) return;
+    const event = request.auditOutcome?.event ?? routeEvent;
     const startedAt = (request as FastifyRequest & { auditStartedAt?: Date }).auditStartedAt ?? new Date();
     try {
       await context.audit.record(context.database, {
         requestId: request.id,
         principal: principalFor(request),
         action: "AUTH",
-        status: statusFor(reply.statusCode),
+        status: request.auditOutcome?.status ?? statusFor(reply.statusCode),
         source: request.url.startsWith("/admin/") ? "admin" : "auth",
         ip: request.ip,
         userAgent: request.headers["user-agent"],

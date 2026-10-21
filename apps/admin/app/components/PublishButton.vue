@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * The Publish action of an object page (Specification_Admin_UI.md §3.7): the same button and confirmation popover
+ * The Publish action of an object page (Admin_UI.md §3.7): the same button and confirmation popover
  * on a DataView's, a Dashboard's and a Workflow's design and settings screens - "Publish as vN?", a note on what it
- * makes live, an optional note on what the version changes (Specification.md §13.3) and the page's own warnings in
+ * makes live, an optional note on what the version changes (Foundations.md §13.3) and the page's own warnings in
  * the slot. Solid while there is something to publish, soft otherwise. With `diagnosis`, what would still stop it from
  * working once published (useDiagnosis.ts) - warnings, never blockers: an administrator may publish anyway.
  */

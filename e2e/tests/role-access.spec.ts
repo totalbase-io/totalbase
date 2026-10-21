@@ -29,7 +29,7 @@ test('access levels route each user to what their roles open', async ({ page, br
     await apiRequest(page, token, 'DELETE', `/api/totalbase/table/roles/${role.id}`)
   }
 
-  // Roles are TotalBase data, written through the Data API (Specification_Security.md §10).
+  // Roles are TotalBase data, written through the Data API (Security.md §10).
   const appRole = await apiRequest<Role>(page, token, 'POST', '/api/totalbase/table/roles', { data: { name: ROLE_NAME, app_access: true } })
   const apiRole = await apiRequest<Role>(page, token, 'POST', '/api/totalbase/table/roles', { data: { name: API_ROLE_NAME, app_access: false, api_access: true } })
   await apiRequest(page, token, 'POST', '/admin/api/users', { data: { email: APP_EMAIL, name: 'App E2E', password: PASSWORD, roleIds: [appRole.id] } })

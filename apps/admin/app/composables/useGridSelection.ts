@@ -8,7 +8,7 @@ const BULK_DELETE_CONCURRENCY = 4
  * A grid's row selection (DataViewGrid.vue, standalone layout): the rows the
  * viewer picks, kept by their key across pages, sorts, searches and refreshes
  * - a bulk edit or a selection's action takes rows from several pages
- * (Specification_DataViews.md §5.15). TanStack's RowSelectionState for the
+ * (DataViews.md §5.15). TanStack's RowSelectionState for the
  * page on screen is derived from it (`rowSelection`, by the page's row
  * index). Without a primary key there's nothing to keep a row by: the
  * selection is the page's, cleared when it changes.

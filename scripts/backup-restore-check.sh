@@ -5,7 +5,7 @@
 # NOT run automatically by any test suite or CI step in V1 - this is an
 # operational script for a human (or a scheduled job) to run
 # periodically against a real backup target. See docs/content/17.operations/04.backup-restore.md
-# for the full runbook (Specification.md §23: "backup/restore
+# for the full runbook (Foundations.md §23: "backup/restore
 # verification").
 #
 # Usage:

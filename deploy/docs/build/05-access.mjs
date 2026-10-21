@@ -1,4 +1,4 @@
-// Roles, grants and users (Docs_Demo_Field_Service.md §4), through the MCP server.
+// Roles, grants and users (DATASET.md §4), through the MCP server.
 //   TOTALBASE_TOKEN=... node 05-access.mjs
 import { call } from './mcp.mjs'
 

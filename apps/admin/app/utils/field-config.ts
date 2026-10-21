@@ -37,7 +37,7 @@ export interface FieldConfig {
    * actually equals, not `display_field` itself.
    */
   display_field_target?: { schema: string, table: string, column: string }
-  /** Read only: the display above is its table's row presentation, inherited (Specification_DataViews.md §15.5) - sent back unchanged, none of it is stored. */
+  /** Read only: the display above is its table's row presentation, inherited (DataViews.md §15.5) - sent back unchanged, none of it is stored. */
   display_inherited?: boolean
   /** Set by the App for a viewer who may not read `display_field` on the related resource - the raw key is shown instead of the join. */
   display_field_denied?: boolean
@@ -201,7 +201,7 @@ export interface FieldConfig {
   truncate?: boolean
   /** A small clipboard button next to this field's grid cell - offered for basically any widget (unlike `truncate`/`linkType`), not just text-ish ones: copying a UUID/number/formatted date is just as common as copying a name. Copies the SAME text the cell shows (`formatCellPlainText`), not the raw underlying value. */
   copyable?: boolean
-  /** Its total at the grid's foot (Specification_DataViews.md §4.9): sum, avg, min, max or count over every filtered row. */
+  /** Its total at the grid's foot (DataViews.md §4.9): sum, avg, min, max or count over every filtered row. */
   total?: 'sum' | 'avg' | 'min' | 'max' | 'count'
   /** UInput only, in practice - renders the plain text as a real clickable link instead of static text: `'url'` (opens in a new tab), `'email'` (`mailto:`), or `'tel'` (`tel:`). */
   linkType?: 'url' | 'email' | 'tel'

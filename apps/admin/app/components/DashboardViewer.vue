@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A published Dashboard as the App's page shows it (Specification_Dashboards.md §9.2):
+ * A published Dashboard as the App's page shows it (Dashboards.md §9.2):
  * the header with Refresh around DashboardView.vue (cards and
  * variables bar, the same component a DataView page's TDashboard widget embeds). Variable
  * values mirror into the URL so a shared link shows the same view.
@@ -54,7 +54,7 @@ watch(() => route.query, (query) => {
 })
 
 const refreshKey = ref(0)
-// Tells the viewer the cards re-run on their own (Specification_Dashboards.md §9.4).
+// Tells the viewer the cards re-run on their own (Dashboards.md §9.4).
 const autoRefreshLabel = computed(() => {
   const interval = DASHBOARD_REFRESH_INTERVALS.find(i => i.seconds === dashboard.value?.refreshIntervalSeconds)
   return interval ? catalog.refreshLabel(interval.seconds, interval.label) : undefined

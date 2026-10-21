@@ -1,12 +1,12 @@
 /**
- * Roles + permission matrix (Specification_Admin_UI.md §11.3). Shapes verified live against the
+ * Roles + permission matrix (Admin_UI.md §11.3). Shapes verified live against the
  * running server — PUT/GET responses here are consistently camelCase,
  * unlike the Users list inconsistency noted in types/security.ts.
  */
 export type PermissionAction = 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXECUTE'
 export type PermissionEffect = 'ALLOW' | 'DENY'
 
-/** Which actions apply to a resource depends on its type (Specification.md §11.5: views are read-only). */
+/** Which actions apply to a resource depends on its type (Foundations.md §11.5: views are read-only). */
 export const ACTIONS_BY_RESOURCE_TYPE: Record<'TABLE' | 'VIEW' | 'FUNCTION', PermissionAction[]> = {
   TABLE: ['CREATE', 'READ', 'UPDATE', 'DELETE'],
   VIEW: ['READ'],
@@ -27,7 +27,7 @@ export interface Role {
   appAccess: boolean
   apiAccess: boolean
   createdAt: string
-  /** Its App home (Specification_Security.md §8.1) - at most one of the two; grants nothing. */
+  /** Its App home (Security.md §8.1) - at most one of the two; grants nothing. */
   homeDataview?: string | null
   homeDashboard?: string | null
   /** Who created it - null for a role an administrator created through the Admin API. Data API only. */
@@ -298,7 +298,7 @@ export interface FieldGrant {
 
 /**
  * `where` uses the same filter-object shape as the Data API's `where[...]`
- * query parameters (Specification_Data_API.md §3.1, §3.10). We treat it as an opaque
+ * query parameters (Data_API.md §3.1, §3.10). We treat it as an opaque
  * JSON value here — building a visual filter builder against that full
  * grammar is out of scope for this pass (a raw JSON editor with validation
  * is the pragmatic v1; see the note in roles/[id].vue).
@@ -341,7 +341,7 @@ export interface PermissionPutBody {
 }
 
 export interface CatalogColumn {
-  /** pg_attribute.attnum - stable across a rename, unlike `name`. DataView field bindings key on this (Specification_DataViews.md §1.2). */
+  /** pg_attribute.attnum - stable across a rename, unlike `name`. DataView field bindings key on this (DataViews.md §1.2). */
   attnum: number
   name: string
   dataType: string
@@ -366,7 +366,7 @@ export interface CatalogColumn {
 
 /**
  * A column's possible values: a fixed list (a CHECK `IN (...)`, its values' labels the column's presentation), or the
- * rows of the table a foreign key points at, shown by that table's row presentation (Specification_DataViews.md §15.5).
+ * rows of the table a foreign key points at, shown by that table's row presentation (DataViews.md §15.5).
  */
 export type ColumnValueSource
   = | { kind: 'list', items: { value: string, label: string }[] }

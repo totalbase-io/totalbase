@@ -15,7 +15,7 @@ export interface DdlRecord {
 }
 
 /**
- * Records one schema-management operation (Specification_Administration.md
+ * Records one schema-management operation (Administration.md
  * §3.14). Called with the transaction client the DDL ran on, after the
  * statements and before the commit - the record and the DDL commit or roll
  * back together. The caller (the Admin API route) knows who acts and on

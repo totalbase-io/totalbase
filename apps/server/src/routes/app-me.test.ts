@@ -9,7 +9,7 @@ const PREFIX = `app-me-test-${uniqueSuffix()}`;
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * My account (Specification_Security.md §4): a portal user's
+ * My account (Security.md §4): a portal user's
  * own account under /app/api/me/*, never anyone else's.
  */
 describe("My account: /app/api/me", () => {
@@ -100,7 +100,7 @@ describe("My account: /app/api/me", () => {
     expect(back.statusCode, back.body).toBe(200);
 
     // Unverified, the next sign-in waits for the link (auth.email_verification_required,
-    // Specification_Security.md §2.7) - the open session keeps working.
+    // Security.md §2.7) - the open session keeps working.
     await expect(login(`${PREFIX}-user@example.com`)).rejects.toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
     expect((await inject("GET", "/app/api/me", token)).statusCode).toBe(200);
     await context.auth.users.markEmailVerified(userId);
@@ -181,7 +181,7 @@ describe("My account: /app/api/me", () => {
       expect((await inject("GET", "/app/api/me/preferences", token)).json().data.preferences).toEqual({});
     });
 
-    it("takes a UI language - the user's, else the instance's, in /admin/api/auth/me (Specification_Admin_UI.md §14)", async () => {
+    it("takes a UI language - the user's, else the instance's, in /admin/api/auth/me (Admin_UI.md §14)", async () => {
       const token = await login(`${PREFIX}-user@example.com`);
       expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.language).toBe("en");
       const set = await send("PATCH", "/app/api/me/preferences", token, { language: "es" });

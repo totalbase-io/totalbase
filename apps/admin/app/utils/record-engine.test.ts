@@ -326,7 +326,7 @@ describe('isEditing()', () => {
   })
 })
 
-// A record and its lines saved together (Specification_DataViews.md §6.6, T51).
+// A record and its lines saved together (DataViews.md §6.6, T51).
 describe('lines saved with the record', () => {
   const lineWrites = (ops: (key: unknown) => { key: string, operation: 'insert' | 'update' | 'delete', schema: string, table: string, id?: unknown, data?: Record<string, unknown> }[]) => {
     let pending = true

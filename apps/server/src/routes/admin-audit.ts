@@ -203,7 +203,7 @@ function toFilter(query: AuditLogQuery): AuditLogFilter {
 
 /**
  * Audit browsing and per-resource audit-field configuration
- * (Specification_Administration.md §1: "Audit").
+ * (Administration.md §1: "Audit").
  */
 export function registerAdminAuditRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
@@ -211,7 +211,7 @@ export function registerAdminAuditRoutes(app: FastifyInstance, context: AppConte
   const RESOURCE = { resource: { ...UUID_PARAM, description: "The resource's TotalBase id." } };
 
   // "activity" is the same log, just a small default page for a feed view -
-  // there is no distinct underlying dataset (Specification_Administration.md §1
+  // there is no distinct underlying dataset (Administration.md §1
   // does not further define the distinction; AGENTS.md section 27).
   // Users → Insights: aggregates computed by PostgreSQL (AuditInsightsService)
   // in the viewer's time zone. `days` 1-366 (default 30), `tz` an IANA name,

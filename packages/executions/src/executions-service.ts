@@ -30,7 +30,7 @@ export interface CreateExecutionInput {
   resource?: string | undefined;
   principalType: ExecutionPrincipalType;
   principal: string;
-  /** Must never contain secrets/credentials/tokens (Specification_Data_API.md §10.1). */
+  /** Must never contain secrets/credentials/tokens (Data_API.md §10.1). */
   request?: unknown;
 }
 
@@ -71,7 +71,7 @@ function toRecord(row: ExecutionRow): ExecutionRecord {
 const SELECT_COLUMNS = `id, type, resource, status, principal_type, principal, request, result, error, attempt, created_at, started_at, completed_at`;
 
 /**
- * CRUD side of Executions (Specification_Data_API.md §10).
+ * CRUD side of Executions (Data_API.md §10).
  * Claiming/processing pending rows is ExecutionsWorker's job, not this
  * service's - same separation as WebhooksService (CRUD) vs OutboxConsumer
  * (delivery).
@@ -113,7 +113,7 @@ export class ExecutionsService {
    * The latest executions of one type, newest first - for an admin-only
    * surface that owns that type (e.g. MAINTENANCE, Settings > Maintenance).
    * Never behind a Data API route: callers there only see their own
-   * (belongsTo, Specification_Data_API.md §10.3).
+   * (belongsTo, Data_API.md §10.3).
    */
   async listByType(type: string, limit: number): Promise<ExecutionRecord[]> {
     const { rows } = await this.database.query<ExecutionRow>(
@@ -137,7 +137,7 @@ export class ExecutionsService {
     return rows.map(toRecord);
   }
 
-  /** The principal that created an execution may query it; no unrestricted list (Specification_Data_API.md §10.3). */
+  /** The principal that created an execution may query it; no unrestricted list (Data_API.md §10.3). */
   belongsTo(execution: Pick<ExecutionRecord, "principalType" | "principal">, principalType: string, principal: string): boolean {
     return execution.principalType === principalType && execution.principal === principal;
   }

@@ -129,7 +129,7 @@ export function periodSql(period: Period, bound: PeriodBound): string {
 // --- SELECT: search + pagination -----------------------------------------
 
 /**
- * How `search` (Specification_Data_API.md §3.5) compares a text column with one term: both sides through
+ * How `search` (Data_API.md §3.5) compares a text column with one term: both sides through
  * totalbase.search_normalize (lower case, and without accents when `unaccent` is installed),
  * so "perez" finds "Pérez". The parameter is the term as a LIKE pattern (`searchPattern`).
  */
@@ -219,7 +219,7 @@ export function insertWithReturningCte(
 
 /**
  * insertWithReturningCte for many rows sharing one column set, in one
- * statement (Pre_Beta_Review 2.7). The rows arrive as one jsonb array
+ * statement. The rows arrive as one jsonb array
  * parameter (`arrayPlaceholder`); each element is turned into the table's
  * own row type with jsonb_populate_record(NULL::table, doc), so every value
  * goes through the column's input conversion exactly as a bound parameter
@@ -301,7 +301,7 @@ export function upsertWithReturningCte(
 
 /**
  * A row's version - PostgreSQL's xmin, the transaction that last wrote it - as text, `__version`: what an
- * optimistic write sends back in If-Match (Specification_Data_API.md §5.3, T56).
+ * optimistic write sends back in If-Match (Data_API.md §5.3, T56).
  */
 export const ROW_VERSION_COLUMN = "__version";
 export const ROW_VERSION_SQL = (tableAlias: string) => `${tableAlias}.xmin::text AS ${ROW_VERSION_COLUMN}`;
@@ -366,7 +366,7 @@ export function updateReturningOldCte(
   );
 }
 
-/** DELETE has no authorization flags to append (Specification_Security.md §6.6: OLD-only), so no CTE wrapping is needed - a bare RETURNING suffices. */
+/** DELETE has no authorization flags to append (Security.md §6.6: OLD-only), so no CTE wrapping is needed - a bare RETURNING suffices. */
 export function deleteWithReturning(table: string, tableAlias: string, whereSql: string): string {
   return `DELETE FROM ${table} AS ${tableAlias}${whereSql} RETURNING *`;
 }

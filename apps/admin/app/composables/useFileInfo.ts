@@ -1,7 +1,7 @@
 import type { FileNode } from '~/types/file'
 
 /**
- * A file's row from Files (Specification_Administration.md §10) - its name and type - read once per file and
+ * A file's row from Files (Administration.md §10) - its name and type - read once per file and
  * shared by every caller (a grid's file cells, many rows over few files). Undefined while it loads, null when it
  * can't be read (gone, or not this viewer's).
  */

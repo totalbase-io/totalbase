@@ -1,5 +1,5 @@
 /**
- * A TREEMAP's or a SUNBURST's tree (Specification_Dashboards.md §5.15, D18), built from its rows by levels: each row
+ * A TREEMAP's or a SUNBURST's tree (Dashboards.md §5.15, D18), built from its rows by levels: each row
  * a path down its Levels columns (outermost first) to its value. A parent is the sum of its children (the guide asks
  * for summable values only); a NULL level ends the branch there - the row's value hangs on the node above it. Pure:
  * names, colors and formats are its builder's.

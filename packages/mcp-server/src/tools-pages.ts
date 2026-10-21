@@ -6,7 +6,7 @@ import type { AdminClient } from "./admin-client.js";
 import { ADDITIVE, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, result, type ResourceRow } from "./tool-helpers.js";
 
 /**
- * Pages (Specification_DataViews.md §7-§13): a CUSTOM DataView - or any
+ * Pages (DataViews.md §7-§13): a CUSTOM DataView - or any
  * DataView's record form, a generated page - built from variables
  * (`view_config.variables`), widgets of the widget catalog placed in areas
  * (`POST /admin/api/dataviews/:id/widgets`, `PATCH .../fields/:id`) and Code
@@ -126,6 +126,15 @@ function defaultSlot(parentWidget: WidgetName, slot: string | undefined): string
   throw new Error(`${parentWidget} has several slots (${slots.join(", ")}) - name the one a child goes in.`);
 }
 
+/** A workflow's slug (or its id) as its id. */
+async function workflowId(client: AdminClient, ref: string): Promise<string> {
+  if (UUID_PATTERN.test(ref)) return ref;
+  const workflows = await client.get<{ id: string; slug: string }[]>("/workflows");
+  const found = workflows.find((w) => w.slug === ref);
+  if (!found) throw new Error(`No workflow with slug "${ref}" (list_workflows lists them).`);
+  return found.id;
+}
+
 /** "schema.name" (or an id) as a resource id. */
 async function resourceId(client: AdminClient, ref: string, type?: ResourceRow["type"]): Promise<string> {
   if (UUID_PATTERN.test(ref)) return ref;
@@ -147,6 +156,11 @@ async function toStoredVariable(client: AdminClient, variable: Record<string, un
     if ((target["type"] === "FUNCTION" || target["type"] === "TABLE") && typeof target["resource"] === "string") {
       return { ...variable, target: { ...target, resource: await resourceId(client, target["resource"], target["type"] as ResourceRow["type"]) } };
     }
+    if (target["type"] === "WORKFLOW") {
+      // Stored by id - a renamed slug keeps the Call (DataViews.md §8.4); the agent may name it by its slug.
+      const ref = typeof target["workflow"] === "string" ? target["workflow"] : typeof target["slug"] === "string" ? target["slug"] : "";
+      return { ...variable, target: { type: "WORKFLOW", workflow: await workflowId(client, ref) } };
+    }
   }
   return variable;
 }
@@ -158,7 +172,7 @@ const variableInput = z
   })
   .passthrough()
   .describe(
-    "VALUE {type, default?: {source:'constant',value} | {source:'formula',formula} | {source:'param',name} | {source:'user',field}}; RESOURCE {resource: 'schema.table', query: {fields (required), where, order_by, limit, ...}, mode: list|record, immediate, watch, count}; CALL {target: {type:'FUNCTION', resource:'schema.fn'} | {type:'WORKFLOW', slug} | {type:'TABLE', resource:'schema.table', action: CREATE|UPDATE|DELETE}, input?: {data: {...}}}; any kind: emits {event: codeFunction}",
+    "VALUE {type, default?: {source:'constant',value} | {source:'formula',formula} | {source:'param',name} | {source:'user',field}}; RESOURCE {resource: 'schema.table', query: {fields (required), where, order_by, limit, ...}, mode: list|record, immediate, watch, count}; CALL {target: {type:'FUNCTION', resource:'schema.fn'} | {type:'WORKFLOW', slug} (stored by its id) | {type:'TABLE', resource:'schema.table', action: CREATE|UPDATE|DELETE}, input?: {data: {...}}}; any kind: emits {event: codeFunction}",
   );
 
 export function registerPageTools(server: McpServer, client: AdminClient): void {

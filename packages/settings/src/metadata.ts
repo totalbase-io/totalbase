@@ -22,7 +22,7 @@ import type { SettingKey } from "./registry.js";
  * and a `role` input Roles by itself - list only what the copy can't say.
  */
 export type SettingLink = { setting: SettingKey } | { page: SettingLinkPage };
-export type SettingLinkPage = "secrets" | "roles" | "templates" | "docs";
+export type SettingLinkPage = "secrets" | "roles" | "templates" | "docs" | "s3";
 
 export interface SettingMetadata {
   label: string;
@@ -35,10 +35,11 @@ export interface SettingMetadata {
    * Widget, when the value's own type isn't enough: `secret` picks a key
    * from Settings > Secrets, `timezone` an IANA zone, `json` a code
    * textarea, `textarea` plain text on several lines, `role` a role (by id) a user can be given - neither reserved
-   * nor with admin access. Omitted = inferred from the value (switch,
+   * nor with admin access, `cron` a cron expression with its next
+   * occurrences (in the instance's timezone). Omitted = inferred from the value (switch,
    * number, tags, text).
    */
-  input?: "secret" | "timezone" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea";
+  input?: "secret" | "timezone" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea" | "cron";
   /** Fixed choices for a text setting - rendered as a select, or as option cards (`input: "cards"`) when each has a description. */
   options?: Array<{ label: string; value: string; description?: string }>;
   /** Option cards one under the other - for choices whose descriptions need the width. Unset: side by side. */
@@ -85,6 +86,14 @@ export const SETTINGS_GROUP_METADATA: Record<string, { label: string; descriptio
   smtp: {
     label: "SMTP",
     description: "The mail relay for system emails and Workflow \"Send email\" steps.",
+  },
+  backups: {
+    label: "Backups",
+    description: "Scheduled backups of the database and the stored files, kept on the local disk or in S3 storage. The master key is never in them - keep it apart.",
+  },
+  s3: {
+    label: "S3 storage",
+    description: "A connection to an S3-compatible bucket - Amazon S3, Cloudflare R2, MinIO and others - where Files can store uploads.",
   },
   security: {
     label: "Network",
@@ -167,7 +176,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "api.max_relation_depth": {
     label: "Maximum relation depth",
-    description: "How many levels of related resources a single request can expand (?expand=a.b.c).",
+    description: "How many foreign keys a dotted path may follow in one request (order.customer.email follows two).",
     section: "Query complexity",
   },
   "api.max_filter_depth": {
@@ -294,13 +303,14 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "files.storage_provider": {
     label: "Storage provider",
-    description: "Where uploaded files are stored. Local storage is the only provider available in this first version.",
+    description: "Where new uploads are stored. A file already uploaded stays where it was written and is still served from there. S3 storage must be enabled first.",
     section: "Storage",
-    options: [{ label: "Local disk", value: "local" }],
+    options: [{ label: "Local disk", value: "local" }, { label: "S3 storage", value: "s3" }],
+    links: [{ page: "s3" }],
   },
   "files.storage_local_path": {
     label: "Local storage path",
-    description: "Filesystem directory files are written to when the storage provider is local.",
+    description: "Where local files are kept - including those uploaded before switching to S3 storage, still served from here.",
     section: "Storage",
   },
   "files.transforms.enabled": {
@@ -453,6 +463,16 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     unit: "minutes",
     section: "Sign-in protection",
   },
+  "auth.mfa_required": {
+    label: "Require two-factor authentication",
+    description: "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in; sessions already open stay.",
+    section: "Sign-in protection",
+    options: [
+      { label: "No one", value: "NONE" },
+      { label: "Administrators", value: "ADMINISTRATORS" },
+      { label: "Everyone", value: "EVERYONE" },
+    ],
+  },
   "auth.links.invitation": {
     label: "Invitation link",
     description: "Where an invitation email's link points. {{public_url}} and {{token}} are filled in by TotalBase - point it at your own app's page if it handles invitations itself.",
@@ -563,6 +583,86 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "smtp.from": {
     label: "From address",
     description: "The envelope/header From address outgoing mail is sent as.",
+  },
+  "s3.enabled": {
+    label: "Enable S3 storage",
+    description: "Turns the connection on. Can't be turned off while Files stores new uploads in it or still holds files there.",
+  },
+  "s3.endpoint": {
+    label: "Endpoint",
+    description: "The service's base URL, e.g. https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com or http://minio:9000.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.region": {
+    label: "Region",
+    description: "The bucket's region, part of every request's signature - us-east-1 for most services that don't have regions, auto for Cloudflare R2.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.bucket": {
+    label: "Bucket",
+    description: "The bucket to write to. It must exist; TotalBase doesn't create it.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.prefix": {
+    label: "Key prefix",
+    description: "A folder inside the bucket for this instance, e.g. production/ - so several instances can share one bucket. Each use writes under its own folder in it (files/). Empty: the bucket's root.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.path_style": {
+    label: "Path-style addressing",
+    description: "Address the bucket as endpoint/bucket instead of bucket.endpoint - MinIO and most self-hosted services need it on.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.access_key_id": {
+    label: "Access key ID",
+    description: "The access key's ID. Its secret goes in the next setting, as a secret.",
+    dependsOn: "s3.enabled",
+  },
+  "s3.secret_key": {
+    label: "Secret access key (secret key)",
+    description: "The key of a Settings → Secrets entry holding the secret access key - never stored here in plaintext.",
+    input: "secret",
+    dependsOn: "s3.enabled",
+  },
+
+  // --- backups.* (Administration.md §12) ---
+  "backups.enabled": {
+    label: "Backups",
+    description: "Backs the instance up on the schedule below, and lets an administrator Back up now. Off: no new backup - those made stay listed, to download or delete.",
+    section: "Schedule",
+  },
+  "backups.schedule": {
+    label: "Schedule",
+    description: "When, as a cron expression in the instance's timezone (Settings › General). 0 3 * * *: every day at 03:00.",
+    section: "Schedule",
+    input: "cron",
+    dependsOn: "backups.enabled",
+  },
+  "backups.keep": {
+    label: "Backups to keep",
+    description: "The most recent completed backups kept; an older one is deleted after each new one completes.",
+    section: "Schedule",
+    dependsOn: "backups.enabled",
+  },
+  "backups.destination": {
+    label: "Destination",
+    description: "Where new backups are written. A backup already made stays where it was written.",
+    section: "Destination",
+    options: [{ label: "Local disk", value: "local" }, { label: "S3 storage", value: "s3" }],
+    links: [{ page: "s3" }],
+    dependsOn: "backups.enabled",
+  },
+  "backups.local_path": {
+    label: "Local backups path",
+    description: "The directory local backups are written to - mount a volume there, on another disk than the database's.",
+    section: "Destination",
+    dependsOn: "backups.enabled",
+  },
+  "backups.include_files": {
+    label: "Include stored files",
+    description: "The files Files keeps on the local disk go into each backup. Files kept in S3 storage never do - back the bucket up with the service's own versioning or replication.",
+    section: "Content",
+    dependsOn: "backups.enabled",
   },
 
   // --- security.* ---
@@ -989,7 +1089,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     unit: "writes",
     section: "Layout caps",
   },
-  // --- appearance.* --- (Specification_Admin_UI.md §4.1.1)
+  // --- appearance.* --- (Admin_UI.md §4.1.1)
   "appearance.primary_color": {
     label: "Primary color",
     description: "The accent of every button, link and highlight. One color is enough: its lighter and darker shades are derived for light and dark mode. Empty keeps TotalBase's sky blue.",

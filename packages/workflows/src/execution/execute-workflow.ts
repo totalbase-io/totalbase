@@ -24,7 +24,7 @@ interface DefinitionOperation {
  * Deliberately narrowed to MANUAL- and CRON-triggered targets only,
  * agreed with the user: a DATA_EVENT target's own Start expects the
  * transactionally-captured record(s) from a real table mutation
- * (Specification_Workflows.md §6.3) - there is no real mutation here, so there's nothing honest to
+ * (Workflows.md §6.3) - there is no real mutation here, so there's nothing honest to
  * fabricate for it. A WEBHOOK target's own contract (`{query, body}`,
  * PUBLIC/AUTHENTICATED access, rate limiting, sync/async response modes)
  * is an HTTP-layer concern this internal call has no use for - a workflow

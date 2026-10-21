@@ -1,5 +1,5 @@
 /**
- * A dashboard widget's auto-refresh timer (Specification_Dashboards.md §9.4):
+ * A dashboard widget's auto-refresh timer (Dashboards.md §9.4):
  * re-runs `run` every `intervalMs`, counted from the end of the previous run,
  * so two runs never overlap however slow the query is. It pauses while the
  * browser tab is hidden and, once visible again, runs at once if a run fell

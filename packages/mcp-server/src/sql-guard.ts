@@ -1,5 +1,5 @@
 /**
- * execute_sql's second signal before destroying data (Specification_Administration.md
+ * execute_sql's second signal before destroying data (Administration.md
  * §11.6): which statements of a script drop, truncate, delete or revoke. A
  * call-shape guard, not security - the SQL Console's own gates are that - so
  * it only has to tell a statement from the text around it: a function body

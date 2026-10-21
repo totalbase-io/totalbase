@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Settings' Scope: which rows the DataView reads - the row Filter - and the resulting
- * Query, read-only (Specification_DataViews.md §4: one
+ * Query, read-only (DataViews.md §4: one
  * owner per part - Columns own `fields` and the default `order_by`, the
  * Filter owns `where`). Show records runs that query, paged.
  *

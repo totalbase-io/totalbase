@@ -6,7 +6,7 @@ import { SchemaContext, type ResolvedResource } from "./schema-context.js";
 
 /**
  * UPDATE audit old values on a table WITHOUT a primary key
- * (Specification_Security.md §11.4): PostgreSQL 18+ reads them with
+ * (Security.md §11.4): PostgreSQL 18+ reads them with
  * RETURNING OLD in the UPDATE itself; before 18 none are read. The
  * PostgreSQL 18 cases run only against a PostgreSQL 18 server.
  */

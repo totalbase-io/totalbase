@@ -1,4 +1,4 @@
-/** One version in a pillar's history (Specification.md §13) - the summary every `…/versions` list returns. */
+/** One version in a pillar's history (Foundations.md §13) - the summary every `…/versions` list returns. */
 export interface VersionSummary {
   version: number
   publishedAt: string

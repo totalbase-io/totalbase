@@ -34,3 +34,7 @@ coverage/
 # Playwright artifacts
 e2e/test-results/
 e2e/playwright-report/
+
+# Claude Code: personal settings and runtime files
+**/.claude/settings.local.json
+**/.claude/scheduled_tasks.lock

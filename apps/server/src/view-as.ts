@@ -3,7 +3,7 @@ import { DENIED_FOR_CALLER, TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "./context.js";
 
 /**
- * See as (Specification_Security.md §8.4): an administrator opens the App as a role or a user sees it. The admin
+ * See as (Security.md §8.4): an administrator opens the App as a role or a user sees it. The admin
  * sends `X-TotalBase-View-As: role:<id>` or `user:<id>` on its App and Data API requests; the caller's role set is
  * replaced - and, for a user, `$USER` is theirs - before the Permission Resolver runs, so a preview is the real
  * evaluation, never a second path. Only an administrator's own session may ask; a preview never writes.

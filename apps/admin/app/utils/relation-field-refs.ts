@@ -75,7 +75,7 @@ export function relationFieldsParamEntries(refs: RelationFieldRef[]): string[] {
 
 /**
  * The `fields=` request param a DataView's rows are read with - always
- * sent: the DataView's columns (shown or hidden - Specification_DataViews.md §4.1:
+ * sent: the DataView's columns (shown or hidden - DataViews.md §4.1:
  * a column in the DataView is always read, one not in it
  * never is), the primary key (edit/delete addressing), every relation
  * ref's alias and any other join alias the caller has (a foreign key's

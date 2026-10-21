@@ -6,7 +6,7 @@ import { setupTestApp } from "./test-support.js";
 
 /**
  * The real server, the real settings service: a setting saved while the
- * server runs governs the very next request (Specification_Administration.md
+ * server runs governs the very next request (Administration.md
  * §7.5) - no restart, no rebuilt app.
  */
 describe("hardening settings applied live (integration)", () => {

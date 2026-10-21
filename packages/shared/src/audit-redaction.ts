@@ -9,6 +9,9 @@
 const REDACTED_KEYS = new Set([
   "password", "currentpassword", "newpassword", "token", "value", "secret",
   "clientsecret", "clientsecretvalue", "privatekey",
+  // An MFA sign-in's challenge and a recovery code (Security.md §2.17). An authenticator code is not: it is
+  // good once and for seconds, and the audit row is written after it was spent.
+  "challenge", "recoverycode",
 ]);
 
 /** Whether a key names a credential field (see REDACTED_KEYS). */

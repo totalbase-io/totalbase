@@ -2,7 +2,7 @@ import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import type { DashboardVariable, DateRangeValue } from '~/types/dashboard'
 
 /**
- * `$VAR.*` values <-> the page's URL query (Specification_Dashboards.md §3.7:
+ * `$VAR.*` values <-> the page's URL query (Dashboards.md §3.7:
  * a shared link reproduces the same view). Only values the viewer
  * explicitly set are kept - an absent key means "use the variable's
  * default" (the server applies it); an empty `?status=` means "explicitly

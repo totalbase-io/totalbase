@@ -90,7 +90,7 @@ watch(() => draft.value && {
   workflowsTree.data.value = list.map(w => w.id === status.id ? { ...w, ...status } : w)
 }, { immediate: true })
 
-// Versions (useWorkflowVersions - Specification.md §13, shared with Dashboards and DataViews): selecting a version
+// Versions (useWorkflowVersions - Foundations.md §13, shared with Dashboards and DataViews): selecting a version
 // puts the canvas in read-only preview mode - `displayedDefinition` is what every read site (startNode,
 // operationById, connectionTarget, etc.) renders from. Only the write paths (addStep, removeOperation, save,
 // onTriggerSave, onOperationSave) care which one is active, and they all guard on `previewVersion` being non-null
@@ -217,7 +217,7 @@ function defaultStepKey(type: string): string {
 // a step now always happens in the context of one specific (source,
 // output) slot, so the new connection is unambiguous - no auto-assigning
 // the "first free rotation slot" the way drag-to-connect had to.
-// A new step's own `parent` (Specification_Workflows.md §3.4's body ownership, generalized to
+// A new step's own `parent` (Workflows.md §3.4's body ownership, generalized to
 // every loop-shaped operation - engine.ts's `runLoopOperation()`): a loop
 // node's own body-entry output ("Item" for For each, "Batch" for Process
 // in batches) starts a brand new body scope owned by that node; every
@@ -230,7 +230,7 @@ function scopeForNewStep(source: DraftNode | undefined, output: string): string 
   return source?.parent
 }
 
-// Specification_Workflows.md §3.6: the editor refuses what the server would.
+// Workflows.md §3.6: the editor refuses what the server would.
 const operationLimitReached = computed(() => (draft.value?.definition.operations.length ?? 0) >= WORKFLOW_DEFINITION_LIMITS.maxOperations)
 function addStep(source: string, output: string, type: string) {
   if (previewVersion.value || !draft.value || operationLimitReached.value) return
@@ -263,7 +263,7 @@ function removeOperation(id: string) {
 // shape itself, so it works the same whether the fan-out is a Condition's
 // true/false or a plain node's error branch. `visited` guards against a
 // connection loop ever turning this into an infinite walk, even though the
-// cardinality rule (Specification_Workflows.md §3.4) shouldn't allow one to exist.
+// cardinality rule (Workflows.md §3.4) shouldn't allow one to exist.
 function descendants(id: string): string[] {
   const connections = displayedDefinition.value?.connections ?? []
   const visited = new Set<string>()
@@ -370,7 +370,7 @@ async function publish(note?: string) {
     const { data } = await api.post<{ liveVersion: number | null }>(`/workflows/${route.params.id}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
     await refresh()
     await refreshVersions()
-    // A draft equal to the live version publishes nothing - the server answers it as is (Specification.md §13.4).
+    // A draft equal to the live version publishes nothing - the server answers it as is (Foundations.md §13.4).
     toast.add(data.liveVersion === previous
       ? { title: t('workflows.editor.nothingToPublish'), description: t('workflows.editor.alreadyLive', { version: previous }), color: 'neutral' }
       : { title: t('workflows.editor.published'), color: 'success' })
@@ -383,7 +383,7 @@ async function publish(note?: string) {
 
 // Enabled or not is set in Settings › General (§16.6); here the header only says when it is not.
 
-// Saved-but-unpublished (server, Specification.md §13.5) OR edited-but-not-even-saved (client).
+// Saved-but-unpublished (server, Foundations.md §13.5) OR edited-but-not-even-saved (client).
 const hasUnpublishedChanges = computed(() => Boolean(draft.value?.workflow.hasUnpublishedChanges) || hasUnsavedChanges.value)
 // "Called by" badge (workflowsAdmin.listCallers()'s own doc comment) -
 // other workflows with an execute-workflow step targeting this one.
@@ -420,7 +420,7 @@ const headerActions = computed<HeaderAction[]>(() => {
       children: callers.value.map(c => ({ label: c.name, description: c.live ? t('workflows.editor.callerLive') : t('workflows.editor.callerDraftOnly'), onSelect: () => navigateTo(`/workflows/${c.id}`) }))
     })
   }
-  // One Run with its two modes (Specification_Workflows.md §16.2): the draft as a test, or the live version.
+  // One Run with its two modes (Workflows.md §16): the draft as a test, or the live version.
   if (!previewVersion.value) {
     actions.push({
       label: t('workflows.editor.run'),
@@ -439,7 +439,7 @@ const headerActions = computed<HeaderAction[]>(() => {
   }
   return actions
 })
-// Test run / Run (useWorkflowRun, Specification_Workflows.md §11) - one modal, its mode set by the action.
+// Test run / Run (useWorkflowRun, Workflows.md §11) - one modal, its mode set by the action.
 const { runModalOpen, runModalMode, openRunModal, manualRunBlocked, liveRunScheduled, runModalOperations, flushDraft, openRunInLogs } = useWorkflowRun({
   workflowId: () => String(route.params.id),
   draft,
@@ -506,7 +506,7 @@ async function onOperationSave(payload: { key: string, configuration: AnyOperati
             @retry="autosave.retry()"
           />
         </template>
-        <!-- The other screen (Specification_Admin_UI.md §3.7), then the state, versions and Publish. -->
+        <!-- The other screen (Admin_UI.md §3.7), then the state, versions and Publish. -->
         <UButton
           v-if="!previewVersion"
           icon="i-lucide-settings"

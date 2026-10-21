@@ -1,7 +1,7 @@
 /**
  * Autosave for the pillar editors (Dashboards, Workflows, DataViews):
  * every edit goes into the draft on its own - the draft is never what users
- * see, and Publish is the one deliberate step (Specification.md §13).
+ * see, and Publish is the one deliberate step (Foundations.md §13).
  *
  * - `schedule()` saves after `delay` ms of quiet (typing, dragging);
  * - `track(promise)` reports an immediate save the editor already made

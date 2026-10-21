@@ -1,9 +1,10 @@
 import type { Page } from '@playwright/test'
 import { addDashboardWidget, adminSession, createDashboard, deleteDashboardsNamed, expect, publishDashboard, resetSchema, test, type DashboardRef } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
  * A dashboard's variables bar, as a report's filters are used
- * (Specification_Dashboards.md §3): a date range from
+ * (Dashboards.md §3): a date range from
  * its presets, a list from static values or from a query, several picked at
  * once, free text, a number - each bound into the widgets' SQL, the values
  * mirrored in the URL (a shared link shows the same), and only the widgets
@@ -106,7 +107,7 @@ test('the values live in the URL - a shared link shows the same', async ({ page,
   await expect(page).toHaveURL(/estado=ANULADO/)
   const shared = page.url()
 
-  const other = await browser.newContext({ baseURL: 'http://localhost:3050', storageState: await page.context().storageState() })
+  const other = await browser.newContext({ baseURL: BASE_URL, storageState: await page.context().storageState() })
   const second = await other.newPage()
   await second.goto(shared)
   // A fresh browser context loads the dev server's modules cold.

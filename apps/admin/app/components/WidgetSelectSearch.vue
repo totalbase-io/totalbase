@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A Select menu's search window (Specification_DataViews.md §9.8, `searchWindow`): its Resource as a table - the
+ * A Select menu's search window (DataViews.md §9.8, `searchWindow`): its Resource as a table - the
  * Resource's fields as columns, searched and paged on the server (WidgetTable) - in a sidebar or a modal, full screen
  * on a phone. One row is picked: a click, or ↑ ↓ and Enter from the search box; Esc closes.
  */

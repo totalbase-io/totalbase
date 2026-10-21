@@ -5,7 +5,7 @@ import { columnValueKind, type ForeignKeyTarget } from "./widget-inference.js";
  * The widgets that can edit a column - every catalog widget whose `accepts`
  * lists the column's value kind, in catalog order. Adding a widget to
  * WIDGET_CATALOG with an `accepts` is all it takes to offer it here
- * (Specification_DataViews.md §14.3).
+ * (DataViews.md §14.3).
  */
 export function compatibleWidgets(dataType: string, foreignKey: ForeignKeyTarget | null): WidgetName[] {
   const kind = columnValueKind(dataType, foreignKey);

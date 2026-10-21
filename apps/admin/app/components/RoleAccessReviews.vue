@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A role's Access reviews tab (Specification_Security.md §1.8): the
+ * A role's Access reviews tab (Security.md §1.8): the
  * attestations that someone looked at who holds it, newest first, and
  * "Record review". PostgreSQL fills in the reviewer and the members at
  * that moment; a review is never edited. `reminder`: the Administrators

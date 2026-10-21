@@ -17,7 +17,7 @@ describe("Admin OpenAPI matches real responses: catalog and schema", () => {
   let viewId: string;
   let functionId: string;
 
-  /** Sends `data` as the request body's `{ data }` (Specification_Data_API.md §2.5); no `data`, no body. */
+  /** Sends `data` as the request body's `{ data }` (Data_API.md §2.5); no `data`, no body. */
   const send = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, data?: unknown) => {
     const headers = { authorization: `Bearer ${contract.adminToken}` };
     return data === undefined ? contract.app.inject({ method, url, headers }) : contract.app.inject({ method, url, headers, payload: { data } });

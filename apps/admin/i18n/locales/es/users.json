@@ -511,6 +511,17 @@
         "title": "Datos adicionales",
         "saveError": "No se guardaron algunos datos adicionales - mira los campos",
         "notSet": "Se creó el usuario, pero no sus datos adicionales"
+      },
+      "mfa": {
+        "label": "Verificación en dos pasos",
+        "on": "Activada",
+        "off": "Desactivada",
+        "reset": "Restablecer la verificación en dos pasos",
+        "resetTitle": "Restablecer la verificación en dos pasos",
+        "resetDescription": "Se quitan la app de autenticación y los códigos de recuperación de {name}, por ejemplo si perdió el teléfono. Sus sesiones siguen; vuelve a configurarla (en su próximo inicio de sesión, si la instancia la exige).",
+        "resetButton": "Restablecer",
+        "resetDone": "Verificación en dos pasos restablecida",
+        "resetError": "No se pudo restablecer la verificación en dos pasos."
       }
     },
     "userCreate": {

@@ -1,5 +1,5 @@
 /**
- * What stops a DataView or a dashboard from working, and for whom (Specification_DataViews.md §18) - the server's
+ * What stops a DataView or a dashboard from working, and for whom (DataViews.md §18) - the server's
  * one check, read by the header's warnings and the publish dialog. `refresh` after a change that may fix one.
  */
 export interface DiagnosisIssue {

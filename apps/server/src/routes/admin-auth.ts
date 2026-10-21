@@ -7,6 +7,23 @@ import { COMPANIONS, delegatedModuleActions } from "../delegated-modules.js";
 import { ADMIN_SCHEMAS, adminDoc, object, ok, ref } from "../openapi-admin-docs.js";
 import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
 import { effectiveDisplayPreferences } from "../display-preferences.js";
+import { auditMfaChallenge, recordSecondStep, recordSignInFailure } from "./api-auth.js";
+import type { SignInAdmission, User } from "@totalbase/auth";
+
+/** The portal's admission: admin or app access, checked before a session or an MFA challenge exists. */
+function portalAdmission(context: AppContext): SignInAdmission {
+  return async (userId) => {
+    const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
+    return portalAccessOf(await context.roles.effectiveAccess(roleIds)) ? null : "no_portal_access";
+  };
+}
+
+/** What the portal's sign-in returns about the user - `access` is a routing hint, re-checked on every request. */
+async function adminProfile(context: AppContext, user: User) {
+  const roleIds = await context.roleAssignments.listEffectiveRolesForUser(user.id);
+  const access = portalAccessOf(await context.roles.effectiveAccess(roleIds));
+  return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, active: user.active, access };
+}
 
 /**
  * Control Plane authentication. Since admins and users became one identity, "logging in as
@@ -41,31 +58,51 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         password: request.body.password,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
-      }, (reason, details) => {
-        // Only the audit log learns why - the caller gets the same 401.
-        request.auditMetadata = {
-          ...request.auditMetadata,
-          reason,
-          ...(details?.lockedNow && { locked_now: true }),
-          ...(details?.userId && { user_id: details.userId }),
-        };
-      });
-
-      const roleIds = await context.roleAssignments.listEffectiveRolesForUser(user.id);
-      const access = portalAccessOf(await context.roles.effectiveAccess(roleIds));
+        surface: "PORTAL",
+        admit: portalAdmission(context),
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: user.id };
-      if (!access) {
-        request.auditMetadata = { ...request.auditMetadata, reason: "no_portal_access" };
-        await context.auth.sessions.revokeByToken(token);
-        throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid email or password.", { httpStatus: 401 });
-      }
+      return { data: { token, admin: await adminProfile(context, user) } };
+    },
+  );
 
-      return {
-        data: {
-          token,
-          admin: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, active: user.active, access },
+  // The portal's second step (Security.md §2.17) - the same as /api/auth/mfa/verify, answered like the
+  // portal's sign-in; an enrollment challenge is started with /api/auth/mfa/enroll.
+  app.post<{ Body: { challenge?: unknown; code?: unknown; recoveryCode?: unknown } }>(
+    "/admin/api/auth/mfa/verify",
+    {
+      config: {
+        public: true,
+        openapi: {
+          summary: "Finish signing in to the admin with a two-factor code",
+          description:
+            "After `403 MFA_REQUIRED` or `MFA_ENROLLMENT_REQUIRED` from `POST /admin/api/auth/login`: the challenge and the app's code " +
+            "(or a recovery code). `recoveryCodes` only when this step finished an enrollment - shown once. 401 INVALID_MFA_CODE, " +
+            "401 INVALID_MFA_CHALLENGE.",
+          tags: ["auth"],
+          access: "public",
+          requestBody: {
+            schema: object({ challenge: { type: "string" }, code: { type: "string" }, recoveryCode: { type: "string" } }, ["challenge"]),
+          },
+          response: ok(object({ token: { type: "string" }, admin: ref("AdminProfile"), recoveryCodes: { type: ["array", "null"], items: { type: "string" } } })),
+          schemas: ADMIN_SCHEMAS,
         },
-      };
+      },
+    },
+    async (request) => {
+      const result = await context.auth.completeMfaSignIn({
+        challenge: request.body?.challenge,
+        code: request.body?.code,
+        recoveryCode: request.body?.recoveryCode,
+        surface: "PORTAL",
+        admit: portalAdmission(context),
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
+      }, recordSignInFailure(request));
+      request.auditPrincipal = { type: "USER", id: result.user.id };
+      if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
+      if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
+      return { data: { token: result.token, admin: await adminProfile(context, result.user), recoveryCodes: result.recoveryCodes } };
     },
   );
 
@@ -93,7 +130,7 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
               dateFormat: { type: "string", description: "date-fns pattern; empty = the raw value." },
               timeFormat: { type: "string" },
               datetimeFormat: { type: "string" },
-              language: { type: "string", description: "The UI's language: the user's, else the instance's (Specification_Admin_UI.md §14)." },
+              language: { type: "string", description: "The UI's language: the user's, else the instance's (Admin_UI.md §14)." },
             }),
             modules: { type: "array", items: { type: "string", enum: ["users", "roles", "files", "templates", "logs"] }, description: "Delegated modules this user's rail shows." },
             moduleActions: {
@@ -123,9 +160,9 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         environment: context.nodeEnv,
         publicUrl: await context.auth.mailer.publicUrl(),
         display: await effectiveDisplayPreferences(context, request.admin!.id),
-        // The delegated modules this user's rail shows, and what they may do in each (Specification_Security.md §9.2).
+        // The delegated modules this user's rail shows, and what they may do in each (Security.md §9.2).
         // assignableRoles: for a non-administrator who may assign roles, the
-        // ones the guardrails let them (Specification_Security.md §9.4) - so a screen offers only those.
+        // ones the guardrails let them (Security.md §9.4) - so a screen offers only those.
         ...(await (async () => {
           const roleIds = await context.roleAssignments.listEffectiveRolesForUser(request.admin!.id);
           const moduleActions = await delegatedModuleActions(context, roleIds);

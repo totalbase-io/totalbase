@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPivot, compareDimension, pivotRowLabels, type PivotSpec } from './dashboard-pivot'
 
-// Specification_Dashboards.md §5.17 (D17): the rows come aggregated by PostgreSQL - GROUPING SETS with __grouping
+// Dashboards.md §5.17 (D17): the rows come aggregated by PostgreSQL - GROUPING SETS with __grouping
 // (a bit per dimension, the leftmost the highest); the screen only places them.
 describe('pivot placement', () => {
   const order: PivotSpec['order'] = column => (column === 'month' ? { kind: 'time' } : { kind: 'text' })

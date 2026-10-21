@@ -12,10 +12,11 @@ export interface RetentionResult {
   outboxEvents: number;
   executions: number;
   tokens: number;
+  challenges: number;
   derivatives: { expired: number; orphanedFiles: number };
 }
 
-type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "idempotency" | "filesTransform" | "logger">;
+type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "idempotency" | "filesTransform" | "logger" | "auth">;
 
 /**
  * The hourly retention job (index.ts): every purge whose window is a
@@ -31,11 +32,12 @@ type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "id
  *   async_executions.retention_days;
  * - ended personal access tokens (revoked or expired) older than
  *   api_keys.purge_after_days;
+ * - MFA sign-in challenges used or expired a day ago (Security.md §2.17);
  * - image derivatives older than files.transforms.cache_ttl_seconds, and
  *   those of deleted files.
  */
 export async function runRetention(context: RetentionContext): Promise<RetentionResult> {
-  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, derivatives: { expired: 0, orphanedFiles: 0 } };
+  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, derivatives: { expired: 0, orphanedFiles: 0 } };
   const { logger } = context;
 
   try {
@@ -91,6 +93,12 @@ export async function runRetention(context: RetentionContext): Promise<Retention
   }
 
   try {
+    result.challenges = await context.auth.mfa.purgeChallenges();
+  } catch (error) {
+    logger.error({ error }, "MFA challenges purge failed");
+  }
+
+  try {
     result.derivatives = await context.filesTransform.purgeDerivatives(context.database);
     if (result.derivatives.expired + result.derivatives.orphanedFiles > 0) logger.info(result.derivatives, "image derivatives purged");
   } catch (error) {
@@ -105,7 +113,7 @@ export async function runRetention(context: RetentionContext): Promise<Retention
  * for PENDING events: PROCESSING events whose lease expired (their
  * process stopped mid-dispatch) become FAILED attempts, then FAILED events
  * with attempts left whose backoff has elapsed go back to PENDING
- * (outbox.max_attempts, outbox.retry_delay_seconds - Specification_Data_API.md §13.3).
+ * (outbox.max_attempts, outbox.retry_delay_seconds - Data_API.md §13.3).
  */
 export async function requeueFailedOutbox(context: Pick<AppContext, "database" | "settings">): Promise<string[]> {
   const [maxAttempts, retryDelaySeconds] = await Promise.all([

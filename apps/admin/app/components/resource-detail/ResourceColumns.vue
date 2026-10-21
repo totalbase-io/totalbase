@@ -11,7 +11,7 @@ const props = defineProps<{
   /** A column whose presentation opens once the columns load - a designer's "Edit in Database" link. */
   openPresentation?: string
 }>()
-/** The relation's detail once loaded - its page reads `owner`/`canAlter` from it (Specification_Administration.md §3.15) without a second request. */
+/** The relation's detail once loaded - its page reads `owner`/`canAlter` from it (Administration.md §3.15) without a second request. */
 const emit = defineEmits<{ loaded: [detail: RelationDetail] }>()
 
 const api = useAdminApi()
@@ -46,7 +46,7 @@ function refreshAll() {
   void refreshBroken()
 }
 
-// --- Default order (Specification.md §11.7): the same control as a DataView's Columns, saved at once - the Data API
+// --- Default order (Foundations.md §11.7): the same control as a DataView's Columns, saved at once - the Data API
 // without order_by and every new DataView start from it. ---
 interface SortEntry { column: string, direction: 'asc' | 'desc' }
 const sortEntries = ref<SortEntry[]>([...props.resource.defaultSort])
@@ -90,7 +90,7 @@ function iconForColumn(columnName: string): string {
 }
 
 // What still names a column of this table that is gone - its DataViews' layouts and Filter, dashboard
-// widgets whose query names it and PostgreSQL refuses (Specification_DataViews.md §4.8). Reread with the columns.
+// widgets whose query names it and PostgreSQL refuses (DataViews.md §4.8). Reread with the columns.
 const { data: broken, refresh: refreshBroken } = useAsyncData(
   () => `resource-broken-${props.resource.id}`,
   () => api.get<BrokenReferences>(`/catalog/broken-references?resource=${props.resource.id}`).then(r => r.data),
@@ -105,7 +105,7 @@ function dataviewFixPath(reference: BrokenDataViewReference): string {
 
 const isAddOpen = ref(false)
 
-// --- A column's presentation (Specification_DataViews.md §15):
+// --- A column's presentation (DataViews.md §15):
 // how it reads in every view that shows it. ---
 const editing = ref<CatalogColumn | null>(null)
 const presentationOpen = ref(false)
@@ -121,7 +121,7 @@ function kindOf(column: CatalogColumn) {
   const relation = detail.value?.relations.find(r => r.sourceColumn === column.name)
   return columnValueKind(column.dataType, relation ? { targetSchema: relation.targetSchema, targetTable: relation.targetTable } : null)
 }
-/** After a change: the published DataViews it reaches (Specification_DataViews.md §15), to publish or leave. */
+/** After a change: the published DataViews it reaches (DataViews.md §15), to publish or leave. */
 const affected = ref<{ id: string, name: string, slug: string, liveVersion: number, otherChanges: boolean }[]>([])
 const affectedOpen = ref(false)
 async function presentationSaved() {

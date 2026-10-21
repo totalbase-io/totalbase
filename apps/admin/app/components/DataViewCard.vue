@@ -44,7 +44,7 @@ const props = defineProps<{
   imagePosition?: 'top' | 'center' | null
   /** Its size: normal; compact (a one-line description); tiny - the image alone, its title and description in a tooltip. */
   density?: 'normal' | 'compact' | 'tiny'
-  /** A row condition that holds for it (Specification_DataViews.md §15.7): a colored edge, dimmed. */
+  /** A row condition that holds for it (DataViews.md §15.7): a colored edge, dimmed. */
   mark?: CardMark | null
   /** The record's "⋮" (utils/record-menu.ts) - none when empty. */
   menu: DropdownMenuItem[][]

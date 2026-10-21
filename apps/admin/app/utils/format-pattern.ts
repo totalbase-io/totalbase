@@ -15,7 +15,7 @@ import { clockOptions } from '~/utils/datetime-local'
  *
  * - Numbers: parsed into a small options object fed straight to
  *   `Intl.NumberFormat` - grouping/decimal separators come from the
- *   UI LANGUAGE's locale (Specification_Admin_UI.md §14, `uiIntlLocale`
+ *   UI LANGUAGE's locale (Admin_UI.md §14, `uiIntlLocale`
  *   below), never hardcoded here, so `"#,##0.00"` reads "1,234.57" in
  *   English and "1.234,57" in Spanish automatically, exactly matching
  *   Excel's own locale-aware behavior.
@@ -49,7 +49,7 @@ import { clockOptions } from '~/utils/datetime-local'
  */
 
 /**
- * The UI language's locale for `Intl` (Specification_Admin_UI.md §14 - never
+ * The UI language's locale for `Intl` (Admin_UI.md §14 - never
  * the browser's), read at call time from the Nuxt app's i18n. Undefined (the
  * runtime's own) where there is no Nuxt app, as in a unit test.
  */

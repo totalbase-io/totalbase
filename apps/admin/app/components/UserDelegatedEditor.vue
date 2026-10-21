@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * A user's page for a delegated user (pages/users/[id].vue;
- * Specification_Security.md §9.3, §9.4): name and status through the
+ * Security.md §9.3, §9.4): name and status through the
  * Data API, the roles they may assign through users_roles, and
  * invitation / password reset emails through /app/api/users. The server
  * decides every write (an administrator's account is never theirs to

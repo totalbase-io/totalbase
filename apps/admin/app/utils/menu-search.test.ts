@@ -6,7 +6,7 @@ const item = (name: string, menuLabel: string | null = null, description: string
   ({ kind: 'DATAVIEW', id: name, name, slug: name, menuLabel, description, icon: null, color: null, viewType: 'TABLE' })
 const group = (name: string, children: MenuNode[]): MenuNode => ({ kind: 'GROUP', id: name, name, icon: null, iconOpen: null, openState: 'DEFAULT', children })
 
-// The App menu's search box (Specification_Security.md §8.2).
+// The App menu's search box (Security.md §8.2).
 describe('menu search', () => {
   const menu = [
     group('Sucursales', [item('Sucursales'), item('Mapa de sucursales', 'Mapa'), item('Sucursales habilitadas')]),

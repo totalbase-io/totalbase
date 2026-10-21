@@ -8,7 +8,7 @@ import { setupTestApp } from "../test-support.js";
 const PREFIX = "delete-versions";
 
 /**
- * Delete old versions (Specification.md §13.4): every version before N goes,
+ * Delete old versions (Foundations.md §13.4): every version before N goes,
  * never the live one; a workflow version with runs is kept; audited.
  */
 describe("DELETE /admin/api/<pillar>/:id/versions?before=N", () => {

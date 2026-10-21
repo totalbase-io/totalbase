@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The reason a table's, view's or function's structure can't be edited
- * here (Specification_Administration.md §3.15): the configured PostgreSQL
+ * here (Administration.md §3.15): the configured PostgreSQL
  * role neither owns it nor belongs to its owner role. Editing controls are
  * disabled beside it; PostgreSQL still decides every statement.
  */

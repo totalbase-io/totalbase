@@ -11,7 +11,7 @@ import { getField, withLiveColumnFacts } from "./dataviews-fields.js";
 /**
  * Reconciles a DataView's own `COLUMN` rows against the source
  * resource's REAL, current columns - `dataviews_fields` is only ever
- * auto-populated ONCE, at `create()` time (Specification_DataViews.md §3.2); nothing else keeps it
+ * auto-populated ONCE, at `create()` time (DataViews.md §3.2); nothing else keeps it
  * in sync as the table changes afterward (the chat's own "schema
  * drift" bug report: add a column to the table after the DataView
  * exists, and it never shows up anywhere in the Design form - not the
@@ -271,7 +271,7 @@ export function lastAttnum(detail: RelationDetail): number {
  * value displays, JSON, a DEFAULT.
  */
 export function newColumnConfig(column: RelationDetail["columns"][number], seededConfig?: Record<string, unknown>): Record<string, unknown> {
-  // Its presentation and what its type says are read live, never copied (Specification_DataViews.md §15).
+  // Its presentation and what its type says are read live, never copied (DataViews.md §15).
   const config: Record<string, unknown> = seededConfig ? withoutPresentation(seededConfig) : {};
   if (!column.nullable) config.required = true;
   if (column.isIdentity || column.isGenerated) config.disabled = true;
@@ -285,7 +285,7 @@ export function newColumnConfig(column: RelationDetail["columns"][number], seede
  * longer edits it: its type's default then.
  */
 /**
- * A new field's widget: the column input catalog's (Specification_DataViews.md §16.1) - the
+ * A new field's widget: the column input catalog's (DataViews.md §16.1) - the
  * column's chosen input when it still edits the column, else the rule's by its type,
  * foreign key and CHECKs. The one rule a form field follows too (`columnFormInput`).
  */

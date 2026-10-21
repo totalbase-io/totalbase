@@ -199,7 +199,11 @@
       "UPDATE": "modificar",
       "DELETE": "eliminar",
       "EXECUTE": "ejecutar"
-    }
+    },
+    "BACKUP_ALREADY_QUEUED": "Ya hay un backup en cola o en ejecución - espera a que termine.",
+    "BACKUP_RUNNING": "El backup todavía no terminó.",
+    "BACKUP_NOT_FOUND": "El backup o su archivo ya no está.",
+    "BACKUPS_DISABLED": "Los backups están apagados - actívalos en Settings › PostgreSQL › Backups."
   },
   "account": {
     "preferences": {
@@ -284,6 +288,32 @@
     "activity": {
       "intro": "Lo que hiciste a través de TotalBase, según el registro de auditoría.",
       "empty": "Aún no hay actividad"
+    },
+    "mfa": {
+      "label": "Verificación en dos pasos",
+      "onSince": "Activada desde {date}",
+      "off": "Desactivada",
+      "offRequired": "Desactivada - esta instancia la exige; se te pedirá configurarla en tu próximo inicio de sesión",
+      "setUp": "Configurar",
+      "newCodes": "Nuevos códigos de recuperación",
+      "turnOff": "Desactivar",
+      "codesLeft": "No quedan códigos de recuperación | Queda 1 código de recuperación | Quedan {n} códigos de recuperación",
+      "required": "Esta instancia la exige: no se puede desactivar.",
+      "setupTitle": "Configurar la verificación en dos pasos",
+      "setupDescription": "El inicio de sesión también pedirá un código de una app de autenticación: Google Authenticator, Microsoft Authenticator, 1Password, Authy u otra.",
+      "passwordDescription": "Para confirmar que eres tú.",
+      "codeDescription": "Los 6 dígitos que muestra la app para esta cuenta, para comprobar que quedó configurada.",
+      "turnOn": "Activar",
+      "startError": "No se pudo empezar a configurar la verificación en dos pasos.",
+      "confirmError": "No se pudo activar la verificación en dos pasos.",
+      "disableTitle": "Desactivar la verificación en dos pasos",
+      "disableDescription": "El inicio de sesión pedirá solo tu contraseña. Tus códigos de recuperación dejan de funcionar.",
+      "codesTitle": "Nuevos códigos de recuperación",
+      "codesDescription": "Tus códigos de recuperación actuales dejan de funcionar y se muestran diez nuevos, una sola vez.",
+      "generate": "Generar",
+      "disabled": "La verificación en dos pasos está desactivada",
+      "disableError": "No se pudo desactivar la verificación en dos pasos.",
+      "codesError": "No se pudieron generar nuevos códigos de recuperación."
     }
   },
   "shell": {
@@ -335,6 +365,7 @@
         "connector": "Conector",
         "maintenance": "Mantenimiento",
         "emailSmtp": "SMTP",
+        "s3Storage": "Almacenamiento S3",
         "access": "Acceso",
         "authentication": "Autenticación",
         "tokens": "Tokens",
@@ -352,7 +383,9 @@
         "dashboards": "Dashboards",
         "maps": "Mapas",
         "appearance": "Apariencia",
-        "files": "Archivos"
+        "files": "Archivos",
+        "postgresql": "PostgreSQL",
+        "backups": "Backups"
       }
     },
     "userMenu": {
@@ -388,7 +421,8 @@
         "poolWaiting": "{n} solicitud esperando una conexión a la base de datos | {n} solicitudes esperando una conexión a la base de datos",
         "outboxBacklog": "{n} evento de datos esperando más de 5 minutos para procesarse | {n} eventos de datos esperando más de 5 minutos para procesarse",
         "tokensExpiring": "{n} token de API vence pronto | {n} tokens de API vencen pronto",
-        "failedSignIns": "{n} inicio de sesión fallido en las últimas 24 horas | {n} inicios de sesión fallidos en las últimas 24 horas"
+        "failedSignIns": "{n} inicio de sesión fallido en las últimas 24 horas | {n} inicios de sesión fallidos en las últimas 24 horas",
+        "backupFailed": "El último backup falló - mira por qué en Backups | El último backup falló - mira por qué en Backups"
       },
       "kpis": {
         "denied": "{n} denegadas",
@@ -467,7 +501,11 @@
         "oldest": "el más antiguo {age}",
         "masterKey": "Clave maestra",
         "masterKeyEnv": "TOTALBASE_MASTER_KEY (variable de entorno)",
-        "masterKeyFile": "Generada por TotalBase. Respalda este archivo aparte de la base: sin él no se pueden leer los secretos guardados."
+        "masterKeyFile": "Generada por TotalBase. Respalda este archivo aparte de la base: sin él no se pueden leer los secretos guardados.",
+        "backups": "Backups",
+        "backupsLast": "Último: {when}",
+        "backupsNone": "Ninguno completado todavía",
+        "backupsNext": "Próximo: {when}"
       }
     },
     "publishStatus": {
@@ -718,6 +756,32 @@
       "publicUrlHelp": "La dirección con la que se llega a esta instancia; los enlaces de los emails apuntan aquí.",
       "language": "Idioma",
       "submit": "Crear administrador"
+    },
+    "mfa": {
+      "title": "Verificación en dos pasos",
+      "description": "Ingresa el código de 6 dígitos que muestra tu app de autenticación para esta cuenta.",
+      "recoveryDescription": "Ingresa uno de los códigos de recuperación que guardaste al configurar la verificación en dos pasos. Cada uno sirve una vez.",
+      "enrollTitle": "Configura la verificación en dos pasos",
+      "enrollDescription": "Esta instancia exige un código de una app de autenticación para iniciar sesión: Google Authenticator, Microsoft Authenticator, 1Password, Authy u otra. Agrega esta cuenta a la tuya e ingresa el código que muestra.",
+      "code": "Código de verificación",
+      "recoveryCode": "Código de recuperación",
+      "verify": "Verificar",
+      "turnOnAndSignIn": "Activar e iniciar sesión",
+      "useRecovery": "Usar un código de recuperación",
+      "useApp": "Usar la app de autenticación",
+      "wrongCode": "Ese código no es válido. Ingresa el que muestra tu app ahora.",
+      "wrongRecoveryCode": "Ese código de recuperación no es válido o ya se usó.",
+      "expired": "Este inicio de sesión venció. Vuelve a empezar.",
+      "startAgain": "Iniciar sesión de nuevo",
+      "enrollError": "No se pudo empezar a configurar la app de autenticación.",
+      "continue": "Continuar",
+      "qrAlt": "Código QR para agregar esta cuenta a una app de autenticación",
+      "scan": "Escanea este código QR con tu app de autenticación.",
+      "typeSecret": "¿No puedes escanearlo? Ingresa esta clave en la app:",
+      "codesTitle": "Guarda tus códigos de recuperación",
+      "codesDescription": "Si pierdes el teléfono, cada uno de estos códigos te deja iniciar sesión una vez. No se volverán a mostrar: cópialos o descárgalos y guárdalos en un lugar seguro.",
+      "codesFileTitle": "{name} - códigos de recuperación de la verificación en dos pasos",
+      "download": "Descargar"
     }
   },
   "audit": {
@@ -811,7 +875,16 @@
       "userPasswordSet": "Estableció la contraseña de un usuario",
       "userRolesSet": "Cambió los roles de un usuario",
       "userSessionsRevoke": "Cerró todas las sesiones de un usuario",
-      "userUnlock": "Desbloqueó a un usuario"
+      "userUnlock": "Desbloqueó a un usuario",
+      "authMfaChallenge": "Pasó el paso de la contraseña (se pidió el código)",
+      "authMfaEnroll": "Empezó a configurar la verificación en dos pasos al iniciar sesión",
+      "authMfaVerify": "Inició sesión con un código de verificación (API)",
+      "authPortalMfaVerify": "Inició sesión en el portal con un código de verificación",
+      "accountMfaStart": "Empezó a configurar la verificación en dos pasos",
+      "accountMfaEnable": "Activó la verificación en dos pasos",
+      "accountMfaDisable": "Desactivó la verificación en dos pasos",
+      "accountMfaRecoveryCodes": "Generó nuevos códigos de recuperación",
+      "userMfaReset": "Restableció la verificación en dos pasos de un usuario"
     },
     "entities": {
       "user": "un usuario",

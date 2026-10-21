@@ -110,7 +110,7 @@ const deviceItems = computed(() => {
 
 const failuresLink = computed(() => ({
   path: '/logs',
-  query: { event: 'auth.login,auth.portal_login,auth.oauth_login', status: 'DENIED', range: days.value === 7 ? '7d' : days.value === 30 ? '30d' : 'all' }
+  query: { event: 'auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify', status: 'DENIED', range: days.value === 7 ? '7d' : days.value === 30 ? '30d' : 'all' }
 }))
 
 const recentColumns = computed(() => [

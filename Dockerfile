@@ -4,7 +4,7 @@
 # where it always does (apps/admin/.output/public, migrations/totalbase).
 #
 #   docker build -t totalbase:local .                     the server
-#   docker build -t totalbase-mcp:local --target mcp .    the MCP server (Specification_Administration.md §11)
+#   docker build -t totalbase-mcp:local --target mcp .    the MCP server (Administration.md §11)
 #
 # Debian slim, not Alpine: argon2, isolated-vm and sharp are native modules,
 # compiled here against glibc and loaded by the same base at runtime.
@@ -45,9 +45,22 @@ RUN cd packages/workflows && node -e "require('isolated-vm')" \
 
 # --- runtime: the server ------------------------------------------------------
 FROM node:${NODE_VERSION}-bookworm-slim AS server
+# PostgreSQL 18's client tools from PostgreSQL's own repository (PGDG) - pg_dump and pg_restore for the built-in
+# backups (Administration.md §12); 18 dumps and restores every supported server, 15 to 18. Its key is fetched over
+# HTTPS from postgresql.org, and curl leaves with the build.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && install -d /usr/share/postgresql-common/pgdg \
+  && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client-18 \
+  && apt-get purge -y curl && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production \
     TOTALBASE_HOST=0.0.0.0 \
-    TOTALBASE_PORT=3050
+    TOTALBASE_PORT=3050 \
+    TOTALBASE_PG_BIN=/usr/lib/postgresql/18/bin
 WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
@@ -59,7 +72,10 @@ COPY --from=build --chown=node:node /app/apps/admin/.output/public ./apps/admin/
 COPY --from=build --chown=node:node /app/migrations ./migrations
 # The data directory (TOTALBASE_DATA_DIR): uploaded files (files.storage_local_path) and a generated master key -
 # mount a volume here.
-RUN mkdir -p /var/lib/totalbase/files && chown -R node:node /var/lib/totalbase
+# Its backups (backups.local_path) go in /var/lib/totalbase/backups - better a volume on another disk.
+RUN mkdir -p /var/lib/totalbase/files /var/lib/totalbase/backups && chown -R node:node /var/lib/totalbase
+# The image's command line: `totalbase restore <archive>` (Administration.md §12.5).
+RUN printf '#!/bin/sh\nexec node /app/apps/server/dist/cli.js "$@"\n' > /usr/local/bin/totalbase && chmod 755 /usr/local/bin/totalbase
 USER node
 EXPOSE 3050
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \

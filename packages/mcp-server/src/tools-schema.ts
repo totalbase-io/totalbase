@@ -7,7 +7,7 @@ import { ADDITIVE, columnSchema, confirmFlag, DESTRUCTIVE, filterForStorage, fin
 
 /**
  * A table's structure and presentation, read and changed
- * (Specification_Administration.md §11.3, Specification_DataViews.md §15):
+ * (Administration.md §11.3, DataViews.md §15):
  * describe_table before a change, alter_table for an ordered batch of changes
  * applied all or none by TotalBase's schema management, and how a column and
  * a row show wherever TotalBase displays them.

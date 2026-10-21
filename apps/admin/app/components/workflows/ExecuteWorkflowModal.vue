@@ -8,7 +8,7 @@ import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vu
  *
  * Only MANUAL- or CRON-triggered workflows can be targeted (agreed with
  * the user) - a DATA_EVENT target expects a real captured mutation record
- * (Specification_Workflows.md §6.3), which doesn't exist here, and a WEBHOOK target's own
+ * (Workflows.md §6.3), which doesn't exist here, and a WEBHOOK target's own
  * `{query, body}`/access-mode/rate-limit contract is an HTTP-layer concern
  * this internal call has no use for (a workflow that wants both external
  * and internal reachability just uses MANUAL for that). The picker below

@@ -1,5 +1,5 @@
 /**
- * The columns a DataView's record form lets a viewer edit, as the form shows them (Specification_DataViews.md §5.15) -
+ * The columns a DataView's record form lets a viewer edit, as the form shows them (DataViews.md §5.15) -
  * what a bulk edit offers: its form fields bound to a column, in the form's order (row by row, into its containers),
  * titled as the form titles them - the field's own label, else its column's presentation, else the column's name
  * humanized. Not one hidden, read only or disabled, nor one PostgreSQL fills (shown only once the record exists).

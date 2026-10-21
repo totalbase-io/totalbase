@@ -7,7 +7,7 @@
  * grouping (workflows don't have DataView's viewType-style category), so
  * this is simpler: one flat searchable list.
  *
- * Creation lives in NewWorkflowModal.vue's three-step wizard (Specification_Workflows.md §16.1),
+ * Creation lives in NewWorkflowModal.vue's three-step wizard (Workflows.md §16),
  * opened from here (not the /workflows landing page anymore) since the list
  * itself moved into the sidebar - see pages/workflows/index.vue.
  *

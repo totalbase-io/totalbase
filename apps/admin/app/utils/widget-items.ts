@@ -1,6 +1,6 @@
 /**
  * A Tabs', an Accordion's or a Dropdown menu's items (`WidgetItem`,
- * Specification_DataViews.md §9.2) as Nuxt UI takes them.
+ * DataViews.md §9.2) as Nuxt UI takes them.
  * Live, each item's formulas over the page - its label, Disabled, Visible
  * (a hidden one left out) - and a menu item's Code function as its
  * `onSelect`, run with `{ item: { value, label } }`. On the canvas

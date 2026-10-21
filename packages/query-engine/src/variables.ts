@@ -4,12 +4,12 @@ import { isPeriod, PERIODS, type Period, type PeriodBound } from "@totalbase/sha
 /** The period names live in @totalbase/shared (the browser offers them too); this package compiles them. */
 export { isPeriod, PERIODS, type Period, type PeriodBound };
 
-/** See Specification_Data_API.md §3.7. */
+/** See Data_API.md §3.7. */
 export type IntervalUnit = "s" | "m" | "h" | "d" | "w" | "y";
 
 export type QueryVariable =
   | { kind: "user"; field: string }
-  /** `$ROW.<column>` - another column of the same row (Specification_Data_API.md §3.7): compared column to column. */
+  /** `$ROW.<column>` - another column of the same row (Data_API.md §3.7): compared column to column. */
   | { kind: "row"; column: string }
   | { kind: "currentTimestamp" }
   | { kind: "currentDate" }

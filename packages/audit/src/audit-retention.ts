@@ -7,7 +7,7 @@ const PURGE_BATCH_SIZE = 5_000;
  * Deletes audit entries older than `retentionDays` (audit.retention_days)
  * by `created_at`, on the log's created_at index - the server's hourly
  * retention job, never inside a business transaction
- * (Specification_Security.md §11.2). 0 keeps every entry: nothing is
+ * (Security.md §11.2). 0 keeps every entry: nothing is
  * deleted. Returns how many were.
  */
 export async function purgeAuditLogs(client: Queryable, retentionDays: number): Promise<number> {

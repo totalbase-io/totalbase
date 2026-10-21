@@ -1,5 +1,5 @@
 /**
- * A SETTINGS DataView's columns (`view_config.settings_layout`, Specification_DataViews.md §5.12) and the
+ * A SETTINGS DataView's columns (`view_config.settings_layout`, DataViews.md §5.12) and the
  * names a parameter table's columns usually go by - so the admin's wizard and the MCP can tell a settings
  * table and propose its layout. English and Spanish names.
  */

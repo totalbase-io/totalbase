@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Actions and the wizard's Actions step (Specification_DataViews.md §3.6) - what a viewer can do: Allow on
+ * Settings > Actions and the wizard's Actions step (DataViews.md §3.6) - what a viewer can do: Allow on
  * top (Create, Edit, Delete - what the DataView lets its viewers do, never more than their permissions; it isn't a
  * permission and applies on publish), then the toolbar's buttons (search, saved views, activity, filter, import,
  * export, refresh). Import needs Allow › Create. The page or the wizard owns the values (each a `v-model`).

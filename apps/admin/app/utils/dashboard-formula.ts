@@ -1,5 +1,5 @@
 /**
- * A dashboard's formulas (Specification_Dashboards.md §5.11, D3): the pages'
+ * A dashboard's formulas (Dashboards.md §5.11, D3): the pages'
  * formula language (utils/formula-engine.ts) over a dashboard's own light
  * context - no page runtime, no Code, no record, no controls:
  *

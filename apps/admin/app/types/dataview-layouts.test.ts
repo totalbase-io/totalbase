@@ -4,7 +4,7 @@ import { DATAVIEW_FEATURES, DATAVIEW_TYPES, LIST_DATAVIEW_TYPES, isListCommonFea
 
 const column = (columnName: string, visible: boolean) => ({ id: columnName, kind: 'COLUMN', columnName, visible, widget: 'UInput', config: {} }) as unknown as DataViewField
 
-// Specification_DataViews.md §4: a hidden column is read, not shown - a layout may use it.
+// DataViews.md §4: a hidden column is read, not shown - a layout may use it.
 describe('layouts take the DataView\'s hidden columns', () => {
   it('keeps a Calendar\'s date column though the grid doesn\'t show it, and titles events by the first shown one', () => {
     const layout = resolveCalendarLayout({ calendar_layout: { dateColumn: 'starts_at' } }, [column('starts_at', false), column('title', true)])
@@ -22,7 +22,7 @@ describe('layouts take the DataView\'s hidden columns', () => {
   })
 })
 
-// The server accepts exactly these feature keys (@totalbase/tb-catalog, Specification_DataViews.md §5.1).
+// The server accepts exactly these feature keys (@totalbase/tb-catalog, DataViews.md §5.1).
 describe('feature catalog', () => {
   it('offers, per type, exactly the keys the server accepts', () => {
     for (const type of DATAVIEW_TYPES) {
@@ -31,7 +31,7 @@ describe('feature catalog', () => {
   })
 })
 
-// Specification_DataViews.md §5.13: a list's toolbar is common to its views; a view's own controls have their own keys.
+// DataViews.md §5.13: a list's toolbar is common to its views; a view's own controls have their own keys.
 describe('list views\' features', () => {
   it('shares the common toolbar between every list view', () => {
     const common = (type: typeof LIST_DATAVIEW_TYPES[number]) => (DATAVIEW_FEATURES[type] ?? []).filter(isListCommonFeature).map(f => f.key).sort()

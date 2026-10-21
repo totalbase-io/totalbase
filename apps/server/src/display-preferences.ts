@@ -16,7 +16,7 @@ export async function instanceDisplayDefaults(context: AppContext): Promise<Inst
 
 /**
  * What the portal formats dates with for this user: their own
- * preferences over the instance defaults (Specification_Security.md §4.2).
+ * preferences over the instance defaults (Security.md §4.2).
  * Served with GET /admin/api/auth/me.
  */
 export async function effectiveDisplayPreferences(context: AppContext, userId: string): Promise<DisplayPreferences> {
@@ -38,7 +38,7 @@ function timezoneNames(context: AppContext): Promise<Set<string>> {
 }
 
 /**
- * The zone a caller works in (Specification_Security.md §4.2): their
+ * The zone a caller works in (Security.md §4.2): their
  * profile's, else the instance's (Settings > General), else - neither set -
  * the browser's, sent as the `X-TotalBase-Timezone` header. The server's own
  * zone never counts. Undefined: none known, PostgreSQL's own applies.

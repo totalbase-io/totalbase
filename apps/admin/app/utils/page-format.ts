@@ -1,6 +1,6 @@
 /**
  * `dataview.format` - how a CUSTOM page's Code turns values into text
- * (Specification_DataViews.md §11.1), with the viewer's
+ * (DataViews.md §11.1), with the viewer's
  * settings: numbers and currencies in the UI language's locale, dates and
  * times in the viewer's patterns and time zone (My account, else Settings
  * > General) - the same engines the grid uses (format-pattern.ts), so a

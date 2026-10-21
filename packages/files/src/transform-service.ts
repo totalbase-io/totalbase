@@ -111,7 +111,7 @@ export class FilesTransformService {
 
   /**
    * The derivative cache's cleanup (the server's hourly retention job,
-   * Specification_Administration.md §10.8): removes every derivative older
+   * Administration.md §10.8): removes every derivative older
    * than files.transforms.cache_ttl_seconds - the next request for it
    * regenerates it - and the derivative folder of every file that no
    * longer exists. Storage I/O only, never inside a transaction; `database`

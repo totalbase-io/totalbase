@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The "Show in the App menu" switch of a DataView or a Dashboard - its
- * `scope` (Specification_Security.md §8.1): on is LISTED, off is
+ * `scope` (Security.md §8.1): on is LISTED, off is
  * EMBEDDED_ONLY - only mounted inside a DataView page (a Detail widget, a
  * `TDashboard` widget), never listed. The same field in the DataView settings
  * and in the Dashboard create/edit modals.

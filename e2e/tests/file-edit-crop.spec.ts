@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { decodeImage, deleteFile, login, quadrantsPng, uploadFile } from './helpers'
+import { BASE_URL, decodeImage, deleteFile, login, quadrantsPng, uploadFile } from './helpers'
 
 /**
  * Verifies the FileEditDrawer crop fix (see the chat): dragging a
@@ -66,7 +66,7 @@ async function fetchCroppedTopLeftPixel(page: import('@playwright/test').Page, t
   expect(crop.top + crop.height).toBeLessThanOrEqual(300)
 
   const contentResponse = await page.request.fetch(
-    `http://localhost:3050/api/totalbase/table/files/${fileId}?${params.toString()}`,
+    `${BASE_URL}/api/totalbase/table/files/${fileId}?${params.toString()}`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
   expect(contentResponse.ok()).toBeTruthy()

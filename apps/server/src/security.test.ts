@@ -35,7 +35,7 @@ async function registerTestResource(
 }
 
 /**
- * Regression suite for Specification.md §23's "Security"
+ * Regression suite for Foundations.md §23's "Security"
  * Definition of Done: SQL injection, permission bypass, secret leakage,
  * and hidden-resource tests. Every security defect this project has
  * found gets a permanent test here (AGENTS.md section 23). Runs
@@ -239,7 +239,7 @@ describe("Security regression suite", () => {
     });
   });
 
-  describe("Defensive request limits (Specification_Data_API.md §12)", () => {
+  describe("Defensive request limits (Data_API.md §12)", () => {
     it("rejects an oversized request body with REQUEST_BODY_TOO_LARGE", async () => {
       const res = await app.inject({
         method: "POST",

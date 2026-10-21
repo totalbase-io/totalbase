@@ -97,7 +97,7 @@ describe("TableSchemaService (integration)", () => {
     await schemaService.dropColumn("public", T1, "sku");
   });
 
-  // An order number, a computed amount and a CHECK's message each needed raw SQL or a second call (MCP_Demo_Findings.md F11, F12).
+  // An order number, a computed amount and a CHECK's message each needed raw SQL or a second call.
   it("creates identity and generated columns, and each inline constraint with its message, in one transaction", async () => {
     const T = "schema_pkg_test_lines";
     await database.query(`DROP TABLE IF EXISTS public.${T}`);

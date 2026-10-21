@@ -4,7 +4,7 @@ import { FIELD_SNAPSHOT_COLUMNS, FIELDS_ORDER, type AffectedDataView, type DataV
 
 /**
  * The column a foreign key shows when neither its DataView column nor its
- * table says (Specification_DataViews.md §4.4): one called
+ * table says (DataViews.md §4.4): one called
  * name/label/title/display_name, else the first text column, else the key.
  */
 export function defaultDisplayColumn(detail: RelationDetail, targetColumn: string): string {
@@ -23,7 +23,7 @@ export async function livePresentation(ctx: DataViewsContext, dataviewId: string
 }
 
 /**
- * The DataViews that show one column of a resource (Specification_DataViews.md §15) - what a change to its
+ * The DataViews that show one column of a resource (DataViews.md §15) - what a change to its
  * presentation reaches: a grid column or a form field on it, a related column pointing at it, or either over a
  * view's column that is it (`view_column_origins`). Drafts too: each shows it once published.
  */
@@ -72,7 +72,7 @@ export async function dataviewsShowingColumn(ctx: DataViewsContext, resourceId: 
 
 /**
  * The published DataViews a change to `resourceId`'s columns' presentation
- * reaches (Specification_DataViews.md §15): those whose
+ * reaches (DataViews.md §15): those whose
  * draft now inherits differently from that resource than their live
  * version froze. `otherChanges` - their draft differs in something else
  * too, so publishing them now would publish that as well. Never-published

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A column's look on a few real rows (Specification_DataViews.md §15.7): above its Styles and Conditions, the column's
+ * A column's look on a few real rows (DataViews.md §15.7): above its Styles and Conditions, the column's
  * first rows as a table shows them - its base style and, from the draft's conditions (sent as the Data API's `flags`,
  * so PostgreSQL decides), the one that holds for each. Read as the administrator, live as they edit.
  */

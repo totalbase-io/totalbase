@@ -8,7 +8,7 @@ import { adminToken as loginAdmin, cleanupTracked, setupTestApp, track, uniqueSu
 const SUFFIX = uniqueSuffix();
 
 /**
- * EXTERNALFRAME DataViews (Specification_DataViews.md,
+ * EXTERNALFRAME DataViews (DataViews.md,
  * "EXTERNALFRAME security"): created without a source, the URL validated
  * on create and update (https only, never the instance's own origin), and
  * opened in the App on object access alone - there is no source resource

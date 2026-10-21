@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Data, at the foot of Columns (Specification_DataViews.md §4.2): what a column the table gains later
+ * Settings > Data, at the foot of Columns (DataViews.md §4.2): what a column the table gains later
  * does - shown, hidden or left out. The page or the wizard owns the value (`v-model`).
  */
 import { COLUMN_SYNC_META, COLUMN_SYNC_SCOPE_NOTICE, dataviewMetaKey, type ColumnSync } from '~/types/dataview'

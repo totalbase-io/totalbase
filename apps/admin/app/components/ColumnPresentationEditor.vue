@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A column's presentation panel (Specification_DataViews.md §15), opened from wherever the column shows - a
+ * A column's presentation panel (DataViews.md §15), opened from wherever the column shows - a
  * DataView's Columns, a form field's inspector - over what the author was doing: the same panel as Database › a
  * table › Columns, loaded by itself from the resource and the column's name. After a save, the published DataViews it
  * reached, to publish or leave.

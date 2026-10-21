@@ -7,7 +7,7 @@ import { setupTestApp } from "./test-support.js";
 
 /**
  * Query strings beyond Node's default header limit
- * (Specification_Data_API.md §12.1): the real server, over a real socket -
+ * (Data_API.md §12.1): the real server, over a real socket -
  * `inject()` bypasses Node's HTTP parser, which is what rejects an
  * oversized request line with a raw 431 before any hook runs. The server
  * sets maxHeaderSize from api.max_query_string_bytes at startup, so a query

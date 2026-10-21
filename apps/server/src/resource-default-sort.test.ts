@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * A resource's default order (Specification.md §11.7, Specification_Data_API.md §3.6): a read without `order_by`
+ * A resource's default order (Foundations.md §11.7, Data_API.md §3.6): a read without `order_by`
  * comes in it, then by primary key; `order_by` still wins; a new DataView starts from it.
  */
 describe("resource default order", () => {

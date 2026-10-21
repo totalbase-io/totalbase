@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { apiRequest, login, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
- * The Files explorer's rename and move (Specification_Administration.md
+ * The Files explorer's rename and move (Administration.md
  * §10.12), driven through the real UI. The API only sets up the fixtures
  * (two folders, two text files) and re-reads what a flow saved; cleanup
  * deletes the files, then the folders, by id.
@@ -17,7 +18,7 @@ interface FileRow { id: string, name: string, extension: string, folder: string 
 const fixture: { folders: string[], files: string[] } = { folders: [], files: [] }
 
 async function uploadText(page: Page, token: string, name: string, folder: string): Promise<string> {
-  const response = await page.request.fetch('http://localhost:3050/api/totalbase/table/files', {
+  const response = await page.request.fetch(`${BASE_URL}/api/totalbase/table/files`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     multipart: { file: { name, mimeType: 'text/plain', buffer: Buffer.from(`content of ${name}`) }, folder }
@@ -38,7 +39,7 @@ async function openFolder(page: Page, name: string) {
 test.describe.configure({ mode: 'serial', timeout: 120_000 })
 
 test.beforeAll(async ({ browser }) => {
-  const page = await browser.newPage({ baseURL: 'http://localhost:3050' })
+  const page = await browser.newPage({ baseURL: BASE_URL })
   const token = await login(page)
   for (const name of [FOLDER_A, FOLDER_B]) {
     const folder = await apiRequest<{ id: string }>(page, token, 'POST', '/api/totalbase/table/folders', { data: { name } })
@@ -50,7 +51,7 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async ({ browser }) => {
-  const page = await browser.newPage({ baseURL: 'http://localhost:3050' })
+  const page = await browser.newPage({ baseURL: BASE_URL })
   const token = await login(page)
   for (const id of fixture.files) {
     await apiRequest(page, token, 'DELETE', `/api/totalbase/table/files/${id}`).catch(() => undefined)

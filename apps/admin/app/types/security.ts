@@ -31,6 +31,8 @@ export interface AdminUserListItem extends AdminUser {
   failedLoginCount: number
   /** The picture of the user's most recently used sign-in provider, if any. */
   providerAvatar: { url: string, provider: string } | null
+  /** Two-factor authentication is on (Security.md §2.17). */
+  mfaEnabled: boolean
 }
 
 // Kept in sync with @totalbase/shared's WORKFLOWS_SYSTEM_USER_EMAIL - not
@@ -120,7 +122,7 @@ export interface RoleSummary {
   createdAt: string
 }
 
-/** My account - GET /app/api/me (Specification_Security.md §4.1). */
+/** My account - GET /app/api/me (Security.md §4.1). */
 export interface MyAccount {
   id: string
   email: string
@@ -134,6 +136,16 @@ export interface MyAccount {
   passwordMinLength: number
   /** Which personal access tokens this account can hold. */
   tokens: { api: boolean, admin: boolean }
+  /** Two-factor authentication (Security.md §2.17). */
+  mfa: MfaStatus
+}
+
+/** GET /app/api/me's `mfa`: on or not, unused recovery codes, whether the instance requires it of this account. */
+export interface MfaStatus {
+  enabled: boolean
+  enabledAt: string | null
+  recoveryCodesLeft: number
+  required: boolean
 }
 
 /** A user's own display preferences (users.preferences) - a missing key = the instance default. */
@@ -141,7 +153,7 @@ export interface MyPreferences {
   timezone?: string
   dateFormat?: string
   timeFormat?: string
-  /** The UI's language (Specification_Admin_UI.md §14). */
+  /** The UI's language (Admin_UI.md §14). */
   language?: string
 }
 

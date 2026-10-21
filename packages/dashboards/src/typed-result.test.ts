@@ -25,7 +25,7 @@ describe("exactNumber", () => {
 });
 
 /**
- * A widget's result, typed (Specification_Dashboards.md §2.3, D1): each column's origin when PostgreSQL reports one -
+ * A widget's result, typed (Dashboards.md §2.3, D1): each column's origin when PostgreSQL reports one -
  * a column as is, aliased, through a subquery or from a view - its presentation, and numeric/bigint as numbers.
  */
 describe("a widget's typed result (integration)", () => {

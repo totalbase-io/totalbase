@@ -60,7 +60,7 @@ export function userVariableResolver(dataPrincipal: DataPrincipal) {
   };
 }
 
-/** OR-combines every ALLOW grant's where_clause (Specification_Security.md §6.5). undefined = unrestricted. */
+/** OR-combines every ALLOW grant's where_clause (Security.md §6.5). undefined = unrestricted. */
 export function buildRowFilter(permission: EffectivePermission, limits: Limits): FilterNode | undefined {
   const sources = permission.rowFilterSources;
   if (!sources || sources.length === 0) return undefined;
@@ -103,7 +103,7 @@ export async function resolvePermissionOrThrow(
   return permission;
 }
 
-/** Row filter check (Specification_Security.md §6.6 "authorize NEW") - checked first; a permission-scoped rejection outranks a business-rule one. */
+/** Row filter check (Security.md §6.6 "authorize NEW") - checked first; a permission-scoped rejection outranks a business-rule one. */
 export async function assertAuthorizedRow(row: Record<string, unknown>, action: ResourceAction): Promise<void> {
   if (row["__authorized"] === false) {
     throw new TotalBaseError(
@@ -143,7 +143,7 @@ export function stripInternal(row: Record<string, unknown>): Record<string, unkn
 
 /**
  * The columns whose values before an UPDATE compileUpdate returns: every one
- * (Specification_Security.md §11.4) - the audit records old and new of each
+ * (Security.md §11.4) - the audit records old and new of each
  * column the update changed, and the outbox event carries the row before it
  * for a DATA_EVENT Start. Exclusions and protected columns are dropped
  * later, from the audit entry only.
@@ -173,14 +173,14 @@ function primaryKeyOf(root: MutationDeps["root"], row: Record<string, unknown>):
   return Object.fromEntries(root.primaryKey.filter((field) => field in row).map((field) => [field, row[field]]));
 }
 
-/** Request-scoped metadata needed for audit_logs / outbox_events (Specification_Security.md §11.2, Specification_Data_API.md §13). */
+/** Request-scoped metadata needed for audit_logs / outbox_events (Security.md §11.2, Data_API.md §13). */
 export interface AuditRequestContext {
   requestId: string;
   ip?: string | undefined;
   userAgent?: string | undefined;
   source: string;
   /**
-   * Causal-ancestry chain for a workflow-sourced mutation (Specification_Workflows.md §6.3.4) -
+   * Causal-ancestry chain for a workflow-sourced mutation (Workflows.md §6.3.4) -
    * `undefined` for an ordinary Data API mutation (not workflow-sourced at
    * all), `null` for a workflow-sourced one whose own Create/Update/Delete
    * records step has `emitEvents` unset (the default - no downstream
@@ -194,7 +194,7 @@ export interface AuditRequestContext {
    */
   workflowAncestry?: string[] | null;
   /**
-   * A workflow step's correlation (Specification_Workflows.md §7.4) -
+   * A workflow step's correlation (Workflows.md §7.4) -
    * `workflow`, `workflowRun`, `workflowStep`, `workflowInitiator` - merged
    * into `logs.metadata`. Set by the workflow engine only.
    */
@@ -213,7 +213,7 @@ export interface MutationDeps {
 /**
  * Writes the audit_logs row and enqueues the matching outbox_event for one
  * successfully mutated row, using the SAME transaction client as the
- * mutation itself (Specification_Data_API.md §13.1: "business mutation + audit + outbox event
+ * mutation itself (Data_API.md §13.1: "business mutation + audit + outbox event
  * = same transaction").
  */
 function auditMetadata(deps: MutationDeps, action: AuditWriteAction): Record<string, unknown> | undefined {
@@ -228,7 +228,7 @@ function auditMetadata(deps: MutationDeps, action: AuditWriteAction): Record<str
 
 /**
  * The audit rows and outbox events one operation writes, flushed in two
- * statements at the end of its loop (Pre_Beta_Review 2.7) - a bulk CREATE's
+ * statements at the end of its loop - a bulk CREATE's
  * items, a PATCH's matched rows - instead of two round trips per row while
  * the locks are held. The resource's audit exclusions are read once per
  * batch, on the transaction's own client.
@@ -259,7 +259,7 @@ export async function queueAuditAndOutbox(
   // already stripped by the caller.
   oldRow = withoutProtectedFields(deps.root, oldRow);
   newRow = withoutProtectedFields(deps.root, newRow);
-  // Audited whole by default (Specification_Security.md §11.4): the row in
+  // Audited whole by default (Security.md §11.4): the row in
   // `payload`, and an UPDATE's old/new of every column it changed in
   // `changes` - minus the columns the administrator excluded, from both.
   // The outbox event below keeps the whole row: a workflow needs its data.
@@ -410,7 +410,7 @@ function conflictValuesFor(data: Record<string, unknown>, item: Record<string, u
 /**
  * Executes one or many CREATE items in a single transaction; any failure rolls back all of them.
  *
- * `on_conflict` action UPDATE makes each item an upsert (Specification_Data_API.md §5.7):
+ * `on_conflict` action UPDATE makes each item an upsert (Data_API.md §5.7):
  * it needs the UPDATE grant as well as CREATE, and each row is authorized,
  * checked and audited as what it became - an inserted row as a CREATE, an
  * existing row the conflict updated as an UPDATE (its old values read in
@@ -462,7 +462,7 @@ export async function executeCreate(
     rowFilter,
     payloadChecks,
     resolveUserVariable: userVariableResolver(deps.dataPrincipal),
-    // The grant's row filter and payload checks may follow foreign keys (Specification_Security.md §6.5).
+    // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
     related: relatedResolver(new SchemaContext(deps.context.database)),
     ...(updatePermission && {
       conflictUpdate: {
@@ -589,9 +589,9 @@ export async function executeUpdate(
     rowFilter,
     payloadChecks,
     resolveUserVariable: userVariableResolver(deps.dataPrincipal),
-    // The grant's row filter and payload checks may follow foreign keys (Specification_Security.md §6.5).
+    // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
     related: relatedResolver(new SchemaContext(deps.context.database)),
-    // PostgreSQL 18+: a table without a primary key still records its UPDATE audit's old values (Specification_Security.md §11.4).
+    // PostgreSQL 18+: a table without a primary key still records its UPDATE audit's old values (Security.md §11.4).
     returningOld: (await deps.context.database.serverMajorVersion()) >= 18,
   };
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
@@ -654,7 +654,7 @@ export async function executeDelete(
   }
   const rowFilter = buildRowFilter(permission, deps.limits);
   // DELETE has no proposed values to check a business rule against
-  // (Specification_Security.md §6.6, and see the Payload checks chat) - compileDelete
+  // (Security.md §6.6, and see the Payload checks chat) - compileDelete
   // ignores this either way, only present so the shared
   // MutationCompileContext type is satisfied.
   const mutationContext = {
@@ -663,7 +663,7 @@ export async function executeDelete(
     rowFilter,
     payloadChecks: undefined,
     resolveUserVariable: userVariableResolver(deps.dataPrincipal),
-    // The grant's row filter and payload checks may follow foreign keys (Specification_Security.md §6.5).
+    // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
     related: relatedResolver(new SchemaContext(deps.context.database)),
   };
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
@@ -685,7 +685,7 @@ export async function executeDelete(
           throw new TotalBaseError("ROW_NOT_FOUND", "Row not found.");
         }
         // DELETE ... RETURNING * returns the row as it existed before
-        // deletion - the entry's `payload` (Specification_Security.md §11.4).
+        // deletion - the entry's `payload` (Security.md §11.4).
         for (const row of rows as Record<string, unknown>[]) {
           assertRolesDeleteAllowed(deps.root, row);
           assertRoleOwnership(deps.root, row, caller);

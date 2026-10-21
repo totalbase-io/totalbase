@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Camera widget (TCamera, Specification_DataViews.md §9.9): takes a
+ * The Camera widget (TCamera, DataViews.md §9.9): takes a
  * photo now, crops it, compresses it and stores it as a file - its value is
  * the file's id, so a file column (a uuid foreign key to files)
  * keeps it like UFileUpload's (WidgetFileUpload.vue: the same multipart POST

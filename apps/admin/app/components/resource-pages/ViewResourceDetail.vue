@@ -20,7 +20,7 @@ const dataViewWizardMounted = useOpenedOnce(dataViewWizardOpen)
 const { refresh: refreshDataViews } = useAppsNavDataViews()
 
 const dashboardWizardOpen = ref(false)
-// The dashboard assistant, this view chosen (Specification_Dashboards.md §10.7) - loaded on first open.
+// The dashboard assistant, this view chosen (Dashboards.md §10.7) - loaded on first open.
 const dashboardWizardMounted = useOpenedOnce(dashboardWizardOpen)
 const { refresh: refreshDashboards } = useAppsNavDashboards()
 async function onDashboardCreated(id: string) {
@@ -39,7 +39,7 @@ const { data: resource, pending, error } = await useAsyncData(
   { watch: [resourceId] }
 )
 
-// May TotalBase's PostgreSQL role drop this view (Specification_Administration.md
+// May TotalBase's PostgreSQL role drop this view (Administration.md
 // §3.15) - from the Columns section's own catalog read.
 const ownership = ref<Pick<RelationDetail, 'owner' | 'canAlter'> | null>(null)
 watch(resourceId, () => {

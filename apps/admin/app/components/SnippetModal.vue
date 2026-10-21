@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Picks a snippet and answers its questions (Specification_DataViews.md §11.2)
+ * Picks a snippet and answers its questions (DataViews.md §11.2)
  * - for "Create handler" (an empty function, or a snippet as its
  * body) and for the Code's "Insert snippet" (lines at the cursor). It only
  * chooses; the host writes the code the snippet renders, where it belongs.

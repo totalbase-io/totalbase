@@ -705,7 +705,7 @@
       "autoRefresh": "Auto-refresh",
       "autoRefreshHelp": "How often the App re-runs every widget while the page is open and its tab visible. Applies at once, without publishing; the editor doesn't auto-refresh.",
       "visibleToRoles": "Visible to roles",
-      "visibleToRolesHelp": "Who can view this dashboard in Apps once it's published. Administrators always can. Leave empty for administrators only."
+      "visibleToRolesHelp": "Who can view this dashboard in the App once it's published. Administrators always can. Leave empty for administrators only."
     },
     "widgetDrawer": {
       "query": "Query",
@@ -974,7 +974,13 @@
       "revokeConfirm": "Revoke \"{name}\"? It stops at once, for good.",
       "notPublished": "Not published yet",
       "notPublishedHelp": "An embed shows the published version - publish the dashboard first.",
-      "previewTitle": "Embed preview"
+      "previewTitle": "Embed preview",
+      "shows": "Shows",
+      "showsHelp": "The whole dashboard, or one of its published widgets alone, filling the frame the other site gives it.",
+      "wholeDashboard": "The whole dashboard",
+      "showWidgetTitle": "Show the widget's title",
+      "showsWidget": "Shows {widget}",
+      "widgetMissing": "The widget it shows is no longer in the dashboard - it shows nothing until it's updated."
     },
     "editor": {
       "openVersionFailed": "Could not open version",
@@ -999,8 +1005,8 @@
       "addWidgetFailed": "Could not add widget",
       "canvas": "Widget canvas",
       "publishAs": "Publish as v{version}?",
-      "publishHelp": "Makes the current widget layout the version Apps consumers see.",
-      "unconfigured": "{n} widgets are not configured and won't be shown in Apps. | {n} widget is not configured and won't be shown in Apps. | {n} widgets are not configured and won't be shown in Apps.",
+      "publishHelp": "Makes the current widget layout the version viewers see in the App.",
+      "unconfigured": "{n} widgets are not configured and won't be shown in the App. | {n} widget is not configured and won't be shown in the App. | {n} widgets are not configured and won't be shown in the App.",
       "brokenEmbeds": "Stops the embed {names}: it locks {variables}, no longer in the dashboard. Update it in Share. | Stops {n} embeds {names}: they lock {variables}, no longer in the dashboard. Update them in Share.",
       "widgets": "Widgets",
       "addAWidget": "Add a widget",
@@ -1017,7 +1023,8 @@
       "deleteWidgetTitle": "Delete this widget?",
       "deleteWidgetHelp": "{name} and its query leave the draft - publish to take it off the live dashboard.",
       "duplicate": "Duplicate…",
-      "editVariables": "Edit variables"
+      "editVariables": "Edit variables",
+      "brokenWidgetEmbeds": "Stops the embed {names}: the widget it shows is no longer in the dashboard. Update it in Share. | Stops {n} embeds {names}: the widget each shows is no longer in the dashboard. Update them in Share."
     },
     "tree": {
       "searchLabel": "Search Dashboards",
@@ -1057,7 +1064,7 @@
       "restoreDefaults": "Restore defaults",
       "typeHelp": "The types that fit what the query returns - the others greyed, with why. Switching keeps the equivalent columns.",
       "title": "Title",
-      "titleHelp": "Shown at the top of the widget - empty, none.",
+      "titleHelp": "Shown at the top of the widget. Leave it empty for no title.",
       "data": "Data",
       "runToListColumns": "Run the query to list its columns.",
       "automatic": "Automatic: {columns} - {rule}.",

@@ -11,7 +11,7 @@ export interface ReconcileResourcesResult {
 
 /**
  * Reconciles the PostgreSQL catalog snapshot against totalbase.resources.
- * See Specification.md §11.7 and §12.
+ * See Foundations.md §11.7 and §12.
  *
  * Rules:
  * - identity follows postgres_oid: rename preserves the TotalBase resource;
@@ -31,7 +31,7 @@ export interface ReconcileResourcesResult {
  */
 /**
  * The exposure of TotalBase's own tables - fixed, not editable
- * (Specification_Security.md §10.1). The portal's screens, the
+ * (Security.md §10.1). The portal's screens, the
  * administrator's included, read and write these tables through the Data
  * API, which requires the method to be exposed for everyone; an exposure
  * narrowed by hand would break them. Exposure grants nothing by itself -
@@ -53,7 +53,7 @@ export const TOTALBASE_EXPOSURE: Readonly<Record<string, readonly string[]>> = {
   // The transactions capability: the role editor's "Can run transactions"
   // switch writes it here - administrators only (the guardrail).
   roles_capabilities: ["GET", "POST", "PATCH", "DELETE"],
-  // Access reviews (Specification_Security.md §1.8): recorded and read, never changed - administrators only (the guardrail).
+  // Access reviews (Security.md §1.8): recorded and read, never changed - administrators only (the guardrail).
   roles_reviews: ["GET", "POST"],
   permissions: ["GET"],
   menus: ["GET"],
@@ -62,7 +62,7 @@ export const TOTALBASE_EXPOSURE: Readonly<Record<string, readonly string[]>> = {
   files: ["GET"],
 };
 
-/** TotalBase's own tables' fixed exposure (Specification_Security.md §10.1) - null for an application resource, whose exposure an administrator chooses. */
+/** TotalBase's own tables' fixed exposure (Security.md §10.1) - null for an application resource, whose exposure an administrator chooses. */
 export function fixedExposure(schema: string, name: string): string[] | null {
   return isExposureFixed(schema) ? [...(TOTALBASE_EXPOSURE[name] ?? [])] : null;
 }
@@ -80,7 +80,7 @@ export async function reconcileResources(
     // the same new OID, or one would act on a snapshot older than the
     // other's writes.
     await client.query(`SELECT pg_advisory_xact_lock(hashtext('totalbase.reconcile_resources'))`);
-    // Set-based, in three statements whatever the catalog's size (Pre_Beta_Review 2.9): the counts first
+    // Set-based, in three statements whatever the catalog's size: the counts first
     // (what is new, what comes back from MISSING), then one UPDATE that touches only a row whose schema, name,
     // status or fixed exposure really changed - an unchanged resource keeps its updated_at, so a sync
     // doesn't bump the OpenAPI revision for every table - then one INSERT of the new OIDs.

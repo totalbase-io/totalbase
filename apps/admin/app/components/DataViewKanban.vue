@@ -58,7 +58,7 @@ export interface KanbanLane {
 const props = defineProps<{
   lanes: KanbanLane[]
   canWrite: boolean
-  /** A row condition's mark on its card (Specification_DataViews.md §15.7). */
+  /** A row condition's mark on its card (DataViews.md §15.7). */
   markOf?: (row: Record<string, unknown>) => CardMark | null
 }>()
 /** Keys of the folded lanes: a narrow strip with the title and count, still a drop target. */

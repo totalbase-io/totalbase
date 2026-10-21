@@ -1,5 +1,5 @@
 /**
- * What the Camera widget (TCamera, Specification_DataViews.md §9.9) does to a
+ * What the Camera widget (TCamera, DataViews.md §9.9) does to a
  * photo before storing it: crop it to a shape, scale it down, compress it.
  * The geometry is pure and tested; `renderPhoto` draws it on a canvas.
  */

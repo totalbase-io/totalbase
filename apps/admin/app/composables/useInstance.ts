@@ -4,7 +4,7 @@ import type { LoginCardPosition, LoginLayout } from '@totalbase/shared'
 export interface InstanceInfo {
   language: string
   name: string
-  /** The operator's mark (Specification_Admin_UI.md §4.1.1), or null for the built-in one. */
+  /** The operator's mark (Admin_UI.md §4.1.1), or null for the built-in one. */
   logoUrl: string | null
   login: {
     layout: LoginLayout

@@ -12,7 +12,7 @@ let relationAliasCounter = 0;
 /**
  * A FilterCompileContext for a write: the target table's own columns, and - with `related` - a relation path
  * (`technician.user`) as a scalar subquery that follows the foreign keys from the row being written
- * (Specification_Security.md §6.5): `(SELECT r2."user" FROM "public"."technicians" AS r1 … WHERE r1."id" = upd."technician")`.
+ * (Security.md §6.5): `(SELECT r2."user" FROM "public"."technicians" AS r1 … WHERE r1."id" = upd."technician")`.
  * Each step is a foreign key to a unique column, so it yields one value or none - NULL, as a read's LEFT JOIN does,
  * and a comparison with it is never true. Only the grant's own filters and payload checks get `related`: a request's
  * `where` on a write stays on the table's own columns.

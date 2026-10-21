@@ -1,5 +1,5 @@
 /**
- * Automatic decisions and their reasons (Specification_Dashboards.md §5.19, DM3): every choice TotalBase makes on its
+ * Automatic decisions and their reasons (Dashboards.md §5.19, DM3): every choice TotalBase makes on its
  * own about a dashboard - a role's default column, a click that doesn't run in an embed, the dashboard assistant's
  * reading of a table (D27) - says why as one shape: `{code, message, detail?}`.
  *

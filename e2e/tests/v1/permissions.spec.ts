@@ -1,9 +1,10 @@
 import type { Browser, Page } from '@playwright/test'
 import { adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test, type DataViewRef } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
  * A sales user (an APP role, not an administrator) as a real system has one
- * (AGENTS.md section 13, Specification_Security.md §7.1): they see the DataViews their
+ * (AGENTS.md section 13, Security.md §7.1): they see the DataViews their
  * role opens and no other; in them, only the active customers (an ALLOW row
  * filter), never the credit limit (a field DENY); they may edit but not
  * create or delete. The Data API underneath enforces the same grants - the
@@ -25,7 +26,7 @@ async function cleanUp(page: Page, token: string) {
   for (const user of (await api<User[]>(page, token, 'GET', '/admin/api/users')).filter(u => u.email === EMAIL)) {
     await api(page, token, 'DELETE', `/admin/api/users/${user.id}`)
   }
-  // Roles are TotalBase data, written by administrators through the Data API (Specification_Security.md §10).
+  // Roles are TotalBase data, written by administrators through the Data API (Security.md §10).
   for (const role of await api<Role[]>(page, token, 'GET', `/api/totalbase/table/roles?fields=id,name&where[name][_eq]=${encodeURIComponent(ROLE)}`)) {
     await api(page, token, 'DELETE', `/api/totalbase/table/roles/${role.id}`)
   }
@@ -70,7 +71,7 @@ test.afterAll(async ({ browser }) => {
 
 /** The sales user's own session - a new browser context, logged in through the login page. */
 async function asSeller(browser: Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(EMAIL)
@@ -130,8 +131,8 @@ test('in it: only active customers, no credit limit, edit but no New nor Delete'
 
 test('the Data API enforces the same grants - asking directly gets nothing more', async ({ browser, token: _ }) => {
   const { context, page, token } = await asSeller(browser)
-  const get = (query: string) => page.request.fetch(`http://localhost:3050/api/public/table/e2e_v1_clientes?${query}`, { headers: { Authorization: `Bearer ${token}` } })
-  const send = (method: string, path: string, data: unknown) => page.request.fetch(`http://localhost:3050/api/public/table/e2e_v1_clientes${path}`, { method, headers: { Authorization: `Bearer ${token}` }, data })
+  const get = (query: string) => page.request.fetch(`${BASE_URL}/api/public/table/e2e_v1_clientes?${query}`, { headers: { Authorization: `Bearer ${token}` } })
+  const send = (method: string, path: string, data: unknown) => page.request.fetch(`${BASE_URL}/api/public/table/e2e_v1_clientes${path}`, { method, headers: { Authorization: `Bearer ${token}` }, data })
   try {
     // The denied field, asked for by name: refused, not silently dropped.
     expect((await get('fields=id,limite_credito')).status()).toBeGreaterThanOrEqual(400)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * WidgetInspector.vue's text of a form field bound to a column (label,
- * description, hint, help - Specification_DataViews.md §15): inherited from
+ * description, hint, help - DataViews.md §15): inherited from
  * the column's presentation, its own, or none ("": shown nowhere, the column
  * untouched). The inspector keeps the three-state logic; this draws the
  * field, its None toggle and the line saying which state it's in.

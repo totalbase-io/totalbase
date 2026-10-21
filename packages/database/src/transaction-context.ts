@@ -3,7 +3,7 @@ import type { Queryable } from "./database.js";
 
 /**
  * Context applied to a transaction via controlled PostgreSQL GUCs.
- * See Specification.md §18 (Database execution layer). Every
+ * See Foundations.md §18 (Database execution layer). Every
  * part is optional - e.g. the Data API passes only its request timeout
  * (api.request_timeout_ms).
  */
@@ -25,7 +25,7 @@ export interface DatabaseTransactionContext {
   /**
    * The transaction's `application_name` - how a background execution's
    * backend is found in pg_stat_activity to cancel it
-   * (Specification_Data_API.md §10.5).
+   * (Data_API.md §10.5).
    */
   applicationName?: string | undefined;
   /**

@@ -6,7 +6,7 @@ import { resolveFieldPresentation } from '~/utils/field-presentation'
 /** One pickable column in a layout setting's select. */
 export interface ColumnOption { name: string, label: string }
 
-/** COLUMN fields as select options - each titled as it shows, its table column's (Specification_DataViews.md §15). */
+/** COLUMN fields as select options - each titled as it shows, its table column's (DataViews.md §15). */
 export function columnOptions(fields: DataViewField[]): ColumnOption[] {
   return fields.filter(f => f.columnName).map(f => ({ name: f.columnName!, label: resolveFieldPresentation(f).label || f.columnName! }))
 }

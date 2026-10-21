@@ -1,6 +1,6 @@
 /**
  * Stable TotalBase error codes.
- * See Specification_Data_API.md §11.2 (Error behavior).
+ * See Data_API.md §11.2 (Error behavior).
  *
  * These codes are part of the public contract. Do not rename or remove
  * values without an explicit specification update.
@@ -34,9 +34,9 @@ export const TOTALBASE_ERROR_CODES = [
   "FIELD_PERMISSION_DENIED",
   "ACTION_DENIED",
   "FUNCTION_EXECUTION_DENIED",
-  /** The first-start setup's code is wrong (Specification.md §14.1). */
+  /** The first-start setup's code is wrong (Foundations.md §14.1). */
   "INVALID_SETUP_CODE",
-  /** A write while an administrator sees the App as a role or a user (Specification_Security.md §8.4) - a preview never writes. */
+  /** A write while an administrator sees the App as a role or a user (Security.md §8.4) - a preview never writes. */
   "VIEW_AS_READ_ONLY",
   /** X-TotalBase-View-As names no active role or user, or comes from a caller who isn't an administrator. */
   "INVALID_VIEW_AS",
@@ -64,7 +64,7 @@ export const TOTALBASE_ERROR_CODES = [
   "SMTP_CONNECTION_FAILED",
   "INVALID_SCHEMA_OPERATION",
 
-  // Workflows (specs/Specification_Workflows.md) - execution engine.
+  // Workflows (specs/Workflows.md) - execution engine.
   "WORKFLOW_REVISION_CONFLICT",
   "WORKFLOW_NOT_FOUND",
   "WORKFLOW_NAME_CONFLICT",
@@ -102,7 +102,7 @@ export const TOTALBASE_ERROR_CODES = [
   "SECRET_NOT_FOUND",
   "SECRET_DECRYPTION_FAILED",
 
-  // Asset image transformations (Specification_Administration.md §10).
+  // Asset image transformations (Administration.md §10).
   "INVALID_TRANSFORM_PARAMS",
   "TRANSFORM_NOT_APPLICABLE",
   "TRANSFORM_DIMENSIONS_TOO_LARGE",
@@ -111,7 +111,7 @@ export const TOTALBASE_ERROR_CODES = [
   "TRANSFORM_FAILED",
   "TRANSFORM_PRESET_NOT_FOUND",
 
-  // Idempotency Keys (Specification_Data_API.md §9).
+  // Idempotency Keys (Data_API.md §9).
   "IDEMPOTENCY_KEY_REUSED",
   "IDEMPOTENCY_REQUEST_IN_PROGRESS",
   "INVALID_IDEMPOTENCY_KEY",
@@ -119,22 +119,28 @@ export const TOTALBASE_ERROR_CODES = [
   "IDEMPOTENCY_KEY_REQUIRED",
   "IDEMPOTENCY_RESPONSE_TOO_LARGE_TO_REPLAY",
 
-  // Transactions (Specification_Data_API.md §8).
+  // Transactions (Data_API.md §8).
   "TRANSACTIONS_DISABLED",
 
-  // SQL Console (Specification_Administration.md §5): sql_console.enabled is off.
+  // SQL Console (Administration.md §5): sql_console.enabled is off.
   "SQL_CONSOLE_DISABLED",
 
-  // PostgreSQL maintenance (Specification_Administration.md §6).
+  // PostgreSQL maintenance (Administration.md §6).
   "ASYNC_EXECUTIONS_DISABLED",
   "MAINTENANCE_ALREADY_QUEUED",
   "MAINTENANCE_BATCH_RUNNING",
+
+  // Built-in backups (Administration.md §12).
+  "BACKUPS_DISABLED",
+  "BACKUP_ALREADY_QUEUED",
+  "BACKUP_RUNNING",
+  "BACKUP_NOT_FOUND",
   "TRANSACTION_EXECUTION_DENIED",
   "TRANSACTION_LIMIT_EXCEEDED",
   "INVALID_TRANSACTION_PAYLOAD",
   "TRANSACTION_REFERENCE_NOT_FOUND",
 
-  // Executions (Specification_Data_API.md §10).
+  // Executions (Data_API.md §10).
   "EXECUTION_NOT_FOUND",
   "EXECUTION_NOT_CANCELLABLE",
   "EMBED_TOKEN_INVALID",
@@ -159,14 +165,25 @@ export const TOTALBASE_ERROR_CODES = [
   // An admin changing their own password gave the wrong current one - a 400,
   // not 401: the caller's session is fine, only the confirmation failed.
   "INVALID_CURRENT_PASSWORD",
-  // A new password shorter than auth.password_min_length (Specification_Security.md §2).
+  // A new password shorter than auth.password_min_length (Security.md §2).
   "PASSWORD_TOO_SHORT",
   // The password was right but auth.email_verification_required is on and
   // the account's email isn't verified - distinct from the generic 401 so a
-  // sign-in page can offer "Resend verification" (Specification_Security.md §2.7).
+  // sign-in page can offer "Resend verification" (Security.md §2.7).
   "EMAIL_NOT_VERIFIED",
+  // Multi-factor authentication (Security.md §2.17). The password was right and a second step is due: the
+  // error's `meta` carries the challenge - verify with a code (MFA_REQUIRED) or set a factor up first
+  // (MFA_ENROLLMENT_REQUIRED, the instance requires one).
+  "MFA_REQUIRED",
+  "MFA_ENROLLMENT_REQUIRED",
+  // A challenge that's unknown, expired, used, out of attempts or for another surface - sign in again.
+  "INVALID_MFA_CHALLENGE",
+  // A wrong, reused or malformed authenticator or recovery code.
+  "INVALID_MFA_CODE",
+  "MFA_ALREADY_ENABLED",
+  "MFA_NOT_ENABLED",
 
-  // DataView (Specification_DataViews.md).
+  // DataView (DataViews.md).
   "DATAVIEW_NOT_FOUND",
   "DATAVIEW_NAME_DUPLICATE",
   "DATAVIEW_SLUG_DUPLICATE",
@@ -194,7 +211,7 @@ export const TOTALBASE_ERROR_CODES = [
   "DATAVIEW_FIELD_DUPLICATE",
   "DATAVIEW_COLUMN_INVALID",
 
-  // Dashboard (Specification_Dashboards.md).
+  // Dashboard (Dashboards.md).
   "DASHBOARD_NOT_FOUND",
   "DASHBOARD_NAME_DUPLICATE",
   "DASHBOARD_SLUG_DUPLICATE",
@@ -224,7 +241,7 @@ export const TOTALBASE_ERROR_CODES = [
   "DASHBOARD_SPEC_INVALID",
   "DASHBOARD_DRAFT_CHANGED",
 
-  // Nested writes (Specification_Data_API.md §11.3). Only
+  // Nested writes (Data_API.md §11.3). Only
   // the codes reachable by nested CREATE are declared - nested UPDATE is
   // deferred (Roadmap_v3.md §2.1) and its codes (e.g. NESTED_RESOURCE_NOT_RELATED)
   // are not declared until that phase ships.
@@ -236,7 +253,7 @@ export const TOTALBASE_ERROR_CODES = [
   "INVALID_NESTED_PAYLOAD",
   "UNSUPPORTED_NESTED_OPERATION",
 
-  // Auth Providers / OAuth (Specification_Security.md §2.5: OAuth/OIDC).
+  // Auth Providers / OAuth (Security.md §2.5: OAuth/OIDC).
   "AUTH_PROVIDER_NOT_FOUND",
   "INVALID_AUTH_PROVIDER_PAYLOAD",
   "INVALID_MENU_PAYLOAD",
@@ -294,7 +311,7 @@ export type TotalBaseErrorCode = (typeof TOTALBASE_ERROR_CODES)[number];
 
 /**
  * PostgreSQL SQLSTATE -> TotalBase error code mapping.
- * See Specification_Data_API.md §11.2.
+ * See Data_API.md §11.2.
  */
 export const SQLSTATE_ERROR_CODE_MAP: Record<string, TotalBaseErrorCode> = {
   "23502": "NOT_NULL_VIOLATION",
@@ -333,7 +350,7 @@ export const SQLSTATE_ERROR_CODE_MAP: Record<string, TotalBaseErrorCode> = {
 
 /**
  * SQLSTATE class (its first two characters) -> code, for a SQLSTATE that
- * SQLSTATE_ERROR_CODE_MAP doesn't name. See Specification_Data_API.md §11.4.
+ * SQLSTATE_ERROR_CODE_MAP doesn't name. See Data_API.md §11.4.
  */
 export const SQLSTATE_CLASS_ERROR_CODE_MAP: Record<string, TotalBaseErrorCode> = {
   "22": "DATA_EXCEPTION",
@@ -342,7 +359,7 @@ export const SQLSTATE_CLASS_ERROR_CODE_MAP: Record<string, TotalBaseErrorCode> =
 
 /**
  * Default HTTP status per error code family.
- * See Specification_Data_API.md §11.2.
+ * See Data_API.md §11.2.
  */
 export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>> = {
   INVALID_QUERY: 400,
@@ -449,6 +466,10 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
   ASYNC_EXECUTIONS_DISABLED: 409,
   MAINTENANCE_ALREADY_QUEUED: 409,
   MAINTENANCE_BATCH_RUNNING: 409,
+  BACKUPS_DISABLED: 409,
+  BACKUP_ALREADY_QUEUED: 409,
+  BACKUP_RUNNING: 409,
+  BACKUP_NOT_FOUND: 404,
   TRANSACTION_EXECUTION_DENIED: 403,
   TRANSACTION_LIMIT_EXCEEDED: 400,
   INVALID_TRANSACTION_PAYLOAD: 400,
@@ -475,6 +496,12 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
   INVALID_CURRENT_PASSWORD: 400,
   PASSWORD_TOO_SHORT: 400,
   EMAIL_NOT_VERIFIED: 403,
+  MFA_REQUIRED: 403,
+  MFA_ENROLLMENT_REQUIRED: 403,
+  INVALID_MFA_CHALLENGE: 401,
+  INVALID_MFA_CODE: 401,
+  MFA_ALREADY_ENABLED: 409,
+  MFA_NOT_ENABLED: 409,
 
   DATAVIEW_NOT_FOUND: 404,
   DATAVIEW_NAME_DUPLICATE: 409,

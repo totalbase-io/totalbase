@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * My account > Preferences: the UI's language and how dates and times
- * read for the signed-in user (Specification_Security.md §4.2,
- * Specification_Admin_UI.md §14). Each choice applies at
+ * read for the signed-in user (Security.md §4.2,
+ * Admin_UI.md §14). Each choice applies at
  * once (PATCH /app/api/me/preferences) - there's nothing to review before
  * saving a display setting - and "Instance default" clears it back to
  * Settings > General. The session's `display` is refreshed after each
@@ -55,7 +55,7 @@ function defaultLabel(value: string | undefined, describe: (v: string) => string
   return t('common.instanceDefault', { value: value ? describe(value) : empty })
 }
 
-// The UI's language (Specification_Admin_UI.md §14) - each in its own name.
+// The UI's language (Admin_UI.md §14) - each in its own name.
 const languageItems = computed(() => [
   { value: DEFAULT, label: t('account.preferences.language.instanceDefault', { language: UI_LANGUAGES.find(l => l.code === instance.value?.language)?.name ?? 'English' }) },
   ...UI_LANGUAGES.map(language => ({ value: language.code, label: language.name }))

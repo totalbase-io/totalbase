@@ -6,7 +6,7 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * Lightweight performance sanity checks and failure-recovery regression
- * tests (Specification.md §22, §23: "performance tests",
+ * tests (Foundations.md §21, §23: "performance tests",
  * "failure recovery"). Not a load-testing harness - these are smoke-
  * level bounds against the real integration Postgres, meant to catch a
  * gross regression (e.g. an accidental N+1 query), not to benchmark.

@@ -40,7 +40,7 @@ function readingsDdl(table: string, n: (column: string) => string): string {
 }
 
 /**
- * The dashboard assistant (Specification_Dashboards.md §10.7, D27) against real PostgreSQL: each column's role from
+ * The dashboard assistant (Dashboards.md §10.7, D27) against real PostgreSQL: each column's role from
  * the catalog and pg_stats (the lab's readings, accounts and visits, a view, a renamed copy), the same codes in every
  * language, no scan of the table, and a proposal that saves, publishes and runs widget by widget.
  */

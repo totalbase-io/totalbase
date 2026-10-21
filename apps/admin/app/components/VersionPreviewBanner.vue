@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The read-only preview banner every pillar's editor shows while an old
- * version is open (Specification.md §13.4, §7): nothing in the
+ * version is open (Foundations.md §13.4, §7): nothing in the
  * editor is editable, and the only ways forward are Restore (this content
  * replaces the draft - nothing is published; Publish stays the one way to
  * go live), Save as… (fork it into a new object) or Back to draft.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DASHBOARD_DECISION_CODES, dashboardDecision, decisionLanguage } from "./dashboard-decisions.js";
 
-/** The one list of decision codes (Specification_Dashboards.md §5.19, DM3) - what the guide's "Reasons" lists. */
+/** The one list of decision codes (Dashboards.md §5.19, DM3) - what the guide's "Reasons" lists. */
 describe("dashboard decision codes", () => {
   const entries = Object.entries(DASHBOARD_DECISION_CODES) as [string, { description: string; message: Record<string, string> }][];
   const params = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();

@@ -1,5 +1,5 @@
 /**
- * Whether a kiosk page can reach TotalBase (Specification_DataViews.md §7.3):
+ * Whether a kiosk page can reach TotalBase (DataViews.md §7.3):
  * the browser's own offline state (`navigator.onLine`, its `online` and
  * `offline` events) and, while it says online, a light probe of the server
  * (`/health/live`) - a network that is up but can't reach the server reads

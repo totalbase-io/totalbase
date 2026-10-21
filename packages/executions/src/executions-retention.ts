@@ -8,7 +8,7 @@ const PURGE_BATCH_SIZE = 5_000;
  * `retentionDays` (async_executions.retention_days), by when they ended
  * (`completed_at`; a cancellation from PENDING never started, so its
  * creation counts) - the server's hourly retention job
- * (Specification_Data_API.md §10.1). PENDING and RUNNING rows are never
+ * (Data_API.md §10.1). PENDING and RUNNING rows are never
  * purged. 0 keeps every execution. Returns how many were deleted.
  */
 export async function purgeFinishedExecutions(client: Queryable, retentionDays: number): Promise<number> {

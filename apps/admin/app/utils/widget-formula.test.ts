@@ -42,7 +42,7 @@ describe('evaluateWidgetFormula() over an option\'s row', () => {
   })
 })
 
-// Another widget's state (Specification_DataViews.md §9.1): {{controls.<name>.*}}.
+// Another widget's state (DataViews.md §9.1): {{controls.<name>.*}}.
 describe('evaluateWidgetFormula() over the page\'s widgets', () => {
   it('reads a widget\'s state by its name - {{controls.x}} alone its value', () => {
     const controls = { selectCliente: { value: 7, item: { id: 7, numero_documento: '30-71234567-9' } }, tabla: { row: null } }

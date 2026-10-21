@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings › Columns › "Add columns…" (Specification_DataViews.md §4.1): the source table's columns and, under each
+ * Settings › Columns › "Add columns…" (DataViews.md §4.1): the source table's columns and, under each
  * foreign key, the columns of the table it points at (a related column, `brand.country`, read only - one hop, a
  * table the Data API exposes for reading). A USlideover beside the columns table, so the DataView's columns stay in
  * sight. What the DataView has already shows checked and locked - hidden ones marked so; this panel only adds,
@@ -41,7 +41,7 @@ watch(open, (isOpen) => {
   expanded.value = new Set()
 })
 
-/** A column's title - its table column's, else its name humanized (Specification_DataViews.md §15). */
+/** A column's title - its table column's, else its name humanized (DataViews.md §15). */
 function titleOf(resourceId: string | undefined, name: string): string {
   const presentation = resourceId ? props.dataview.columnPresentation?.[resourceId]?.[name] : undefined
   return columnTitle(presentation, humanizeColumnName(name))

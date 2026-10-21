@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The sign-in page (Specification_Admin_UI.md §3.6): one card, four
+// The sign-in page (Admin_UI.md §3.6): one card, four
 // layouts chosen by the operator (appearance.login_layout) - SPLIT, TotalBase's
 // own panel beside the card (the default); SIMPLE, the company's mark large
 // above the card; PANEL, the company's panel beside it; IMAGE, the operator's
@@ -62,6 +62,9 @@ const errorMessage = ref<string | null>(null)
 const unverifiedEmail = ref<string | null>(null)
 const resending = ref(false)
 const resent = ref(false)
+// The password was right and a second factor is due (MFA_REQUIRED / MFA_ENROLLMENT_REQUIRED, Security.md
+// §2.17): the card shows that step instead of the form.
+const mfa = ref<{ challenge: string, purpose: 'VERIFY' | 'ENROLL' } | null>(null)
 
 async function resendVerification() {
   if (!unverifiedEmail.value) return
@@ -77,6 +80,19 @@ async function resendVerification() {
   }
 }
 
+async function signedIn(data: LoginResponse) {
+  session.setToken(data.token)
+  session.admin.value = data.admin
+  // The full profile (display preferences included) - best-effort, the
+  // sign-in already succeeded.
+  await session.refreshProfile().catch(() => undefined)
+  // The redirect only applies if it's inside the area this user's access
+  // opens - an APP user bounced off an admin URL lands in the app.
+  const home = portalHomeFor(data.admin.access)
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : home
+  await navigateTo(isPortalPathAllowed(redirect, data.admin.access, session.modules.value) ? redirect : home)
+}
+
 async function submit() {
   errorMessage.value = null
   unverifiedEmail.value = null
@@ -87,20 +103,19 @@ async function submit() {
       email: email.value,
       password: password.value
     })
-    session.setToken(data.token)
-    session.admin.value = data.admin
-    // The full profile (display preferences included) - best-effort, the
-    // sign-in already succeeded.
-    await session.refreshProfile().catch(() => undefined)
-    // The redirect only applies if it's inside the area this user's access
-    // opens - an APP user bounced off an admin URL lands in the app.
-    const home = portalHomeFor(data.admin.access)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : home
-    await navigateTo(isPortalPathAllowed(redirect, data.admin.access, session.modules.value) ? redirect : home)
+    await signedIn(data)
   } catch (error) {
     if (error instanceof AdminApiError && error.code === 'EMAIL_NOT_VERIFIED') {
       unverifiedEmail.value = email.value
       return
+    }
+    if (error instanceof AdminApiError && (error.code === 'MFA_REQUIRED' || error.code === 'MFA_ENROLLMENT_REQUIRED')) {
+      const challenge = error.errors[0]?.meta?.challenge
+      if (typeof challenge === 'string') {
+        mfa.value = { challenge, purpose: error.code === 'MFA_REQUIRED' ? 'VERIFY' : 'ENROLL' }
+        password.value = ''
+        return
+      }
     }
     // AUTHENTICATION_REQUIRED here is a wrong email or password, not an ended session.
     errorMessage.value = error instanceof AdminApiError && error.code === 'AUTHENTICATION_REQUIRED'
@@ -331,7 +346,15 @@ async function submit() {
             </div>
           </template>
 
+          <MfaSignInStep
+            v-if="mfa"
+            :challenge="mfa.challenge"
+            :purpose="mfa.purpose"
+            @done="signedIn"
+            @cancel="mfa = null"
+          />
           <form
+            v-else
             class="flex flex-col gap-4"
             @submit.prevent="submit"
           >
@@ -380,6 +403,7 @@ async function submit() {
             />
           </form>
           <SignInProviders
+            v-if="!mfa"
             :providers="instance.login.providers"
             class="mt-4"
           />

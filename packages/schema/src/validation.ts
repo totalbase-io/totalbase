@@ -10,7 +10,7 @@ import { quoteIdentifier } from "@totalbase/database";
  * statement per call outright, so a `;`-stacked statement can never
  * execute even if it slipped past validation. Everything below is
  * defense-in-depth on top of that guarantee, and gives a clean 400
- * instead of a raw protocol error (Specification_Administration.md §3.9:
+ * instead of a raw protocol error (Administration.md §3.9:
  * "reject attempts to escape into multiple SQL statements or arbitrary
  * DDL/DML").
  */
@@ -50,7 +50,7 @@ const FORBIDDEN_TOKENS =
  * Validates a raw SQL expression fragment (CHECK expression or column
  * DEFAULT) that gets concatenated directly into DDL text. Rejects the
  * stacked-statement and comment-based escape patterns explicitly called
- * out by Specification_Administration.md §3.2, plus DDL/DML keywords a legitimate boolean/value
+ * out by Administration.md §3.2, plus DDL/DML keywords a legitimate boolean/value
  * expression would never need.
  */
 export function validateSqlExpression(expression: string, kind: string): void {

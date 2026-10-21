@@ -39,7 +39,7 @@ export const WORKFLOW_SCHEMAS: Record<string, JsonSchema> = {
     type: "object",
     required: ["id", "type", "configuration"],
     additionalProperties: true,
-    description: "One step of the graph. Each operation type's `configuration` is described in specs/Specification_Workflows.md §5.",
+    description: "One step of the graph. Each operation type's `configuration` is described in specs/Workflows.md §5.",
     properties: {
       id: UUID,
       type: { type: "string", description: "An operation type, e.g. `totalbase.start`, `totalbase.read-records` - see GET /admin/api/workflows/operation-types." },
@@ -65,7 +65,7 @@ export const WORKFLOW_SCHEMAS: Record<string, JsonSchema> = {
     description:
       "The workflow graph, a tree rooted at the one `totalbase.start` operation (its configuration holds the trigger): each output has " +
       "at most one target, each operation at most one incoming connection, no cycles, and a loop operation can't sit inside another " +
-      "loop's body. See specs/Specification_Workflows.md §3.",
+      "loop's body. See specs/Workflows.md §3.",
     properties: {
       operations: arrayOf(ref("WorkflowOperation")),
       connections: arrayOf(ref("WorkflowConnection")),

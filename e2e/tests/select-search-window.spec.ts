@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { apiRequest, login, publishDataView, watchApiFailures } from './helpers.js'
 
 /**
- * A Select menu's search window (Specification_DataViews.md §9.8, `searchWindow`): a 🔍 beside the select opens
+ * A Select menu's search window (DataViews.md §9.8, `searchWindow`): a 🔍 beside the select opens
  * its Resource as a searchable, paged table - a sidebar by default - and a row picked there is the select's value.
  */
 const NAME = 'Search Window Test'

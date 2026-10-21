@@ -3,7 +3,7 @@ import { TotalBaseError } from "@totalbase/errors";
 
 /**
  * Who owns a table, view or function, and whether the configured
- * PostgreSQL role may change its structure (Specification_Administration.md
+ * PostgreSQL role may change its structure (Administration.md
  * §3.15). ALTER, DROP, CREATE INDEX and adding constraints all require
  * ownership: being the owner or a member of the owner role (superusers
  * included). 'USAGE', not 'MEMBER': PostgreSQL's owner check needs the

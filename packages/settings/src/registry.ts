@@ -3,7 +3,7 @@ import { MAIL_TEMPLATE_DEFAULTS, type MailTemplate } from "./mail-templates.js";
 
 /**
  * Typed settings registry. Defaults live in code; PostgreSQL stores only
- * overrides (Specification_Administration.md §7.1).
+ * overrides (Administration.md §7.1).
  *
  * Every key here is read by some code path; do not pre-declare a setting
  * nothing uses yet (AGENTS.md section 3).
@@ -25,7 +25,7 @@ export interface SettingsRegistry {
   // statement_timeout of every Data API request's transaction
   // (apps/server data-api-timeout.ts) - PostgreSQL cancels past it.
   "api.request_timeout_ms": number;
-  // What Data API callers' queries may use (Specification_Data_API.md §3.12) - features
+  // What Data API callers' queries may use (Data_API.md §3.12) - features
   // that get expensive on large tables without the right index. Admin-
   // written filters (row filters, payload checks, workflows) ignore them.
   "api.allow_count": boolean;
@@ -51,6 +51,8 @@ export interface SettingsRegistry {
   // account for lockout_duration_minutes. 0 turns lockout off.
   "auth.lockout_max_attempts": number;
   "auth.lockout_duration_minutes": number;
+  /** Who must sign in with a second factor (Security.md §2.17): NONE, ADMINISTRATORS (holders of the Administrators role) or EVERYONE. */
+  "auth.mfa_required": string;
   // Where the single-use links in system emails point - `{{public_url}}`
   // and `{{token}}` are filled in by TotalBase. Default: the built-in
   // pages under /admin/auth/*; point them at your own app instead.
@@ -62,14 +64,14 @@ export interface SettingsRegistry {
   "auth.welcome_email_enabled": boolean;
   "auth.access_review_interval_days": number;
 
-  // Canonical external identity of this instance (Specification_Administration.md §7.6).
+  // Canonical external identity of this instance (Administration.md §7.6).
   // Empty `public_url` = fall back to the TOTALBASE_PUBLIC_URL env var.
   "system.public_url": string;
   "system.instance_name": string;
-  // The instance's mark (Specification_Admin_UI.md §4.1.1): the id of a PUBLIC image in Files; empty, the built-in one.
+  // The instance's mark (Admin_UI.md §4.1.1): the id of a PUBLIC image in Files; empty, the built-in one.
   "system.logo": string;
   // The UI's language for whoever chose none in My account, and for pages
-  // with no user (sign-in, embeds) - Specification_Admin_UI.md §14.
+  // with no user (sign-in, embeds) - Admin_UI.md §14.
   "system.language": string;
   // Instance-wide display defaults (apps/admin/app/utils/format-pattern.ts):
   // the zone a `timestamptz` value is converted into before display, and
@@ -82,7 +84,7 @@ export interface SettingsRegistry {
   "system.time_format": string;
   "system.datetime_format": string;
 
-  // The operator's branding (Specification_Admin_UI.md §4.1.1): served
+  // The operator's branding (Admin_UI.md §4.1.1): served
   // public, before sign-in, by /api/instance and /admin/theme.css.
   /** Id of a PUBLIC image in Files shown as the product mark; "" = the built-in mark. */
   /** #rrggbb; "" = the product's blue. */
@@ -98,7 +100,7 @@ export interface SettingsRegistry {
   /** Plain CSS, applied last on every page the SPA serves. */
   "appearance.custom_css": string;
 
-  // System email templates (Specification_Administration.md §8.2) - see mail-templates.ts.
+  // System email templates (Administration.md §8.2) - see mail-templates.ts.
   "mail.templates.user_invitation": MailTemplate;
   "mail.templates.password_reset": MailTemplate;
   "mail.templates.email_verification": MailTemplate;
@@ -175,7 +177,7 @@ export interface SettingsRegistry {
   "catalog.auto_refresh_after_ddl": boolean;
   "catalog.track_comments": boolean;
 
-  // The generated Data API document (Specification_Data_API.md §14.1): published at
+  // The generated Data API document (Data_API.md §14.1): published at
   // /api/openapi.json at all, with sample values, and cached per viewer
   // until an Admin API write or a catalog refresh (apps/server
   // openapi-cache.ts).
@@ -184,7 +186,7 @@ export interface SettingsRegistry {
   "openapi.cache_enabled": boolean;
 
   // The MCP server the TotalBase server itself serves at /mcp
-  // (Specification_Administration.md §11.7) - and the policy the stdio
+  // (Administration.md §11.7) - and the policy the stdio
   // binary applies too. Changed by a signed-in administrator only.
   "mcp.enabled": boolean;
   "mcp.mode": McpMode;
@@ -209,7 +211,7 @@ export interface SettingsRegistry {
   "sql_console.history_retention_days": number;
 
   // SMTP relay config - read by the system emails and the workflow Send
-  // email operation (Specification_Administration.md §8).
+  // email operation (Administration.md §8).
   "smtp.host": string;
   "smtp.port": number;
   "smtp.secure": boolean;
@@ -217,6 +219,27 @@ export interface SettingsRegistry {
   /** Secret key name in @totalbase/secrets, not the plaintext password. Empty string = not configured. */
   "smtp.password_secret_key": string;
   "smtp.from": string;
+
+  // One S3-compatible bucket, shared by what stores objects outside the
+  // database - Files today (Administration.md §7.9). The secret access key
+  // is a Settings → Secrets entry, named by s3.secret_key.
+  "s3.enabled": boolean;
+  "s3.endpoint": string;
+  "s3.region": string;
+  "s3.bucket": string;
+  "s3.prefix": string;
+  "s3.path_style": boolean;
+  "s3.access_key_id": string;
+  "s3.secret_key": string;
+
+  // Built-in backups (Administration.md §12): a scheduled pg_dump of the
+  // database, the locally stored files and a manifest - never the master key.
+  "backups.enabled": boolean;
+  "backups.schedule": string;
+  "backups.keep": number;
+  "backups.destination": string;
+  "backups.local_path": string;
+  "backups.include_files": boolean;
 
 
   // DataViews Export "All matching rows" scope (DataViewGrid.vue's own
@@ -231,7 +254,7 @@ export interface SettingsRegistry {
   "dataviews.print_max_rows": number;
   "dataviews.print_warning_threshold": number;
 
-  // MAP DataViews (Specification_DataViews.md §5.4)
+  // MAP DataViews (DataViews.md §5.4)
   // - a map wants every relevant pin at once, not one page of 20 like
   // TABLE/CARDS, but rendering unbounded points still isn't free -
   // separate from export/print.* above since it bounds a live DOM render
@@ -261,20 +284,20 @@ export interface SettingsRegistry {
   "dataviews.save_max_operations": number;
   "dataviews.bulk_edit_max_rows": number;
   // A list DataView's toolbar for a viewer with no choice of their own and a DataView that sets none
-  // (view_config.default_state.toolbarMode) - auto: compact for CARDS, full otherwise (Specification_DataViews.md §5).
+  // (view_config.default_state.toolbarMode) - auto: compact for CARDS, full otherwise (DataViews.md §5).
   "dataviews.toolbar_mode": "auto" | "full" | "compact";
   // How wide a page's content grows for a DataView that sets none (view_config.page_content_width / _align,
-  // Specification_DataViews.md §6.7): a record page (FORM, MASTER_DETAIL, a list's record on its own page)
+  // DataViews.md §6.7): a record page (FORM, MASTER_DETAIL, a list's record on its own page)
   // and a CUSTOM page apart - the product's own, narrow and full, as they always were.
   "dataviews.record_content_width": "narrow" | "wide" | "full";
   "dataviews.custom_content_width": "narrow" | "wide" | "full";
   "dataviews.content_align": "left" | "center" | "right";
-  // The space around a TABLE's grid for a DataView that sets none (view_config.list_margin, Specification_DataViews.md
+  // The space around a TABLE's grid for a DataView that sets none (view_config.list_margin, DataViews.md
   // §5) - none: the table fills the page under its header. The other lists keep the normal margin.
   "dataviews.table_margin": "none" | "compact" | "normal";
 
   // Map tiles for every map in the instance - MAP DataViews, the map widgets,
-  // dashboard MAP widgets (Specification_DataViews.md §5.4). Mapbox raster
+  // dashboard MAP widgets (DataViews.md §5.4). Mapbox raster
   // tiles in the same Leaflet maps; its token is a public (pk.) one, meant
   // for the browser and restricted by URL in the Mapbox account - not a secret.
   "maps.tiles": "OPENSTREETMAP" | "MAPBOX";
@@ -283,28 +306,28 @@ export interface SettingsRegistry {
   "maps.default_view": string;
 
   // Dashboards: every widget's SQL runs read-only under these bounds
-  // (Specification_Dashboards.md §2 - SQL widgets).
+  // (Dashboards.md §2 - SQL widgets).
   "dashboards.query_timeout_ms": number;
   "dashboards.query_max_rows": number;
   // How many widget queries of one dashboard run at once, and how long a published
   // widget's result is reused (0 = none) - D24.
   "dashboards.max_concurrent_queries": number;
   "dashboards.cache_seconds": number;
-  // Signed embedding (Specification_Dashboards.md §9.5): the Settings → Secrets
+  // Signed embedding (Dashboards.md §9.5): the Settings → Secrets
   // entry embed tokens are signed with ("" = embedding off), the longest a
   // token may live, and the sites that may frame an embed.
   "dashboards.embed_secret_key": string;
   "dashboards.embed_max_ttl_minutes": number;
   "dashboards.embed_allowed_origins": string[];
 
-  // The App menu's display (Specification_Security.md §8.2): TREE (a
+  // The App menu's display (Security.md §8.2): TREE (a
   // collapsible hierarchy) or SIDEBAR (flat, groups as section headings).
   "app.menu_mode": string;
   /** How the tree menu's groups start: CURRENT (only the one holding the page), OPEN or CLOSED. A group may set its own. */
   "app.menu_groups_open": "CURRENT" | "OPEN" | "CLOSED";
   "app.menu_search": "AUTO" | "ALWAYS" | "NEVER";
 
-  // Workflows execution engine (specs/Specification_Workflows.md §8.5).
+  // Workflows execution engine (specs/Workflows.md §8.5).
   // max_operations_per_run/max_run_duration_ms are read from Fase 1
   // (the sequential engine's step budget and admission deadline); the rest
   // are declared now, as one bounded group, but only actually consumed
@@ -329,7 +352,7 @@ export interface SettingsRegistry {
 
 export type SettingKey = keyof SettingsRegistry;
 
-/** Defaults per Specification_Administration.md §7.4. */
+/** Defaults per Administration.md §7.4. */
 export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "api.default_limit": 50,
   "api.max_limit": 500,
@@ -344,7 +367,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "api.max_query_parameters": 200,
   "api.max_query_nodes": 200,
 
-  // Nested writes (Specification_Data_API.md §6.3). Depth
+  // Nested writes (Data_API.md §6.3). Depth
   // 0 is the root resource itself; default 2 allows parent + child +
   // grandchild, capped at 3 by the service layer.
   "api.request_timeout_ms": 30_000,
@@ -367,6 +390,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.session_retention_days": 30,
   "auth.lockout_max_attempts": 5,
   "auth.lockout_duration_minutes": 15,
+  "auth.mfa_required": "NONE",
   "auth.links.invitation": "{{public_url}}/admin/auth/accept-invitation?token={{token}}",
   "auth.links.password_reset": "{{public_url}}/admin/auth/reset-password?token={{token}}",
   "auth.links.email_verification": "{{public_url}}/admin/auth/verify-email?token={{token}}",
@@ -436,24 +460,24 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "files.transforms.max_operations": 6,
   "files.transforms.presets_json": "{}",
 
-  // Idempotency Keys (Specification_Data_API.md §9).
+  // Idempotency Keys (Data_API.md §9).
   "idempotency.enabled": true,
   "idempotency.ttl_hours": 24,
   // Responses above this size are not cached inline
-  // (Specification_Data_API.md §9) - the operation still only ever runs once; a
+  // (Data_API.md §9) - the operation still only ever runs once; a
   // retry against a truncated record gets an explicit error instead of
   // a replayed body. 64KB comfortably covers a single-row CREATE or a
   // bulk create bounded by api.bulk_max_items.
   "idempotency.max_response_bytes": 65_536,
 
-  // Transactions (Specification_Data_API.md §8).
+  // Transactions (Data_API.md §8).
   "transactions.enabled": true,
   "transactions.max_operations": 20,
   "transactions.timeout_ms": 0,
 
-  // Executions / async execution queue (Specification_Data_API.md §10).
+  // Executions / async execution queue (Data_API.md §10).
   // stale_timeout_ms is the crash-recovery visibility
-  // timeout for a worker that died mid-`running` (Specification_Data_API.md §10.2);
+  // timeout for a worker that died mid-`running` (Data_API.md §10.2);
   // poll_interval_ms paces the in-process worker loop started in
   // apps/server/src/index.ts.
   "async_executions.enabled": true,
@@ -468,7 +492,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "outbox.retry_delay_seconds": 30, // doubles per attempt
   "outbox.lease_seconds": 1200, // above workflows.max_run_duration_ms (15 min): a dispatch runs its workflows
 
-  // SQL Console history retention (Specification_Administration.md §5:
+  // SQL Console history retention (Administration.md §5:
   // admin.sql_console_history_days = 90, renamed to match this registry's
   // per-package group naming convention). Applied by an automatic purge
   // job (apps/server/src/index.ts) in addition to the admin's manual
@@ -514,6 +538,20 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "smtp.username": "",
   "smtp.password_secret_key": "",
   "smtp.from": "",
+  "s3.enabled": false,
+  "s3.endpoint": "",
+  "s3.region": "us-east-1",
+  "s3.bucket": "",
+  "s3.prefix": "",
+  "s3.path_style": false,
+  "s3.access_key_id": "",
+  "s3.secret_key": "",
+  "backups.enabled": false,
+  "backups.schedule": "0 3 * * *",
+  "backups.keep": 7,
+  "backups.destination": "local",
+  "backups.local_path": "/var/lib/totalbase/backups",
+  "backups.include_files": true,
 
   "dataviews.export_max_rows": 10_000,
   "dataviews.export_warning_threshold": 1_000,
@@ -626,6 +664,7 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "outbox.lease_seconds": { min: 30 },
 
   "smtp.port": { min: 1, max: 65_535 },
+  "backups.keep": { min: 1, max: 365 },
 
   "sql_console.max_rows": { min: 1, max: 100_000 },
   "mcp.rate_limit_per_minute": { min: 1, max: 100_000 },

@@ -5,7 +5,7 @@ import type { AdminClient } from "./admin-client.js";
 import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId } from "./tool-helpers.js";
 
 /**
- * Workflows (Specification_Workflows.md, Specification_Administration.md
+ * Workflows (Workflows.md, Administration.md
  * §11.3): a draft definition - a tree of operations from one Start step -
  * saved whole under optimistic concurrency (`revision`), test-run for real,
  * published as an immutable version, enabled, and granted to the roles that
@@ -105,7 +105,7 @@ const connectionInput = z.object({
 
 /**
  * A step's configuration with its filters stored as the grammar takes them -
- * every value text (Specification_Workflows.md §5.2: "as on the wire"): a
+ * every value text (Workflows.md §5.2: "as on the wire"): a
  * where, a Condition's or a data event's filter, a Select case's and a
  * Validate data rule's filter, a Read records query's where.
  */
@@ -128,7 +128,7 @@ const invokeRoles = z
   .describe("Replaces the roles that may run it on demand (the App, /api/workflows/{slug}/run, an AUTHENTICATED webhook) - the complete set. Administrators always may");
 
 export function registerWorkflowTools(server: McpServer, client: AdminClient): void {
-  // Settings > Secrets (Specification_Administration.md §9): write-only - a value goes in, never comes back out.
+  // Settings > Secrets (Administration.md §9): write-only - a value goes in, never comes back out.
   server.registerTool(
     "list_secrets",
     {
@@ -261,12 +261,15 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         mode: z.enum(["test", "production"]).default("test"),
         input: z.unknown().optional().describe("The trigger input - {{start.data}} in the steps (MANUAL: the object its input_fields describe)"),
         full: z.boolean().optional().describe("Every result whole; by default a long text (a PDF's base64) is its size and a long list its first 10 rows"),
+        email_redirect: z.string().optional().describe("mode=test only: one address every Send email step sends to instead of its recipients - to see a real email when the data holds @example.com addresses"),
       },
       annotations: ADDITIVE,
     },
-    async ({ id, mode, input, full }) => {
+    async ({ id, mode, input, full, email_redirect }) => {
       const [data, draft] = await Promise.all([
-        client.post<RunOutcome>(`/workflows/${id}/${mode === "test" ? "test-run" : "run"}`, { data: input ?? null }),
+        mode === "test"
+          ? client.post<RunOutcome>(`/workflows/${id}/test-run`, { data: input ?? null, ...(email_redirect && { emailRedirect: email_redirect }) })
+          : client.post<RunOutcome>(`/workflows/${id}/run`, { data: input ?? null }),
         client.get<{ definition: Definition }>(`/workflows/${id}/draft`).catch(() => undefined),
       ]);
       return result(outcome(data, draft?.definition, full));

@@ -29,13 +29,13 @@ export default defineNuxtConfig({
   },
 
   // apps/server serves the built output of this app under /admin/, from
-  // the same process/port as the API (Specification_Admin_UI.md §1.1, "one service") — every asset
+  // the same process/port as the API (Admin_UI.md §1.1, "one service") — every asset
   // and client-side route has to be generated relative to that prefix, in
   // dev too, so dev behavior actually matches what gets deployed rather
   // than only matching once base path bugs are found in prod.
   app: {
     baseURL: '/admin/',
-    // The operator's stylesheet (Specification_Admin_UI.md §4.1.1): the
+    // The operator's stylesheet (Admin_UI.md §4.1.1): the
     // primary color and the custom CSS, served by apps/server from the
     // appearance.* settings. Linked here, in <head>, so it applies before
     // Vue mounts - no flash of the default look - and on the pages with no
@@ -57,7 +57,7 @@ export default defineNuxtConfig({
   // Dev-only: forwards Admin API calls to the running apps/server so the UI
   // can call same-origin relative paths (`/admin/api/...`) in both dev and
   // prod. In prod, apps/server serves this app's static build under `/admin/`
-  // itself, so no proxy is needed there — see Specification_Admin_UI.md §1.1.
+  // itself, so no proxy is needed there — see Admin_UI.md §1.1.
   //
   // `/api` (root, no `/admin` prefix) is the *public* REST Data API
   // (useDataApi.ts) - a DataView's grid/Edit form call this directly, same
@@ -104,7 +104,7 @@ export default defineNuxtConfig({
     }
   },
 
-  // The UI's language (Specification_Admin_UI.md §14): English by default
+  // The UI's language (Admin_UI.md §14): English by default
   // and as the source, one file per area and language in i18n/locales/
   // (each with its own top-level keys - the areas' texts are kept,
   // translated and reviewed apart). Only the eager areas are registered

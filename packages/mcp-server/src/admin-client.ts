@@ -2,11 +2,11 @@ import { fixFor } from "./error-fixes.js";
 /**
  * Thin HTTP client for TotalBase's Admin API (/admin/api/*) and Data API
  * (/api/*) - an administrator's plane="ADMIN" token reaches both
- * (Specification_Security.md §10), so an agent reads and writes
+ * (Security.md §10), so an agent reads and writes
  * TotalBase's own records through the same engine as everything else.
  *
  * Authenticates with a personal access token (totalbase.tokens,
- * plane="ADMIN" - see Specification_Security.md §1). The token must
+ * plane="ADMIN" - see Security.md §1). The token must
  * belong to a user holding the reserved Administrators role; the server
  * enforces that, not this client.
  */

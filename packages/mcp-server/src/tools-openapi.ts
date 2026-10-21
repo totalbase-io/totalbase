@@ -4,8 +4,8 @@ import type { AdminClient } from "./admin-client.js";
 import { READ_ONLY, result } from "./tool-helpers.js";
 
 /**
- * The generated OpenAPI documents (Specification_Data_API.md §14,
- * Specification_Administration.md §11.3) - TotalBase's own description of
+ * The generated OpenAPI documents (Data_API.md §14,
+ * Administration.md §11.3) - TotalBase's own description of
  * its APIs, generated from the catalog, the resources, the permissions and
  * the routes' documentation, never a second endpoint list. Whole documents
  * run to thousands of lines, so the tool answers an index first and the

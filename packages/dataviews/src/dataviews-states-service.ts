@@ -203,7 +203,7 @@ export class DataViewsStatesService {
   }
 
   /**
-   * Whom the viewer may share with (Specification_DataViews.md §5.9): an administrator, every active role but the
+   * Whom the viewer may share with (DataViews.md §5.9): an administrator, every active role but the
    * reserved ones and every active user; anyone else, their own roles and the users holding one of them. Users by
    * `term` (name or email), the first 20.
    */

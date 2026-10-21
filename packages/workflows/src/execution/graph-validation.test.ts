@@ -20,7 +20,7 @@ function expectInvalid(operations: Op[], connections: Conn[], message: RegExp): 
   expect((thrown as TotalBaseError).message).toMatch(message);
 }
 
-/** The graph rules of Specification_Workflows.md §3.3/§3.4, checked on save and publish. */
+/** The graph rules of Workflows.md §3.3/§3.4, checked on save and publish. */
 describe("validateWorkflowGraph", () => {
   it("accepts a tree: branches, an error branch, a loop body and an unconnected output", () => {
     expect(() => validateWorkflowGraph({

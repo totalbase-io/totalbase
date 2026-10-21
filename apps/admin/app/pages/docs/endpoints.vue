@@ -26,7 +26,7 @@ const session = useSession()
 
 // Every route a developer can call: each exposed resource's (a method it
 // doesn't expose listed as disabled), each HTTP-triggered workflow's, and
-// the fixed /api/* routes - Specification_Admin_UI.md §12.
+// the fixed /api/* routes - Admin_UI.md §12.
 const { data: endpoints, pending, error, refresh } = await useAsyncData(
   'endpoints',
   async () => (await api.get<Endpoint[]>('/endpoints')).data,

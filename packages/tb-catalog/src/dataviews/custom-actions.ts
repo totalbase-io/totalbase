@@ -1,6 +1,6 @@
 import { UUID_PATTERN } from "@totalbase/shared";
 /**
- * A DataView's own actions (Specification_DataViews.md §3.7): a function or a MANUAL workflow run on a row, the open
+ * A DataView's own actions (DataViews.md §3.7): a function or a MANUAL workflow run on a row, the open
  * record or a selection - from the row's "⋮", the record's "⋮" or the selection bar, without a page or code. Plain
  * data: the settings write it into `view_config.custom_actions`, the server checks it, the App runs it.
  */

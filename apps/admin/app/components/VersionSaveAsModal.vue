@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * "Save as…" from a version's read-only preview (Specification.md §13.4):
+ * "Save as…" from a version's read-only preview (Foundations.md §13.4):
  * asks the new object's name/slug, then the host calls
  * its pillar's `…/versions/:version/duplicate`. The copy starts as an
  * unpublished draft with no access grants.

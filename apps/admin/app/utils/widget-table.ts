@@ -1,5 +1,5 @@
 /**
- * A Table widget's columns from its Resource (Specification_DataViews.md §9.6, §15):
+ * A Table widget's columns from its Resource (DataViews.md §9.6, §15):
  * one per field the Resource reads, in its order,
  * each with its settings - the Table's own (`columnSettings`) over what its
  * resource's column sets (`inherited`); its title, else its name humanized.
@@ -56,7 +56,7 @@ export function inheritedTableSettings(presentation: Record<string, ColumnPresen
 }
 
 /**
- * A Resource's presentation with its related columns' too (`cliente.razon_social`, Specification_DataViews.md §9.8):
+ * A Resource's presentation with its related columns' too (`cliente.razon_social`, DataViews.md §9.8):
  * each titled "<its foreign key's title> › <the target column's title>" and formatted as the target column - read
  * from `relations` (foreign key → target resource) and every resource's presentation (`all`). One hop.
  */

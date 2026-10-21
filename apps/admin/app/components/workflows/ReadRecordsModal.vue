@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
- * Configures a `totalbase.read-records` node's `configuration` (Specification_Workflows.md §5.2):
+ * Configures a `totalbase.read-records` node's `configuration` (Workflows.md §5.2):
  * a selected exposed TABLE/readable VIEW
  * plus the Data API query object, edited via the shared QueryBuilder.vue
  * (same grammar the Data API's own GET query string uses - 23.1: "does

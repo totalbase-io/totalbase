@@ -45,7 +45,7 @@ const gridRef = ref<InstanceType<typeof DataViewGrid> | null>(null)
 const gridReady = computed(() => !!(dataview.value && dataview.value.viewType !== 'CUSTOM' && !isSettings.value && dataview.value.sourceResourceSchema && dataview.value.sourceResourceName))
 /** SETTINGS: its parameter table laid out like Settings, edited in place - never a grid. */
 const isSettings = computed(() => dataview.value?.viewType === 'SETTINGS')
-/** A list's margin (Specification_DataViews.md §5): the DataView's own, else the instance's - none by default. */
+/** A list's margin (DataViews.md §5): the DataView's own, else the instance's - none by default. */
 /** The view on screen - a DataView offering several (view_config.layouts) switches between them in its grid. */
 const activeLayout = ref<string | null>(null)
 const listMargin = computed(() => (dataview.value ? resolveListMargin({ ...dataview.value, viewType: (activeLayout.value ?? dataview.value.viewType) as typeof dataview.value.viewType }) : null))
@@ -72,11 +72,11 @@ const isFrame = computed(() => dataview.value?.viewType === 'EXTERNALFRAME')
 // CUSTOM: widgets bound to variables - its own page body, scrolling like any page.
 const isCustom = computed(() => dataview.value?.viewType === 'CUSTOM')
 /** A CUSTOM page with widgets in its footer gets the page's pinned footer (CustomPage.vue's Teleport) - none, no footer. */
-/** Its content width and align (Specification_DataViews.md §6.7) - its body and its pinned footer; its header's widgets stay in the page header. */
+/** Its content width and align (DataViews.md §6.7) - its body and its pinned footer; its header's widgets stay in the page header. */
 const customContentClass = computed(() => dataview.value ? pageContentClassOf(dataview.value, 'custom') : undefined)
 const hasPageFooter = computed(() => isCustom.value && (fields.value ?? []).some(f => f.kind === 'WIDGET' && f.parent === null && (f.config as { slot?: string }).slot === PAGE_FOOTER_SLOT))
 /**
- * Kiosk (`view_config.kiosk`, CUSTOM - Specification_DataViews.md §7.3): the
+ * Kiosk (`view_config.kiosk`, CUSTOM - DataViews.md §7.3): the
  * page alone, no App menu and no page header - the layout steps aside
  * (`setPageLayout('kiosk')`) and KioskFrame fills the screen. An administrator
  * leaves it from its corner menu (`?kiosk=false`, the page in the App's
@@ -236,7 +236,7 @@ const frameActions = computed<HeaderAction[]>(() => {
       draws (its setup awaits both): a loading state meanwhile, not a blank body. -->
       <!-- A list (TABLE, CARDS, KANBAN, CALENDAR, GANTT, MAP): its margin is the DataView's, else the instance's
       (list_margin - normal by default; none puts it right under the header). data-shell="list" and data-dataview-type are stable
-      anchors for custom CSS (Specification_Admin_UI.md §4.1.1). -->
+      anchors for custom CSS (Admin_UI.md §4.1.1). -->
       <div
         v-else-if="gridReady"
         data-shell="list"

@@ -72,7 +72,7 @@ const SELECT_COLUMNS = `id, type, name, slug, enabled, show_on_sign_in, configur
  * segment in GET /api/auth/oauth/:provider is the stored, UNIQUE `slug`:
  * "google"/"github" (one provider of each, a partial unique index on
  * `type`), or an OIDC provider's name slugified at creation
- * (Specification_Security.md §2.5: "my-company" for "My Company"). The
+ * (Security.md §2.5: "my-company" for "My Company"). The
  * database decides uniqueness - a duplicate is AUTH_PROVIDER_NAME_DUPLICATE
  * from the constraint, never a check-then-insert.
  */

@@ -5,7 +5,7 @@ import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vu
  * selected exposed TABLE plus an optional `where` (same filter-object
  * grammar as Read/Update records). Like the Data API's DELETE, an empty
  * filter is refused - at publish and at run time - while
- * `api.require_where_for_delete` is on (Specification_Workflows.md §5.5).
+ * `api.require_where_for_delete` is on (Workflows.md §5.5).
  *
  * Uses UModal, same as ReadRecordsModal.vue/ConditionModal.vue.
  */

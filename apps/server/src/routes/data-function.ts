@@ -8,7 +8,7 @@ import { FUNCTION_CALL_EXECUTION_TYPE, queueAsyncCall, wantsAsync } from "../asy
 import { withIdempotency } from "../idempotency-helper.js";
 
 /**
- * FUNCTION EXECUTE endpoint. See Specification_Data_API.md §7. The HTTP glue
+ * FUNCTION EXECUTE endpoint. See Data_API.md §7. The HTTP glue
  * only: the request's arguments and principal, the idempotency key, and
  * the async opt-in - overload resolution, the EXECUTE grant and the call's
  * transaction (audit + outbox) are @totalbase/mutations' (function-call-
@@ -18,7 +18,7 @@ import { withIdempotency } from "../idempotency-helper.js";
  * @totalbase/pg-catalog's function-detail.ts); classification
  * (UNCLASSIFIED/QUERY/ACTION) is metadata for OpenAPI generation
  * (Phase 7) and does not gate execution here. `Prefer: respond-async`
- * queues the call instead (Specification_Data_API.md §10.4): checked
+ * queues the call instead (Data_API.md §10.4): checked
  * now, run by the executions worker, polled at /api/executions/{id}.
  */
 export function registerDataFunctionRoutes(app: FastifyInstance, context: AppContext): void {
@@ -29,20 +29,20 @@ export function registerDataFunctionRoutes(app: FastifyInstance, context: AppCon
       const token = extractBearerToken(request);
       const dataPrincipal = await resolveDataPrincipal(context, token, request.headers["x-totalbase-timezone"], request);
 
-      // The request body is { data: { argument: value } } - every Data API body carries its data in `data` (Specification_Data_API.md §2.4).
+      // The request body is { data: { argument: value } } - every Data API body carries its data in `data` (Data_API.md §2.4).
       const args = request.body?.data ?? {};
       const audit: FunctionCallAudit = {
         requestId: request.id,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
         source: "api",
-        payload: sanitizeForAudit(args), // a password argument never lands in the log (Pre_Beta_Review 1.9)
+        payload: sanitizeForAudit(args), // a password argument never lands in the log
       };
       const { resource, detail } = await resolveFunctionCall(context, request.params.schema, request.params.resource, args);
       const async = wantsAsync(request.headers);
 
       // Opt-in per request, or required by the resolved overload's
-      // resource (Specification_Data_API.md §9, §9.1). The scope names the
+      // resource (Data_API.md §9, §9.1). The scope names the
       // function, not the overload: the body (its arguments) is in the
       // request hash anyway. A queued call has a scope of its own, so a
       // retry replays the same 202 (the same execution), never a 200.

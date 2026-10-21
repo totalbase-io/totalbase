@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * UTable - a page's Table (Specification_DataViews.md §14.2):
+ * UTable - a page's Table (DataViews.md §14.2):
  * Nuxt UI's table as is, plus TotalBase's own Search and Pager around it.
  * Both drive its Rows' Resource on the server (`setSearch`/`setPage`, through
  * the renderer's `onSearch`/`onPage`), so a Resource of thousands of rows is

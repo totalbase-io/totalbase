@@ -8,7 +8,7 @@ export interface DraftNode {
   /** Short reference id (letters/digits/underscores, <=20 chars) other steps use to refer to this one's output - not this node's internal `id` (a UUID, never shown). Start's is always fixed to "start", never user-edited. */
   key: string
   configuration: Record<string, unknown>
-  /** Owning `totalbase.for-each` operation id, for a body-scoped node (Specification_Workflows.md §3.4) - undefined for a root-scope node. Set once by addStep() and inherited by every step chained after it within the same body; never edited afterward. */
+  /** Owning `totalbase.for-each` operation id, for a body-scoped node (Workflows.md §3.4) - undefined for a root-scope node. Set once by addStep() and inherited by every step chained after it within the same body; never edited afterward. */
   parent?: string
 }
 
@@ -24,7 +24,7 @@ export interface WorkflowNodeView {
 export interface WorkflowTreeContext {
   /** True while the canvas is showing a read-only historical version (the Versions menu's preview) - hides every add/edit/delete affordance a card would otherwise offer; [id].vue's own onNodeClick/addStep/etc. no-op regardless, this just keeps the controls from rendering as dead buttons. */
   readOnly: boolean
-  /** The workflow holds the most steps it may (Specification_Workflows.md §3.6) - every Add step entry is disabled, saying why. */
+  /** The workflow holds the most steps it may (Workflows.md §3.6) - every Add step entry is disabled, saying why. */
   operationLimitReached: boolean
   operationById(id: string): DraftNode | undefined
   nodeView(node: DraftNode): WorkflowNodeView

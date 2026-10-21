@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A workflow's runs (Specification_Workflows.md §16.3) - the Runs section of its settings page: a server-paged
+ * A workflow's runs (Workflows.md §16) - the Runs section of its settings page: a server-paged
  * grid with its filters (status, trigger, mode, version, period) in the toolbar and the pager at the foot, as the
  * sessions grid. A row opens the run in a slideover beside the table (WorkflowRunSlideover.vue): its summary, result
  * or error, steps, and each step's detail. The open run lives in `?run=`, so a link lands on it (the editor's Test

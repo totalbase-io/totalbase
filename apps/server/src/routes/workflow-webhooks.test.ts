@@ -11,7 +11,7 @@ const PREFIX = "webhook-test";
 
 /**
  * GET|POST /api/workflows/{slug}/webhook - a workflow's WEBHOOK trigger
- * (Specification_Workflows.md §13.2). PUBLIC runs as the
+ * (Workflows.md §13.2). PUBLIC runs as the
  * configured account, ignores presented credentials and is rate limited
  * per IP; AUTHENTICATED needs the INVOKE grant; anything unavailable
  * (unknown, disabled, wrong method) answers the same way.

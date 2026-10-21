@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Saving what's on screen as a view (Specification_DataViews.md §5.9) - the views menu's and the Filter panel's:
+ * Saving what's on screen as a view (DataViews.md §5.9) - the views menu's and the Filter panel's:
  * a name and Save. A saved view never changes; saving under the name of one of one's own views asks first, then
  * replaces it. Props in, events out: the grid owns the save.
  */

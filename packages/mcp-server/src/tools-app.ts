@@ -4,7 +4,7 @@ import type { AdminClient } from "./admin-client.js";
 import { IDEMPOTENT, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
- * The App menu (Specification_Security.md §8.2): the arrangement of every
+ * The App menu (Security.md §8.2): the arrangement of every
  * published, LISTED DataView and Dashboard in groups - read and replaced
  * whole through the Admin API. Objects are named by slug here; the API
  * takes ids.
@@ -70,7 +70,7 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
     {
       title: "Check the App",
       description:
-        "What still stops the App from working, and for whom - the admin's own warnings (Specification_DataViews.md §18). Per DataView and dashboard: not published, no role opens it, a column its source no longer has; and per role that opens a DataView: no READ on its source, a foreign key it sees as an id, a page variable refused (warnings), columns it may not read or a write the DataView offers but it may not make (info - often intended). Each issue says what fixes it: publish_*, set_*_roles, set_permission. Run it after a build; an empty list means nothing stops it. One object: dataview or dashboard (slug or id).",
+        "What still stops the App from working, and for whom - the admin's own warnings (DataViews.md §18). Per DataView and dashboard: not published, no role opens it, a column its source no longer has; and per role that opens a DataView: no READ on its source, a foreign key it sees as an id, a page variable refused (warnings), columns it may not read or a write the DataView offers but it may not make (info - often intended). Each issue says what fixes it: publish_*, set_*_roles, set_permission. Run it after a build; an empty list means nothing stops it. One object: dataview or dashboard (slug or id).",
       inputSchema: {
         dataview: z.string().optional().describe("Only this DataView (slug or id)"),
         dashboard: z.string().optional().describe("Only this dashboard (slug or id)"),

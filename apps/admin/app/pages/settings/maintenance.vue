@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > General > Maintenance (Specification_Administration.md §6): every
+ * Settings > PostgreSQL > Maintenance (Administration.md §6): every
  * table's size and vacuum/analyze state, from PostgreSQL's own statistics.
  * A row opens its details and indexes in a sidebar - a lookup next to the
  * list, not an editor (AGENTS.md section 25) - with its actions: VACUUM,

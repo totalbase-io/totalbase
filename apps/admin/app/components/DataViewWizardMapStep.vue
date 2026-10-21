@@ -17,7 +17,7 @@ const field = useModelField(layout)
 const latitudeColumn = field('latitudeColumn')
 const longitudeColumn = field('longitudeColumn')
 // Where each row is: one native `point` column, or a latitude/longitude pair
-// (Specification_DataViews.md §5.4) - one or the other, never both.
+// (DataViews.md §5.4) - one or the other, never both.
 const pointColumn = field('pointColumn')
 const locationMode = computed<'pair' | 'point'>({
   get: () => (pointColumn.value ? 'point' : 'pair'),

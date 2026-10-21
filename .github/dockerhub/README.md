@@ -40,7 +40,7 @@ The database role should not be a superuser: TotalBase can do exactly what its r
 | Tag | |
 |---|---|
 | `beta` | the latest beta |
-| `0.1.0-beta.1` | this version - pin one in production |
+| `0.1.0-beta.2` | this version - pin one in production |
 
 Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release.
 

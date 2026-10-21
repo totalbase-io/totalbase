@@ -1,7 +1,7 @@
 import type { SavedView, SavedViewConfig } from '~/types/dataview'
 
 /**
- * A DataView's saved views as the viewer sees them (Specification_DataViews.md §5.9): their own and those
+ * A DataView's saved views as the viewer sees them (DataViews.md §5.9): their own and those
  * shared with them or one of their roles. One list
  * for the toolbar's views popover - each change lands in it.
  */

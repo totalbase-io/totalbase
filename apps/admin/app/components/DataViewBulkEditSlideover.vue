@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Edit the rows the viewer chose together (Specification_DataViews.md §5.15) - by their keys, from any page; never
+ * Edit the rows the viewer chose together (DataViews.md §5.15) - by their keys, from any page; never
  * a set resolved by a filter or a search: only the fields added here - each with the control its column takes
  * (RecordValueInput), Leave empty where it may be null. One transaction: a row PostgreSQL refuses (a CHECK, the
  * viewer's row filter, one gone) and none changes. Audited row by row.

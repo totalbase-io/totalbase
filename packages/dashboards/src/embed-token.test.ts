@@ -48,10 +48,10 @@ describe("embed tokens", () => {
   it("preview tokens: signed with a key derived from the master key, told apart, never valid as a portal's", () => {
     const key = embedPreviewKey("master-key-for-tests");
     expect(key).not.toBe("master-key-for-tests");
-    const preview = signEmbedPreviewToken({ dashboard: EMBED, display: { theme: "dark" }, variables: { customer: { mode: "LOCKED", value: "acme" } }, exp: NOW + 300 }, key);
+    const preview = signEmbedPreviewToken({ dashboard: EMBED, display: { theme: "dark" }, variables: { customer: { mode: "LOCKED", value: "acme" } }, widget: EMBED, exp: NOW + 300 }, key);
     expect(isPreviewToken(preview)).toBe(true);
     expect(isPreviewToken(signEmbedToken(claims(), SECRET))).toBe(false);
-    expect(verifyEmbedPreviewToken(preview, key, 600, NOW)).toMatchObject({ dashboard: EMBED, display: { theme: "dark" } });
+    expect(verifyEmbedPreviewToken(preview, key, 600, NOW)).toMatchObject({ dashboard: EMBED, display: { theme: "dark" }, widget: EMBED });
     expect(() => verifyEmbedPreviewToken(preview, SECRET, 600, NOW)).toThrow(/signature/);
     expect(() => verifyEmbedToken(preview, key, 600, NOW)).toThrow(/names no embed/);
   });

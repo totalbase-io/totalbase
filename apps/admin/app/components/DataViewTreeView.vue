@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * TREE layout of a DataView grid (Specification_DataViews.md §5.14): the rows under their parent row - the table's
+ * TREE layout of a DataView grid (DataViews.md §5.14): the rows under their parent row - the table's
  * foreign key to itself (`tree_layout.parentColumn`) - as a tree (TreeView) or an org chart. A row whose parent
  * isn't among the rows read (a search, a filter, the cap) shows at the root. A node opens its record; "+" adds a
  * child; a drag (tree only) moves a row under another - an UPDATE of its parent column, and of the order column of

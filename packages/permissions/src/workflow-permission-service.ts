@@ -3,8 +3,8 @@ import { holdsAdminAccess } from "./admin-roles.js";
 import type { PermissionDecision } from "./permission-resolver.js";
 
 /**
- * The WORKFLOW_INVOKE grant (specs/Specification_Workflows.md §12): object
- * access, as a DataView's or a Dashboard's roles (Specification_Security.md
+ * The WORKFLOW_INVOKE grant (specs/Workflows.md §12): object
+ * access, as a DataView's or a Dashboard's roles (Security.md
  * §7) - a role either may invoke the workflow or holds no grant; there is no
  * DENY, unlike the data permissions. Its own table rather than a row in
  * totalbase.permissions: that table's `resource` column is a

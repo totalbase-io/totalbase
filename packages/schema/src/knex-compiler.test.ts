@@ -7,7 +7,7 @@ import { createKnexCompiler } from "./knex-compiler.js";
  * coverage - no live connection to any engine, just asserting the same
  * table-schema-service.ts builder logic produces materially different
  * SQL when compiled against a different `client`. See
- * Specification.md's Phase 5 note: no MySQL/SQL
+ * Foundations.md's Phase 5 note: no MySQL/SQL
  * Server instance is stood up anywhere in this repo - this is the
  * substitute proof that the abstraction is real, not decorative.
  */

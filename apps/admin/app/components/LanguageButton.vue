@@ -3,7 +3,7 @@ import { UI_LANGUAGES, type UiLanguage } from '@totalbase/shared'
 import { PUBLIC_LANGUAGE_KEY } from '~/utils/public-language'
 
 /**
- * The language switch of the pages with no user (Specification_Admin_UI.md §14): sign-in and the public auth
+ * The language switch of the pages with no user (Admin_UI.md §14): sign-in and the public auth
  * pages. A visitor's choice for this browser - kept in localStorage, read again at boot by
  * plugins/i18n-language.client.ts - until a signed-in user's own preference takes over. Beside the color mode
  * switch, in its shape: a ghost icon button opening a menu.

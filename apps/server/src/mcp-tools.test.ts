@@ -10,7 +10,7 @@ import type { AppContext } from "./context.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * The MCP server against a real TotalBase (Specification_Administration.md
+ * The MCP server against a real TotalBase (Administration.md
  * §11): an agent's whole build - a schema, related tables, a change of
  * structure, records, a dashboard tried, saved and published, a DataView -
  * through the tools over HTTP, with an administrator's plane="ADMIN" token.
@@ -90,7 +90,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     );
     const read = async (guide: string) => ((await mcp.readResource({ uri: `totalbase://guide/${guide}` })).contents[0] as { text: string }).text;
     const dashboards = await read("dashboards");
-    // Every type listed; each one's contract read on its own (MCP_Demo_Findings.md F29).
+    // Every type listed; each one's contract read on its own.
     for (const type of ["KPI", "BAR", "TABLE", "TText", "TFrame"]) expect(dashboards).toContain(`${type} (`);
     const contracts = ((await mcp.callTool({ name: "describe_dashboard_widgets", arguments: { types: ["KPI", "TText"] } })).content as { text: string }[])[0]!.text;
     expect(contracts).toMatch(/^### KPI - /);
@@ -149,7 +149,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(deals.exposedMethods).toEqual(["GET", "POST", "PATCH", "DELETE"]);
   });
 
-  // describe_table dropped what a constraint says and a partial index's WHERE (MCP_Demo_Findings.md F8, F10).
+  // describe_table dropped what a constraint says and a partial index's WHERE.
   it("describes each constraint's message and a partial index's condition", async () => {
     const { unique } = await call<{ unique: { name: string }[] }>("describe_table", { schema: SCHEMA, name: "customers" });
     const { foreignKeys } = await call<{ foreignKeys: { name: string }[] }>("describe_table", { schema: SCHEMA, name: "deals" });
@@ -170,7 +170,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
   });
 
   it("alters a table in one batch, previews a drop, and refuses one without confirm", async () => {
-    // What it applied and the names - not every column's input and widget again (MCP_Demo_Findings.md F9).
+    // What it applied and the names - not every column's input and widget again.
     const after = await call<{ applied: string[]; columns: string[]; indexes: string[] }>("alter_table", {
       schema: SCHEMA,
       name: "deals",
@@ -317,7 +317,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(exposed.exposedMethods).toEqual(["GET"]);
   });
 
-  // "Resource not found" for a table create_table had just answered sent an agent after a typo (MCP_Demo_Findings.md F2, F13).
+  // "Resource not found" for a table create_table had just answered sent an agent after a typo.
   it("says a write's method isn't exposed, and that files are written by id", async () => {
     await expect(call("write_records", { schema: SCHEMA, name: "scratch", operation: "create", data: {} })).rejects.toThrow(
       `METHOD_NOT_EXPOSED: ${SCHEMA}.scratch exists but is exposed for GET only - expose POST with expose_resource`,
@@ -337,7 +337,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(customers.rowPresentation?.displayField).toBe("name");
     // Every column of a table in one call (M17).
     const many = await call<{ columns: string[] }>("set_column_presentations", { schema: SCHEMA, name: "deals", columns: { amount: { label: "Amount", displayFormat: "#,##0.00" }, closed_at: { label: "Closed" } } });
-    // The columns written, not 24 tables' presentations echoed back (MCP_Demo_Findings.md F19).
+    // The columns written, not 24 tables' presentations echoed back.
     expect(many.columns).toEqual(["amount", "closed_at"]);
     // A short label, merged (M21): kept, and described.
     const short = await call<{ presentation: Record<string, unknown> }>("set_column_presentation", { schema: SCHEMA, name: "deals", column: "amount", presentation: { shortLabel: "Amt." }, merge: true });
@@ -356,7 +356,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(merged.columns.find((c) => c.column === "closed_at")?.presentation).toEqual({ label: "Closed", shortLabel: "Cl." });
     await expect(call("set_column_presentations", { schema: SCHEMA, name: "deals", columns: {}, merged: true }))
       .rejects.toThrow(/set_column_presentations has no argument merged; it takes: schema, name, columns, merge/);
-    // A condition's filter takes a JSON number like every stored filter (MCP_Demo_Findings.md F18).
+    // A condition's filter takes a JSON number like every stored filter.
     const conditioned = await call<{ presentation: { conditions: { where: unknown }[] } }>("set_column_presentation", {
       schema: SCHEMA, name: "deals", column: "amount", presentation: { conditions: [{ name: "Big", where: { amount: { _gt: 1000 } }, style: { bold: true } }] }, merge: true,
     });
@@ -425,7 +425,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
       schema: SCHEMA, name: "customers", operation: "create", data: { name: "Initech" }, on_conflict: { target: ["name"], action: "UPDATE", data: { name: "$INSERT.name" } },
     });
     expect(upserted.id).toBe(nested.id);
-    // A delete answers what went, not every column of every row (MCP_Demo_Findings.md F1).
+    // A delete answers what went, not every column of every row.
     const dealsGone = await call<{ deleted: number; ids: string[] }>("write_records", { schema: SCHEMA, name: "deals", operation: "delete", where: { customer: { _eq: nested.id } }, confirm: true });
     expect(dealsGone).toEqual({ deleted: 1, ids: [nested.$deals[0]!.id] });
     expect(await call("write_records", { schema: SCHEMA, name: "customers", operation: "delete", id: nested.id, confirm: true })).toEqual({ deleted: 1, ids: [nested.id] });
@@ -446,7 +446,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(note.owner).toBe(ownerId);
   });
 
-  // A role granted "CRUD" wrote its own key or reassigned its rows to someone else (MCP_Demo_Findings.md F20).
+  // A role granted "CRUD" wrote its own key or reassigned its rows to someone else.
   it("leaves what the database fills out of a write grant's every field, and says so", async () => {
     const create = await call<{ fields: string[]; warnings?: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "notes", action: "CREATE" });
     expect(create.fields).toEqual(["body"]);
@@ -457,13 +457,13 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(named.fields.sort()).toEqual(["body", "owner"]);
     expect(named).not.toHaveProperty("warnings");
     expect((await call<{ fields: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "notes", action: "READ" })).fields).toContain("owner");
-    for (const action of ["CREATE", "UPDATE", "READ"]) await call("revoke_permission", { role_id: roleId, schema: SCHEMA, name: "notes", action });
+    for (const action of ["CREATE", "UPDATE", "READ"]) await call("revoke_permission", { role_id: roleId, schema: SCHEMA, name: "notes", action, confirm: true });
   });
 
   it("grants with every column by default, a row filter and denied fields - and a user of the role reads exactly that", async () => {
-    // A grant without fields used to allow no column at all: there is no wildcard (Specification_Security.md §6.4).
+    // A grant without fields used to allow no column at all: there is no wildcard (Security.md §6.4).
     const granted = await call<{ fields: string[]; where: unknown }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", where: { stage: { _eq: "WON" } } });
-    // READ "every field" names the path its reference column shows a customer by too (B44, Specification_Security.md §6.10).
+    // READ "every field" names the path its reference column shows a customer by too (B44, Security.md §6.10).
     expect(granted.fields.sort()).toEqual(["amount", "closed_at", "customer", "customer.name", "id", "stage"]);
     expect(granted).not.toHaveProperty("warnings");
     expect(granted.where).toEqual({ stage: { _eq: "WON" } });
@@ -491,7 +491,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     const keysOnly = await call<{ warnings?: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", fields: ["id", "stage", "customer"] });
     expect(keysOnly.warnings?.[0]).toContain("customer.name");
 
-    await call("revoke_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ" });
+    await call("revoke_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", confirm: true });
     expect((await call<{ resource: string }[]>("get_permissions", { role_id: roleId, schema: SCHEMA })).map((p) => p.resource)).not.toContain(`${SCHEMA}.deals`);
     expect((await read()).statusCode).toBe(403);
   });
@@ -508,7 +508,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
   it("reads, changes and deletes a DataView - and says which of its roles can't read the source", async () => {
     const id = created.dataviews[0]!;
     const before = await call<{ roles: { role: string; read: string }[]; fields: { column?: string; kind: string; config?: unknown }[] }>("get_dataview", { id });
-    // Its columns, not the generated form's widget tree with its bindings (MCP_Demo_Findings.md F31).
+    // Its columns, not the generated form's widget tree with its bindings.
     expect(before.fields.every((f) => f.column && f.kind !== "WIDGET" && f.config === undefined)).toBe(true);
     expect((await call<{ fields: { kind: string }[] }>("get_dataview", { id, detail: true })).fields.some((f) => f.kind === "WIDGET")).toBe(true);
     expect(before.roles).toEqual([expect.objectContaining({ role: roleId, read: "UNDEFINED" })]);
@@ -531,7 +531,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     await call("delete_dashboard", { id: dashboard.id, confirm: true });
     expect((await call<{ id: string }[]>("list_dashboards")).map((d) => d.id)).not.toContain(dashboard.id);
 
-    // Several in one call - clearing an instance took one call each (MCP_Demo_Findings.md F3).
+    // Several in one call - clearing an instance took one call each.
     const two = [await call<{ id: string }>("create_dashboard", { name: `Scratch A ${SUFFIX}` }), await call<{ id: string }>("create_dashboard", { name: `Scratch B ${SUFFIX}` })].map((d) => d.id);
     created.dashboards.push(...two);
     expect(await call("delete_dashboard", { ids: two, confirm: true })).toEqual({ deleted: two });
@@ -570,7 +570,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect((await call<{ steps: unknown[] }>("get_workflow_runs", { run_id: production.run })).steps).toHaveLength(3);
   });
 
-  // A test run answered a PDF's whole base64 and every row of every step (MCP_Demo_Findings.md F26).
+  // A test run answered a PDF's whole base64 and every row of every step.
   it("answers a run's long texts by their size and long lists by their first rows, unless full", async () => {
     const workflow = await call<{ id: string; revision: string; definition: { operations: { id: string; key: string }[] } }>("create_workflow", { name: `Big ${SUFFIX}` });
     created.workflows.push(workflow.id);

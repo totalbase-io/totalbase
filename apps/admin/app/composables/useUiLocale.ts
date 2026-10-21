@@ -4,7 +4,7 @@ import { DATE_FNS_LOCALES } from '~/utils/date-fns-locales'
 import { regionalLocale } from '~/utils/regional-locale'
 
 /**
- * The UI's current language as each library wants it (Specification_Admin_UI.md
+ * The UI's current language as each library wants it (Admin_UI.md
  * §14): date-fns (month and day names in a format) and Nuxt UI's own texts;
  * numbers and browser-formatted dates keep the browser's regional settings. Adding a language adds
  * its line in each map below.

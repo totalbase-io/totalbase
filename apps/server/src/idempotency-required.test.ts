@@ -6,7 +6,7 @@ import { loadServerEnv } from "./env.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Required idempotency key (Specification_Data_API.md §9.1): an
+ * Required idempotency key (Data_API.md §9.1): an
  * administrator marks a TABLE's CREATE or a FUNCTION's EXECUTE as needing an
  * Idempotency-Key. Fixtures are prefixed `idem_req_test` and removed by
  * primary key.

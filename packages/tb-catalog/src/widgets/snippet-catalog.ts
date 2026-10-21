@@ -1,5 +1,5 @@
 /**
- * The snippet catalog (Specification_DataViews.md §11.2): small
+ * The snippet catalog (DataViews.md §11.2): small
  * wizards that ask two or three things and write plain code - nothing hidden
  * at run time. What a snippet leaves is JavaScript the author reads and
  * changes: a handler's body ("Create handler") or lines at the cursor (the
@@ -43,7 +43,7 @@ export interface SnippetDefinition {
   icon: string;
   group: SnippetGroup;
   params: Readonly<Record<string, SnippetParam>>;
-  /** Only on a page with a record (Specification_DataViews.md §8.5). */
+  /** Only on a page with a record (DataViews.md §8.5). */
   requires?: "record";
   /** The code: statements for a handler `(dataview, event)`, one per line - may `await` and `return`. */
   render: (params: SnippetParams) => string[];

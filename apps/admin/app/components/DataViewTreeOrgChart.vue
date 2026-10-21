@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A TREE DataView's org chart (Specification_DataViews.md §5.14): boxes under their parent on a canvas that
+ * A TREE DataView's org chart (DataViews.md §5.14): boxes under their parent on a canvas that
  * scrolls both ways and pans by dragging its background, with − / + / Fit to width. It opens whole when it fits,
  * else fitted to the width (never below MIN_ZOOM - past that, it scrolls).
  */

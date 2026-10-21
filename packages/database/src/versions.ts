@@ -3,7 +3,7 @@ import type { Queryable } from "./database.js";
 import { quoteIdentifier } from "./identifiers.js";
 
 /**
- * The one versioning model (Specification.md §13) in SQL, shared by the
+ * The one versioning model (Foundations.md §13) in SQL, shared by the
  * three pillars that have it - DataViews, Dashboards and Workflows. Each
  * keeps its own identity table (the draft) and a `*_versions` table whose
  * rows are immutable snapshots numbered from 1; the live version is always
@@ -34,7 +34,7 @@ export type VersionSnapshotColumn = { column: string; value: unknown; cast?: "js
 const qualify = (name: string) => name.split(".").map(quoteIdentifier).join(".");
 
 /**
- * Publishes a draft as the next version (Specification.md §13.4), inside
+ * Publishes a draft as the next version (Foundations.md §13.4), inside
  * the caller's transaction: locks the owner's row (two publishes at once
  * queue up, and the second finds the first's version instead of inserting
  * the same number), takes the snapshot through `snapshot` - read under
@@ -50,7 +50,7 @@ export async function publishVersion<Row extends QueryResultRow>(
   ownerId: string,
   userId: string | null,
   snapshot: (client: Queryable) => Promise<VersionSnapshotColumn[]>,
-  /** The publisher's note on what this version changes (Specification.md §13.3) - kept only when a version is created. */
+  /** The publisher's note on what this version changes (Foundations.md §13.3) - kept only when a version is created. */
   note: string | null = null,
 ): Promise<Row> {
   await client.query(`SELECT 1 FROM ${qualify(versions.ownerTable)} WHERE id = $1 FOR UPDATE`, [ownerId]);
@@ -88,7 +88,7 @@ export async function publishVersion<Row extends QueryResultRow>(
 }
 
 /**
- * Deletes every version numbered below `before` (Specification.md §13.4) -
+ * Deletes every version numbered below `before` (Foundations.md §13.4) -
  * never the live (latest) one, so the next publish stays latest + 1 and a
  * number is never reused. `keep` is an extra SQL condition a version must
  * meet to go, over the alias `v` (Workflows keeps a version that still has

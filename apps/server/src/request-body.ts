@@ -2,7 +2,7 @@ import { TotalBaseError } from "@totalbase/errors";
 
 /**
  * A JSON request body: everything the client sends is in `data`
- * (Specification_Data_API.md §2.5). One reader for every route, so a
+ * (Data_API.md §2.5). One reader for every route, so a
  * missing or malformed envelope answers the same way everywhere.
  */
 export interface DataBody<T> {
@@ -25,7 +25,7 @@ export function optionalData<T extends object>(body: { data?: T | Partial<T> } |
 }
 
 /** A `:version` path parameter: a positive integer (400 otherwise); a version that doesn't exist is the service's 404. */
-/** The publisher's note on a publish body (Specification.md §13.3): trimmed, at most 128 characters, else null. */
+/** The publisher's note on a publish body (Foundations.md §13.3): trimmed, at most 128 characters, else null. */
 export function publishNote(body: { data?: { note?: unknown } } | null | undefined): string | null {
   const raw = body?.data?.note;
   if (raw === undefined || raw === null) return null;

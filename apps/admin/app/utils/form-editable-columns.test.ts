@@ -10,7 +10,7 @@ function formField(column: string, gridY: number, gridX = 0, extra: Record<strin
   return [field, widget('UInput', { slot: 'default', ...input }, field.id, 0)]
 }
 
-// What a bulk edit offers (Specification_DataViews.md §5.15).
+// What a bulk edit offers (DataViews.md §5.15).
 describe('formEditableColumns()', () => {
   it('lists the form\'s editable fields in its order, titled as the form titles them', () => {
     const fields = [

@@ -3,7 +3,7 @@ import type { RoleColor } from '~/types/permission'
 import { useCatalogText } from '~/utils/catalog-text'
 import { designerCatalogText } from '~/utils/designer-catalog-text'
 
-/** Shape of `totalbase.dashboards` rows as returned by the Admin API — Specification_Dashboards.md. */
+/** Shape of `totalbase.dashboards` rows as returned by the Admin API — Dashboards.md. */
 /** A dashboard's tab (D7) - UTabs' item. */
 export interface DashboardTab {
   value: string
@@ -24,13 +24,13 @@ export interface Dashboard {
   scope: 'LISTED' | 'EMBEDDED_ONLY'
   /** The App viewer's auto-refresh interval in seconds (one of DASHBOARD_REFRESH_INTERVALS); null = off. Not versioned. */
   refreshIntervalSeconds: number | null
-  /** A signed embed token may show its published version outside TotalBase (Specification_Dashboards.md §9.5). */
+  /** A signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). */
   embeddingEnabled?: boolean
-  /** Draft variable definitions ($VAR.*) - Specification_Dashboards.md §3.3. */
+  /** Draft variable definitions ($VAR.*) - Dashboards.md §3.3. */
   variables: DashboardVariable[]
   /** Its tabs (D7) - none: one grid. The App reads the published ones. */
   tabs?: DashboardTab[]
-  /** The draft differs from the live version, or there's no version yet (GET /dashboards and GET /dashboards/:id) - Specification.md §13.5. */
+  /** The draft differs from the live version, or there's no version yet (GET /dashboards and GET /dashboards/:id) - Foundations.md §13.5. */
   hasUnpublishedChanges?: boolean
   /** The live (highest) version, null until first published - GET /dashboards only. */
   liveVersion?: number | null
@@ -98,7 +98,7 @@ export const DASHBOARD_VARIABLE_TYPES: { value: DashboardVariableType, label: st
 export type { DashboardWidgetGroup, DashboardWidgetProp, DashboardWidgetType } from '@totalbase/tb-catalog'
 
 /**
- * A widget's data is an admin-authored SQL query (Specification_Dashboards.md §2);
+ * A widget's data is an admin-authored SQL query (Dashboards.md §2);
  * `config` maps its result columns and holds appearance.
  * `query` is null until configured - a presentation widget (D3) draws
  * without one, its `config` a page control's `props` and `bindings`.
@@ -126,7 +126,7 @@ export interface DashboardWidget extends DashboardWidgetContent {
   updatedAt: string
 }
 
-/** A widget's result column, typed by the server (Specification_Dashboards.md §2.3). */
+/** A widget's result column, typed by the server (Dashboards.md §2.3). */
 export interface DashboardQueryColumn {
   name: string
   dataType: string
@@ -156,7 +156,7 @@ export interface DashboardQueryResult {
   files?: Record<string, DashboardFileLink> | null
 }
 
-/** A file a widget's query returned (Specification_Dashboards.md §5.16): its signed link, name and type. */
+/** A file a widget's query returned (Dashboards.md §5.16): its signed link, name and type. */
 export interface DashboardFileLink {
   /** Signed for 15 minutes - null where it isn't served (`blocked`). */
   url: string | null
@@ -180,7 +180,7 @@ export interface DashboardWidgetMarks {
 /** A widget run slower than this is marked in the editor (D24). */
 export const DASHBOARD_SLOW_QUERY_MS = 1_000
 
-/** One immutable dashboard version (Specification.md §13) - summary. */
+/** One immutable dashboard version (Foundations.md §13) - summary. */
 export interface DashboardVersion {
   id: string
   dashboard: string
@@ -219,7 +219,7 @@ export const DASHBOARD_WIDGET_META: Record<DashboardWidgetType, DashboardWidgetP
 
 /**
  * The dashboard widget catalog, the refresh intervals, the variable types and
- * the date-range presets in the UI's language (Specification_Admin_UI.md §14):
+ * the date-range presets in the UI's language (Admin_UI.md §14):
  * `dashboards.catalog.*` / `dashboards.variables.*` keys, the package's English
  * as the fallback. A role or a prop is its widget's own text when it has one
  * (`widgets.<TYPE>.roles.<id>`), else the shared one (`roles.<id>`). A

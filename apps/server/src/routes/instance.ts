@@ -11,7 +11,7 @@ const publicFileUrl = (id: string) => (id ? `/api/totalbase/table/files/${id}` :
 /**
  * What a page needs to know about the instance before anyone signs in, and
  * on every page after: the language it speaks (`system.language`,
- * Specification_Admin_UI.md §14) and its branding (§4.1.1) - its name, its
+ * Admin_UI.md §14) and its branding (§4.1.1) - its name, its
  * mark and how the sign-in page is laid out. Public, and nothing else: no
  * version, no other setting. The colors and the custom CSS travel as a
  * stylesheet instead (/admin/theme.css).

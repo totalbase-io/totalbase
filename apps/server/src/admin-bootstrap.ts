@@ -3,7 +3,7 @@ import { hashPassword } from "@totalbase/auth";
 import { ADMINISTRATORS_ROLE_NAME } from "@totalbase/permissions";
 
 /**
- * The instance owner (Specification.md §14): the first user to hold the reserved Administrators role, created
+ * The instance owner (Foundations.md §14): the first user to hold the reserved Administrators role, created
  * once - at start from TOTALBASE_ADMIN_EMAIL/PASSWORD, or later by the first-start setup (setup.ts). Gated on
  * "no user holds the role", not "totalbase.users is empty" - a developer may already have data-plane users
  * before ever starting the server. Changing the variables later never touches an existing administrator.

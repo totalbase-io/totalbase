@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Views (Specification_DataViews.md §3.6, §5.13): a row per list view - several may be open at once.
+ * Settings > Views (DataViews.md §3.6, §5.13): a row per list view - several may be open at once.
  * The offered ones first, in the toolbar's order (dragged by their grip, or moved from their "⋮"), the rest below in
  * the canonical order (LIST_DATAVIEW_TYPES). Each row: its grip, icon and name, a badge (Main, Offered, Not offered,
  * Needs setup), the Offer switch and a "⋮" (Make main, move). Its content - the view's layout and its own controls -

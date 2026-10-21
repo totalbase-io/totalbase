@@ -9,7 +9,7 @@ const RUN = Date.now().toString(36);
 const TABLE = `dash_marks_${RUN}`;
 
 /**
- * Dashboards, tanda 2b (Specification_Dashboards.md §5, §7.2, §9.5): what a widget reads beyond its query - its
+ * Dashboards, tanda 2b (Dashboards.md §5, §7.2, §9.5): what a widget reads beyond its query - its
  * thresholds' and reference lines' values (D5), a table's totals by PostgreSQL (D28), its click's targets and
  * formulas (D6) - checked on save and on publish; tabs (D7); a download's audit entry (D8); and what an embed runs.
  */

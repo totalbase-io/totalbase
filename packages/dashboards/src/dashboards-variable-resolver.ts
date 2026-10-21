@@ -29,7 +29,7 @@ export class VariableResolver {
     return ref.kind === "USER" ? this.resolveUser(ref.field) : this.resolveVar(ref.name, ref.part);
   }
 
-  /** `$USER.<column>` - the caller's real users row, cast to that column's real type (Specification_Data_API.md §3.7). */
+  /** `$USER.<column>` - the caller's real users row, cast to that column's real type (Data_API.md §3.7). */
   private async resolveUser(field: string): Promise<BoundVariable> {
     if (DENIED_USER_FIELDS.has(field)) {
       throw new TotalBaseError("DASHBOARD_QUERY_INVALID", `$USER.${field} is not available to widget queries.`);

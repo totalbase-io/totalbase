@@ -67,7 +67,7 @@ async function parseGrant(context: AppContext, body: unknown): Promise<SetPermis
 }
 
 /**
- * Grant/revoke management (Specification_Administration.md §1: "Permissions").
+ * Grant/revoke management (Administration.md §1: "Permissions").
  * These are the only endpoints that write totalbase.permissions,
  * including its field_overrides/payload_checks jsonb columns - the rows
  * EffectivePermissionService (used throughout the Data API) only ever
@@ -164,7 +164,7 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
       ...adminDoc("permissions", {
         summary: "Apply the default permissions on TotalBase's own tables",
         description:
-          "Gives the role what an ordinary App user needs on the totalbase schema (Specification_Security.md §10.5): read and " +
+          "Gives the role what an ordinary App user needs on the totalbase schema (Security.md §10.5): read and " +
           "upload files and folders, changing or deleting only their own; read templates and roles; read and update their own " +
           "account (name, avatar_url, preferences) and assignments; read and sign out their own sessions. A default is written only " +
           "where the role has no grant for that table and action yet - one it has (broader, narrower or DENY) is kept and listed in " +

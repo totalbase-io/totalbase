@@ -54,7 +54,7 @@ test('created with the wizard, published, changed, restored and deleted - all th
   // --- A draft until published: not in the App yet ---
   await page.waitForURL(/\/admin\/dataviews\/[0-9a-f-]+/)
   const settingsUrl = page.url()
-  // The grid's Search is in Actions, with the toolbar's other features (Specification_DataViews.md §3.6).
+  // The grid's Search is in Actions, with the toolbar's other features (DataViews.md §3.6).
   const actionsUrl = `/admin/dataviews/${settingsUrl.match(/\/admin\/dataviews\/([0-9a-f-]+)/)![1]}/settings?section=actions`
   const main = page.locator('main')
   await expect(main.getByRole('button', { name: /^Draft/ })).toBeVisible()

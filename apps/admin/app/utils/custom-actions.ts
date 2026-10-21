@@ -1,5 +1,5 @@
 /**
- * A DataView's custom actions at runtime (Specification_DataViews.md §3.7): which show where - only those the viewer
+ * A DataView's custom actions at runtime (DataViews.md §3.7): which show where - only those the viewer
  * may run (`actionTargets`, the server's), on a row only when its condition holds there (a flag PostgreSQL answered) -
  * and what each sends.
  */

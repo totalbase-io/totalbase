@@ -1,5 +1,5 @@
 /**
- * A grid column as it shows (Specification_DataViews.md §15):
+ * A grid column as it shows (DataViews.md §15):
  * its title, display options, look and conditions are its table's column's
  * (`field.inherited` - live on a draft, frozen on a published read) - a
  * DataView's column has none of its own, only what its list does with it

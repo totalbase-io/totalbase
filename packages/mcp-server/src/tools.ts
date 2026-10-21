@@ -42,12 +42,12 @@ import { registerAppTools } from "./tools-app.js";
  * Records - the application's tables and TotalBase's own (users, roles,
  * resources, templates, logs, ...) - are read and written with the two
  * generic tools, query_records and write_records, through the Data API
- * and its one filter grammar (Specification_Security.md §10). The
+ * and its one filter grammar (Security.md §10). The
  * rest are the operations that aren't row writes: DDL, exposure,
  * permissions, users' credentials, DataViews, dashboards, workflows.
  *
  * Requires a plane="ADMIN" personal access token belonging to a user
- * holding the reserved Administrators role (Specification_Security.md §1)
+ * holding the reserved Administrators role (Security.md §1)
  * - every call below is gated by the same requireAdmin the Admin UI
  * uses, nothing here bypasses TotalBase's own authorization.
  */
@@ -453,7 +453,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
   // Each requires confirm=true, an explicit second signal from the
   // caller beyond just supplying the right arguments - the same
   // "irreversible operations should not be a side effect of wrapping
-  // the whole Admin API" principle Specification_Administration.md §11 states. The
+  // the whole Admin API" principle Administration.md §11 states. The
   // server still enforces every real authorization check; this is only
   // a guard against an agent (or the model driving it) invoking a
   // destructive tool on a hunch.
@@ -483,7 +483,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
   registerUserTools(server, client);
   registerDataViewTools(server, client);
   registerPageTools(server, client);
-  registerDashboardTools(server, client);
+  registerDashboardTools(server, client, policy);
   registerDashboardSuggestTools(server, client);
   registerWorkflowTools(server, client);
   registerTemplateTools(server, client);

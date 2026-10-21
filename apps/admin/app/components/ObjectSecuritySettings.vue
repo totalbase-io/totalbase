@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * Settings > Security of a DataView (Specification_DataViews.md §3.6) or a Dashboard (Specification_Dashboards.md §2.6,
- * D26): which roles open it - object access, never data (Specification_Security.md §7.1). Not part of the draft: a
+ * Settings > Security of a DataView (DataViews.md §3.6) or a Dashboard (Dashboards.md §2.6,
+ * D26): which roles open it - object access, never data (Security.md §7.1). Not part of the draft: a
  * change applies at once, the banner says so. A DataView over a table: each role says what it may do there (its
  * effective permissions, trimmed by Allow) and warns when it can't read it.
  */

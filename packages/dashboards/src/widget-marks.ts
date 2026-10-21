@@ -3,7 +3,7 @@ import { DASHBOARD_TOTAL_KINDS, DASHBOARD_FRAME_URL_TOKEN, checkFrameUrlTemplate
 import type { DashboardVariable } from "./variables.js";
 
 /**
- * What a widget's config reads beyond its query (Specification_Dashboards.md §5.13-§5.15): its thresholds' and
+ * What a widget's config reads beyond its query (Dashboards.md §5.13-§5.15): its thresholds' and
  * reference lines' values from a column of its row or a variable (D5), its click's formulas and targets (D6), its
  * table's totals (D28). Checked on save against what the query returns and the dashboard's variables (DB15 for these
  * places), resolved on the server when it runs - plain values the App draws and alerts will read.

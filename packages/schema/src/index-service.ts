@@ -25,7 +25,7 @@ export interface CreateIndexInput {
   columns: (string | IndexColumnInput)[];
   method?: IndexMethod | undefined;
   unique?: boolean | undefined;
-  /** Raw boolean expression - a partial index (Specification_Administration.md §3.10 leaves this to SQL Console for v1; the visual builder here covers it directly instead). */
+  /** Raw boolean expression - a partial index (Administration.md §3.10 leaves this to SQL Console for v1; the visual builder here covers it directly instead). */
   where?: string | undefined;
   /**
    * CONCURRENTLY avoids locking the table for writes, at the cost of
@@ -85,7 +85,7 @@ export function buildDropIndexSql(schema: string, name: string, concurrently = f
 }
 
 /**
- * V1's index management (Specification_Administration.md §3.10) is spec'd as
+ * V1's index management (Administration.md §3.10) is spec'd as
  * introspect/list/show-DDL only, deliberately leaving creation to SQL
  * Console - deviated from here after review: since the Edit Table
  * drawer already builds structured DDL for everything else a table can

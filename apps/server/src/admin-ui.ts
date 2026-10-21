@@ -16,7 +16,7 @@ const DEFAULT_ADMIN_UI_DIR = join(dirname(fileURLToPath(import.meta.url)), "../.
 /**
  * Serves the built apps/admin Nuxt SPA under /admin/, from the same
  * process and port as the Admin/Data APIs - "both live in one service"
- * (Specification_Admin_UI.md §1.1).
+ * (Admin_UI.md §1.1).
  * @fastify/static's default wildcard route serves any real built asset
  * (including nested ones like /admin/_nuxt/*.js); a prefix-scoped
  * setNotFoundHandler on top of that is the documented @fastify/static
@@ -53,7 +53,7 @@ export async function registerAdminUi(
   // Who may frame the UI (Content-Security-Policy frame-ancestors): an
   // embed page the sites its embed allows, within
   // dashboards.embed_allowed_origins, and TotalBase itself (the drawer's
-  // preview) - Specification_Dashboards.md §9.5; every other page only
+  // preview) - Dashboards.md §9.5; every other page only
   // TotalBase itself (its previews), never another site (clickjacking).
   // Added before the /admin/* handlers below, so it applies to them -
   // the dev proxy's answers and the static build's alike.

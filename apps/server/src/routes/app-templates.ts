@@ -14,7 +14,7 @@ async function principalOf(context: AppContext, request: FastifyRequest): Promis
 }
 
 /**
- * Templates for every portal user (Specification_Security.md §9.3 and
+ * Templates for every portal user (Security.md §9.3 and
  * 10): read and written as Data API rows on templates (the name
  * and slug rules are PostgreSQL CHECKs). What is not a
  * row operation stays here: rendering a PDF preview.

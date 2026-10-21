@@ -11,7 +11,7 @@
  * viewer ever reaches it, so there's no reason to make its container
  * configurable too.
  *
- * SECTIONS (Specification_DataViews.md §3.6) - a horizontal navigation
+ * SECTIONS (DataViews.md §3.6) - a horizontal navigation
  * under the header, as Nuxt UI's Settings template, each section its own
  * URL (`?section=`). They tell one story, a question each - which data, how
  * it shows, what it lets do, who uses it - and the wizard's steps follow the
@@ -48,7 +48,7 @@
  * tab).
  *
  * Source/columns/view_type themselves stay create-time-only for this
- * delivery step (Specification_DataViews.md's phased
+ * delivery step (DataViews.md's phased
  * plan) - changing the DATA SOURCE isn't offered here or in the Design
  * form.
  */
@@ -164,13 +164,13 @@ const newRecordLabel = ref('')
 const pageContentWidth = ref<PageContentWidth | null>(null)
 const pageContentAlign = ref<PageContentAlign | null>(null)
 const fitToScreen = ref(false)
-/** CUSTOM only - `view_config.kiosk`: the page alone on screen in the App (Specification_DataViews.md §7.3). */
+/** CUSTOM only - `view_config.kiosk`: the page alone on screen in the App (DataViews.md §7.3). */
 const kiosk = ref(false)
 const columnSync = ref<ColumnSync>('auto_hide')
-/** `view_config.allow` - what its viewers may do besides reading, only less than their permissions (Specification_DataViews.md §5.1). */
+/** `view_config.allow` - what its viewers may do besides reading, only less than their permissions (DataViews.md §5.1). */
 const ALLOW_ACTIONS = ['create', 'update', 'delete'] as const
 const allow = ref<string[]>([...ALLOW_ACTIONS])
-/** `view_config.custom_actions` - its own actions on a row, the record or a selection (Specification_DataViews.md §3.7). */
+/** `view_config.custom_actions` - its own actions on a row, the record or a selection (DataViews.md §3.7). */
 const customActions = ref<CustomAction[]>([])
 const featureFlags = ref<Record<string, boolean>>({})
 /** One of AUTO_REFRESH_PRESETS' own values ('' = off, 'custom' = use autoRefreshCustom below, else a preset duration string used as-is). */
@@ -237,7 +237,7 @@ const ganttLayout = ref<GanttLayoutConfig | null>(null)
 const treeLayout = ref<TreeLayoutConfig | null>(null)
 /** SETTINGS: which columns hold each setting (`view_config.settings_layout`). */
 const settingsLayout = ref<SettingsLayoutConfig | null>(null)
-/** A list DataView's views (`view_config.layouts`, Specification_DataViews.md §5.13) - each one's settings group shows while it's offered. */
+/** A list DataView's views (`view_config.layouts`, DataViews.md §5.13) - each one's settings group shows while it's offered. */
 const layouts = ref<DataViewType[]>([])
 /** The main view - the one it opens with (`view_type`); any view it offers. */
 const mainView = ref<DataViewType>('TABLE')
@@ -268,7 +268,7 @@ const layoutColumns = computed<WizardColumn[]>(() => {
   const foreignKeys = new Set((relationDetail.value?.relations ?? []).map(r => r.sourceColumn))
   return bindingColumns.value.map(c => ({ name: c.name, label: c.name, dataType: c.dataType, isForeignKey: foreignKeys.has(c.name), isCheckList: checkListColumns.value.includes(c.name), isSelfReference: selfReferences.value.includes(c.name) }))
 })
-/** The source's foreign keys to itself - a TREE's parent (Specification_DataViews.md §5.14). */
+/** The source's foreign keys to itself - a TREE's parent (DataViews.md §5.14). */
 const selfReferences = computed(() => (relationDetail.value?.relations ?? [])
   .filter(r => r.targetSchema === dataview.value?.sourceResourceSchema && r.targetTable === dataview.value?.sourceResourceName)
   .map(r => r.sourceColumn))
@@ -585,7 +585,7 @@ let settingsBaseline: string | null = null
 const formReady = computed(() => !!dataview.value && !pending.value && !fieldsPending.value && (!hasGridSource.value || columnFields.value.length > 0))
 
 /**
- * What a save sends: identity as it is (not versioned - Specification.md §13.1),
+ * What a save sends: identity as it is (not versioned - Foundations.md §13.1),
  * but of `view_config` only the keys changed since the baseline. The
  * form holds every setting at its resolved default; sending them all would
  * write defaults the stored config leaves implicit - and read as
@@ -663,7 +663,7 @@ async function openDesignForm() {
   await router.push(`/dataviews/${id.value}/design`)
 }
 
-// --- Versioning (Specification.md §13) - same header as the
+// --- Versioning (Foundations.md §13) - same header as the
 // Dashboards and Workflows editors: versions chip, Publish, and a read-only
 // preview of any version with Rollback / Save as / Back to draft. This page
 // autosaves most edits into the draft, so the status (live version,
@@ -730,7 +730,7 @@ const headerActions = computed<HeaderAction[]>(() => previewVersion.value
   ? []
   : [
       { label: t('common.preview'), icon: 'i-lucide-eye', tooltip: t('designer.settingsPage.previewTooltip'), onSelect: () => { void openDraftPreview() } },
-      // See as (Specification_Security.md §8.4): the published DataView as a user or a role sees it.
+      // See as (Security.md §8.4): the published DataView as a user or a role sees it.
       ...(liveVersion.value !== null ? [{ label: t('shell.viewAs.title'), icon: 'i-lucide-user-round-search', onSelect: () => { viewAsOpen.value = true } }] : [])
     ])
 const viewAsOpen = ref(false)
@@ -753,7 +753,7 @@ async function selectVersion(version: number | null) {
   }
 }
 
-// Restore (Specification.md §13.4): that version replaces the draft - nothing is published.
+// Restore (Foundations.md §13.4): that version replaces the draft - nothing is published.
 // VersionPreviewBanner confirms first when there are unpublished changes,
 // which this replaces. A pending autosave is flushed first, so it can't
 // land on top of the restored draft afterwards.
@@ -780,7 +780,7 @@ async function onRestored() {
   await Promise.all([refreshDataview(), refreshFields(), refreshStatus(), refreshVersions()])
 }
 
-// Save as (Specification.md §13.4): a new, unpublished DataView from that version.
+// Save as (Foundations.md §13.4): a new, unpublished DataView from that version.
 const saveAsOpen = ref(false)
 const savingAs = ref(false)
 async function saveAs(input: { name: string, slug: string }) {
@@ -818,7 +818,7 @@ const objectMenuItems = computed(() => [
 ])
 // On a phone the versions chip moves into PageHeader's "⋮".
 const { mobileMenu: versionsMobileMenu } = useVersionMenu(() => versions.value ?? [], () => previewVersion.value?.version ?? null, selectVersion, openDeleteVersions)
-// "Delete old versions…" (Specification.md §13.4): a preview of a deleted version goes back to the draft.
+// "Delete old versions…" (Foundations.md §13.4): a preview of a deleted version goes back to the draft.
 const deleteVersionsOpen = ref(false)
 function openDeleteVersions() {
   deleteVersionsOpen.value = true
@@ -866,7 +866,7 @@ async function deleteDataview() {
             @retry="autosave.retry()"
           />
         </template>
-        <!-- The other screen (Specification_Admin_UI.md §3.7): what it designs - a record's form, or a CUSTOM DataView's whole page. -->
+        <!-- The other screen (Admin_UI.md §3.7): what it designs - a record's form, or a CUSTOM DataView's whole page. -->
         <UButton
           v-if="canDesign && !previewVersion"
           icon="i-lucide-layout-dashboard"
@@ -986,7 +986,7 @@ async function deleteDataview() {
             </SettingsSection>
 
             <!-- Presentation in the App: whether the menu lists it, its label there, and what shows with it - in the menu,
-            on its page's header and in the admin's lists (Specification_Security.md §8). -->
+            on its page's header and in the admin's lists (Security.md §8). -->
             <SettingsSection :title="t('shell.appPresentation.heading')">
               <AppPresentationFields
                 v-model:scope="scope"
@@ -1011,7 +1011,7 @@ async function deleteDataview() {
               @changed="refreshDataview()"
             />
             <template v-if="hasGridSource && dataview">
-              <!-- Columns: what this DataView reads and how its grid shows it (Specification_DataViews.md §4). -->
+              <!-- Columns: what this DataView reads and how its grid shows it (DataViews.md §4). -->
               <DataViewColumnsSettings
                 v-model:default-state="currentDefaultState"
                 :dataview="dataview"
@@ -1037,7 +1037,7 @@ async function deleteDataview() {
             </template>
           </div>
 
-          <!-- Views (a list type): what every view shares, then a row per list view (Specification_DataViews.md §5.13). -->
+          <!-- Views (a list type): what every view shares, then a row per list view (DataViews.md §5.13). -->
           <div
             v-if="visitedSections.has('views') && dataview && isList"
             v-show="section === 'views'"
@@ -1179,7 +1179,7 @@ async function deleteDataview() {
             />
           </div>
 
-          <!-- Versions (Specification.md §13.7): the history, a version opened read-only here, restored or saved as. -->
+          <!-- Versions (Foundations.md §13.7): the history, a version opened read-only here, restored or saved as. -->
           <VersionsTimeline
             v-if="visitedSections.has('versions') && dataview"
             v-show="section === 'versions'"
@@ -1197,7 +1197,7 @@ async function deleteDataview() {
             @deleted="onVersionsDeleted"
           />
 
-          <!-- Page: EXTERNALFRAME's frame (no columns, design or filter); a CUSTOM page's width (Specification_DataViews.md §6.7). -->
+          <!-- Page: EXTERNALFRAME's frame (no columns, design or filter); a CUSTOM page's width (DataViews.md §6.7). -->
           <div
             v-if="visitedSections.has('page')"
             v-show="section === 'page'"

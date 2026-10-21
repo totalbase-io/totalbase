@@ -1,5 +1,5 @@
 /**
- * A PIVOT's grid (Specification_Dashboards.md §5.17, D17), placed from rows PostgreSQL already aggregated: the
+ * A PIVOT's grid (Dashboards.md §5.17, D17), placed from rows PostgreSQL already aggregated: the
  * server wraps the query in `GROUP BY GROUPING SETS` and marks each row with `__grouping` = GROUPING(rows...,
  * columns...) - a bit per dimension, the leftmost the highest, set where the row totals that dimension. This only
  * places each row's values in their cell: a subtotal or a total is PostgreSQL's row, never a sum made here.

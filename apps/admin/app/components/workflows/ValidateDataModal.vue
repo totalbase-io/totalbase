@@ -2,7 +2,7 @@
 import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vue'
 /**
  * Configures a `totalbase.validate-data` node's `configuration`
- * (Specification_Workflows.md §5.9.1): an `input` and the `rules` it must
+ * (Workflows.md §5.9.1): an `input` and the `rules` it must
  * satisfy, each a filter in the one filter grammar (WhereField.vue, AGENTS.md
  * section 7 - the same as ConditionModal.vue's `filter`) plus the message
  * reported when it fails. All rules pass: `next` with the input. Any fails:

@@ -7,9 +7,9 @@ import { dataEnvelope } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 
 /**
- * Resource management (Specification_Administration.md §1: "Resources"). The
+ * Resource management (Administration.md §1: "Resources"). The
  * registry itself is read through the Data API (resources,
- * Specification_Security.md §10); changing a resource stays here.
+ * Security.md §10); changing a resource stays here.
  */
 const COLUMN_PRESENTATION_SCHEMA = object({
   label: { type: "string" },
@@ -37,7 +37,7 @@ const COLUMN_PRESENTATION_SCHEMA = object({
   input: { type: "string", description: "Its control - a column input catalog entry (number-field, email, relation-select...) that edits its type; password only at creation, never changed. Unset: Automatic, by its type and constraints." },
 });
 
-/** What Automatic edits a column with: the rule's control, its props and why (Specification_DataViews.md §15.2). */
+/** What Automatic edits a column with: the rule's control, its props and why (DataViews.md §15.2). */
 const AUTOMATIC_INPUT_SCHEMA = object({
   input: { type: "string", description: "The catalog entry." },
   widget: { type: "string" },
@@ -69,7 +69,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
   /**
    * The published DataViews whose draft now inherits differently from this
    * resource's columns than their live version - what a presentation change
-   * reached (Specification_DataViews.md §15), each to publish
+   * reached (DataViews.md §15), each to publish
    * or leave as an unpublished change.
    */
   app.get<{ Params: { id: string } }>(
@@ -95,7 +95,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
     },
   );
 
-  /** The DataViews that show a column - what a change to its presentation reaches (Specification_DataViews.md §15). */
+  /** The DataViews that show a column - what a change to its presentation reaches (DataViews.md §15). */
   app.get<{ Params: { id: string; column: string } }>(
     "/admin/api/resources/:id/columns/:column/dataviews",
     {
@@ -114,7 +114,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
   );
 
   /**
-   * Replaces a column's presentation (Specification_DataViews.md §15)
+   * Replaces a column's presentation (DataViews.md §15)
    * - the body is all of it, an option left out is unset.
    */
   app.put<{ Params: { id: string; column: string }; Body: { data?: { presentation?: unknown } } }>(
@@ -157,7 +157,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
   );
 
   /**
-   * Suggest presentation (Specification_DataViews.md §15.6, T69): what each column's type and constraints suggest -
+   * Suggest presentation (DataViews.md §15.6, T69): what each column's type and constraints suggest -
    * never by its name - every difference with its own presentation listed (a fill, or a change). The POST applies
    * what the reviewer accepted.
    */
@@ -250,7 +250,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
   );
 
   /**
-   * Replaces a table's or a view's row presentation (Specification_DataViews.md
+   * Replaces a table's or a view's row presentation (DataViews.md
    * §15.5) - the body is all of it, `{}` clears it.
    */
   app.put<{ Params: { id: string }; Body: { data?: unknown } }>(
@@ -270,14 +270,14 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
     }),
   );
 
-  /** Replaces a table's or a view's default order (Specification.md §11.7) - the body is all of it, `[]` clears it. */
+  /** Replaces a table's or a view's default order (Foundations.md §11.7) - the body is all of it, `[]` clears it. */
   app.put<{ Params: { id: string }; Body: { data?: unknown } }>(
     "/admin/api/resources/:id/default-sort",
     {
       preHandler,
       ...adminDoc("resources", {
         summary: "Set a table's default order",
-        description: "The order its rows come in when nobody asks for one: the Data API without `order_by` (then the primary key as the tiebreaker, Specification_Data_API.md §3.6) and what a new DataView starts from. `[]` clears it. 400 INVALID_QUERY names a column the resource doesn't have.",
+        description: "The order its rows come in when nobody asks for one: the Data API without `order_by` (then the primary key as the tiebreaker, Data_API.md §3.6) and what a new DataView starts from. `[]` clears it. 400 INVALID_QUERY names a column the resource doesn't have.",
         pathParameters: { id: UUID_PARAM },
         requestBody: { schema: dataEnvelope(ADMIN_SCHEMAS.Resource!.properties!.defaultSort!) },
         response: ok(ADMIN_SCHEMAS.Resource!.properties!.defaultSort!),

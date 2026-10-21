@@ -2,7 +2,7 @@ import { shapeErrors, type Shape } from "@totalbase/shared";
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
- * Workflow definition limits (Specification_Workflows.md §3.6), checked on
+ * Workflow definition limits (Workflows.md §3.6), checked on
  * every save - create, draft save, Save as - and again on publish, so a
  * definition written through the Admin API is bounded like one built in
  * the editor. The editor mirrors these values

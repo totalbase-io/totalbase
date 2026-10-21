@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The DETAIL dashboard widget's body (Specification_Dashboards.md §5.15, D14): the query's first row as label /
+ * The DETAIL dashboard widget's body (Dashboards.md §5.15, D14): the query's first row as label /
  * value pairs - each field titled and formatted by its `columnSettings` over its presentation, as a TABLE's column
  * (utils/dashboard-widget-render.ts `tableColumns`, `formatTableCell`) - and its Image role's file on top (beside
  * them in two columns). Another file column is a link to its file. `layout` AUTO is two columns in a wide card

@@ -22,7 +22,7 @@ const view = computed(() => (node.value ? ctx.nodeView(node.value) : undefined))
 const canDelete = computed(() => !ctx.readOnly && ctx.canDelete(props.nodeId))
 const descendantCount = computed(() => ctx.descendantCount(props.nodeId))
 
-// The node's ports from the operation catalog (Specification_Workflows.md §3.3):
+// The node's ports from the operation catalog (Workflows.md §3.3):
 // `next`, a Condition's `true`/`false`, a loop's body entry and `done`, a
 // Select case's own case names (+ `default`), nothing for a terminal step -
 // `error` is rendered separately, off to the side, never in this primary rotation.

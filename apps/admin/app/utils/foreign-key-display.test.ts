@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { foreignKeyDisplay, foreignKeySearch } from '~/utils/foreign-key-display'
 
-// A foreign key picked by its row presentation (Specification_DataViews.md §4.4).
+// A foreign key picked by its row presentation (DataViews.md §4.4).
 describe('foreignKeyDisplay()', () => {
   it('reads and searches its template\'s columns, else its display field, else its key', () => {
     const templated = foreignKeyDisplay({ config: { display_template: '{{codigo}} · {{nombre}}', display_field: 'codigo' } }, 'id')

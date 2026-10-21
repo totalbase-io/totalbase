@@ -1,6 +1,6 @@
 import { ERROR_CODE_HTTP_STATUS, type TotalBaseErrorCode } from "./error-codes.js";
 
-/** Error source, per Specification_Data_API.md §11.1. */
+/** Error source, per Data_API.md §11.1. */
 export type ErrorSource = "TOTALBASE" | "POSTGRESQL";
 
 export interface TotalBaseErrorOptions {
@@ -15,22 +15,24 @@ export interface TotalBaseErrorOptions {
   constraint?: string | undefined;
   /** The column the error is about, when PostgreSQL names exactly one (a NOT NULL, a one-column UNIQUE or CHECK) - a form shows it on that field. */
   field?: string | undefined;
-  /** A transaction's operation it came from, by key (Specification_Data_API.md §8) - a form shows it on that line. */
+  /** A transaction's operation it came from, by key (Data_API.md §8) - a form shows it on that line. */
   operation?: string | undefined;
   /**
    * Every problem of a document checked as a whole (a dashboard's spec, DM2), each at its path - sent as the
    * response's `errors`, in place of this one. This error's own code and message summarize them.
    */
   all?: { code: TotalBaseErrorCode; message: string; path: string }[] | undefined;
+  /** What the caller needs to go on, sent as the error's `meta` - an MFA challenge (Security.md §2.17). */
+  meta?: Record<string, unknown> | undefined;
   cause?: unknown;
 }
 
 /**
  * Canonical internal error type for TotalBase.
- * See Specification_Data_API.md §11.1, §11.2 and AGENTS.md section 20.
+ * See Data_API.md §11.1, §11.2 and AGENTS.md section 20.
  *
  * The Data API serializes this as:
- * { "errors": [{ "source", "code", "message", "field"?, "operation"? }] }
+ * { "errors": [{ "source", "code", "message", "field"?, "operation"?, "meta"? }] }
  */
 export class TotalBaseError extends Error {
   readonly code: TotalBaseErrorCode;
@@ -44,6 +46,7 @@ export class TotalBaseError extends Error {
   readonly field: string | undefined;
   readonly operation: string | undefined;
   readonly all: { code: TotalBaseErrorCode; message: string; path: string }[] | undefined;
+  readonly meta: Record<string, unknown> | undefined;
 
   constructor(code: TotalBaseErrorCode, message: string, options: TotalBaseErrorOptions = {}) {
     super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
@@ -59,6 +62,7 @@ export class TotalBaseError extends Error {
     this.field = options.field;
     this.operation = options.operation;
     this.all = options.all;
+    this.meta = options.meta;
   }
 
   /** What the response's `errors` carries: each of `all` at its path, else this one. */
@@ -85,13 +89,14 @@ export class TotalBaseError extends Error {
       message: this.message,
       ...(this.field ? { field: this.field } : {}),
       ...(this.operation ? { operation: this.operation } : {}),
+      ...(this.meta ? { meta: this.meta } : {}),
     };
   }
 
   /**
    * Richer representation for the Admin SQL Console only, which may
    * expose PostgreSQL's own diagnostics (AGENTS.md section 20,
-   * Specification_Administration.md §5.6): DETAIL, HINT, SQLSTATE and the
+   * Administration.md §5.6): DETAIL, HINT, SQLSTATE and the
    * error position - present only when PostgreSQL gave them.
    */
   toAdminJSON() {

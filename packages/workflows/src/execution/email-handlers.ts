@@ -26,7 +26,7 @@ export function flattenTemplateData(data: unknown, prefix = "", into: Record<str
 }
 
 /**
- * Renders a MAILING template (Specification_Workflows.md §5.16) with the
+ * Renders a MAILING template (Workflows.md §5.16) with the
  * system emails' renderer: `{{path}}` placeholders in `subject` and
  * `message`, filled from `data`, HTML-escaped in the message. Every
  * placeholder must have a value - a missing one fails with
@@ -78,7 +78,7 @@ async function readAttachments(context: WorkflowEngineContext, dataPrincipal: Da
   return attachments;
 }
 
-/** Sending mail is a role capability (Specification_Security.md §5.2): SEND_EMAIL granted, or an administrator. */
+/** Sending mail is a role capability (Security.md §5.2): SEND_EMAIL granted, or an administrator. */
 async function assertSendAllowed(context: WorkflowEngineContext, dataPrincipal: DataPrincipal): Promise<void> {
   if (await context.effectivePermissions.isAdministrators(dataPrincipal.roleIds)) return;
   if ((await context.capabilityPermissions.resolve(dataPrincipal.roleIds, "SEND_EMAIL")) !== "ALLOW") {
@@ -102,16 +102,20 @@ export function address(value: unknown): string | undefined {
 }
 
 /**
- * Sends through the instance's mail sender (Specification_Workflows.md §5.16).
+ * Sends through the instance's mail sender (Workflows.md §5.16).
  * The whole configuration is already template-resolved by the engine. Either
  * an inline message (`subject`, `bodyType`, `textBody`/`htmlBody`) or a
  * MAILING `template` rendered with `data` - the executor needs READ on that
  * template row. Recipients always come from the step, never from template data;
  * the template's default cc/bcc/reply-to apply when the step leaves them empty.
+ *
+ * A TEST run with an email redirect (Workflows.md §11.1) sends to that one
+ * address instead - to, cc, bcc and the template's defaults all replaced -
+ * and its result says whom the step would have sent to.
  */
-const sendEmail: OperationHandler = async ({ context, dataPrincipal, configuration }) => {
+const sendEmail: OperationHandler = async ({ context, dataPrincipal, configuration, workflowContext }) => {
   await assertSendAllowed(context, dataPrincipal);
-  const to = address(configuration.to);
+  let to = address(configuration.to);
   if (!to) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's recipient must resolve to an address or a non-empty list of them.");
   let cc = address(configuration.cc);
   let bcc = address(configuration.bcc);
@@ -141,6 +145,14 @@ const sendEmail: OperationHandler = async ({ context, dataPrincipal, configurati
   if (!subject) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no subject configured.");
   const attachments = await readAttachments(context, dataPrincipal, configuration.attachments);
 
+  const redirect = workflowContext.emailRedirect;
+  const redirectedFrom = redirect ? { to, ...(cc !== undefined && { cc }), ...(bcc !== undefined && { bcc }) } : undefined;
+  if (redirect) {
+    to = redirect;
+    cc = undefined;
+    bcc = undefined;
+  }
+
   await context.emailSender.send({
     to,
     subject,
@@ -153,7 +165,7 @@ const sendEmail: OperationHandler = async ({ context, dataPrincipal, configurati
   });
 
   // Names only - a file's content never goes into the run's history (§9.2).
-  return { output: "next", result: { to, subject, ...(attachments.length > 0 && { attachments: attachments.map((a) => a.filename) }) } };
+  return { output: "next", result: { to, subject, ...(attachments.length > 0 && { attachments: attachments.map((a) => a.filename) }), ...(redirectedFrom && { redirectedFrom }) } };
 };
 
 export const EMAIL_HANDLERS: Record<string, OperationHandler> = {

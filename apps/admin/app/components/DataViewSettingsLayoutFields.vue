@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// A SETTINGS DataView's columns (`view_config.settings_layout`, Specification_DataViews.md §5.12) - the
+// A SETTINGS DataView's columns (`view_config.settings_layout`, DataViews.md §5.12) - the
 // wizard's Settings step and Edit DataView's section alike. Key, value, title and description are
 // required; group and order optional.
 import type { SettingsLayoutConfig } from '~/types/dataview'

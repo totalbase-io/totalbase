@@ -1,5 +1,5 @@
 /**
- * See as (Specification_Security.md §8.4): who the administrator is previewing the App as, kept for this browser
+ * See as (Security.md §8.4): who the administrator is previewing the App as, kept for this browser
  * tab (sessionStorage) - the header the App and Data API requests carry while an App page is open
  * (api-headers.ts). The server decides everything with it; this only remembers the choice.
  */

@@ -13,7 +13,7 @@ const USER_API_KEY_PREFIX = "tb_";
 
 /**
  * Resolves a Data Plane bearer token to either a user session or an API
- * Key - both use the same permission resolver (Specification_Data_API.md §1.1).
+ * Key - both use the same permission resolver (Data_API.md §1.1).
  *
  * Routed by shape: a token with the API Key prefix is looked up as a key
  * first, anything else only as a session (a key never lacks the prefix).
@@ -60,11 +60,11 @@ async function resolveApiKeyPrincipal(context: AppContext, token: string, browse
   // A plane="ADMIN" token reaches the Data API too while its owner is an
   // administrator (checked live, like the Admin API does) - it grants
   // nothing that token doesn't already hold, and lets one credential drive
-  // both planes (Specification_Security.md §10: agents administer
+  // both planes (Security.md §10: agents administer
   // through the Data API).
   if (!tokenResult || !(tokenResult.plane === "API" || (tokenResult.plane === "ADMIN" && (await context.roles.isAdministrator(tokenResult.roleIds))))) return null;
   // $USER.* is the token owner's real row, read live exactly as for a
-  // session (Specification_Security.md §6.6) - never values baked into the token.
+  // session (Security.md §6.6) - never values baked into the token.
   const { rows } = await context.database.query<Record<string, unknown>>(
     `SELECT * FROM totalbase.users WHERE id = $1`,
     [tokenResult.userId],
@@ -80,7 +80,7 @@ async function resolveApiKeyPrincipal(context: AppContext, token: string, browse
 }
 
 /**
- * The principal that queued an asynchronous call (Specification_Data_API.md
+ * The principal that queued an asynchronous call (Data_API.md
  * §10.4), resolved again when it runs: the user, or the token, as they are
  * now - a user deactivated, a token revoked or expired, a role lost since,
  * and the call runs with what is left (or not at all). Never a credential

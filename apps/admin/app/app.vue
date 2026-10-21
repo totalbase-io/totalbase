@@ -4,7 +4,7 @@ const ui = useUiLocale()
 // On a phone a toast comes from the top: at the bottom it covers a form's Cancel and Save (T57).
 const isMobile = useIsMobile()
 
-// Which surface the page belongs to (Specification_Admin_UI.md §4.1.1), on
+// Which surface the page belongs to (Admin_UI.md §4.1.1), on
 // <html> so the operator's CSS can target one: html[data-surface="app"].
 // And the instance's name as the tab's title.
 const route = useRoute()

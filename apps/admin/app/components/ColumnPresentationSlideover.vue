@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Edits one column's presentation (Specification_DataViews.md §15)
+ * Edits one column's presentation (DataViews.md §15)
  * from the Columns tab - for any column of a table or a view,
  * created by TotalBase or not. A sidebar, so the columns stay in sight
  * while going from one to the next. Saving replaces it whole: an option

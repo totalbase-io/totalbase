@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * After a column's presentation changes (Specification_DataViews.md §15):
+ * After a column's presentation changes (DataViews.md §15):
  * the published DataViews it reaches - their drafts inherit it
  * already, their viewers still see the version they had. Each may be
  * published now, an ordinary Publish of its draft - only one with no other

@@ -9,7 +9,7 @@ import { describeShape } from "@totalbase/shared";
 
 /**
  * What the agent is told about TotalBase besides the tools
- * (Specification_Administration.md §11.4): an orientation in the server's
+ * (Administration.md §11.4): an orientation in the server's
  * `instructions`, and read-only guides as MCP resources. Two read the
  * instance itself when opened - which of TotalBase's own tables this
  * instance exposes, and which workflow operation types it can publish - so
@@ -18,7 +18,7 @@ import { describeShape } from "@totalbase/shared";
 
 export { INSTRUCTIONS };
 
-/** What each of TotalBase's own tables is for, who writes it and how (Specification_Security.md §10). */
+/** What each of TotalBase's own tables is for, who writes it and how (Security.md §10). */
 const TOTALBASE_TABLES: Record<string, string> = {
   users: "Accounts. Create with create_user (a password or an invitation), roles with set_user_roles; rename, deactivate (active=false) or set the developer's own columns with write_records. email, can_login and lock state are administrator-only; owner never changes.",
   roles: "Roles: name, description, icon, color, active, app_access, api_access (write_records). admin_access and reserved are TotalBase's (leave them out, or false).",

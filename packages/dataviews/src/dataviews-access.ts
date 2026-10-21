@@ -1,7 +1,7 @@
 import type { DataViewsContext } from "./dataviews-types.js";
 import { assertExists } from "./dataviews-read.js";
 
-// --- Object access (Specification_Security.md §7.1): which roles may
+// --- Object access (Security.md §7.1): which roles may
 // see and open a published DataView in the App. Never grants data - the
 // source resource's permissions still decide every read and write.
 
@@ -45,7 +45,7 @@ export async function grantedToRoles(ctx: DataViewsContext, dataviewIds: string[
  * embedded (a Detail widget - any field's
  * `related_dataview`) in the live published version of a DataView they
  * reach, at any depth. A DataView embedded in a form opens for whoever
- * can open the form (Specification_Security.md §7.1).
+ * can open the form (Security.md §7.1).
  */
 export async function reachableByRoles(ctx: DataViewsContext, dataviewId: string, roleIds: string[]): Promise<boolean> {
   if (roleIds.length === 0) return false;

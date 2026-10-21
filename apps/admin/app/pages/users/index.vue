@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // An administrator's Users table (Admin API: status and role filters,
 // sign-in state); a delegated user's, through the Data API
-// (Specification_Security.md §9.3).
+// (Security.md §9.3).
 const session = useSession()
 </script>
 

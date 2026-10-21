@@ -1,5 +1,5 @@
 /**
- * Conditional formatting (Specification_DataViews.md §15.7): a list's columns' conditions sent as the Data API's
+ * Conditional formatting (DataViews.md §15.7): a list's columns' conditions sent as the Data API's
  * `flags` (§3.11 there) - PostgreSQL says which each row meets, the browser never evaluates them - and, from what it
  * answered, each cell's and each row's look: the first condition that holds wins, per cell and per row (a cell's over
  * a row's), on top of the base style.

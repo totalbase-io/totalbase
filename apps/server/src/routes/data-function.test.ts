@@ -7,7 +7,7 @@ import { createTestApiToken, setupTestApp } from "../test-support.js";
 const PREFIX = "data-function-test";
 
 /**
- * POST /api/:schema/function/:resource - FUNCTION EXECUTE (Specification_Data_API.md §7).
+ * POST /api/:schema/function/:resource - FUNCTION EXECUTE (Data_API.md §7).
  * AGENTS.md section 23's mandatory coverage for functions:
  * the EXECUTE permission (DENY > ALLOW > UNDEFINED), PostgreSQL's own
  * RAISE EXCEPTION surfacing with the whole call rolled back, the audit

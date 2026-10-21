@@ -1,24 +1,30 @@
 <script setup lang="ts">
 /**
  * A new form field on the Design canvas (CustomDesigner.vue): its label, its
- * input, and what it edits - a column of the page's record, or a Value it
- * keeps its value in (created with it, unless the author says otherwise).
+ * input, and what it edits - a column of the page's record, the links of a
+ * junction table of it (DataViews.md §8.5), or a Value it keeps its value in
+ * (created with it, unless the author says otherwise).
  * The modal owns the draft; the designer places the field (`confirm`).
  */
 import type { ValueType, WidgetName } from '@totalbase/tb-catalog'
 import type { CatalogColumn } from '~/types/permission'
+import type { JunctionCandidate } from '~/utils/junction-links'
+import { JUNCTION_INPUTS } from '~/composables/useDesignerFormFields'
+import { humanizeColumnName } from '~/utils/humanize-column-name'
 
-/** What the new field is: its label and input, bound to a record column or to a new Value. */
-export interface FieldSetupSpec { label: string, input: WidgetName, column?: string, variable?: string }
+/** What the new field is: its label and input, bound to a record column, a junction table or a new Value. */
+export interface FieldSetupSpec { label: string, input: WidgetName, column?: string, junction?: string, variable?: string }
 
 const props = defineProps<{
   /** The record's columns - none when the page has no record: the field edits a Value. */
   columns: CatalogColumn[]
+  /** The record table's junction tables - a field may edit one's links instead of a column. */
+  junctions?: readonly JunctionCandidate[]
   /** The inputs a form field can hold, for its select. */
   inputOptions: { label: string, description: string, icon: string, value: WidgetName }[]
   /** The title a column's field shows with none of its own. */
   columnTitle: (column: string) => string
-  /** The input a column is edited with (Specification_DataViews.md §15.2). */
+  /** The input a column is edited with (DataViews.md §15.2). */
   inputForColumn: (column: string) => WidgetName
   /** `Razón social` → `razonSocial`, unique among the variables. */
   identifierFrom: (label: string) => string
@@ -34,8 +40,9 @@ const { t } = useI18n()
 
 const fieldSetup = reactive({
   /** Bound to a column of the record, or to a Value. */
-  source: 'column' as 'column' | 'value',
+  source: 'column' as 'column' | 'junction' | 'value',
   column: undefined as string | undefined,
+  junction: undefined as string | undefined,
   label: '',
   labelEdited: false,
   input: 'UInput' as WidgetName,
@@ -49,6 +56,7 @@ watch(open, (isOpen) => {
   Object.assign(fieldSetup, {
     source: props.columns.length ? 'column' : 'value',
     column: undefined,
+    junction: undefined,
     label: '',
     labelEdited: false,
     input: 'UInput',
@@ -65,24 +73,38 @@ watch(() => fieldSetup.column, (column) => {
   if (!fieldSetup.labelEdited) fieldSetup.label = props.columnTitle(column)
   fieldSetup.input = props.inputForColumn(column)
 })
+watch(() => fieldSetup.junction, (id) => {
+  const junction = props.junctions?.find(j => j.resourceId === id)
+  if (!junction) return
+  if (!fieldSetup.labelEdited) fieldSetup.label = humanizeColumnName(junction.target.table)
+  if (!JUNCTION_INPUTS.includes(fieldSetup.input)) fieldSetup.input = JUNCTION_INPUTS[0]!
+})
+watch(() => fieldSetup.source, (source) => {
+  if (source === 'junction' && !JUNCTION_INPUTS.includes(fieldSetup.input)) fieldSetup.input = JUNCTION_INPUTS[0]!
+})
 /** What a new form field edits. */
 const fieldSourceItems = computed(() => [
   { label: t('designer.customDesigner.fieldSetup.sourceColumn'), description: t('designer.customDesigner.fieldSetup.sourceColumnHelp', { code: 'record.save()' }), value: 'column' },
+  ...(props.junctions?.length ? [{ label: t('designer.customDesigner.fieldSetup.sourceJunction'), description: t('designer.customDesigner.fieldSetup.sourceJunctionHelp'), value: 'junction' }] : []),
   { label: t('designer.customDesigner.fieldSetup.sourceValue'), description: t('designer.customDesigner.fieldSetup.sourceValueHelp'), value: 'value' }
 ])
 const columnOptions = computed(() => props.columns.map(c => ({ label: c.name, description: c.dataType, value: c.name })))
-const fieldSetupValid = computed(() => fieldSetup.label.trim() !== '' && (fieldSetup.source === 'value' || Boolean(fieldSetup.column)))
+const junctionOptions = computed(() => (props.junctions ?? []).map(j => ({ label: j.table, description: t('designer.inspector.junctionLinks', { table: j.target.table }), value: j.resourceId })))
+/** A junction's links take an input that picks several. */
+const inputItems = computed(() => (fieldSetup.source === 'junction' ? props.inputOptions.filter(o => JUNCTION_INPUTS.includes(o.value)) : props.inputOptions))
+const fieldSetupValid = computed(() => fieldSetup.label.trim() !== '' && (fieldSetup.source === 'value' || Boolean(fieldSetup.source === 'junction' ? fieldSetup.junction : fieldSetup.column)))
 
 function confirm() {
   const label = fieldSetup.label.trim()
   const variable = fieldSetup.variable.trim()
   const byColumn = fieldSetup.source === 'column'
-  const createVariable = !byColumn && fieldSetup.createVariable
+  const createVariable = fieldSetup.source === 'value' && fieldSetup.createVariable
   if (!fieldSetupValid.value || (createVariable && !/^[a-z][a-zA-Z0-9_]*$/.test(variable))) return
   emit('confirm', {
     label,
     input: fieldSetup.input,
     column: byColumn ? fieldSetup.column : undefined,
+    junction: fieldSetup.source === 'junction' ? fieldSetup.junction : undefined,
     variable: createVariable ? variable : undefined
   })
 }
@@ -118,6 +140,18 @@ function confirm() {
           />
         </UFormField>
         <UFormField
+          v-if="fieldSetup.source === 'junction'"
+          :label="t('designer.customDesigner.fieldSetup.junction')"
+          required
+        >
+          <USelectMenu
+            v-model="fieldSetup.junction"
+            :items="junctionOptions"
+            value-key="value"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
           :label="t('common.label')"
           required
         >
@@ -131,7 +165,7 @@ function confirm() {
         <UFormField :label="t('designer.customDesigner.input')">
           <USelectMenu
             v-model="fieldSetup.input"
-            :items="inputOptions"
+            :items="inputItems"
             value-key="value"
             class="w-full"
           />

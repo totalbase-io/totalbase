@@ -16,7 +16,7 @@ import { resolveAutoRefresh, resolveBaseWhere, resolveCalendarLayout, resolveCar
  * consumer-facing rendering (the TABLE/FORM/CARDS/... page a non-Studio
  * user opens) goes through `usePublishedDataViewBySlug` instead, which
  * reads the latest publish and never the draft - see its own doc
- * comment and Specification.md §13.
+ * comment and Foundations.md §13.
  */
 export function useDataViewById(id: Ref<string>) {
   const api = useAdminApi()
@@ -36,7 +36,7 @@ export function useDataViewById(id: Ref<string>) {
   )
 
   // Write actions need: a TABLE source (a VIEW stays read-only regardless
-  // of layout, Specification_DataViews.md §1.2) and a single-column primary key
+  // of layout, DataViews.md §1.2) and a single-column primary key
   // (data-table-mutations.ts's own row-addressing limitation).
   const primaryKey = computed(() => {
     const pk = dataview.value?.sourceResourcePrimaryKey

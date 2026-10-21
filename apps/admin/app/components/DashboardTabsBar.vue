@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The editor's tabs (Specification_Dashboards.md §7.2, D7): the strip over the canvas - one grid per tab - with Add
+ * The editor's tabs (Dashboards.md §7.2, D7): the strip over the canvas - one grid per tab - with Add
  * tab, and the open tab's "⋮" (Rename…, Remove…). Removing a tab that holds widgets moves them to another first
  * (the server keeps a tab with widgets, DASHBOARD_TAB_NOT_EMPTY). The host saves; this only asks.
  */

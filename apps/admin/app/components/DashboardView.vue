@@ -15,7 +15,7 @@
  * Access is the Dashboard's own: a viewer without it gets RESOURCE_NOT_FOUND
  * from every call, shown here as "not available".
  *
- * Auto-refresh (Specification_Dashboards.md §9.4): with the dashboard's
+ * Auto-refresh (Dashboards.md §9.4): with the dashboard's
  * `refreshIntervalSeconds` set, each card re-runs its query on that interval
  * (DashboardWidgetCard.vue, utils/dashboard-refresh.ts) - in either host.
  */
@@ -34,7 +34,7 @@ import { DASHBOARD_DESIGN_COLUMNS, dashboardFlowLayout } from '~/utils/dashboard
 const props = withDefaults(defineProps<{
   /** The App's dashboard (its slug or id) - unused with `embedToken`. */
   slug?: string
-  /** A signed embed (Specification_Dashboards.md §9.5): the dashboard comes from the token, through /embed/api. */
+  /** A signed embed (Dashboards.md §9.5): the dashboard comes from the token, through /embed/api. */
   embedToken?: string
   /** Bumped by the host's Refresh - every card re-runs its query. */
   refreshKey?: number
@@ -77,12 +77,15 @@ const cacheKey = computed(() => (props.embedToken ? 'embed' : props.slug))
 type ViewerDashboard = Omit<Dashboard, 'variables'> & {
   display?: { titled?: boolean, refreshSeconds?: number | null, allowExport?: boolean }
   startingValues?: Record<string, unknown>
+  /** An embed of one widget (Dashboards.md §9.5): that card alone, filling the frame - no bar, no tabs, no grid. */
+  widget?: string | null
 }
 const { data: dashboard, error } = useAsyncData(
   () => `app-dashboard-${cacheKey.value}`,
   () => api.get<ViewerDashboard>(base.value).then(r => r.data)
 )
 const titled = computed(() => props.titled ?? dashboard.value?.display?.titled ?? false)
+const singleWidget = computed(() => dashboard.value?.widget ?? null)
 const { data: widgets, pending } = useAsyncData(
   () => `app-dashboard-widgets-${cacheKey.value}`,
   () => api.get<ViewerDashboardWidget[]>(`${base.value}/widgets`).then(r => r.data),
@@ -114,7 +117,7 @@ watch(() => props.refreshKey, (value) => {
   refreshKey.value = value
 })
 // A data widget without a query is the author's unfinished work: published, but never drawn for a viewer
-// (Specification_Dashboards.md §2, item 6). A presentation widget draws without one (D3).
+// (Dashboards.md §2, item 6). A presentation widget draws without one (D3).
 // Tabs (D7): only the open one's widgets are on the grid - the others don't run until it opens.
 const tabs = computed(() => dashboard.value?.tabs ?? [])
 const activeTab = computed({
@@ -161,7 +164,7 @@ provide(DASHBOARD_CANVAS_CONTEXT_KEY, {
   variableValues,
   variables,
   variableLabels,
-  // An embed has no viewer - nobody signed in sees it (Specification_Dashboards.md §9.5).
+  // An embed has no viewer - nobody signed in sees it (Dashboards.md §9.5).
   user: computed(() => (props.embedToken ? null : session.admin.value)),
   onLoaded: () => {
     updatedAt.value = Date.now()
@@ -226,7 +229,7 @@ function syncGridWidgets() {
 watch(gridWidgets, () => nextTick(syncGridWidgets), { deep: true })
 onMounted(() => nextTick(syncGridWidgets))
 
-defineExpose({ dashboard })
+defineExpose({ dashboard, singleWidget })
 </script>
 
 <template>
@@ -236,6 +239,12 @@ defineExpose({ dashboard })
     :title="t('dashboards.view.notAvailable')"
     :description="t('dashboards.view.notAvailableHelp')"
     variant="naked"
+  />
+  <!-- One widget: its card alone, the embed's `titled` its own title. -->
+  <DashboardWidgetCard
+    v-else-if="singleWidget"
+    :widget-id="singleWidget"
+    :headless="!titled"
   />
   <div
     v-else

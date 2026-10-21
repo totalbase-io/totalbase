@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Suggest presentation for every table and view (Specification_DataViews.md §15.6) - for whoever installs
+ * Suggest presentation for every table and view (DataViews.md §15.6) - for whoever installs
  * TotalBase over an existing database: a line per table with what it would fill and what it would change. Fill
  * applies what's missing on the ticked ones; a change is a table's own review (its Columns).
  */

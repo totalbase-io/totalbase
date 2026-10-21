@@ -2,7 +2,7 @@ import type { WorkflowText } from '~/utils/workflow-limits'
 
 /**
  * A workflow run and its steps as the Admin API returns them
- * (specs/Specification_Workflows.md §14) - shared by the Logs
+ * (specs/Workflows.md §14) - shared by the Logs
  * slideover and the editor's Test run / Run modal, so both read and show
  * a run the same way.
  */
@@ -102,7 +102,7 @@ export function hasPayload(value: unknown): boolean {
 
 /**
  * Why a production MANUAL run can't start from the editor, or null when it
- * can (Specification_Workflows.md §11.2: production manual runs require an enabled published
+ * can (Workflows.md §11.2: production manual runs require an enabled published
  * version; only a MANUAL trigger is started by hand). `liveTrigger` is the
  * published version's Start trigger.
  */

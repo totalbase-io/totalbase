@@ -9,7 +9,7 @@ const IDEMPOTENCY_KEY_PATTERN = /^[\w.-]{1,255}$/;
 /**
  * Runs `fn` (a route handler body that returns the HTTP status/body it
  * wants to send) under Idempotency Key protection when the client sent an
- * `Idempotency-Key` header (Specification_Data_API.md §9).
+ * `Idempotency-Key` header (Data_API.md §9).
  * Without the header, `fn` just runs directly - idempotency is opt-in per
  * request - unless `required` (the resource's require_idempotency_key,
  * §9.1): then a request without one is IDEMPOTENCY_KEY_REQUIRED, while

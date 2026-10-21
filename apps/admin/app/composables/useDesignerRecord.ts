@@ -3,9 +3,10 @@ import type { DataView } from '~/types/dataview'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDefinition, RelationDetail } from '~/types/schema'
 import { humanizeColumnName } from '~/utils/humanize-column-name'
+import type { JunctionCandidate } from '~/utils/junction-links'
 
 /**
- * The record of a designed page - its source table (Specification_DataViews.md
+ * The record of a designed page - its source table (DataViews.md
  * §8.5): its columns and foreign keys, for a form field bound to a column,
  * and what each column's presentation sets (its title, its input).
  */
@@ -21,6 +22,10 @@ export function useDesignerRecord(getDataview: () => DataView) {
   const recordTableName = recordTable && dataview.sourceResourceSchema && dataview.sourceResourceName
     ? { schema: dataview.sourceResourceSchema, name: dataview.sourceResourceName }
     : null
+  /** Its junction tables (DataViews.md §8.5) - what a form field's Junction table offers. */
+  const { data: recordJunctions } = useAsyncData(`custom-record-junctions-${dataview.id}`,
+    () => (recordTable ? api.get<JunctionCandidate[]>('/dataviews/junctions', { record: recordTable }).then(r => r.data) : Promise.resolve([])),
+    { default: () => [] as JunctionCandidate[] })
   const recordColumns = computed<CatalogColumn[]>(() => recordCatalog.value?.columns ?? [])
   const recordRelations = computed<RelationDefinition[]>(() => recordCatalog.value?.relations ?? [])
 
@@ -33,7 +38,7 @@ export function useDesignerRecord(getDataview: () => DataView) {
   function columnTitle(column: string): string {
     return recordPresentation(column)?.label ?? humanizeColumnName(column)
   }
-  /** The input a column is edited with - its presentation's, else the rule (Specification_DataViews.md §15.2), as the server reads it. */
+  /** The input a column is edited with - its presentation's, else the rule (DataViews.md §15.2), as the server reads it. */
   function inputForColumn(column: string): WidgetName {
     const meta = recordColumns.value.find(c => c.name === column)
     if (!meta) return 'UInput'
@@ -47,5 +52,5 @@ export function useDesignerRecord(getDataview: () => DataView) {
     }).widget
   }
 
-  return { recordTable, recordTableName, recordColumns, recordRelations, recordPresentation, columnTitle, inputForColumn }
+  return { recordTable, recordTableName, recordColumns, recordRelations, recordJunctions, recordPresentation, columnTitle, inputForColumn }
 }

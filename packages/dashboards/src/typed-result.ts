@@ -2,7 +2,7 @@ import type { Queryable, ResultField } from "@totalbase/database";
 import { resolveResultColumns } from "@totalbase/pg-catalog";
 import type { ColumnPresentation } from "@totalbase/tb-catalog";
 
-/** Where a result column comes from, when it is a table's (or a view's) column as is (Specification_Dashboards.md §2.3). */
+/** Where a result column comes from, when it is a table's (or a view's) column as is (Dashboards.md §2.3). */
 export interface ResultColumnOrigin {
   schema: string;
   table: string;
@@ -12,7 +12,7 @@ export interface ResultColumnOrigin {
 }
 
 /**
- * A widget's result column, typed (Specification_Dashboards.md §2.3): its name and PostgreSQL type; its origin when
+ * A widget's result column, typed (Dashboards.md §2.3): its name and PostgreSQL type; its origin when
  * PostgreSQL reports one (a column referenced as is, even aliased - never an expression); that column's presentation
  * (its label, format, a CHECK list's values); and `lossy` when a `numeric`/`bigint` value didn't fit a number exactly
  * and stays the exact decimal text.
@@ -46,7 +46,7 @@ export function exactNumber(text: string): number | null {
 }
 
 /**
- * Types a widget's result (Specification_Dashboards.md §2.3): columns with their type, origin and presentation, and
+ * Types a widget's result (Dashboards.md §2.3): columns with their type, origin and presentation, and
  * `numeric`/`bigint` values as numbers wherever that is exact - so a query needs no `::float`. Never fails a query
  * that already ran: an origin or presentation it can't read is left out.
  */

@@ -6,7 +6,7 @@
  * params object, toggleSort/sortDirection helpers), adapted to
  * TotalBase's actual query grammar instead of that project's
  * Directus-flavored one - confirmed against
- * packages/query-engine/src/parser.ts (Specification_Data_API.md §3):
+ * packages/query-engine/src/parser.ts (Data_API.md §3):
  *   - `order_by` uses the same `field` / `-field` (DESC) convention the
  *     other project's `sort` string already used - no translation needed.
  *   - pagination is `limit`/`offset`, not `page`/`page_size` - this

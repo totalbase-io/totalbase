@@ -9,7 +9,7 @@ import { arrayOf, DATE_TIME, object, ref, UUID } from "./openapi-admin-docs.js";
  * AdminDashboardVersion / DashboardQueryResult.
  */
 
-const SPEC = "specs/Specification_Dashboards.md";
+const SPEC = "specs/Dashboards.md";
 const TEXT_OR_NULL: JsonSchema = { type: ["string", "null"] };
 const INT: JsonSchema = { type: "integer" };
 

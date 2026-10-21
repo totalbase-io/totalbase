@@ -2,7 +2,7 @@ import { generateTemplatePdf } from "@totalbase/templates";
 import { describe, expect, it } from "vitest";
 import { PDF_TEMPLATE_EXAMPLE, PDF_TEMPLATE_EXAMPLE_DATA, PDF_TEMPLATES } from "./guides-pdf.js";
 
-// Designing a PDF without the visual designer meant reading pdfme's source (MCP_Demo_Findings.md F24): the guide's
+// Designing a PDF without the visual designer meant reading pdfme's source: the guide's
 // example is rendered here, so it can't stop working unnoticed.
 describe("totalbase://guide/pdf-templates", () => {
   it("renders its example with its data", async () => {

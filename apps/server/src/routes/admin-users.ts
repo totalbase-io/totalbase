@@ -18,7 +18,7 @@ import { LINK_DELIVERY_BODY, listEnvelope, USERS_SCHEMAS } from "../openapi-admi
 
 const ID_PARAM = { id: { ...UUID_PARAM, description: "The user's id." } };
 
-/** See Specification_Administration.md §1 (Users, Roles). */
+/** See Administration.md §1 (Users, Roles). */
 export function registerAdminUsersRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
 
@@ -298,6 +298,31 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       const deleted = await context.auth.users.delete(request.params.id, request.admin!.id);
       if (!deleted) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
       await removeDeletedUserAvatar(context, avatarUrl);
+      reply.code(204);
+    },
+  );
+
+  // Reset two-factor authentication (Security.md §2.17): a lost phone - the factor and its recovery codes
+  // go, and the user sets it up again (at once, when the instance requires it).
+  app.delete<{ Params: { id: string } }>(
+    "/admin/api/users/:id/mfa",
+    {
+      preHandler,
+      ...adminDoc("users", {
+        summary: "Reset a user's two-factor authentication",
+        description:
+          "Removes the user's authenticator app and recovery codes; their sessions stay. 404 for an unknown user, " +
+          "409 MFA_NOT_ENABLED when it isn't on.",
+        pathParameters: ID_PARAM,
+        response: NO_CONTENT,
+      }),
+    },
+    async (request, reply) => {
+      if (!(await context.auth.users.findById(request.params.id))) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
+      if (!(await context.auth.mfa.reset(request.params.id))) {
+        throw new TotalBaseError("MFA_NOT_ENABLED", "Two-factor authentication isn't on for this user.");
+      }
+      request.auditMetadata = { user_id: request.params.id };
       reply.code(204);
     },
   );

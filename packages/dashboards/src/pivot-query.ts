@@ -1,7 +1,7 @@
 import { quoteIdentifier } from "@totalbase/database";
 
 /**
- * A PIVOT widget's aggregation (Specification_Dashboards.md §5.15, D17): its query returns the detail rows and
+ * A PIVOT widget's aggregation (Dashboards.md §5.15, D17): its query returns the detail rows and
  * PostgreSQL aggregates them - the query wrapped once more, `GROUP BY GROUPING SETS`, every subtotal and total in
  * the same pass, `GROUPING()` marking which dimensions a row totals. The screen only places the cells; it adds
  * nothing up, so an average is the real one, never an average of averages.

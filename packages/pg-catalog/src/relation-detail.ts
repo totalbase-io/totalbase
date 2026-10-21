@@ -8,7 +8,7 @@ export interface ColumnDefinition {
    * only changes on drop+recreate. DataView field bindings
    * (totalbase.dataviews_fields.column_attnum) key on this instead of
    * `name` for exactly that reason - see
-   * Specification_DataViews.md §1.2.
+   * DataViews.md §1.2.
    */
   attnum: number;
   /** PostgreSQL type name as returned by format_type(), e.g. "character varying(255)". */
@@ -22,7 +22,7 @@ export interface ColumnDefinition {
   typeScale: number | null;
   /**
    * The domain a column is declared with (`cuit`, schema-qualified outside the search path); null for a
-   * plain type. `dataType`/`typeName` and the parts are then the domain's base type's (Specification.md §11.2).
+   * plain type. `dataType`/`typeName` and the parts are then the domain's base type's (Foundations.md §11.2).
    */
   domain: string | null;
   nullable: boolean;
@@ -40,14 +40,14 @@ export interface RelationDefinition {
   targetSchema: string;
   targetTable: string;
   targetColumn: string;
-  /** What a user reads when a write breaks it - the constraint's COMMENT (Specification_Data_API.md §11.2). */
+  /** What a user reads when a write breaks it - the constraint's COMMENT (Data_API.md §11.2). */
   message?: string | null;
 }
 
 /**
  * A single-column foreign key found on some OTHER table, pointing at the
  * table this was introspected for (the reverse of RelationDefinition).
- * Used to resolve nested-write child relations (Specification_Data_API.md §6.2):
+ * Used to resolve nested-write child relations (Data_API.md §6.2):
  * "does some table have a FK back to this parent?".
  */
 export interface ChildRelationDefinition {
@@ -82,7 +82,7 @@ export interface RelationDetail {
    * Constraint name for each entry of `uniqueConstraints`, same index -
    * kept as a parallel array rather than folded into `uniqueConstraints`
    * itself so query-engine's existing `string[][]` consumers (row-set
-   * matching for ON CONFLICT, Specification_Data_API.md §5.7) don't need to change.
+   * matching for ON CONFLICT, Data_API.md §5.7) don't need to change.
    */
   uniqueConstraintNames: string[];
   /** Each UNIQUE constraint's message (its COMMENT), same index; null without one. */
@@ -99,9 +99,9 @@ export const relationDetailCache = new RelationDetailCache<RelationDetail>();
 /**
  * Introspects columns, primary key, simple (single-column) foreign keys,
  * and UNIQUE constraints for a table/view by OID. See
- * Specification.md §12 and Specification_Data_API.md §3.4 (Relations derive from
+ * Foundations.md §12 and Data_API.md §3.4 (Relations derive from
  * real PostgreSQL FK); UNIQUE constraints are needed to validate
- * ON CONFLICT targets (Specification_Data_API.md §5.7).
+ * ON CONFLICT targets (Data_API.md §5.7).
  *
  * Read through `relationDetailCache`: PostgreSQL is asked once per
  * relation until something clears the cache (DDL TotalBase runs, a catalog
@@ -348,7 +348,7 @@ async function getSimpleForeignKeys(database: Database, oid: number): Promise<Re
  * Introspects single-column foreign keys on OTHER tables that point back
  * at this table (by OID) - the reverse of getSimpleForeignKeys. This is
  * what lets a nested-write payload like `"$invoice_items": []` resolve to
- * a real child-to-parent relationship (Specification_Data_API.md §6.2).
+ * a real child-to-parent relationship (Data_API.md §6.2).
  * Composite FKs are excluded, same policy as the outgoing
  * side (V1 relation traversal only supports single-column FKs).
  */

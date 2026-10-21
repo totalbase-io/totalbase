@@ -34,14 +34,14 @@ export interface EffectivePermission {
   action: PermissionDecision;
   /** Only meaningful when action === "ALLOW". */
   fieldDecision: (field: string) => PermissionDecision;
-  /** Raw where_clause JSON per ALLOW grant, to be parsed and OR-combined by the caller (Specification_Security.md §6.5). undefined = action denied. */
+  /** Raw where_clause JSON per ALLOW grant, to be parsed and OR-combined by the caller (Security.md §6.5). undefined = action denied. */
   rowFilterSources: RowFilterSource[] | undefined;
   /** Raw rule JSON + label per ALLOW grant, to be parsed and AND-combined by the caller. undefined = action denied. */
   payloadCheckSources: PayloadCheckSource[] | undefined;
 }
 
 /**
- * The single effective permission resolver (Specification_Security.md §6).
+ * The single effective permission resolver (Security.md §6).
  * Used consistently by the Data API, OpenAPI, relation access,
  * field access, and mutations (AGENTS.md section 6, @totalbase/permissions).
  */
@@ -116,7 +116,7 @@ export class EffectivePermissionService {
    * Bulk variant of resolve(): every action, for every given resource, in
    * one query instead of one resolve() call per (resource, action) pair.
    * Built for the Admin UI's "effective permissions" views
-   * (Specification_Admin_UI.md §11.4, gap #1) - a straightforward
+   * (Admin_UI.md §11.4, gap #1) - a straightforward
    * aggregation over the same totalbase.permissions rows resolve() reads,
    * no new permission logic. Also reports which role(s) contributed a
    * grant to each decision, so the UI can explain "why" (including DENY
@@ -249,7 +249,7 @@ function fieldsFor(
   if (!columnOrder) return fields.sort();
   // Direct columns in physical (attnum) order first; anything columnOrder
   // doesn't know about - a relation-traversal field like "manager.name"
-  // (Specification_Admin_UI.md §11.3), which names a column on a related table, not this one -
+  // (Admin_UI.md §11.3), which names a column on a related table, not this one -
   // sorts alphabetically after them.
   return fields.sort((a, b) => {
     const rankA = columnOrder.get(a);

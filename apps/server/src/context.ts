@@ -1,12 +1,16 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
+import { hostname } from "node:os";
+import { join } from "node:path";
 import { AppMenuService } from "@totalbase/app-menu";
 import { AuthProvidersService, AuthService, OAuthService, SmtpEmailSender, type EmailSender } from "@totalbase/auth";
 import { AuditExclusionsService, AuditInsightsService, AuditQueryService, AuditService } from "@totalbase/audit";
+import { BackupsService } from "@totalbase/backups";
 import { DashboardEmbedsService, DashboardsAdminService, embedPreviewKey } from "@totalbase/dashboards";
-import type { Database } from "@totalbase/database";
+import { postgresClientEnv, type Database } from "@totalbase/database";
+import { SYSTEM_PRINCIPAL } from "@totalbase/shared";
 import { DataViewsAdminService, DataViewsStatesService } from "@totalbase/dataviews";
 import { ExecutionsService, ExecutionsWorker, MAINTENANCE_EXECUTION_TYPE, MaintenanceService, type Executor } from "@totalbase/executions";
-import { FilesAdminService, FilesTransformService, FoldersAdminService } from "@totalbase/files";
+import { FilesAdminService, FilesStorage, FilesTransformService, FoldersAdminService, S3Connection } from "@totalbase/files";
 import { IdempotencyService } from "@totalbase/idempotency";
 import { EffectivePermissionService, PermissionsService, RoleAssignmentsService, RolesService, WorkflowPermissionService } from "@totalbase/permissions";
 import { UsersApisService } from "@totalbase/users-apis";
@@ -20,6 +24,7 @@ import { WorkflowRunsService, WorkflowsAdminService, dispatchDataEvent, invokeSu
 import type pino from "pino";
 import type { MasterKeyOrigin } from "./master-key.js";
 import type { SetupState } from "./setup.js";
+import { TOTALBASE_VERSION } from "./version.js";
 import { CapabilityPermissionService } from "@totalbase/mutations";
 import type { DataPrincipal } from "./data-principal.js";
 import { OpenApiDocumentCache } from "./openapi-cache.js";
@@ -36,6 +41,8 @@ export interface AppContext {
   logger: pino.Logger;
   /** Signs a dashboard widget's file links (D14) - derived from TOTALBASE_MASTER_KEY, never stored. */
   dashboardFilesKey: Buffer;
+  /** Signs a backup's download link (Administration.md §12.4) - derived from the master key, never stored. */
+  backupDownloadKey: Buffer;
   /** TOTALBASE_PUBLIC_URL - this instance's externally-reachable origin. See buildContext's doc comment. */
   publicUrl: string;
   /** NODE_ENV (env.ts's nodeEnv) - surfaced to the Admin UI (GET /auth/me) so it can show an environment badge in the navbar. */
@@ -48,7 +55,7 @@ export interface AppContext {
   roles: RolesService;
   roleAssignments: RoleAssignmentsService;
   effectivePermissions: EffectivePermissionService;
-  /** Where the master key comes from (Specification.md §15) - the variable, or a file in the data directory. Never the key. */
+  /** Where the master key comes from (Foundations.md §15) - the variable, or a file in the data directory. Never the key. */
   masterKeyOrigin: MasterKeyOrigin;
   /** The first-start setup's code while the instance has no administrator (setup.ts). */
   setup: SetupState;
@@ -62,7 +69,7 @@ export interface AppContext {
   dataviewsAdmin: DataViewsAdminService;
   dataviewsStates: DataViewsStatesService;
   dashboardsAdmin: DashboardsAdminService;
-  /** A dashboard's embeds - public links and signed embeds (Specification_Dashboards.md §9.5). */
+  /** A dashboard's embeds - public links and signed embeds (Dashboards.md §9.5). */
   dashboardEmbeds: DashboardEmbedsService;
   /** Signs an administrator's embed previews - derived from the master key, never stored. */
   embedPreviewKey: string;
@@ -83,6 +90,8 @@ export interface AppContext {
   executionsWorker: ExecutionsWorker;
   /** Runs MAINTENANCE executions only (maintenance-executor.ts) - separate from executionsWorker's queue. */
   maintenanceWorker: ExecutionsWorker;
+  /** Built-in backups (Administration.md §12) - their worker loop is index.ts's. */
+  backups: BackupsService;
   templatesAdmin: TemplatesAdminService;
   workflowsAdmin: WorkflowsAdminService;
   workflowRuns: WorkflowRunsService;
@@ -92,6 +101,10 @@ export interface AppContext {
   invokeSubWorkflow: (params: { callerPrincipal: DataPrincipal; callerWorkflowId: string; ancestry: string[]; targetWorkflowId: string; input: unknown }) => Promise<WorkflowRunOutcome>;
   foldersAdmin: FoldersAdminService;
   filesAdmin: FilesAdminService;
+  /** The storage providers from the files.* settings - shared by every FilesAdminService, transactional ones included. */
+  filesStorage: FilesStorage;
+  /** The S3 storage connection (s3.* settings) - Files' bucket today. */
+  s3: S3Connection;
   filesTransform: FilesTransformService;
   openApiCache: OpenApiDocumentCache;
 }
@@ -108,7 +121,7 @@ export interface AppContext {
  * to a provider, which must be a stable, known-good URL rather than
  * derived from a request's Host header (env.ts's comment on the same).
  */
-export function buildContext(database: Database, logger: pino.Logger, masterKey: string, publicUrl: string, nodeEnv: string, masterKeyOrigin: MasterKeyOrigin = { source: "ENV", path: null }, setup: SetupState = { code: null, source: null, file: "" }): AppContext {
+export function buildContext(database: Database, logger: pino.Logger, masterKey: string, publicUrl: string, nodeEnv: string, masterKeyOrigin: MasterKeyOrigin = { source: "ENV", path: null }, setup: SetupState = { code: null, source: null, file: "" }, dataDir = "/var/lib/totalbase"): AppContext {
   const settings = new SettingsService(database);
   const secrets = new SecretsService(database, masterKey);
   const emailSender = new SmtpEmailSender(settings, secrets);
@@ -118,7 +131,35 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   const maintenanceExecutors: Record<string, Executor> = {};
 
   const templatesAdmin = new TemplatesAdminService(database);
-  const filesAdmin = new FilesAdminService(database, settings);
+  const s3 = new S3Connection(settings, (key) => secrets.decrypt(key));
+  const filesStorage = new FilesStorage(settings, s3);
+  const filesAdmin = new FilesAdminService(database, settings, filesStorage);
+  const audit = new AuditService(settings);
+  const backups = new BackupsService({
+    database,
+    settings,
+    s3Store: () => s3.provider("backups"),
+    clientEnv: postgresClientEnv,
+    pgBinDir: process.env["TOTALBASE_PG_BIN"] || undefined,
+    workDir: join(dataDir, "tmp"),
+    totalbaseVersion: TOTALBASE_VERSION,
+    workerId: `${hostname()}:${process.pid}`,
+    // Each backup's life in the audit log (BACKUP): queued, completed or failed, downloaded, deleted.
+    onEvent: async ({ event, backup, adminId, requestId }) => {
+      const now = new Date();
+      await audit.record(database, {
+        requestId: requestId ?? randomUUID(),
+        principal: adminId ? { type: "ADMIN", id: adminId } : SYSTEM_PRINCIPAL,
+        action: "BACKUP",
+        status: event === "FAILED" ? "FAILED" : "EXECUTED",
+        source: adminId ? "admin" : "system",
+        metadata: { event, backup: backup.id, name: backup.name, destination: backup.destination, trigger: backup.trigger, sizeBytes: backup.sizeBytes },
+        ...(event === "FAILED" && backup.error ? { error: { code: "BACKUP_FAILED", message: backup.error } } : {}),
+        startedAt: now,
+        finishedAt: now,
+      }).catch((error) => logger.warn({ error }, "backup audit entry not written"));
+    },
+  });
 
   const effectivePermissions = new EffectivePermissionService(database);
 
@@ -128,8 +169,10 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   const auth = new AuthService(database, settings, emailSender, {
     publicUrl,
     onBackgroundError: (err, what) => logger.warn({ err }, `Could not send ${what}`),
+    masterKey,
+    isAdministrator: async (userId) => roles.holdsAdministratorsRole(await roleAssignments.listEffectiveRolesForUser(userId)),
   });
-  const oauth = new OAuthService(database, authProviders, secrets, settings, roleAssignments, masterKey, () => auth.mailer.publicUrl());
+  const oauth = new OAuthService(database, authProviders, secrets, settings, roleAssignments, masterKey, () => auth.mailer.publicUrl(), auth.mfa);
   const resourcesAdmin = new ResourcesAdminService(database);
 
   // `const` (not `return {`) so `dispatchWorkflowDataEvent`'s own closure
@@ -146,6 +189,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   const context: AppContext = {
     database,
     dashboardFilesKey: createHmac("sha256", masterKey).update("totalbase:dashboard-files").digest(),
+    backupDownloadKey: createHmac("sha256", masterKey).update("totalbase:backup-download").digest(),
     logger,
     publicUrl,
     nodeEnv,
@@ -159,7 +203,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
     effectivePermissions,
     masterKeyOrigin,
     setup,
-    audit: new AuditService(settings),
+    audit,
     auditExclusions: new AuditExclusionsService(database),
     auditQuery: new AuditQueryService(database),
     auditInsights: new AuditInsightsService(database),
@@ -188,12 +232,15 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
     executionExecutors,
     executionsWorker: new ExecutionsWorker(database, settings, executionExecutors),
     maintenanceWorker: new ExecutionsWorker(database, settings, maintenanceExecutors),
+    backups,
     templatesAdmin,
     workflowsAdmin: new WorkflowsAdminService(database),
     workflowRuns: new WorkflowRunsService(database),
     foldersAdmin: new FoldersAdminService(database),
     filesAdmin,
-    filesTransform: new FilesTransformService(settings, () => filesAdmin.storage()),
+    filesStorage,
+    s3,
+    filesTransform: new FilesTransformService(settings, () => filesStorage.current()),
     openApiCache: new OpenApiDocumentCache(database),
     dispatchWorkflowDataEvent: (outboxEventId: string) => dataEvents.enqueue(outboxEventId),
     invokeSubWorkflow: (params) => invokeSubWorkflow(context, params),
@@ -202,7 +249,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   // at a time (index.ts): a batch of VACUUMs never competes for the disk
   // with itself, and never holds up the other execution types' queue.
   maintenanceExecutors[MAINTENANCE_EXECUTION_TYPE] = (execution) => runMaintenanceExecution(context, execution);
-  // Function calls and transactions sent with `Prefer: respond-async` (Specification_Data_API.md §10.4).
+  // Function calls and transactions sent with `Prefer: respond-async` (Data_API.md §10.4).
   registerAsyncCallExecutors(context);
   return context;
 }

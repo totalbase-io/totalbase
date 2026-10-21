@@ -5,7 +5,7 @@ const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 /**
  * Client for a signed dashboard embed's routes (`/embed/api/*`,
- * Specification_Dashboards.md §9.5): the token the page read from its
+ * Dashboards.md §9.5): the token the page read from its
  * URL's fragment goes in a header - never the session's, which an embed
  * doesn't use (its viewer has no TotalBase account). Same `get`/`post`
  * shape as useAppApi, so DashboardView and its cards use either.

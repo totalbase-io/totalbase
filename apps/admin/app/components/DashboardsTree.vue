@@ -20,7 +20,7 @@ import { identityIconStyle, publishStatus, PUBLISH_STATUS_META } from '~/utils/p
 import { useBrokenReferences } from '~/composables/useBrokenReferences'
 
 const { dashboards, refresh, error } = useAppsNavDashboards()
-// Widgets whose query PostgreSQL refuses - a column or a table it names is gone (Specification_Dashboards.md §2.8).
+// Widgets whose query PostgreSQL refuses - a column or a table it names is gone (Dashboards.md §2.8).
 const broken = useBrokenReferences()
 onMounted(broken.ensure)
 function brokenText(id: string): string | null {
@@ -46,7 +46,7 @@ function openDashboard(id: string) {
 
 // Shared with the empty Dashboards page, whose two large buttons open the same two (D29).
 const open = useState('dashboards-new-blank', () => false)
-// New › From a table: the dashboard assistant (Specification_Dashboards.md §10.7) - loaded on first open.
+// New › From a table: the dashboard assistant (Dashboards.md §10.7) - loaded on first open.
 const fromTableOpen = useState('dashboards-new-from-table', () => false)
 const fromTableMounted = useOpenedOnce(fromTableOpen)
 const newItems = computed(() => [[

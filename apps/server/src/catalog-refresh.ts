@@ -1,7 +1,8 @@
-import { buildCatalogSnapshot, getCatalogFingerprint, relationDetailCache } from "@totalbase/pg-catalog";
+import { buildCatalogSnapshot, getCatalogFingerprint } from "@totalbase/pg-catalog";
 import { brokenDataViewReferences } from "@totalbase/dataviews";
 import { reconcileResources, syncAllResourceColumns, syncResourceDescriptions } from "@totalbase/resources";
 import type { AppContext } from "./context.js";
+import { catalogChanged } from "./invalidations.js";
 
 /**
  * Brings TotalBase's resources in line with the PostgreSQL catalog after
@@ -10,22 +11,21 @@ import type { AppContext } from "./context.js";
  * details and dashboard widgets' planned columns - DDL is the one change no
  * trigger reports (openapi-cache.ts, @totalbase/pg-catalog's
  * relation-detail-cache.ts, DashboardsAdminService.forgetPlans; reconcileResources()
- * clears the latter itself, repeated here so the two caches read as one
- * decision).
+ * clears the relation details itself, repeated here so the caches read as one
+ * decision) - in this process and, by the CATALOG signal, in every other
+ * (invalidations.ts).
  */
 export async function reconcileCatalog(context: AppContext) {
   const snapshot = await buildCatalogSnapshot(context.database);
   const result = await reconcileResources(context.database, snapshot);
-  context.openApiCache.invalidate();
-  relationDetailCache.clear();
-  // Published widgets' planned columns, too: DDL may have changed what a query returns.
-  context.dashboardsAdmin.forgetPlans();
+  // Published widgets' planned columns too: DDL may have changed what a query returns.
+  await catalogChanged(context);
   return result;
 }
 
 /**
  * What still names a column, a table or view PostgreSQL no longer has
- * (Specification_DataViews.md §4.8, Specification_Dashboards.md §2.8): dashboard
+ * (DataViews.md §4.8, Dashboards.md §2.8): dashboard
  * widgets whose query PostgreSQL refuses, DataViews whose layouts or Filter name a
  * column their source lost. Narrowed to one resource: its DataViews, and the
  * widgets whose query names its table or view.

@@ -11,7 +11,7 @@ function toDate(value: Instant): Date | null {
 
 /**
  * The one formatter for absolute dates/times in the portal
- * (Specification_Security.md §4.2): the signed-in user's
+ * (Security.md §4.2): the signed-in user's
  * effective display settings (GET /admin/api/auth/me's `display` - their
  * My account preferences, else Settings > General, else the browser).
  *
@@ -33,7 +33,7 @@ function toDate(value: Instant): Date | null {
  */
 export function useDateTimeFormat() {
   const session = useSession()
-  // Month and day names, and a browser-formatted value, in the UI's language (Specification_Admin_UI.md §14).
+  // Month and day names, and a browser-formatted value, in the UI's language (Admin_UI.md §14).
   const ui = useUiLocale()
   const display = computed(() => session.admin.value?.display)
   /** The effective IANA zone, or undefined = the browser's own. */

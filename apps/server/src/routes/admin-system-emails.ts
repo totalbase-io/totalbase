@@ -21,7 +21,7 @@ const TEMPLATE_RULES =
   "in every non-empty body. 400 INVALID_SETTING otherwise.";
 
 /**
- * System emails (Specification_Administration.md §8.2): the fixed set of messages TotalBase
+ * System emails (Administration.md §8.2): the fixed set of messages TotalBase
  * sends - each one a `mail.templates.<slot>` setting whose default lives
  * in code. Editing stores a settings override; DELETE drops it so the
  * slot reads its default again. The admin edits these in Templates →

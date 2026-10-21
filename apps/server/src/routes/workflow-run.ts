@@ -34,7 +34,7 @@ interface DefinitionOperation {
  * this caller even attempt it" gate is uniform here.
  *
  * The response is the run's outcome only, `{ id, status, result, error }`
- * (Specification_Workflows.md §13.1) - never its steps: their live inputs
+ * (Workflows.md §13.1) - never its steps: their live inputs
  * and results are the author's to inspect (the Admin API's runs), not the
  * caller's. What a caller gets is what the Finish step returns.
  */
@@ -68,7 +68,7 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, context: AppCont
       executor = await resolveDataPrincipalForConfiguredUser(context, executeAs);
     }
 
-    // { data: input } (Specification_Data_API.md §2.4) - the workflow reads it as {{start.data}}.
+    // { data: input } (Data_API.md §2.4) - the workflow reads it as {{start.data}}.
     // A CRON workflow runs as its schedule would: the schedule object, not the request's data (§6.4.3).
     const input = trigger === "CRON" ? cronStartData(start?.configuration.timezone, new Date()) : request.body?.data ?? null;
     const admission = { trigger: trigger as "MANUAL" | "CRON", mode: "PRODUCTION" as const, initiator: { type: caller.principal.type, id: caller.principal.id } };

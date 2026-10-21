@@ -1,4 +1,4 @@
-// The cron grammar on the client (Specification_Workflows.md §6.4.2,
+// The cron grammar on the client (Workflows.md §6.4.2,
 // packages/workflows cron.ts): five fields, each `*`, a number or name,
 // lists, ranges and steps; months JAN-DEC, weekdays SUN-SAT (0 and 7 both
 // Sunday), case-insensitive. Validation only - the server's preview stays

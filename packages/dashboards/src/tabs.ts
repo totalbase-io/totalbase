@@ -1,7 +1,7 @@
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
- * A dashboard's tabs (Specification_Dashboards.md §7.2, D7): `[{value, label, icon?}]` in order - UTabs' items. None:
+ * A dashboard's tabs (Dashboards.md §7.2, D7): `[{value, label, icon?}]` in order - UTabs' items. None:
  * one grid, as before. A widget's `tab` is one of their values (unset: the first); the App keeps the open one in
  * `?tab=<value>`, so `tab` is no variable's name.
  */

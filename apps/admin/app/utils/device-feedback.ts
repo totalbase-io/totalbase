@@ -1,6 +1,6 @@
 /**
  * A short tone and a vibration - what the Scanner (a read) and the Result
- * (an outcome) confirm with (Specification_DataViews.md §9.9, §9.11). Web
+ * (an outcome) confirm with (DataViews.md §9.9, §9.11). Web
  * Audio, no sound files; a device without audio or vibration stays silent.
  */
 

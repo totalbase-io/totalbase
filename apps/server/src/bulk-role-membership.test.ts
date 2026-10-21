@@ -8,7 +8,7 @@ const PREFIX = "bulk-membership";
 const ASSIGNMENTS = "/api/totalbase/table/users_roles";
 
 /**
- * Bulk role membership (Specification_Security.md §9.4) through the Data
+ * Bulk role membership (Security.md §9.4) through the Data
  * API, as the admin's Users list and a role's Members tab send it: a bulk
  * create skipping who already holds the role, a delete by `where` - each one
  * transaction with an audit row per assignment.

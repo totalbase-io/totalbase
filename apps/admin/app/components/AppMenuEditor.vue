@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The App menu's edit mode (Specification_Security.md §8.2), on the
+ * The App menu's edit mode (Security.md §8.2), on the
  * App's own screen: groups and one level of subgroups; DataViews, Dashboards
  * and groups dragged into place on the shared tree (TreeView.vue - drag, or Alt+arrows; Enter or F2 edits).
  * Each row reads [drag][icon] Name … [Edit]:
@@ -88,7 +88,7 @@ async function setGroupsOpen(next: MenuGroupsOpen) {
     notifyError(err, t('settings.appMenuEditor.displayError'))
   }
 }
-/** The menu's search box (app.menu_search, Specification_Security.md §8.2): automatic - past 15 entries a viewer sees -, always, never. */
+/** The menu's search box (app.menu_search, Security.md §8.2): automatic - past 15 entries a viewer sees -, always, never. */
 const SEARCH_ITEMS = computed<{ label: string, value: MenuSearch }[]>(() => [
   { label: t('settings.appMenuEditor.searchAuto'), value: 'AUTO' },
   { label: t('settings.appMenuEditor.searchAlways'), value: 'ALWAYS' },
@@ -119,7 +119,7 @@ const headerActions = computed<HeaderAction[]>(() => [
   }
 ])
 
-// --- Hide / show: the object's own `scope` (Specification_Security.md §8.1),
+// --- Hide / show: the object's own `scope` (Security.md §8.1),
 // not part of the arrangement. A pending arrangement save goes first, and
 // the menu is read again after - showing an object puts it back where the
 // server places it. ---

@@ -7,7 +7,7 @@ import { getDataView } from "./dataviews-read.js";
 import type { AdminDataViewField, DataViewsContext } from "./dataviews-types.js";
 
 /**
- * What stops a DataView from working, and for whom (Specification_DataViews.md §18): one check the admin's
+ * What stops a DataView from working, and for whom (DataViews.md §18): one check the admin's
  * warnings, the publish dialog and the MCP's `check_app` all read. Every answer about a role comes from the
  * Permission Resolver, as the Data API decides it; nothing here grants or changes anything.
  *
@@ -49,7 +49,7 @@ function issue(input: IssueInput): DiagnosisIssue {
 
 /**
  * Who reaches an object - shared by a DataView's and a Dashboard's checks. Never the menu: a published LISTED object
- * is in it by itself (Specification_Security.md §8.2), an EMBEDDED_ONLY one is meant to be reached through another.
+ * is in it by itself (Security.md §8.2), an EMBEDDED_ONLY one is meant to be reached through another.
  */
 export async function objectReachIssues(
   ctx: Pick<DataViewsContext, "database">,

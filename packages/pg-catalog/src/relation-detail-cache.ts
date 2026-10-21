@@ -6,7 +6,7 @@
  *
  * Why: every Data API request resolves its root resource's columns, keys
  * and constraints, and every traversed relation's too - five catalog
- * queries each (Specification_Data_API.md §1.2). The catalog changes only
+ * queries each (Data_API.md §1.2). The catalog changes only
  * on DDL, so those reads are the same answer request after request.
  *
  * Invalidation is by clearing everything - entries are small and DDL is
@@ -22,7 +22,7 @@
  *   scheduled sync (catalog.refresh_interval_minutes): both end in
  *   reconcileResources(), which clears. Until the watch's next tick, a
  *   column added from outside is not yet in a Data API read - the same
- *   window its resource row already had (Specification.md §12.4).
+ *   window its resource row already had (Foundations.md §12.4).
  *
  * A pending load is cached as its promise, so concurrent requests for the
  * same relation share one introspection; a failed load is dropped, so the

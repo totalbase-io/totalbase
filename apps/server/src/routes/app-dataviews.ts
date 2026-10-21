@@ -20,7 +20,7 @@ async function withSourceRead(context: AppContext, roleIds: string[], views: Adm
 /**
  * The App lists a DataView when the caller holds its object access
  * (level 2, granted directly) and READ on its source (level 1) -
- * Specification_Security.md §8.1.
+ * Security.md §8.1.
  */
 export async function listableDataViews(context: AppContext, roleIds: string[] | null, views: AdminDataView[]): Promise<AdminDataView[]> {
   if (roleIds === null) return views;
@@ -64,7 +64,7 @@ async function grantedActions(context: AppContext, request: FastifyRequest, view
 
 /**
  * What the viewer is offered on the DataView's own pages - its list and its record form: what they're granted,
- * narrowed by the DataView's own Allow (`view_config.allow`, Specification_DataViews.md §5.1 - a history with no
+ * narrowed by the DataView's own Allow (`view_config.allow`, DataViews.md §5.1 - a history with no
  * New), an Administrator's too. An embed of it (TDataView) is narrowed by its own Allow instead, over
  * `grantedActions` - the same DataView may be a listing with no New and, in a record's page, where rows are made.
  */
@@ -84,7 +84,7 @@ async function rowActions(context: AppContext, request: FastifyRequest, view: Ad
 type ActionTarget = { kind: "FUNCTION"; schema: string; name: string } | { kind: "WORKFLOW"; slug: string };
 
 /**
- * The DataView's custom actions this viewer may run (Specification_DataViews.md §3.7), by action id: a function
+ * The DataView's custom actions this viewer may run (DataViews.md §3.7), by action id: a function
  * exposed for calls they may EXECUTE, a published, enabled MANUAL workflow they may INVOKE - the rest never show.
  */
 async function actionTargets(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<{ actionTargets: Record<string, ActionTarget> }> {
@@ -134,7 +134,7 @@ export async function openableDataView(context: AppContext, request: FastifyRequ
       return await (UUID_PATTERN.test(slug) ? context.dataviewsAdmin.getPublished(slug) : context.dataviewsAdmin.getPublishedBySlug(slug));
     } catch (error) {
       // Never published: an administrator still reaches its runtime routes (prefs, saved views,
-      // catalog...) - the device preview frames its draft (Specification_DataViews.md §12.9).
+      // catalog...) - the device preview frames its draft (DataViews.md §12.9).
       if ((await callerRoleIds(context, request)) !== null) throw error;
       return UUID_PATTERN.test(slug) ? context.dataviewsAdmin.get(slug) : context.dataviewsAdmin.getBySlug(slug);
     }
@@ -206,7 +206,7 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
   }));
 
   /**
-   * `?draft=true` (Specification_DataViews.md §12.9): the draft instead of the
+   * `?draft=true` (DataViews.md §12.9): the draft instead of the
    * published version, inside the App shell - the editor's device preview.
    * Administrators only: anyone else gets RESOURCE_NOT_FOUND, as for a
    * DataView they can't open.
@@ -217,11 +217,11 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
   }
 
   /**
-   * The instance's toolbar default (dataviews.toolbar_mode, Specification_DataViews.md §5) - what a list
+   * The instance's toolbar default (dataviews.toolbar_mode, DataViews.md §5) - what a list
    * DataView opens with when neither the viewer nor its default_state chose; null for `auto` (the type's own).
    * Sent with the DataView: an App user can't read the settings.
    */
-  /** The most rows a viewer may choose and edit together (Specification_DataViews.md §5.15) - sent with the DataView, as an App user can't read settings. */
+  /** The most rows a viewer may choose and edit together (DataViews.md §5.15) - sent with the DataView, as an App user can't read settings. */
   async function bulkEditMaxRows(): Promise<number> {
     return context.settings.get("dataviews.bulk_edit_max_rows");
   }
@@ -231,7 +231,7 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
   }
 
   /**
-   * The instance's page width defaults (Specification_DataViews.md §6.7) - what a DataView with no
+   * The instance's page width defaults (DataViews.md §6.7) - what a DataView with no
    * page_content_width / page_content_align of its own takes. Sent with it: an App user can't read settings.
    */
   async function instancePageLayout() {
@@ -263,13 +263,13 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
     };
   });
 
-  // A SETTINGS DataView's rows the viewer may change - each shows locked or editable (Specification_DataViews.md §5.12).
+  // A SETTINGS DataView's rows the viewer may change - each shows locked or editable (DataViews.md §5.12).
   app.get<{ Params: { slug: string } }>("/app/api/dataviews/:slug/settings-writable", { preHandler }, async (request) => {
     const view = await openableDataView(context, request, request.params.slug);
     if (view.viewType !== "SETTINGS") throw new TotalBaseError("INVALID_QUERY", "Only a SETTINGS DataView has settings rows.");
     const principal = await resolveDataPrincipal(context, extractBearerToken(request), request.headers["x-totalbase-timezone"], request);
     const { writable, read } = await settingsWritable(context, principal, view);
-    // A read of the table's keys under the viewer's grants: its READ audit row, like any Data API read's (audit_read; Pre_Beta_Review 2.10).
+    // A read of the table's keys under the viewer's grants: its READ audit row, like any Data API read's (audit_read).
     if (read) await new ReadAudit(context, request, read.resource, principal).executed(context.database, { fields: [{ path: [read.keyColumn] }] }, read.rowCount);
     return { data: writable };
   });

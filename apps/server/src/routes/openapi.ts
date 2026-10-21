@@ -112,7 +112,7 @@ async function buildDataApiSpec(context: AppContext, dataRoutes: DocumentedRoute
 }
 
 /**
- * OpenAPI endpoints (Specification_Data_API.md §14). Both documents are
+ * OpenAPI endpoints (Data_API.md §14). Both documents are
  * generated on every request from live catalog/resources/permissions
  * state - "Never manually edited". `servers` comes from
  * system.public_url (env fallback), never the request's Host header
@@ -125,7 +125,7 @@ export function registerOpenApiRoutes(
   dataRoutes: DocumentedRoute[],
 ): void {
   // Public: GET /api/openapi.json - "principal-effective spec"
-  // (Specification_Data_API.md §14.1), so it requires the same bearer auth as the rest of the Data API;
+  // (Data_API.md §14.1), so it requires the same bearer auth as the rest of the Data API;
   // there is no anonymous/public role concept in V1 to fall back to.
   app.get("/api/openapi.json", async (request) => {
     // openapi.enabled off: the Data API document isn't published. The
@@ -175,7 +175,7 @@ export function registerOpenApiRoutes(
     },
   );
 
-  // The Endpoints screen (Specification_Admin_UI.md §12): the whole
+  // The Endpoints screen (Admin_UI.md §12): the whole
   // developer-facing surface, not one role's view of it.
   app.get(
     "/admin/api/endpoints",

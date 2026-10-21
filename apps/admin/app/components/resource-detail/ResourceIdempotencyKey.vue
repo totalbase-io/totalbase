@@ -2,7 +2,7 @@
 import type { Resource } from '~/types/resource'
 
 /**
- * "Require an idempotency key" (Specification_Data_API.md §9.1) - a row
+ * "Require an idempotency key" (Data_API.md §9.1) - a row
  * under a TABLE's or a FUNCTION's endpoint switches: its write (CREATE /
  * EXECUTE) never runs without an Idempotency-Key header. Saves at once.
  */

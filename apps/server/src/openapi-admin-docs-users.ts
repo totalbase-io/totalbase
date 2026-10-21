@@ -49,6 +49,7 @@ export const USERS_SCHEMAS: Record<string, JsonSchema> = {
       description: "The picture of the user's most recently used sign-in provider identity, if any.",
       properties: { url: STRING, provider: { type: "string", description: "The provider's name." } },
     },
+    mfaEnabled: { type: "boolean", description: "Two-factor authentication is on (an authenticator app confirmed)." },
   }),
   UsersSummary: object({
     total: { type: "integer" },

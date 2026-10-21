@@ -1,7 +1,7 @@
 import type { ValueKind } from "./widget-catalog.js";
 
 /**
- * Which kind of value a column holds (Specification_DataViews.md §14). The
+ * Which kind of value a column holds (DataViews.md §14). The
  * widget it gets by default is the column input catalog's (column-inputs.ts:
  * `columnFormInput`), the one rule for a grid column and a form field alike.
  */
@@ -29,7 +29,7 @@ export function isDateDataType(dataType: string): boolean {
  * The kind of value a column holds (`ValueKind`), from its PostgreSQL type
  * and foreign key. A FK to `totalbase.files(id)` is a `file`, not a
  * `relation`: Files has no list route to pick a row from
- * (Specification_Administration.md §10). `time` is distinct from `timestamp` (`\b`),
+ * (Administration.md §10). `time` is distinct from `timestamp` (`\b`),
  * and `date` from both: a day picker on a timestamp would round every pick
  * to midnight.
  */

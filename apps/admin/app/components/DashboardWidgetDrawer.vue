@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Widget editor, Grafana-style (Specification_Dashboards.md §10.4): a live
+ * Widget editor, Grafana-style (Dashboards.md §10.4): a live
  * preview of the widget, the SQL editor and its result grid on the
  * left, the widget type's properties on the right. A UDrawer, not a
  * modal or sidebar - this is "working" content (AGENTS.md §25), same
@@ -62,7 +62,7 @@ const isMobile = useIsMobile()
 const isCompact = useCompactUi()
 const sqlEditorRef = ref<{ wordWrap: boolean, toggleWordWrap: () => void, insertAtCursor: (text: string) => void } | null>(null)
 
-// "Optional filter" (Specification_Dashboards.md §10.4): the standard
+// "Optional filter" (Dashboards.md §10.4): the standard
 // `($VAR.x IS NULL OR ...)` pattern for a variable and a column, written at
 // the cursor - plain SQL, nothing the server rewrites.
 const filterOpen = ref(false)

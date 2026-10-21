@@ -29,7 +29,7 @@ export interface RunState {
   resultsByKey: Map<string, unknown>;
   /**
    * The current `totalbase.for-each` item, valid only while the engine is
-   * walking that operation's body (specs/Specification_Workflows.md §5.11's
+   * walking that operation's body (specs/Workflows.md §5.11's
    * `source: "iteration"` reference). Nested For each is
    * rejected at draft-save time (§3.4), so a single slot - not a
    * stack - is enough: a body can never itself contain another For each
@@ -39,7 +39,7 @@ export interface RunState {
   /**
    * The `{ code, message, detail? }` of the step whose connected `error` output led
    * to the step now being resolved - `{{error.code}}`/`{{error.message}}`
-   * (Specification_Workflows.md §4.1). Set only while resolving that one
+   * (Workflows.md §4.1). Set only while resolving that one
    * direct target's configuration; undefined everywhere else.
    */
   currentError?: { code: string; message: string; detail?: unknown } | undefined;

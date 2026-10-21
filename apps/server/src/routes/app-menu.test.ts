@@ -21,7 +21,7 @@ function objectIds(nodes: Node[]): string[] {
 }
 
 /**
- * The App menu and object access (Specification_Security.md §7.1, §8):
+ * The App menu and object access (Security.md §7.1, §8):
  * a DataView shows for a viewer only with its object access AND READ on
  * its source; a Dashboard with its object access; a group left empty is
  * hidden; an embedded DataView opens through the one embedding it; the

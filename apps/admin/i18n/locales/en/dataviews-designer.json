@@ -1451,6 +1451,10 @@
             "labelWidth": {
               "description": "Horizontal: the label takes this share of the field and the input the rest - set the same on fields beside each other and their values line up. A phone stacks it, label above.",
               "label": "Label width"
+            },
+            "junction": {
+              "label": "Junction table",
+              "description": "Instead of a column: a junction table between the page's record and another table. Its input picks several of the other table's rows, and the record's Save adds and removes the junction's rows, as the viewer, in the same transaction."
             }
           },
           "slots": {
@@ -1984,7 +1988,10 @@
         "sourceValueHelp": "Kept in a Value - for filters and anything not saved as is.",
         "title": "New form field",
         "variable": "Variable",
-        "variableHelp": "Letters, digits and _, starting with a lowercase letter."
+        "variableHelp": "Letters, digits and _, starting with a lowercase letter.",
+        "sourceJunction": "Links to another table",
+        "sourceJunctionHelp": "Several rows of another table, through a junction table - saved with the record, a junction row per link.",
+        "junction": "Junction table"
       },
       "hideProperties": "Hide properties",
       "hideWidgets": "Hide widgets",
@@ -2445,18 +2452,6 @@
       "showRecords": "Show records",
       "size": "Size",
       "steps": {
-        "calendarLayout": {
-          "description": "Which date column places rows, and each event's content/color.",
-          "title": "Calendar layout"
-        },
-        "cardLayout": {
-          "description": "Which columns show on each card.",
-          "title": "Card layout"
-        },
-        "columns": {
-          "description": "Which columns should this view use - all, unless you uncheck them.",
-          "title": "Columns"
-        },
         "detail": {
           "description": "The table holding each record's detail rows.",
           "title": "Detail"
@@ -2465,53 +2460,17 @@
           "description": "Which columns each detail row shows.",
           "title": "Detail columns"
         },
-        "formFeatures": {
-          "description": "Edit form behavior and record actions.",
-          "title": "Form features"
-        },
         "frame": {
           "description": "The https page to embed, and its header buttons.",
           "title": "Frame"
-        },
-        "ganttLayout": {
-          "description": "Start/end date columns for each bar, an optional grouping column, and each bar's content/color.",
-          "title": "Gantt layout"
-        },
-        "treeLayout": {
-          "title": "Tree layout",
-          "description": "The parent column, the order of each level and what each node shows."
-        },
-        "identity": {
-          "description": "Name, description, slug, icon, and color.",
-          "title": "Identity"
-        },
-        "kanbanLayout": {
-          "description": "Which FK column groups records into lanes, and each card's content.",
-          "title": "Kanban layout"
-        },
-        "mapLayout": {
-          "description": "Position, popup, and pin icon/color for each row.",
-          "title": "Map layout"
         },
         "master": {
           "description": "The table each new record is created in, and its columns.",
           "title": "Master"
         },
-        "preview": {
-          "description": "The query this DataView will read, and its records.",
-          "title": "Preview"
-        },
         "record": {
           "description": "A table as its record - optional.",
           "title": "Record"
-        },
-        "source": {
-          "description": "The table or view this DataView is built on.",
-          "title": "Source"
-        },
-        "tableFeatures": {
-          "description": "Toolbar and list controls for the DataView.",
-          "title": "Table features"
         },
         "type": {
           "description": "What kind of view are you building?",
@@ -2628,7 +2587,6 @@
       "firstTimeViewer": "What a first-time viewer (or anyone who never personally customized anything) starts with.",
       "fitToScreen": "Fit to screen",
       "fitToScreenDescription": "The form fills the page instead of scrolling it - the row holding a widget with Fill height takes the height left and scrolls inside. Ignored on a phone or a tablet.",
-      "formFeatures": "Form features",
       "formFeaturesDescription": "Edit form behavior and record actions.",
       "formModeDescription": "What this DataView's form opens into.",
       "instanceDefault": "Default",
@@ -2640,13 +2598,12 @@
       "position": "Position",
       "runtimeDefault": "Runtime default ({value})",
       "size": "Size",
-      "tableFeatures": "Table features",
       "tableFeaturesDescription": "Toolbar and list controls for the DataView.",
       "toolbarCompact": "Compact",
       "toolbarFull": "Full",
       "toolbarInstance": "The instance's (Settings > DataViews)",
       "listMargin": "List margin",
-      "listMarginHelp": "The space around the list - Default: a table none (Settings > DataViews > Table margin), any other list normal.",
+      "listMarginHelp": "The space around the list - Default: a table takes Settings > DataViews > Table margin, any other list normal.",
       "listMargins": {
         "none": "No margin",
         "compact": "Compact",
@@ -2745,7 +2702,9 @@
       "uploadImage": "Upload an image - a public file, anyone who opens the page sees it",
       "uploadImageFailed": "Could not upload the image",
       "unknownField": "“{field}” isn't a field its Resource reads - every option would show nothing. A formula goes in the ƒ beside it.",
-      "inheritedStateSame": "The same as the column's"
+      "inheritedStateSame": "The same as the column's",
+      "junctionLinks": "Links to {table}",
+      "noJunction": "The page's record table has no junction table - one is made from New table › Junction table, and holds nothing but the two keys."
     },
     "palette": {
       "search": "Search widgets…"
@@ -2839,6 +2798,7 @@
     "useWidgetRuntime": {
       "cancelledInPreview": "Cancelled in the preview.",
       "deleteNamesRow": "A table delete names its row: \"pk\" or \"where\" in the input.",
+      "workflowNotAvailable": "The workflow is not available.",
       "functionNotAvailable": "The function is not available.",
       "notAFile": "The result is not a file.",
       "nothingToClose": "Nothing to close here.",

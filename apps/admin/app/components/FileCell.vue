@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A file column's cell in a list (a foreign key to files - Specification_DataViews.md §4): an image as a
+ * A file column's cell in a list (a foreign key to files - DataViews.md §4): an image as a
  * fixed 40 px thumbnail (scaled down by the server), opening large in a viewer; another file as its type's icon and
  * name, downloading it. Both read with the viewer's token - a PRIVATE file answers nothing else - and only once
  * the cell is on screen. Clicks stay in the cell: the row's own click (open the record) never fires.

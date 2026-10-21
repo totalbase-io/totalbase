@@ -10,7 +10,7 @@ const P = "admin-row-writes-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * Specification_Security.md §10.3 step 4: roles, users and personal
+ * Security.md §10.3 step 4: roles, users and personal
  * access tokens written as Data API rows (the tokens_limited_changes trigger keeps
  * updated_at, the owner and a token's fixed columns), and a user deleted
  * through its own delegated endpoint, which also clears the avatar.

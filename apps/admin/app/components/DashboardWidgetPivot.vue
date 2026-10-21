@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The PIVOT dashboard widget's body (Specification_Dashboards.md §5.17, D17): a UTable over rows PostgreSQL already
+ * The PIVOT dashboard widget's body (Dashboards.md §5.17, D17): a UTable over rows PostgreSQL already
  * aggregated - its row levels down the side, its value columns under nested headers (each Columns value × each
  * value, then the totals), its subtotal and total rows and its total columns in bold. It only places the cells
  * (utils/dashboard-pivot.ts): every total is PostgreSQL's row, never a sum made here. Values read in their

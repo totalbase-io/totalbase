@@ -26,7 +26,7 @@ import { resolveFrameUrlTemplate } from '~/utils/frame-url'
 import { resolveWidgetItems } from '~/utils/widget-items'
 import { isReservedAttrKey } from '~/utils/field-config'
 import type { ResourceHandle, ValueHandle } from '~/utils/variables-engine'
-import { boundErrors, rangeErrors, type FormMessages, columnDecimals, fieldColumn, fieldName, fieldVariable, formFields, inputColumn, patternErrors, requiredErrors, toFieldErrors } from '~/utils/widget-form'
+import { boundErrors, rangeErrors, type FormMessages, columnDecimals, fieldColumn, fieldJunction, fieldName, fieldVariable, formFields, inputColumn, patternErrors, requiredErrors, toFieldErrors } from '~/utils/widget-form'
 import { fromDateTimeLocal, toDateTimeLocal } from '~/utils/datetime-local'
 import { commitDecimalInput } from '~/utils/number-input'
 import { computedRows, designOptions, designTable, OPTION_LIST_WIDGETS, resourceTableColumns, searchEnterPayload, type RowFormula } from '~/utils/widget-table'
@@ -98,6 +98,10 @@ const formData = computed<Record<string, unknown>>(() => {
       data[key] = runtime.record?.data[column] ?? null
       continue
     }
+    if (fieldJunction(field)) {
+      data[key] = runtime.junctions?.[field.id]?.values ?? []
+      continue
+    }
     const variable = fieldVariable(runtime.fields.value, field)
     const handle = variable ? runtime.vars[variable] : undefined
     if (variable) data[key] = handle?.kind === 'VALUE' ? handle.value : null
@@ -131,6 +135,15 @@ const isDateTimeLocal = computed(() => name.value === 'UInput' && config.value.p
 const isZonedColumn = computed(() => /with time zone/.test(runtime.record?.columns[boundColumn.value ?? '']?.dataType ?? ''))
 /** This form field's column. */
 const ownColumn = computed(() => fieldColumn(props.field))
+/**
+ * The links this input edits - its form field's junction table (DataViews.md §8.5): undefined while they load
+ * or when it isn't such an input, null when the viewer may not read them.
+ */
+const boundJunctionField = computed(() => {
+  const parent = fieldById(runtime.fields.value, props.field.parent)
+  return parent && fieldJunction(parent) ? parent.id : null
+})
+const boundLinks = computed(() => (boundJunctionField.value ? runtime.junctions?.[boundJunctionField.value] : undefined))
 /**
  * A select menu's accessible name: its form field's label - else reka-ui's own
  * trigger names it "Show popup", in English, over the field's visible label (B51).
@@ -209,10 +222,16 @@ onBeforeUnmount(() => {
 })
 /** The selected row, read apart - shown first while it isn't on the page the Resource holds. */
 const selectedRow = ref<Record<string, unknown> | null>(null)
+/** A multiple select's picks read apart (a junction's links) - each shown while it isn't on that page. */
+const selectedRows = ref<Record<string, unknown>[]>([])
 function withSelected(items: unknown[], value: unknown, key: string): unknown[] {
-  const row = selectedRow.value
-  if (!row || row[key] !== value || items.some(i => isObject(i) && i[key] === value)) return items
-  return [row, ...items]
+  const values = Array.isArray(value) ? value : [value]
+  const extra: Record<string, unknown>[] = []
+  for (const row of [selectedRow.value, ...selectedRows.value]) {
+    if (!row || !values.includes(row[key]) || items.some(i => isObject(i) && i[key] === row[key]) || extra.some(r => r[key] === row[key])) continue
+    extra.push(row)
+  }
+  return extra.length ? [...extra, ...items] : items
 }
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -244,7 +263,7 @@ const resolvedProps = computed(() => {
       const meta = definition.value.props[prop] ?? commonWidgetProps(name.value)[prop]
       // An option list's field bound to a formula is evaluated once per option (optionFormulas), never here.
       if (!meta || meta.binding === 'option') continue
-      // A computed input (Specification_DataViews.md §9.2): its Value a formula - what it gives as it is, read only, written nowhere.
+      // A computed input (DataViews.md §9.2): its Value a formula - what it gives as it is, read only, written nowhere.
       if (prop === 'modelValue' && meta.binding === 'value') {
         const value = evaluateWidgetFormula(binding.formula, { vars: runtime.vars, slot: props.slotProps, controls: runtime.controls })
         out.modelValue = name.value === 'UInputNumber' && typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : value ?? null
@@ -263,7 +282,7 @@ const resolvedProps = computed(() => {
   if (live.value && 'loading' in definition.value.props && !bindings.value.loading && source && source.kind !== 'VALUE') {
     out.loading = source.status === 'pending'
   }
-  // A Frame's URL is a template (Specification_DataViews.md §9.7): each token a page value, encoded;
+  // A Frame's URL is a template (DataViews.md §9.7): each token a page value, encoded;
   // on the Design canvas, the template itself - an unfilled address is never loaded.
   if (name.value === 'TFrame') {
     const template = typeof out.url === 'string' ? out.url : ''
@@ -295,6 +314,7 @@ const resolvedProps = computed(() => {
   // Column, Full width and Pattern are TotalBase's own props - they bind, size and check the input, they aren't UFormField's.
   if (name.value === 'UFormField') {
     delete out.column
+    delete out.junction
     delete out.block
     delete out.pattern
     delete out.patternMessage
@@ -309,6 +329,15 @@ const resolvedProps = computed(() => {
     }
   }
   const record = runtime.record
+  // An input of a form field linked through a junction table: the other table's keys it links to, picked several at once.
+  if (live.value && boundJunctionField.value) {
+    const links = boundLinks.value
+    out.modelValue = links?.values ?? []
+    if ('multiple' in definition.value.props) out.multiple = true
+    if (!links || !record || record.mode === 'view' || links.status === 'pending' || (!links.canAdd && !links.canRemove)) out.disabled = true
+    const variantOptions = (definition.value.props.variant as { options?: readonly string[] } | undefined)?.options
+    if (out.disabled === true && out.variant === undefined && variantOptions?.includes('soft')) out.variant = 'soft'
+  }
   if (live.value && boundColumn.value && record) {
     // The record's value; read-only where the viewer may not write it (their grants, its mode, PostgreSQL's own columns).
     out.modelValue = record.data[boundColumn.value] ?? null
@@ -346,7 +375,7 @@ const resolvedProps = computed(() => {
         if (bound.op === '<=' && out.max === undefined) out.max = bound.value
       }
     }
-    // A number column's plain input (Specification_DataViews.md §15.2): a number input, its CHECK range and its
+    // A number column's plain input (DataViews.md §15.2): a number input, its CHECK range and its
     // scale's step (numeric(5,2): 0.01) - derived, never stored; what the page sets wins.
     if (name.value === 'UInput' && dataType && isNumericDataType(dataType)) {
       // The column's chosen control's type (its presentation's input - a number field's, or text), else a number field.
@@ -403,7 +432,7 @@ const PLACEHOLDER_INPUTS: readonly string[] = ['UInput', 'UTextarea', 'UInputNum
 
 /**
  * What a form field bound to a column, and its input, take from the column
- * (Specification_DataViews.md §15) where the page sets
+ * (DataViews.md §15) where the page sets
  * nothing (an empty value is set - to none): the field's label (else the name humanized), description and
  * help; the input's placeholder and icon; a CHECK list's values with their
  * labels and icons. On the canvas too, so it reads as it will.
@@ -469,7 +498,20 @@ function designOverrides(): Record<string, unknown> {
 // The selected value missing from the options: read its row.
 // Once the Resource has its page - a value on it needs no read.
 watch(() => [optionSource.value, optionSource.value?.status, resolvedProps.value.modelValue, resolvedProps.value.items, resolvedProps.value.valueKey] as const, async ([source, status, value, items, key]) => {
-  if (!source || status !== 'success' || typeof key !== 'string' || value === null || value === undefined || isObject(value) || !Array.isArray(items)) return
+  if (!source || status !== 'success' || typeof key !== 'string' || !Array.isArray(items)) return
+  // Several picked (a junction's links): those on neither the page nor read already, in one read.
+  if (Array.isArray(value)) {
+    const missing = value.filter(v => !items.some(i => isObject(i) && i[key] === v) && !selectedRows.value.some(r => r[key] === v))
+    if (missing.length === 0) return
+    try {
+      const rows = await source.findAll(key, missing)
+      selectedRows.value = [...selectedRows.value, ...rows]
+    } catch {
+      // Best-effort - those picks show no label, as a single one.
+    }
+    return
+  }
+  if (value === null || value === undefined || isObject(value)) return
   if (items.some(i => isObject(i) && i[key] === value)) return
   try {
     const row = await source.find(key, value)
@@ -483,11 +525,12 @@ watch(() => [optionSource.value, optionSource.value?.status, resolvedProps.value
 
 /**
  * A form field bound to a column the viewer may not read: never drawn - as
- * the grid leaves that column out (Specification_DataViews.md §4). Known once the record's
+ * the grid leaves that column out (DataViews.md §4). Known once the record's
  * catalog (the columns they may read) has arrived.
  */
 const unreadableColumn = computed(() => {
   const columns = runtime.record?.columns
+  if (live.value && fieldJunction(props.field) && runtime.junctions?.[props.field.id] === null) return true
   return Boolean(ownColumn.value && columns && Object.keys(columns).length > 0 && !columns[ownColumn.value])
 })
 /** Visible off (or its formula false) hides the widget - it takes no space. The canvas always shows it. */
@@ -501,7 +544,7 @@ const isCompact = useCompactUi()
 const styleClasses = computed(() => widgetStyleClasses(resolvedProps.value))
 /** The component's props, plus its HTML attributes - never a reserved one (class, on*, v-model...). */
 /**
- * A Table's columns (utils/widget-table.ts, Specification_DataViews.md §15):
+ * A Table's columns (utils/widget-table.ts, DataViews.md §15):
  * its Resource's fields in order, each with its Columns
  * settings over what its resource's column sets - titled, formatted by type
  * and Format, styled; the hidden ones left out. On the canvas, its shape.
@@ -515,7 +558,7 @@ const tableResource = computed(() => {
   const handle = binding?.kind === 'variable' ? runtime.vars[binding.variable] : undefined
   return handle?.kind === 'RESOURCE' ? handle : undefined
 })
-/** Its foreign keys' texts for the rows on screen (Specification_DataViews.md §15.5) - read again whenever they change. */
+/** Its foreign keys' texts for the rows on screen (DataViews.md §15.5) - read again whenever they change. */
 const foreignLabels = shallowRef<Record<string, Record<string, string>>>({})
 watch(() => [live.value, tableResource.value?.data] as const, async ([isLive, data]) => {
   const binding = bindings.value.data
@@ -728,7 +771,7 @@ const componentProps = computed(() => {
   return { ...attrs, ...rest, ...fill, ...tableColumns.value }
 })
 
-// --- State: what formulas read as {{controls.<name>.*}} (Specification_DataViews.md §9.1) ---
+// --- State: what formulas read as {{controls.<name>.*}} (DataViews.md §9.1) ---
 
 /** An option list's chosen row - derived from its value and its own options (the selected one read apart included), never stored. */
 const selectedItem = computed(() => {
@@ -789,7 +832,7 @@ const listeners = computed(() => {
     out.keydownCapture = commit
   }
   if (optionSource.value) out['update:searchTerm'] = onSearchTerm
-  // "Create from search" (Specification_DataViews.md §9.8): a row of the Resource's table named what was typed,
+  // "Create from search" (DataViews.md §9.8): a row of the Resource's table named what was typed,
   // created as the viewer, then picked - its value written like a choice.
   if (optionSource.value && resolvedProps.value.createItem && typeof resolvedProps.value.labelKey === 'string') {
     out.create = async (label: unknown) => createOption(String(label ?? ''))
@@ -801,6 +844,9 @@ const listeners = computed(() => {
       lastRow.value = (args[1] as { original?: Record<string, unknown> } | undefined)?.original ?? null
     }
   }
+  // A junction's links: a list replaces them; one row picked (Create from search, the search window) is added.
+  const links = boundLinks.value
+  if (links) out['update:modelValue'] = (value: unknown) => links.set(Array.isArray(value) ? value : [...links.values, value])
   if (record && column) {
     out['update:modelValue'] = isDateTimeLocal.value
       ? (value: unknown) => record.set(column, fromDateTimeLocal(value, isZonedColumn.value, timezone.value))
@@ -848,6 +894,7 @@ async function createOption(label: string) {
   try {
     const row = await source.create({ [labelKey]: label.trim() })
     selectedRow.value = row
+    if (boundLinks.value) selectedRows.value = [...selectedRows.value, row]
     listeners.value['update:modelValue']?.(row[valueKey])
     void source.refresh()
   } catch (error) {
@@ -855,7 +902,7 @@ async function createOption(label: string) {
   }
 }
 
-// --- A Select menu's search window (`searchWindow`, Specification_DataViews.md §9.8) ---------------------------
+// --- A Select menu's search window (`searchWindow`, DataViews.md §9.8) ---------------------------
 
 /** Its options' Resource, opened as a searchable, paged table - a 🔍 beside the select. */
 const searchWindowOn = computed(() => name.value === 'USelectMenu' && resolvedProps.value.searchWindow === true && (!live.value || !!optionSource.value))
@@ -885,6 +932,7 @@ const formField = inject(formFieldInjectionKey, undefined)
 function pickFromSearch(row: Record<string, unknown>) {
   const valueKey = typeof resolvedProps.value.valueKey === 'string' ? resolvedProps.value.valueKey : 'id'
   selectedRow.value = row
+  if (boundLinks.value) selectedRows.value = [...selectedRows.value, row]
   listeners.value['update:modelValue']?.(row[valueKey])
   searchWindowOpen.value = false
   const fieldName = formField?.value?.name
@@ -958,7 +1006,7 @@ if (live.value) {
 /**
  * The slots drawn: live, those that hold widgets - an empty one keeps the
  * component's own content; on the canvas, every inline slot, as an area to
- * drop into (an `own`-canvas slot is edited apart - Specification_DataViews.md §12.4).
+ * drop into (an `own`-canvas slot is edited apart - DataViews.md §12.4.1).
  */
 const drawnSlots = computed(() => Object.entries(definition.value.slots)
   .filter(([slot, meta]) => (runtime.designArea ? meta.canvas !== 'own' : slotHasWidgets(runtime.fields.value, props.field.id, slot, meta.perItem === true)))

@@ -63,7 +63,7 @@ export function requestBodyExample(document: OpenApiDocumentLike | null | undefi
 
 const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`
 
-/** A copy-pasteable cURL command (Specification_Admin_UI.md §12). */
+/** A copy-pasteable cURL command (Admin_UI.md §12). */
 export function curlCommand(input: { method: string, url: string, authenticated: boolean, body?: unknown }): string {
   const lines = [`curl -X ${input.method} ${quote(input.url)}`]
   if (input.authenticated) lines.push(`-H 'Authorization: Bearer <token>'`)

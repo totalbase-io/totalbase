@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings › Actions › Custom actions (Specification_DataViews.md §3.7): the DataView's own actions - a function or
+ * Settings › Actions › Custom actions (DataViews.md §3.7): the DataView's own actions - a function or
  * a MANUAL workflow on a row, the record or a selection - in their menu order. Each row its icon, label, where it
  * shows and what it runs; New action and ✎ open its panel (DataViewCustomActionEditor.vue). Saved with the
  * DataView's settings, published with it.

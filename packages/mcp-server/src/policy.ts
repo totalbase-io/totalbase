@@ -5,7 +5,7 @@ import { z } from "zod";
 
 /**
  * What an instance lets its agents do through this server
- * (Specification_Administration.md §11.7) - Settings > MCP: a mode, the tool
+ * (Administration.md §11.7) - Settings > MCP: a mode, the tool
  * groups switched on, and the project's own instructions. It narrows the
  * tools on offer; it never widens anything - every call is still decided
  * by TotalBase's own authorization, as any caller's.
@@ -143,7 +143,7 @@ export function offersTool(policy: McpPolicy, name: string, annotations: ToolAnn
 /**
  * The tools a tool body still runs in STANDARD mode but whose destructive
  * branch it refuses: write_records' delete, alter_table's drops,
- * execute_sql's destructive statements.
+ * apply_dashboard's deleted widgets, execute_sql's destructive statements.
  */
 export function refuseDestructive(policy: McpPolicy, what: string): void {
   if (policy.mode !== "FULL") throw new Error(`${what} - not allowed: this instance runs MCP in ${policy.mode} mode (Settings > MCP). Ask an administrator.`);
@@ -167,7 +167,7 @@ export function gatedServer(server: McpServer, policy: McpPolicy): McpServer {
 export function policyInstructions(policy: McpPolicy): string {
   const parts: string[] = [];
   if (policy.mode === "READ_ONLY") parts.push("This instance runs MCP in READ_ONLY mode: only tools that read are offered - say so to the user when a task needs a change.");
-  if (policy.mode === "STANDARD") parts.push("This instance runs MCP in STANDARD mode: nothing can be deleted or revoked through these tools (no delete_* or revoke_permission; write_records delete, alter_table drops and destructive SQL are refused) - an administrator does that.");
+  if (policy.mode === "STANDARD") parts.push("This instance runs MCP in STANDARD mode: nothing can be deleted or revoked through these tools (no delete_* or revoke_permission; write_records delete, alter_table drops, an apply_dashboard spec that leaves widgets out and destructive SQL are refused) - an administrator does that.");
   const off = MCP_TOOL_GROUPS.filter((group) => !policy.groups.has(group));
   if (off.length > 0) parts.push(`Tool groups switched off by its administrators: ${off.join(", ")} - their tools aren't offered.`);
   if (policy.instructions) parts.push(`This project's own instructions, from its administrators - follow them:\n${policy.instructions}`);

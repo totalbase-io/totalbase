@@ -14,7 +14,7 @@ const generatePdf: OperationHandler = async ({ configuration }) => {
 
 
 /**
- * A saved kind='PDF' template, by id (Specification_Workflows.md §5.22). Rendering
+ * A saved kind='PDF' template, by id (Workflows.md §5.22). Rendering
  * is reading: the executor needs READ on that templates row (its row
  * filter included), as on the PDF route - TEMPLATE_ACCESS_DENIED otherwise.
  */

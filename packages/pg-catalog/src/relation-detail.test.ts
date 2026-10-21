@@ -42,7 +42,7 @@ describe("getRelationDetail (integration)", () => {
     await database.close();
   });
 
-  // A domain column read as a type with no input of its own (MCP_Demo_Findings.md F7).
+  // A domain column read as a type with no input of its own.
   it("reports a domain column by its base type - a domain over a domain too - with the domain apart", async () => {
     await database.query(`DROP TABLE IF EXISTS public.relation_detail_pkg_test_domains`);
     await database.query(`DROP DOMAIN IF EXISTS public.relation_detail_pkg_test_amount`);

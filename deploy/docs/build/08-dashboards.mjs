@@ -1,4 +1,4 @@
-// Dashboards and embeds (Docs_Demo_Field_Service.md §6, §7) - one apply_dashboard spec each, published.
+// Dashboards and embeds (DATASET.md §6, §7) - one apply_dashboard spec each, published.
 //   TOTALBASE_TOKEN=... node 08-dashboards.mjs
 import { call } from './mcp.mjs'
 

@@ -7,7 +7,7 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * The transactions capability (totalbase.roles_capabilities) through the
- * Data API - Specification_Security.md §5.2, §10.1, §10.2: fixed exposure,
+ * Data API - Security.md §5.2, §10.1, §10.2: fixed exposure,
  * read under ordinary permissions, written by administrators only (what the
  * role editor's "Can run transactions" switch does), and POST
  * /api/transactions follows the row the moment it changes.

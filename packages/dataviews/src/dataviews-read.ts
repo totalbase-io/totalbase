@@ -1,5 +1,6 @@
 import { getRelationDetail } from "@totalbase/pg-catalog";
 import { TotalBaseError } from "@totalbase/errors";
+import { UUID_PATTERN } from "@totalbase/shared";
 import { templateColumns, type VariableDefinition } from "@totalbase/tb-catalog";
 import { isPageViewType, toAdminDataView, type AdminDataView, type DataViewRow, type DataViewsContext, type ForeignKeyDisplay, type PublishedSnapshot, type RowPresentationMap, type VariableResource } from "./dataviews-types.js";
 import { defaultDisplayColumn, livePresentation } from "./dataviews-presentation.js";
@@ -89,7 +90,9 @@ export async function hydrate(ctx: DataViewsContext, row: DataViewRow, published
   const view = published
     ? { ...draft, viewConfig: published.view_config_snapshot, code: published.code_snapshot, columnPresentation: presentation.columns }
     : { ...draft, columnPresentation: presentation.columns };
-  const withResources = isPageViewType(view.viewType) ? { ...view, variableResources: await variableResources(ctx, view.viewConfig, presentation.rows) } : view;
+  const withResources = isPageViewType(view.viewType)
+    ? { ...view, variableResources: await variableResources(ctx, view.viewConfig, presentation.rows), variableWorkflows: await variableWorkflows(ctx, view.viewConfig) }
+    : view;
   if (row.source_resource_oid === null) return withResources;
   const detail = await getRelationDetail(ctx.database, row.source_resource_oid);
   return { ...withResources, sourceResourcePrimaryKey: detail.primaryKey };
@@ -124,6 +127,18 @@ export async function latestVersion(ctx: DataViewsContext, dataviewId: string, i
   const published = rows[0];
   if (!published) throw new TotalBaseError("DATAVIEW_NOT_FOUND", `Published DataView not found: ${identifier}`);
   return published;
+}
+
+/** See `AdminDataView.variableWorkflows`. */
+export async function variableWorkflows(ctx: DataViewsContext, viewConfig: Record<string, unknown>): Promise<Record<string, { slug: string; name: string }>> {
+  const ids = (Array.isArray(viewConfig.variables) ? (viewConfig.variables as VariableDefinition[]) : [])
+    .flatMap((v) => (v.kind === "CALL" && v.target?.type === "WORKFLOW" && UUID_PATTERN.test(v.target.workflow) ? [v.target.workflow] : []));
+  if (ids.length === 0) return {};
+  const { rows } = await ctx.database.query<{ id: string; slug: string; name: string }>(
+    `SELECT id, slug, name FROM totalbase.workflows WHERE id = ANY($1::uuid[])`,
+    [[...new Set(ids)]],
+  );
+  return Object.fromEntries(rows.map((r) => [r.id, { slug: r.slug, name: r.name }]));
 }
 
 /** See `AdminDataView.variableResources`. */

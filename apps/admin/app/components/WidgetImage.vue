@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Image widget (TImage, Specification_DataViews.md §9.10): an image on a page - uploaded in the designer (a
+ * The Image widget (TImage, DataViews.md §9.10): an image on a page - uploaded in the designer (a
  * PUBLIC file: anyone who opens the page sees it, no grant on files), a file of the record
  * (`{{vars.record.data.foto}}`, read with the viewer's own token and grant) or an https URL. Always an `<img>`,
  * an SVG included - an image never runs a script. Framed by its shape (`aspect`), `fit`, `height`, `maxWidth`

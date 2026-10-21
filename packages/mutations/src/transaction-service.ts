@@ -60,7 +60,7 @@ export interface TransactionRequest {
 const BACKWARD_REFERENCE = /^\$([A-Za-z0-9_]+)\.(.+)$/;
 
 /**
- * Substitutes `$key.field` backward references (Specification_Data_API.md §8) with the
+ * Substitutes `$key.field` backward references (Data_API.md §8) with the
  * value from an already-executed operation's result. Only backward
  * references are possible by construction: `results` only ever contains
  * keys for operations that ran earlier in the same sequential loop, so a
@@ -142,12 +142,12 @@ export interface TransactionDeps {
   dataPrincipal: DataPrincipal;
   limits: Limits;
   audit: AuditRequestContext;
-  /** Added to the transaction's own context - an asynchronous run's cancellation hooks (Specification_Data_API.md §10.5). */
+  /** Added to the transaction's own context - an asynchronous run's cancellation hooks (Data_API.md §10.5). */
   transactionContext?: Pick<DatabaseTransactionContext, "applicationName" | "beforeCommit"> | undefined;
 }
 
 /**
- * A DataView record's save (Specification_DataViews.md §6.6): its header and its lines, written together by the
+ * A DataView record's save (DataViews.md §6.6): its header and its lines, written together by the
  * DataView itself - not the public transactions API, so neither its switch nor the TRANSACTIONS capability applies.
  * Its caller has already kept the operations to the DataView's own tables; each is still authorized like any write.
  */
@@ -158,7 +158,7 @@ export interface TransactionOptions {
 /**
  * What a transaction is checked against before anything runs: the feature
  * on, the caller's TRANSACTIONS capability, a well-formed and bounded list
- * of operations. An asynchronous call (Specification_Data_API.md §10.4)
+ * of operations. An asynchronous call (Data_API.md §10.4)
  * runs it before queueing too, so a request that can never run is refused
  * at once instead of failing in the background.
  */
@@ -200,8 +200,8 @@ export async function checkTransactionRequest(
 
 /**
  * Executes a batch of independent CREATE/UPDATE/DELETE operations in one
- * PostgreSQL transaction (Specification_Data_API.md §8). This
- * is a coordinator, not a second CRUD engine (Specification_Data_API.md §8): it reuses the
+ * PostgreSQL transaction (Data_API.md §8). This
+ * is a coordinator, not a second CRUD engine (Data_API.md §8): it reuses the
  * exact same permission resolution, row-filter, compile*, and audit/outbox
  * helpers as mutation-service.ts's single-operation entry points -
  * duplicated inline (rather than calling executeCreate/Update/Delete)
@@ -230,7 +230,7 @@ export async function executeTransaction(
     // Everything an operation needs that isn't the transaction's own - its resource, permission, password
     // columns, response projection, a nested insert's plan - is resolved here, before BEGIN: inside the
     // transaction those reads would borrow a second pool connection while this one is held, and with every
-    // connection in that state they would all wait on each other (Pre_Beta_Review 1.2).
+    // connection in that state they would all wait on each other.
     type Prepared = {
       op: TransactionOperationInput;
       action: "CREATE" | "UPDATE" | "DELETE";
@@ -267,7 +267,7 @@ export async function executeTransaction(
         rowFilter: buildRowFilter(permission, deps.limits),
         payloadChecks: buildPayloadChecks(permission, deps.limits),
         resolveUserVariable: userVariableResolver(deps.dataPrincipal),
-        // The grant's row filter and payload checks may follow foreign keys (Specification_Security.md §6.5).
+        // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
         related: relatedResolver(schemaContext),
       };
       // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.

@@ -23,7 +23,7 @@ async function mutationDeps(context: WorkflowEngineContext, dataPrincipal: DataP
   const limits = await loadLimits(context);
   const schemaContext = new SchemaContext(context.database);
   const root = await schemaContext.loadRoot(resource.schema, resource.name, resource.postgresOid);
-  // Specification_Workflows.md §6.3.4: "workflow-origin mutations default to no event emission...
+  // Workflows.md §6.3.4: "workflow-origin mutations default to no event emission...
   // permits the event path" - opted in per-step via this operation's own
   // `configuration.emitEvents` (CreateRecordsModal.vue etc.), not a
   // workflow-wide flag (see WorkflowRunContext's own doc comment on why).
@@ -110,7 +110,7 @@ function stepWhere(configuration: Record<string, unknown>): unknown {
 }
 
 /**
- * Update/Delete records follow the Data API's own guard (Specification_Workflows.md
+ * Update/Delete records follow the Data API's own guard (Workflows.md
  * §5.4, §5.5): with `api.require_where_for_update` / `_delete` on, a step
  * without a `where` is refused - at publish (readiness.ts) and here, at run
  * time, with the Data API's own code.
@@ -157,7 +157,7 @@ const condition: OperationHandler = async ({ configuration }) => {
 };
 
 /**
- * `totalbase.validate-data` (Specification_Workflows.md §5.9.1): checks
+ * `totalbase.validate-data` (Workflows.md §5.9.1): checks
  * `input` against `rules`, each `{ filter, message }` in the one filter
  * grammar, evaluated like Condition (AGENTS.md §7 - no second grammar). All
  * rules pass: `next` with the input. Any fails: the step fails with
@@ -188,7 +188,7 @@ const validateData: OperationHandler = async ({ configuration }) => {
 };
 
 /**
- * `totalbase.select-case` (specs/Specification_Workflows.md §5.10):
+ * `totalbase.select-case` (specs/Workflows.md §5.10):
  * "evaluates ordered Condition-style predicates on one object and chooses
  * the first matching named output... It has an optional `default` output
  * and `error`; no match without a default is an error." Reuses the exact
@@ -245,7 +245,7 @@ const executeWorkflow: OperationHandler = async ({ context, dataPrincipal, confi
 };
 
 /**
- * Native operation registry (specs/Specification_Workflows.md §5.25):
+ * Native operation registry (specs/Workflows.md §5.25):
  * the handler of every operation the catalog (`OPERATION_CATALOG`,
  * `@totalbase/tb-catalog`) says `runs: "handler"` - its test keeps the two
  * equal. No dynamic plugin loading. `totalbase.for-each`/`totalbase.process-batches`

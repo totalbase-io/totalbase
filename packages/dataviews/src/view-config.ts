@@ -16,7 +16,7 @@ function filterProblem(where: Record<string, unknown>): string | null {
 
 /**
  * The shape of every `view_config` key an author writes
- * (Specification_DataViews.md §2.7): a known key, of its type, with a known
+ * (DataViews.md §2.7): a known key, of its type, with a known
  * value. `frame_url`, `variables` and `record` have validators of their own;
  * `last_attnum` is the server's. A value may be `null` where the admin clears
  * a setting back to its default (an `optional` shape). Each layout's shape
@@ -43,7 +43,7 @@ const KEYS: Readonly<Record<string, Shape>> = {
   page_content_align: optionalEnum("left", "center", "right"),
   list_margin: optionalEnum("none", "compact", "normal"),
   fit_to_screen: { type: "boolean" },
-  // What its viewers may do besides reading - only less than their permissions (Specification_DataViews.md §5.1).
+  // What its viewers may do besides reading - only less than their permissions (DataViews.md §5.1).
   allow: { type: "optional", of: { type: "list", of: enumOf(...EMBED_ACTIONS), check: distinct("an action") } },
   map_view: { type: "object", fields: { centerLat: { type: "number" }, centerLng: { type: "number" }, zoom: { type: "number" } } },
   ...Object.fromEntries(VIEW_LAYOUTS.map((layout) => [layout.key, viewLayoutShape(layout)])),
@@ -74,7 +74,7 @@ export function assertViewConfigShape(viewType: string, viewConfig: Record<strin
       continue;
     }
     if (key === "kiosk") {
-      // The page alone on screen - no menu, no header - for a totem or a phone used as a reader (Specification_DataViews.md §7.3).
+      // The page alone on screen - no menu, no header - for a totem or a phone used as a reader (DataViews.md §7.3).
       if (viewType !== "CUSTOM") throw invalid(`kiosk is for a CUSTOM page, not a ${viewType}.`);
       if (value !== null && typeof value !== "boolean") throw invalid("kiosk must be true or false.");
       continue;
@@ -90,7 +90,7 @@ export function assertViewConfigShape(viewType: string, viewConfig: Record<strin
       continue;
     }
     if (key === "custom_actions") {
-      // Its own actions (Specification_DataViews.md §3.7): what each runs, where it shows, when.
+      // Its own actions (DataViews.md §3.7): what each runs, where it shows, when.
       if (value === null) continue;
       const problem = customActionsProblem(value, filterProblem);
       if (problem) throw invalid(`custom_actions${problem.startsWith("[") ? "" : " "}${problem}.`);

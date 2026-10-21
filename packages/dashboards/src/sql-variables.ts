@@ -2,7 +2,7 @@ import { TotalBaseError } from "@totalbase/errors";
 
 /**
  * `$USER.<column>` / `$VAR.<name>[.from|.to]` references in dashboard
- * widget SQL (Specification_Dashboards.md §3).
+ * widget SQL (Dashboards.md §3).
  * They are never interpolated: bindSqlVariables() swaps each one for a
  * cast positional parameter and returns the values separately.
  */

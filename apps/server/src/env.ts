@@ -1,6 +1,6 @@
 /**
  * Non-database environment variables.
- * See Specification.md §14 (Bootstrap).
+ * See Foundations.md §14 (Bootstrap).
  */
 export interface ServerEnv {
   /** TOTALBASE_ADMIN_EMAIL / _PASSWORD - both set: the instance owner is created at start; else the first-start setup (setup.ts). */

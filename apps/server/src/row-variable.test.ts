@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * $ROW.<column> (Specification_Data_API.md §3.7, T68): a filter compares a column against another column of the same
+ * $ROW.<column> (Data_API.md §3.7, T68): a filter compares a column against another column of the same
  * row - in a request's where, and in a permission's row filter, where a write is checked against the resulting row.
  */
 describe("$ROW.<column> - comparing two columns of the same row", () => {
@@ -74,7 +74,7 @@ describe("$ROW.<column> - comparing two columns of the same row", () => {
     expect(hidden.statusCode).toBeLessThan(500);
   });
 
-  // flags (Specification_Data_API.md §3.9, T67): which named filters each row meets - in meta.flags, rows untouched.
+  // flags (Data_API.md §3.9, T67): which named filters each row meets - in meta.flags, rows untouched.
   it("answers which flags each row meets, without filtering the rows", async () => {
     const res = await get("fields=name&order_by=name&flags[bajo][stock][_lt]=$ROW.stock_minimo&flags[pagada][pagado][_gte]=$ROW.total&count=true");
     expect(res.statusCode).toBe(200);

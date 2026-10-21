@@ -10,7 +10,7 @@ export interface EndpointRow {
 /**
  * Derived client-side from the real, implemented Data API routes
  * (apps/server's data-table*.ts / data-view.ts / data-function.ts,
- * Specification_Admin_UI.md §12), for the Resources grid's per-resource
+ * Admin_UI.md §12), for the Resources grid's per-resource
  * "View Info" panel. Docs > Endpoints lists the same routes from the server
  * (GET /admin/api/endpoints, @totalbase/openapi's listApiEndpoints) - keep
  * the two in step.

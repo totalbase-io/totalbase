@@ -5,7 +5,7 @@ import { FRAME_URL_TOKEN } from '@totalbase/tb-catalog'
  * the validation (that is the server's `validateFrameUrl`, on every save):
  * an absolute https URL without credentials that isn't this app's own
  * origin. The frame's sandbox allows scripts + same-origin, which is only
- * safe for a cross-origin document (Specification_DataViews.md,
+ * safe for a cross-origin document (DataViews.md,
  * "EXTERNALFRAME security"), so a draft or stored URL failing this is never
  * rendered - also what gates the wizard's and settings' live preview.
  */
@@ -24,7 +24,7 @@ export function embeddableFrameUrl(raw: string | null | undefined): string | nul
 }
 
 /**
- * A Frame widget's URL with its page values filled in (Specification_DataViews.md
+ * A Frame widget's URL with its page values filled in (DataViews.md
  * §9.7): each `FRAME_URL_TOKEN` replaced by `valueOf(token)`, URL-encoded -
  * a value can't add a `/`, `?` or `#` of its own. Null when a value is
  * missing (no URL for this record yet) or the result isn't embeddable; the

@@ -12,7 +12,7 @@ import { columnWidget, lastAttnum, withoutPresentation } from "./dataviews-colum
 export const CURRENT_INSTANT_DEFAULT = /^\s*(now\(\)|current_timestamp|localtimestamp|clock_timestamp\(\)|statement_timestamp\(\)|transaction_timestamp\(\))/i;
 
 /**
- * A column PostgreSQL fills on its own, which a generated record form hides on a new record (Specification_DataViews.md §6.2):
+ * A column PostgreSQL fills on its own, which a generated record form hides on a new record (DataViews.md §6.2):
  * an identity or generated column, a primary key with a DEFAULT (`gen_random_uuid()`, a sequence), an instant
  * defaulting to the current one (a creation stamp). By its type and its DEFAULT, never by its name.
  */
@@ -25,7 +25,7 @@ export function writtenByPostgres(column: RelationDetail["columns"][number], pri
 
 /**
  * One COLUMN field per column in the DataView, in catalog order
- * (Specification_DataViews.md §3.2) - `presence` decides which columns are in it, shown or
+ * (DataViews.md §3.2) - `presence` decides which columns are in it, shown or
  * hidden; one left out gets no row.
  * Visible fields are laid out `columnsPerRow` to a row (12-column grid);
  * without it, one per row, or two once there are many (see below).
@@ -40,7 +40,7 @@ export async function insertColumnFields(
   options: {
     /**
      * Whether a column is in the DataView, shown or hidden - one left
-     * out gets no field at all (Specification_DataViews.md §4.1:
+     * out gets no field at all (DataViews.md §4.1:
      * a column not in the DataView is never read).
      */
     presence: (column: RelationDetail["columns"][number]) => "shown" | "hidden" | null;
@@ -50,7 +50,7 @@ export async function insertColumnFields(
 ): Promise<number> {
   const fkColumns = new Map(detail.relations.map((r) => [r.sourceColumn, r]));
   // One COLUMN item per column in the DataView, in catalog order
-  // (Specification_DataViews.md §3.2) - a fresh DataView is already usable before anyone
+  // (DataViews.md §3.2) - a fresh DataView is already usable before anyone
   // opens the Design form.
   //
   // Stacked full-width (grid_w 12) one per row when there aren't
@@ -62,7 +62,7 @@ export async function insertColumnFields(
   // supports arbitrary per-field widths - this just picks a better
   // starting point than "everything is 12 wide" for a DataView
   // nobody has opened the Design form on yet. Same number as the
-  // spec's own SIDEBAR/MODAL nudge toward a Page (Specification_DataViews.md §6.3) - one
+  // spec's own SIDEBAR/MODAL nudge toward a Page (DataViews.md §6.3) - one
   // threshold, not two unrelated magic numbers. A Sidebar or a Modal
   // passes `columnsPerRow: 1` instead: too narrow for two.
   const TWO_COLUMN_THRESHOLD = 8;
@@ -81,7 +81,7 @@ export async function insertColumnFields(
     const visible = presence === "shown";
     // The stored widget's own config only belongs to THAT widget - an
     // override that picked a different one starts clean instead. Its
-    // presentation is inherited live (Specification_DataViews.md §15), never copied.
+    // presentation is inherited live (DataViews.md §15), never copied.
     const seededConfig = seeded.widget === widget ? withoutPresentation(seeded.config) : {};
     // The wizard's help text is the form field's (recordPageColumns), not a grid column's.
     const config: Record<string, unknown> = { ...seededConfig };
@@ -124,7 +124,7 @@ export async function insertColumnFields(
 }
 
 /**
- * The columns a generated record form edits (Specification_DataViews.md §6.2) - the ones the
+ * The columns a generated record form edits (DataViews.md §6.2) - the ones the
  * wizard kept, each with its label and input - one PostgreSQL fills on its own
  * (`writtenByPostgres`) shown only once the record exists, never to type on a new one; a
  * foreign key's select gets its options from a Resource of its target
@@ -136,7 +136,7 @@ export async function recordPageColumns(
   ctx: DataViewsContext,
   detail: RelationDetail,
   inputs: Map<string, string>,
-  // No title of their own: each field inherits its column's (Specification_DataViews.md §15).
+  // No title of their own: each field inherits its column's (DataViews.md §15).
   choose: { include: (column: string) => boolean; widget?: (column: string) => string | undefined; help?: (column: string) => string | undefined },
 ): Promise<RecordPageColumn[]> {
   const columns: RecordPageColumn[] = [];
@@ -147,7 +147,7 @@ export async function recordPageColumns(
     const fk = detail.relations.find((r) => r.sourceColumn === column.name) ?? null;
     const override = choose.widget?.(column.name);
     const values = fk ? null : checkConstraintValues(column.name, checks);
-    // Its column's input (Specification_DataViews.md §15.2) - followed, unless the author picked another.
+    // Its column's input (DataViews.md §15.2) - followed, unless the author picked another.
     const own = columnFormInput({
       name: column.name,
       dataType: column.dataType,
@@ -238,7 +238,7 @@ export async function fillLaneColumns(ctx: DataViewsContext, viewConfig: Record<
 }
 
 /**
- * A TREE's layout (Specification_DataViews.md §5.14): its parent column is a foreign key of the table to itself -
+ * A TREE's layout (DataViews.md §5.14): its parent column is a foreign key of the table to itself -
  * filled in when not named (the first one), refused when it isn't one. Its order column is the author's choice -
  * never guessed from a name.
  */

@@ -4,7 +4,7 @@
  * chosen by default; the builder unchecks what they don't want, and gives
  * each a widget and help text. What stays checked is where the
  * new DataView starts: its grid's columns and its record form's fields
- * (Specification_DataViews.md §4) - the widget goes
+ * (DataViews.md §4) - the widget goes
  * to both, help text to the form field; the title is its table's column's
  * (read only here, set in Database - §15). Afterwards each is edited on its
  * own: columns in Settings, fields in Form design.
@@ -24,7 +24,7 @@ export interface WizardColumnRow {
   name: string
   dataType: string
   isForeignKey: boolean
-  /** A foreign key to its own table - a TREE's parent (Specification_DataViews.md §5.14). */
+  /** A foreign key to its own table - a TREE's parent (DataViews.md §5.14). */
   isSelfReference?: boolean
   /** Part of the primary key: always in the DataView, `visible` only shows it. */
   primaryKey: boolean
@@ -71,7 +71,7 @@ watch([() => props.resource?.id, () => props.exclude?.join(',')], async () => {
     detail.value = data
     const fkColumns = new Map(data.relations.map(r => [r.sourceColumn, r]))
     const storedByColumn = new Map(storedWidgets.map(s => [s.columnName, s]))
-    // Each column's title as it inherits it (Specification_DataViews.md §15): kept as is, it stays inherited - not copied.
+    // Each column's title as it inherits it (DataViews.md §15): kept as is, it stays inherited - not copied.
     const titleByColumn = new Map(storedWidgets.filter(s => s.presentation?.label).map(s => [s.columnName, s.presentation!.label!]))
     rows.value = data.columns.filter(col => !props.exclude?.includes(col.name)).map((col) => {
       const fk = fkColumns.get(col.name) ?? null

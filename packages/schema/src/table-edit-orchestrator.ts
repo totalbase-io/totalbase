@@ -34,7 +34,7 @@ export type TableEditOperation =
   | { kind: "add_unique", columns: string[], name?: string | undefined }
   | { kind: "add_foreign_key", input: ForeignKeyInput }
   | { kind: "add_check", name: string, expression: string, message?: string | null | undefined }
-  /** The message a user reads when the constraint fails (its COMMENT, Specification_Administration.md §3.9) - null removes it. */
+  /** The message a user reads when the constraint fails (its COMMENT, Administration.md §3.9) - null removes it. */
   | { kind: "set_constraint_message", name: string, message: string | null }
   | { kind: "drop_constraint", name: string }
   | { kind: "create_index", input: Omit<CreateIndexInput, "schema" | "table"> }

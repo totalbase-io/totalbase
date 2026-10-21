@@ -93,7 +93,7 @@ describe('columnDecimals()', () => {
   })
 })
 
-// A column's CHECK ranges, as a form anticipates them (Specification_DataViews.md §15).
+// A column's CHECK ranges, as a form anticipates them (DataViews.md §15).
 describe('boundErrors()', () => {
   const fields = [
     { name: 'precio', column: [], bounds: [{ kind: 'value' as const, op: '>=' as const, value: 0, message: null }] },

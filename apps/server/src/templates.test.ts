@@ -6,7 +6,7 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * Route-level acceptance tests for the READ-gated /pdf action on
- * totalbase.templates (Specification_Administration.md §9.4):
+ * totalbase.templates (Administration.md §9.4):
  * rendering is reading, refused with TEMPLATE_ACCESS_DENIED - the shared
  * check (@totalbase/mutations' assertTemplateReadAllowed) the workflow
  * template steps use too. A MAILING template (inserted directly here)
@@ -72,7 +72,7 @@ describe("Templates actions (/pdf)", () => {
     await database.close();
   });
 
-  // The name CHECK refused "Factura A (AFIP)" though validateName - every service's and the admin's rule - takes it (MCP_Demo_Findings.md F23).
+  // The name CHECK refused "Factura A (AFIP)" though validateName - every service's and the admin's rule - takes it.
   it("takes a title's punctuation in a template's name, as validateName does, and refuses a path separator", async () => {
     const { rows } = await database.query<{ id: string }>(
       `INSERT INTO totalbase.templates (name, slug, kind, content) VALUES ('Factura A (AFIP)', 'templates-pkg-test-afip', 'MAILING', '{"subject": "s", "message": "m"}'::jsonb) RETURNING id`,

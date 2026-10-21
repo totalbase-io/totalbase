@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "Nuxt.mdc",
+    "ms-ossdata.vscode-pgsql",
+    "vitest.explorer",
+    "ms-azuretools.vscode-containers",
+    "antfu.iconify"
+  ],
+  "unwantedRecommendations": [
+    "esbenp.prettier-vscode"
+  ]
+}

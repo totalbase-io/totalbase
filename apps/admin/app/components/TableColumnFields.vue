@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * One table column's settings (`TableColumnSettings`, @totalbase/tb-catalog -
- * Specification_DataViews.md §15): its title, what it
+ * DataViews.md §15): its title, what it
  * shows of the value (format, empty text, true/false labels, link) and how
  * its cells look (TableCellStyleFields.vue). Only what its type takes. An
  * unset key is dropped from the model, never stored empty; with

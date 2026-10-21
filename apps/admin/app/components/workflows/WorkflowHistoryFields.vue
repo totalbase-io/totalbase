@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A workflow's history policy (Specification_Workflows.md §9.1) - the
+ * A workflow's history policy (Workflows.md §9.1) - the
  * Auditing step of both the creation and the Settings wizard. History off
  * keeps a run only 24 hours after it finishes (§9.4), so the level is
  * disabled while it is off.

@@ -1,6 +1,6 @@
 import { describeShape, isRecord, shapeErrors, type Shape } from "@totalbase/shared";
 /**
- * The dashboard widget catalog (Specification_Dashboards.md §5, D1): every
+ * The dashboard widget catalog (Dashboards.md §5, D1): every
  * widget a dashboard can hold, described the way the page widget catalog
  * describes a page's - its label, icon, group and description, its starting
  * and smallest size on the 12-column canvas, its **data contract** (roles),
@@ -35,7 +35,7 @@ import { AGGREGATES_SHAPE, AXES_SHAPE, AXES_XY_SHAPE, CLICK_SHAPE, PIVOT_SORT_SH
 export const DASHBOARD_TABLE_COLUMN_KEYS: readonly string[] = [...TABLE_COLUMN_PRESENTATION_KEYS, "hidden", "total"];
 
 /**
- * What kinds of result column a role takes (Specification_Dashboards.md §5.1):
+ * What kinds of result column a role takes (Dashboards.md §5.1):
  * `number` - smallint, integer, bigint, numeric, real, double precision;
  * `time` - date, timestamp, timestamptz; `point` - a point; `file` - a uuid
  * whose origin is a foreign key to files; `category` - any other
@@ -80,7 +80,7 @@ export interface DashboardRole {
  */
 export type DashboardPropEditor = "text" | "number" | "boolean" | "color" | "select" | "column" | "format" | "tableColumns" | "series" | "axes" | "thresholds" | "references" | "click" | "aggregates" | "pivotSort";
 
-/** The inspector's sections (Specification_Dashboards.md §10.4) - where a prop shows. */
+/** The inspector's sections (Dashboards.md §10.4) - where a prop shows. */
 export type DashboardPropSection = "format" | "appearance" | "series" | "axes" | "thresholds" | "events" | "zoomExport";
 
 /** One prop of a widget - what it is, its default (what an unset prop means) and what it does. */
@@ -99,7 +99,7 @@ export interface DashboardWidgetProp {
 }
 
 /**
- * What every widget's card takes beside its own props (Specification_Dashboards.md §5.1, D23): a description (the ⓘ by
+ * What every widget's card takes beside its own props (Dashboards.md §5.1, D23): a description (the ⓘ by
  * its title), what it says with no rows, and how it sits on a phone - the whole width, half of it, or not at all.
  */
 export const DASHBOARD_WIDGET_CARD_PROPS = {
@@ -986,7 +986,7 @@ function presentationIssues(definition: DashboardWidgetDefinition, page: WidgetN
 }
 
 /**
- * A widget's Styles (`config.style`, Specification_Dashboards.md §5): the page catalog's common style block - its
+ * A widget's Styles (`config.style`, Dashboards.md §5): the page catalog's common style block - its
  * card's spacing, alignment, background, border, radius and shadow - each one of its listed values.
  */
 function styleErrors(label: string, value: unknown): string[] {
@@ -1019,7 +1019,7 @@ export function knownDashboardConfig(type: DashboardWidgetType, config: Record<s
 }
 
 /**
- * A config carried over to another type (Specification_Dashboards.md §10, D2): the roles it keeps, renamed to their
+ * A config carried over to another type (Dashboards.md §10, D2): the roles it keeps, renamed to their
  * equivalent (Category ↔ Label, Values ↔ Value), and the props both types have.
  */
 export function convertDashboardConfig(from: DashboardWidgetType, to: DashboardWidgetType, config: Record<string, unknown>): Record<string, unknown> {
@@ -1079,7 +1079,7 @@ export interface DashboardRolesResult {
 const KIND_LABEL: Record<DashboardValueKind, string> = { number: "a number", time: "a date or time", category: "a category", point: "a point", file: "a file" };
 
 /**
- * Each role's columns for a query's result (Specification_Dashboards.md §5.1): what `config.roles` assigns, checked -
+ * Each role's columns for a query's result (Dashboards.md §5.1): what `config.roles` assigns, checked -
  * a column the query returns, of a kind the role takes (by hand, its `manual` kinds too) - else its default by kind and
  * position: the first (or every) column of a kind it takes, never by name, never a `_` column, never one another role
  * holds. Errors name the role, what it takes and what the query returned.
@@ -1149,7 +1149,7 @@ export function dashboardRolesProblem(type: DashboardWidgetType, config: Record<
 
 /**
  * The auto-refresh intervals a dashboard may use, in seconds
- * (Specification_Dashboards.md §9.4) - the same list as the column's CHECK.
+ * (Dashboards.md §9.4) - the same list as the column's CHECK.
  * 30 seconds at the least, so widget SQL load stays bounded; null = off.
  */
 export const DASHBOARD_REFRESH_INTERVALS = [

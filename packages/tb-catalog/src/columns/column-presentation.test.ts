@@ -129,7 +129,7 @@ describe("validateRowPresentation()", () => {
   });
 });
 
-// Specification_DataViews.md §15.7: conditions - their shape here, their filters by the server's parser.
+// DataViews.md §15.7: conditions - their shape here, their filters by the server's parser.
 describe("validateColumnPresentation() - conditions", () => {
   it("keeps named conditions with their filter, where and look, and the new cell styles", () => {
     const { presentation, errors } = validateColumnPresentation({

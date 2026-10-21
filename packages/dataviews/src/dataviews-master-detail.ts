@@ -142,7 +142,7 @@ export const LINE_ORDER_COLUMNS = /^(line|line_number|line_no|position|sort_orde
 export const CREATION_ORDER_COLUMNS = /^(created_at|creado|creado_en|fecha_alta)$/;
 
 /**
- * A detail's lines in the order they were entered (B54, Specification_DataViews.md §6.2): its default sort,
+ * A detail's lines in the order they were entered (B54, DataViews.md §6.2): its default sort,
  * from a line-order column, else an identity or serial, else a creation instant - none, the primary key's.
  */
 export function detailOrder(detail: RelationDetail, shown: (column: string) => boolean): { default_state?: { sort: string } } {

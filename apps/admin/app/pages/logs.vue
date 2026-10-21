@@ -6,7 +6,7 @@
  * resource), shown as chips. The grid itself is AuditLogGrid, the same as
  * every other place that shows the log: an administrator reads it through
  * the Admin API (events, security views, SQL), anyone else through the
- * Data API under their grants (Specification_Security.md §9) - never SQL.
+ * Data API under their grants (Security.md §9) - never SQL.
  */
 const { t } = useI18n()
 const filters = useLogsFilters()

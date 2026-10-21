@@ -17,7 +17,7 @@ const ROOT_ID = 'root'
 
 // One path for administrators and delegated users alike (useFilesApi.ts).
 const filesApi = useFilesApi()
-// Only what the caller's permissions on files allow (Specification_Security.md §9.3).
+// Only what the caller's permissions on files allow (Security.md §9.3).
 const canCreate = computed(() => session.can('files', 'CREATE'))
 const canUpdate = computed(() => session.can('files', 'UPDATE'))
 const canDelete = computed(() => session.can('files', 'DELETE'))
@@ -530,7 +530,7 @@ async function saveFileDetails() {
   }
 }
 
-// --- Rename and move (Specification_Administration.md §10.12) - the same
+// --- Rename and move (Administration.md §10.12) - the same
 // metadata PATCH, so the same grants decide: UPDATE, field grants on
 // name/folder, the row filter before and after. Rename is one field
 // anchored to its button (a popover); Move picks a folder for one file or

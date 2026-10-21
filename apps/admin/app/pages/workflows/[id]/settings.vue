@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A workflow's settings (Specification_Workflows.md §16.6) - in the format of a Dashboard's: its sections in the
+ * A workflow's settings (Workflows.md §16) - in the format of a Dashboard's: its sections in the
  * toolbar, each its own URL (`?section=`), a header with **Workflow design** to go back to the canvas. General (name,
  * slug, description, enabled), Trigger (the event and its configuration - the Start node's, versioned: it reaches
  * production on Publish; General also holds what a run keeps), Security (the roles that may invoke it) and Runs (its
@@ -139,7 +139,7 @@ async function onRolesChange(value: string[]) {
 }
 
 const status = computed(() => triggerSave.status.value === 'saving' || triggerSave.status.value === 'error' ? triggerSave.status.value : autosave.status.value)
-// Publish, as on the canvas (Specification_Admin_UI.md §3.7): what is versioned here - the trigger - goes live.
+// Publish, as on the canvas (Admin_UI.md §3.7): what is versioned here - the trigger - goes live.
 const publishing = ref(false)
 async function publish(note?: string) {
   if (!draft.value) return
@@ -185,7 +185,7 @@ async function backToDesign() {
             @retry="autosave.retry(); triggerSave.retry()"
           />
         </template>
-        <!-- The other screen, then the state, versions and Publish (Specification_Admin_UI.md §3.7). -->
+        <!-- The other screen, then the state, versions and Publish (Admin_UI.md §3.7). -->
         <UButton
           icon="i-lucide-workflow"
           :label="t('workflows.settings.design')"
@@ -310,7 +310,7 @@ async function backToDesign() {
           />
         </SettingsSection>
 
-        <!-- Versions (Specification.md §13.7): a version opens on the canvas, read-only. -->
+        <!-- Versions (Foundations.md §13.7): a version opens on the canvas, read-only. -->
         <VersionsTimeline
           v-if="visited.has('versions')"
           v-show="section === 'versions'"

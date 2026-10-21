@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
 import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, login, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every write action of the Database area, driven through the real UI:
@@ -50,11 +51,11 @@ interface RelationDetail {
 
 /** Fixture setup/cleanup: a bearer token from the auth API - no UI, so a page mid-reload can't fail it. */
 async function adminSession(browser: Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   // The auth API rate-limits sign-ins (other suites share the server): wait and retry, cleanup must not be skipped.
   for (let attempt = 0; ; attempt++) {
-    const response = await page.request.post('http://localhost:3050/api/auth/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } })
+    const response = await page.request.post(`${BASE_URL}/api/auth/login`, { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } })
     if (response.ok()) return { context, page, token: ((await response.json()) as { data: { token: string } }).data.token }
     if (response.status() !== 429 || attempt >= 12) throw new Error(`login -> ${response.status()}`)
     await page.waitForTimeout(5000)
@@ -545,7 +546,7 @@ test('SQL Console: SELECT, a transactional statement, EXPLAIN, history and purge
   const token = await login(page)
   const failures = watchApiFailures(page)
   // "Load more" needs more than one page (100) of history.
-  const history = await page.request.get('http://localhost:3050/admin/api/sql/history?limit=1', { headers: { Authorization: `Bearer ${token}` } })
+  const history = await page.request.get(`${BASE_URL}/admin/api/sql/history?limit=1`, { headers: { Authorization: `Bearer ${token}` } })
   const total = ((await history.json()) as { meta?: { total?: number } }).meta?.total ?? 0
   for (let i = total; i <= 100; i++) await sql(page, token, `SELECT ${i} AS ui_db_history_seed`)
 
@@ -670,7 +671,7 @@ test('Data browser: a UTable that pages, sorts, edits a cell, adds and deletes r
   await cellInput.press('Enter')
   await expect.poll(() => label(9)).toBe('edited 9')
 
-  // The filter popover labels its inputs - no placeholders (Specification_Admin_UI.md §7.1).
+  // The filter popover labels its inputs - no placeholders (Admin_UI.md §7.1).
   await main.getByRole('button', { name: 'Filter' }).click()
   await expect(page.getByRole('textbox', { name: 'Value' })).toBeVisible()
   await page.keyboard.press('Escape')

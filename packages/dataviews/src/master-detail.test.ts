@@ -106,10 +106,10 @@ describe("MASTER_DETAIL DataViews (integration)", () => {
     const visibleColumns = fields.filter((f) => f.kind === "COLUMN" && f.visible);
     // Every column, unless the wizard's Columns step says otherwise - the key too, read-only on the form.
     expect(visibleColumns.map((f) => f.columnName)).toEqual(["id", "customer", "placed_on", "total"]);
-    // No title of their own: each inherits its column's, else its name humanized (Specification_DataViews.md §15).
+    // No title of their own: each inherits its column's, else its name humanized (DataViews.md §15).
     expect(visibleColumns.map((f) => f.label)).toEqual([null, null, null, null]);
 
-    // Its record form is a page (Specification_DataViews.md §6.1): a form over the record...
+    // Its record form is a page (DataViews.md §6.1): a form over the record...
     const form = fields.find((f) => f.widget === "UForm")!;
     const inForm = fields.filter((f) => f.parent === form.id).sort((a, b) => a.gridY - b.gridY);
     expect(inForm.map((f) => f.widget)).toEqual(["UFormField", "UFormField", "UFormField", "UFormField", "TDataView"]);
@@ -139,7 +139,7 @@ describe("MASTER_DETAIL DataViews (integration)", () => {
     });
     const fields = await dataviewsAdmin.listFields(master.id);
     const bound = fields.filter((f) => f.widget === "UFormField").map((f) => (f.config as { props: { column: string; label: string } }).props);
-    // Each inherits its column's title (Specification_DataViews.md §15) - none stored.
+    // Each inherits its column's title (DataViews.md §15) - none stored.
     expect(bound).toEqual([{ column: "customer" }, { column: "total" }]);
     const detailId = fields.find((f) => f.widget === "TDataView")!.relatedDataview!;
     const detailColumns = (await dataviewsAdmin.listFields(detailId)).filter((f) => f.kind === "COLUMN" && f.visible);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The toolbar's views (Specification_DataViews.md §5.9), all in one popover: Default, My views and Shared - a click
+ * The toolbar's views (DataViews.md §5.9), all in one popover: Default, My views and Shared - a click
  * opens one -, on a phone the DataView's view types, and Save current view…. A saved view never changes: what's on
  * screen is saved as a view, under the name of one of one's own to replace it (SaveViewForm.vue). Each of one's own
  * views shares (its icon marked while shared) and deletes, asked on its row.

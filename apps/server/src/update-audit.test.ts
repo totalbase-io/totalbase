@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
- * Specification_Security.md §11.4: an UPDATE records old and new of every
+ * Security.md §11.4: an UPDATE records old and new of every
  * column it changed, minus the resource's audit exclusions.
  * The old values come from the UPDATE statement itself (compileUpdate's
  * locked old_rows CTE), on every UPDATE path - by primary key, bulk, by

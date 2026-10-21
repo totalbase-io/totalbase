@@ -4,7 +4,7 @@ import { TableSchemaService } from "./table-schema-service.js";
 
 const TABLE = "schema_pkg_test_uid";
 
-/** The UID column type (Specification_DataViews.md §16.3): PostgreSQL generates the slug, whoever writes the row. */
+/** The UID column type (DataViews.md §16.3): PostgreSQL generates the slug, whoever writes the row. */
 describe("UID columns (integration)", () => {
   let database: Database;
   let schemaService: TableSchemaService;

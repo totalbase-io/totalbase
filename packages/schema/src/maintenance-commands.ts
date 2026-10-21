@@ -1,7 +1,7 @@
 import { quoteIdentifier } from "./validation.js";
 
 /**
- * PostgreSQL maintenance commands (Specification_Administration.md §6) - only
+ * PostgreSQL maintenance commands (Administration.md §6) - only
  * the ones that take no lock blocking reads or writes. VACUUM FULL,
  * CLUSTER and REINDEX without CONCURRENTLY are deliberately absent.
  */

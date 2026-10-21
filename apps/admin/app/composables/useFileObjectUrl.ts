@@ -1,5 +1,5 @@
 /**
- * An image from Files for an <img> (Specification_Administration.md §10): a
+ * An image from Files for an <img> (Administration.md §10): a
  * PRIVATE file answers only a request with the viewer's bearer token, which
  * an <img src> can't send - so it is fetched with it, once, and shown as a
  * blob: URL. Shared by every caller (cards, kanban, a file field's preview):

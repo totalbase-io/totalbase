@@ -12,7 +12,7 @@
  * a page of their own (settings.vue, D26): Settings opens it, Share its
  * Share section, the ⚙ beside the variables bar its Variables.
  *
- * Versioning follows Specification.md §13, shared with DataViews
+ * Versioning follows Foundations.md §13, shared with DataViews
  * and Workflows: the canvas shows the DRAFT; opening a version from the
  * VersionsMenu swaps the canvas to that version's snapshot, read-only
  * (no palette, no edit/remove/drag, no Publish), with the
@@ -82,12 +82,12 @@ watch([() => liveVersion.value?.version ?? null, () => dashboard.value?.hasUnpub
 // Manual refresh (no polling): every mounted card watches this and re-runs its query.
 const refreshKey = ref(0)
 
-/** Any draft edit may change "Unpublished changes" - re-read it from the server (Specification.md §13.5) rather than guess client-side. */
+/** Any draft edit may change "Unpublished changes" - re-read it from the server (Foundations.md §13.5) rather than guess client-side. */
 function refreshStatus() {
   return refreshDashboard()
 }
 
-// --- Version preview (Specification.md §13.4) ---
+// --- Version preview (Foundations.md §13.4) ---
 const preview = ref<DashboardVersionSnapshot | null>(null)
 const readOnly = computed(() => preview.value !== null)
 const isCompact = useCompactUi()
@@ -119,7 +119,7 @@ async function selectVersion(version: number | null) {
   }
 }
 
-// Restore (Specification.md §13.4): that version replaces the draft - nothing is published.
+// Restore (Foundations.md §13.4): that version replaces the draft - nothing is published.
 const restoring = ref(false)
 async function restore() {
   if (!preview.value) return
@@ -269,13 +269,16 @@ async function resyncDraft() {
 
 // --- Publish ---
 const publishing = ref(false)
-// Embeds a publish would stop (Specification_Dashboards.md §9.5): they lock a variable the draft no longer has - checked as the confirmation opens.
-const brokenEmbeds = ref<{ name: string, missing: string[] }[]>([])
+// Embeds a publish would stop (Dashboards.md §9.5): they lock a variable the draft no longer has - checked as the confirmation opens.
+const brokenEmbeds = ref<{ name: string, missing: string[], widgetMissing: boolean }[]>([])
+/** Embeds a publish stops, by why: a variable they lock is gone, or the one widget they show (Dashboards.md §9.5). */
+const lockBroken = computed(() => brokenEmbeds.value.filter(e => e.missing.length > 0))
+const widgetBroken = computed(() => brokenEmbeds.value.filter(e => e.widgetMissing))
 async function checkEmbeds() {
   brokenEmbeds.value = []
   try {
     await autosave.flush()
-    brokenEmbeds.value = (await api.get<{ name: string, missing: string[] }[]>(`/dashboards/${dashboardId}/embeds/impact`)).data
+    brokenEmbeds.value = (await api.get<{ name: string, missing: string[], widgetMissing: boolean }[]>(`/dashboards/${dashboardId}/embeds/impact`)).data
   } catch {
     // The check is advice; the publish itself is unaffected.
   }
@@ -325,7 +328,7 @@ onMounted(() => {
   const asked = Number(route.query.version)
   if (asked) void selectVersion(asked)
 })
-// "Delete old versions…" (Specification.md §13.4): a preview of a deleted version goes back to the draft.
+// "Delete old versions…" (Foundations.md §13.4): a preview of a deleted version goes back to the draft.
 const deleteVersionsOpen = ref(false)
 function openDeleteVersions() {
   deleteVersionsOpen.value = true
@@ -563,7 +566,7 @@ const unconfiguredCount = computed(() => (widgets.value ?? []).filter(w => !w.qu
             @retry="resyncDraft"
           />
         </template>
-        <!-- The other screen (Specification_Admin_UI.md §3.7), then publishing: state, versions, the primary action last. -->
+        <!-- The other screen (Admin_UI.md §3.7), then publishing: state, versions, the primary action last. -->
         <UButton
           v-if="!readOnly"
           icon="i-lucide-settings"
@@ -604,10 +607,16 @@ const unconfiguredCount = computed(() => (widgets.value ?? []).filter(w => !w.qu
             {{ t('dashboards.editor.unconfigured', unconfiguredCount) }}
           </p>
           <p
-            v-if="brokenEmbeds.length"
+            v-if="lockBroken.length"
             class="text-xs text-error"
           >
-            {{ t('dashboards.editor.brokenEmbeds', { n: brokenEmbeds.length, names: brokenEmbeds.map(e => `"${e.name}"`).join(', '), variables: [...new Set(brokenEmbeds.flatMap(e => e.missing))].join(', ') }, brokenEmbeds.length) }}
+            {{ t('dashboards.editor.brokenEmbeds', { n: lockBroken.length, names: lockBroken.map(e => `"${e.name}"`).join(', '), variables: [...new Set(lockBroken.flatMap(e => e.missing))].join(', ') }, lockBroken.length) }}
+          </p>
+          <p
+            v-if="widgetBroken.length"
+            class="text-xs text-error"
+          >
+            {{ t('dashboards.editor.brokenWidgetEmbeds', { n: widgetBroken.length, names: widgetBroken.map(e => `"${e.name}"`).join(', ') }, widgetBroken.length) }}
           </p>
         </PublishButton>
       </PageHeader>

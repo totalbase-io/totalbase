@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Design form's Structure tab (Specification_DataViews.md §12.4): the page's widgets as a tree - the page
+ * The Design form's Structure tab (DataViews.md §12.4): the page's widgets as a tree - the page
  * (and a CUSTOM page's header and footer), each container's slots as a level of their own (a Card's header,
  * body and footer, a Tab's panes), overlays even while closed. Each row: its type's icon and its Name - or its
  * type and what tells it apart ("Form field · apellido") - then what it carries: a Visible formula (an

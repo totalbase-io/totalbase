@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A SETTINGS DataView (Specification_DataViews.md §5.12): a parameter table laid out like TotalBase's own
+ * A SETTINGS DataView (DataViews.md §5.12): a parameter table laid out like TotalBase's own
  * Settings - a section per group, a row per setting (its title, its description, its value's control),
  * edited in place and saved per section. No New or Delete: the settings come with the installation.
  *

@@ -37,7 +37,7 @@ export function referencePathOf(config: Record<string, unknown>, message: string
   return key ? `.${key}` : "";
 }
 
-// --- The draft as one document (Specification_Dashboards.md §10.6, DM2) ---
+// --- The draft as one document (Dashboards.md §8.3, DM2) ---
 
 /** The draft with nothing implicit - what a spec is compared with. */
 export async function normalizedDraft(ctx: DashboardsContext, dashboard: AdminDashboard): Promise<NormalizedSpec> {

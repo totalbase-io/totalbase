@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings > Views, on top, and the wizard's Views step (Specification_DataViews.md §3.6): how the list shows,
+ * Settings > Views, on top, and the wizard's Views step (DataViews.md §3.6): how the list shows,
  * whichever view - the density and page size a first-time viewer starts with (a table's and the cards'), the
  * toolbar's default mode, the list's margin and the auto-refresh. None of them is an action. The page or the wizard
  * owns the values (each a `v-model`).

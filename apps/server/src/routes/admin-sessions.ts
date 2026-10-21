@@ -10,7 +10,7 @@ import { listEnvelope, SESSIONS_SCHEMAS } from "../openapi-admin-docs-users.js";
 const MAX_PAGE_SIZE = 200;
 const SESSION_STATUSES: readonly SessionStatusFilter[] = ["ACTIVE", "EXPIRED", "REVOKED", "ALL"];
 
-/** See Specification_Administration.md §1 (Sessions). */
+/** See Administration.md §1 (Sessions). */
 export function registerAdminSessionsRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
 

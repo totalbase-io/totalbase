@@ -34,7 +34,7 @@
 /*
  * The primary color one shade darker in light mode (600, not Nuxt UI's 500): white text on a
  * primary button gets near or past WCAG AA (sky: 4.0:1 instead of 2.7:1; blue would be 5.3:1), whatever primary the operator picks
- * (T59, Specification_Admin_UI.md §4.1). Dark mode keeps Nuxt UI's 400.
+ * (T59, Admin_UI.md §4.1). Dark mode keeps Nuxt UI's 400.
  */
 html:not(.dark) {
   --ui-primary: var(--ui-color-primary-600);
@@ -205,7 +205,7 @@ html {
 
 /*
  * On a phone or a tablet the title has the header to itself: its description steps aside and it takes
- * two lines rather than "Autoex…" beside three buttons (T53, Specification_Admin_UI.md §5.2).
+ * two lines rather than "Autoex…" beside three buttons (T53, Admin_UI.md §5.2).
  */
 .page-header--compact .page-header__description {
   display: none;

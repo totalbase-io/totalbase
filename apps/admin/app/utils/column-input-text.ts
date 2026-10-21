@@ -2,7 +2,7 @@ import { COLUMN_INPUTS, isColumnInputKey } from '@totalbase/tb-catalog'
 import { useCatalogText } from '~/utils/catalog-text'
 
 /**
- * The column input catalog's words in the UI's language (Specification_DataViews.md §16) - each entry's name and
+ * The column input catalog's words in the UI's language (DataViews.md §16) - each entry's name and
  * description, and what it is technically: its widget and the props that make it that control ("UInput · type
  * number"), shown beside the name so nothing is hidden behind it.
  */

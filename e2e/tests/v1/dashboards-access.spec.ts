@@ -1,8 +1,9 @@
 import type { Browser, Page } from '@playwright/test'
 import { addDashboardWidget, adminSession, api, createDashboard, deleteDashboardsNamed, expect, publishDashboard, resetSchema, sql, test, type DashboardRef } from './fixtures.js'
+import { BASE_URL } from '../helpers'
 
 /**
- * Who sees a dashboard, and what reaches them (Specification_Dashboards.md §2.4, §2.6;
+ * Who sees a dashboard, and what reaches them (Dashboards.md §2.4, §2.6;
  * AGENTS.md section 7): a role sees the published dashboards granted to
  * it and no other; a viewer gets the layout, never the SQL - not a widget's,
  * not an options query's; a widget runs by id from the published snapshot,
@@ -58,7 +59,7 @@ test.afterAll(async ({ browser }) => {
 })
 
 async function asManager(browser: Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(EMAIL)
@@ -66,7 +67,7 @@ async function asManager(browser: Browser) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/admin\/app/)
   const token = (await page.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
-  const call = (method: string, path: string, data?: unknown) => page.request.fetch(`http://localhost:3050${path}`, { method, data, headers: { Authorization: `Bearer ${token}` } })
+  const call = (method: string, path: string, data?: unknown) => page.request.fetch(`${BASE_URL}${path}`, { method, data, headers: { Authorization: `Bearer ${token}` } })
   return { context, page, call }
 }
 

@@ -12,7 +12,7 @@ const PASSWORD = "a-strong-enough-password";
 
 /**
  * A delegated invitation scoped by a column the project added to the users table
- * (Specification_Security.md §9.3, Docs_Writing_Findings #8): a CREATE grant whose row filter is
+ * (Security.md §9.3): a CREATE grant whose row filter is
  * `branch = $USER.branch` refused every invitation while the account was created with email and
  * name only. `extra` sets those columns in the same transaction, before the filter is checked.
  */

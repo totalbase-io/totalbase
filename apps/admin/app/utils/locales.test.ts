@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_UI_LANGUAGE, UI_LANGUAGES } from '@totalbase/shared'
 
 /**
- * The locale files (Specification_Admin_UI.md §14): every language has every
+ * The locale files (Admin_UI.md §14): every language has every
  * area file and every key English has - English is the source - with no
  * empty text, and each area keeps to its own top-level keys.
  */

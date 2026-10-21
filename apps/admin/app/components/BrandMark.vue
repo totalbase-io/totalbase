@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The product mark (Specification_Admin_UI.md §4.1.1): the operator's logo
+ * The product mark (Admin_UI.md §4.1.1): the operator's logo
  * (`system.logo`) at the mark's height, width to fit, else TotalBase's own
  * mark (`TotalBaseMark.vue`) in the primary color - with the instance's name beside it unless
  * `iconOnly` (the rail). One component, so the rail, the sign-in page and

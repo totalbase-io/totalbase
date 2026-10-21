@@ -7,7 +7,7 @@ export interface OutboxEventInput {
   resource: string;
   event: OutboxEvent;
   payload: unknown;
-  /** UPDATE: the row before the write - for matching only (Specification_Workflows.md §6.3.2). */
+  /** UPDATE: the row before the write - for matching only (Workflows.md §6.3.2). */
   oldPayload?: unknown;
   /** UPDATE: the columns whose value changed. */
   changedColumns?: string[];
@@ -15,7 +15,7 @@ export interface OutboxEventInput {
   source?: string;
   /**
    * A workflow's write (`source: "workflow"`): the workflow ids that led to it, outermost first - the DATA_EVENT
-   * dispatcher's loop and depth protection (Specification_Workflows.md §6.3.4). `null` when the step opted out of
+   * dispatcher's loop and depth protection (Workflows.md §6.3.4). `null` when the step opted out of
    * emitting events; omitted on any other source.
    */
   workflowAncestry?: string[] | null;
@@ -38,8 +38,8 @@ export async function enqueueOutboxEvent(client: Queryable, input: OutboxEventIn
 }
 
 /**
- * `enqueueOutboxEvent` for every row one operation wrote, in ONE statement
- * (Pre_Beta_Review 2.7). Returns the new rows' ids in the order given - the
+ * `enqueueOutboxEvent` for every row one operation wrote, in ONE statement.
+ * Returns the new rows' ids in the order given - the
  * eager dispatch after commit needs each one. The ids are generated in the
  * `input` CTE and read back from it, so their order is the input's by
  * construction rather than whatever `RETURNING` emits.

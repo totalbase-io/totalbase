@@ -5,7 +5,7 @@ import type { AppContext } from "./context.js";
 import { adminToken, setupTestApp, uniqueSuffix } from "./test-support.js";
 
 /**
- * See as (Specification_Security.md §8.4): an administrator's session sends X-TotalBase-View-As and the resolver
+ * See as (Security.md §8.4): an administrator's session sends X-TotalBase-View-As and the resolver
  * decides with the target's roles - and a user's $USER - while every write is refused. A header never widens
  * anyone's access: from a non-administrator or a token it is refused.
  */

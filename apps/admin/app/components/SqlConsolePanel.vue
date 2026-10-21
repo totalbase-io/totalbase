@@ -239,7 +239,7 @@ const resultsSearch = ref('')
 /**
  * PostgreSQL's error as the result panel shows it - message, DETAIL, HINT,
  * SQLSTATE - and its position marked in the editor. `start` is the editor
- * offset where the SQL sent begins (Specification_Administration.md §5.6).
+ * offset where the SQL sent begins (Administration.md §5.6).
  */
 function consoleError(err: unknown, start: number, fallback: string): SqlConsoleError {
   if (!(err instanceof AdminApiError)) return { message: fallback }

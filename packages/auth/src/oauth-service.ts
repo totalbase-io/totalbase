@@ -10,11 +10,22 @@ import { exchangeCodeForTokens, fetchOAuthIdentity, type OAuthIdentity } from ".
 import { generateCodeVerifier, generateNonce, toCodeChallenge } from "./oauth-pkce.js";
 import { assertRedirectAllowed } from "./oauth-redirect.js";
 import { signOAuthState, verifyOAuthState } from "./oauth-state.js";
+import type { MfaChallenge, MfaService } from "./mfa-service.js";
 import { SessionsService } from "./sessions-service.js";
 import { UsersService, type User } from "./users-service.js";
 
 export type OAuthLoginResult =
   | {
+      /** A second factor is due (Security.md §2.17): no session yet - the page completes the challenge. */
+      mfa: MfaChallenge;
+      token?: undefined;
+      user: User;
+      redirectTo: string;
+      portal: boolean;
+      error?: undefined;
+    }
+  | {
+      mfa?: undefined;
       token: string;
       user: User;
       /** Validated at the start of the flow (assertRedirectAllowed) and carried through the signed state - the callback route redirects here with the session token, per spec: "the customer's own system receives the logged-in user, not TotalBase's admin". */
@@ -32,8 +43,9 @@ export type OAuthLoginResult =
        * Workflows user) - so no session and no new link.
        * `email_not_verified`: auth.email_verification_required is on and
        * the account's email isn't verified - neither before nor by this
-       * provider (Specification_Security.md §2.7). No session.
+       * provider (Security.md §2.7). No session.
        */
+      mfa?: undefined;
       error: "email_required" | "access_denied" | "email_not_verified";
       redirectTo: string;
       portal: boolean;
@@ -46,7 +58,7 @@ class AccountUnavailableError extends Error {}
 
 /**
  * Orchestrates the browser-redirect OAuth/OIDC login flow
- * (Specification_Security.md §2.5) on top of AuthProvidersService (admin
+ * (Security.md §2.5) on top of AuthProvidersService (admin
  * configuration) and SessionsService (the same session issuance LOCAL
  * login uses - an OAuth-authenticated user is indistinguishable from a
  * LOCAL one to every other part of TotalBase once logged in).
@@ -67,6 +79,7 @@ export class OAuthService {
     private readonly masterKey: string,
     /** The canonical public URL (`system.public_url`, else TOTALBASE_PUBLIC_URL) - read per call so a settings change applies without a restart. */
     private readonly resolvePublicUrl: () => Promise<string>,
+    private readonly mfa?: MfaService,
   ) {}
 
   /** The callback URL registered with a provider - public so the admin can show it. */
@@ -118,7 +131,11 @@ export class OAuthService {
   }
 
   /** GET /api/auth/oauth/:provider/callback - completes the flow and issues a TotalBase session. */
-  async callback(slug: string, code: string, state: string): Promise<OAuthLoginResult> {
+  /**
+   * `admit` is the surface's access rule (API access, or portal access for the portal's own sign-in), checked
+   * before a session or an MFA challenge exists: refused, the result is `access_denied`.
+   */
+  async callback(slug: string, code: string, state: string, admit?: (userId: string, portal: boolean) => Promise<boolean>): Promise<OAuthLoginResult> {
     const payload = verifyOAuthState(this.masterKey, state);
     if (payload.provider !== slug) {
       throw new TotalBaseError("INVALID_OAUTH_STATE", "This login attempt was started for a different provider.");
@@ -172,6 +189,14 @@ export class OAuthService {
         return { error: "email_not_verified", redirectTo: payload.redirectTo, portal: payload.portal === true, userId: user.id };
       }
     }
+
+    const portal = payload.portal === true;
+    if (admit && !(await admit(user.id, portal))) {
+      return { error: "access_denied", redirectTo: payload.redirectTo, portal, userId: user.id };
+    }
+    // The account's second factor applies to a provider sign-in too (Security.md §2.17).
+    const step = await this.mfa?.secondStep(user.id, portal ? "PORTAL" : "API");
+    if (step) return { mfa: step, user, redirectTo: payload.redirectTo, portal };
 
     const ttlHours = await this.settings.get("auth.session_ttl_hours");
     const maxSessions = await this.settings.get("auth.max_sessions_per_user");

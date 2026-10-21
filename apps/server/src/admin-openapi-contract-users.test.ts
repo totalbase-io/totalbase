@@ -19,7 +19,7 @@ describe("Admin OpenAPI matches real responses: users and credentials", () => {
   let secretId: string | undefined;
   let providerId: string | undefined;
 
-  /** `data` goes in the `{ data }` request envelope (Specification_Data_API.md §2.5). */
+  /** `data` goes in the `{ data }` request envelope (Data_API.md §2.5). */
   const inject = (method: "POST" | "PUT" | "PATCH" | "DELETE", url: string, data?: unknown) =>
     contract.app.inject({
       method,
@@ -171,6 +171,11 @@ describe("Admin OpenAPI matches real responses: users and credentials", () => {
   it("SMTP connection test is a 204 with no request body", () => {
     expectNoContent("/admin/api/settings/mail/verify", "post");
     expect((contract.spec.paths["/admin/api/settings/mail/verify"]!.post as { requestBody?: unknown }).requestBody).toBeUndefined();
+  });
+
+  it("S3 storage connection test is a 204 with no request body", () => {
+    expectNoContent("/admin/api/settings/s3/verify", "post");
+    expect((contract.spec.paths["/admin/api/settings/s3/verify"]!.post as { requestBody?: unknown }).requestBody).toBeUndefined();
   });
 
   it("documents every JSON request body in the { data } envelope", () => {

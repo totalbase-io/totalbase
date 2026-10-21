@@ -288,7 +288,7 @@ export function validateRoleColor(color: string | null | undefined, code: TotalB
   return color as RoleColor;
 }
 
-/** Persistence for totalbase.roles. See Specification_Security.md §1.3. */
+/** Persistence for totalbase.roles. See Security.md §1.3. */
 export class RolesService {
   constructor(private readonly database: Database) {}
 
@@ -341,7 +341,7 @@ export class RolesService {
   }
 
   /**
-   * The App homes these roles set (Specification_Security.md §8.1), in role name order - active roles only. The
+   * The App homes these roles set (Security.md §8.1), in role name order - active roles only. The
    * caller takes the first one its user may open.
    */
   async homes(roleIds: string[]): Promise<{ kind: "DATAVIEW" | "DASHBOARD"; id: string }[]> {
@@ -472,7 +472,7 @@ export class RolesService {
     await this.database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [id]);
   }
 
-  /** The roles whose members may assign role `id` (roles_managers, Specification_Security.md §9.4). */
+  /** The roles whose members may assign role `id` (roles_managers, Security.md §9.4). */
   async listManagers(id: string): Promise<string[]> {
     const { rows } = await this.database.query<{ manager: string }>(
       `SELECT manager FROM totalbase.roles_managers WHERE role = $1 ORDER BY created_at`,

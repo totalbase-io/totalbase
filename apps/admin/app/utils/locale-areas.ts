@@ -1,7 +1,7 @@
 /**
  * The UI's texts come in areas - one file per area and language under
  * i18n/locales/<language>/<area>.json, each owning its top-level keys
- * (Specification_Admin_UI.md §14). Two kinds:
+ * (Admin_UI.md §14). Two kinds:
  *
  * - **eager** areas load with the app, for every visitor: the shell (and
  *   `common`, `errors`, `auth`, `account`) and the DataView runtime - what
@@ -62,6 +62,8 @@ export const LOCALE_AREAS_BY_ROUTE: readonly (readonly [prefix: string, areas: r
   ['/roles', ['users']],
   ['/tokens', ['users']],
   ['/sessions', ['users']],
+  // Backups' schedule is the workflows' cron editor (CronScheduleFields.vue): its words are the workflows area's.
+  ['/settings/backups', ['settings', 'users', 'workflows']],
   ['/settings', ['settings', 'users']],
   ['/database', ['database', 'users']],
   ['/resources', ['database', 'users']],

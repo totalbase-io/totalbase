@@ -3,7 +3,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import { UUID_PATTERN } from "@totalbase/shared";
 
 /**
- * Signed dashboard embed tokens (Specification_Dashboards.md §9.5) - JWTs,
+ * Signed dashboard embed tokens (Dashboards.md §9.5) - JWTs,
  * HS256 only, built with node:crypto. Two kinds:
  *
  * - a portal's token, signed by its backend with the instance's embedding
@@ -26,6 +26,8 @@ export interface EmbedPreviewClaims {
   dashboard: string;
   display: Record<string, unknown>;
   variables: Record<string, unknown>;
+  /** The one widget it shows - null, the whole dashboard. */
+  widget: string | null;
   exp: number;
 }
 
@@ -122,13 +124,14 @@ export function embedPreviewKey(masterKey: string): string {
 
 /** Signs an administrator's preview of an embed being designed (the drawer). */
 export function signEmbedPreviewToken(claims: EmbedPreviewClaims, key: string): string {
-  return encode({ preview: { dashboard: claims.dashboard, display: claims.display, variables: claims.variables }, exp: claims.exp }, key);
+  return encode({ preview: { dashboard: claims.dashboard, display: claims.display, variables: claims.variables, widget: claims.widget }, exp: claims.exp }, key);
 }
 
 export function verifyEmbedPreviewToken(token: string, key: string, maxTtlSeconds: number, nowSeconds = Math.floor(Date.now() / 1000)): EmbedPreviewClaims {
   const payload = verify(token, key, maxTtlSeconds, nowSeconds);
-  const preview = payload.preview as { dashboard?: unknown; display?: unknown; variables?: unknown } | undefined;
+  const preview = payload.preview as { dashboard?: unknown; display?: unknown; variables?: unknown; widget?: unknown } | undefined;
   if (!preview || typeof preview.dashboard !== "string" || !UUID_PATTERN.test(preview.dashboard)) throw invalid("The preview token is malformed.");
   const object = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
-  return { dashboard: preview.dashboard, display: object(preview.display), variables: object(preview.variables), exp: payload.exp };
+  const widget = typeof preview.widget === "string" && UUID_PATTERN.test(preview.widget) ? preview.widget : null;
+  return { dashboard: preview.dashboard, display: object(preview.display), variables: object(preview.variables), widget, exp: payload.exp };
 }

@@ -12,7 +12,7 @@ const MAILING = { subject: "Hi", message: "Hello" };
 
 /**
  * Templates and folders are plain Data API rows for everyone
- * (Specification_Security.md §10.3 step 4) - the dedicated
+ * (Security.md §10.3 step 4) - the dedicated
  * /app/api/templates and /app/api/folders writes are gone. What those
  * routes guaranteed still holds: the grant, its row filter before and
  * after, field grants, the name/slug rules (PostgreSQL CHECKs) and the

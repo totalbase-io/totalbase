@@ -22,7 +22,7 @@ export interface CompileOptions {
   /** A table's row read by key: also its version (xmin as text, `__version`) - what If-Match sends back (T56). */
   withVersion?: boolean;
   /**
-   * The resource's default order (Specification.md §11.7), used when the request asks for none and isn't grouped or
+   * The resource's default order (Foundations.md §11.7), used when the request asks for none and isn't grouped or
    * aggregated - then the primary key as the tiebreaker, so pages never overlap. A column it no longer has is skipped.
    */
   defaultOrderBy?: readonly { column: string; direction: "asc" | "desc" }[];
@@ -75,7 +75,7 @@ export function takeFlags(rows: Record<string, unknown>[], flags: readonly { nam
 
 export async function compileSelect(options: CompileOptions): Promise<CompiledQuery> {
   const { root, schemaContext, fieldDecision } = options;
-  // The default order is the server's, not the request's (Specification_Data_API.md §3.6): like a row filter (§6.5)
+  // The default order is the server's, not the request's (Data_API.md §3.6): like a row filter (§6.5)
   // it needs no field grant - a role reading only `name` still lists the rows in key order - but a DENY (a
   // protected or denied column) never orders them: that column is left out of it.
   const implicitOrder = !(options.ast.orderBy?.length || options.ast.groupBy?.length || options.ast.aggregates?.length);
@@ -102,7 +102,7 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
   };
 
   // The permission's own row filter is the grant's, written by an administrator - its paths need no field grant
-  // (Specification_Security.md §6.5), only never a DENY: a protected or a Password column stays out of every filter
+  // (Security.md §6.5), only never a DENY: a protected or a Password column stays out of every filter
   // (§10.2), and a field an administrator denied does too.
   const rowFilterContext = {
     ...filterContext,
@@ -193,7 +193,7 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
   // query and the count query; flags and LIMIT/OFFSET params are row-query only.
   const sharedParams = [...params, ...havingParams];
 
-  // Flags (Specification_Data_API.md §3.9): each a boolean column - whether the row meets that filter, compiled as
+  // Flags (Data_API.md §3.9): each a boolean column - whether the row meets that filter, compiled as
   // `where` is (the same paths and field permissions). Never on a grouped read: a group isn't a row.
   const flagParams: unknown[] = [];
   if (ast.flags?.length) {
@@ -349,7 +349,7 @@ async function compileSearch(
   fieldDecision: (dottedPath: string) => PermissionDecision,
   pushParam: (value: unknown) => string,
 ): Promise<string | undefined> {
-  // Specification_Data_API.md §3.5: `search_fields` names exactly the paths searched; else the fields read; else
+  // Data_API.md §3.5: `search_fields` names exactly the paths searched; else the fields read; else
   // the root columns. A field the role may not read (a protected or password column among them) is skipped - never
   // searched, never an error. No other FK is traversed.
   const candidatePaths: string[][] = searchFields ?? (fields?.length ? fields.map((f) => f.path) : root.columns.map((c) => [c.name]));

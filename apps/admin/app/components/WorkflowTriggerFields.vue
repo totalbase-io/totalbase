@@ -4,7 +4,7 @@
  * NewWorkflowModal.vue's creation wizard and EditWorkflowTriggerModal.vue's
  * edit wizard - both steps 2/3 of the AGENTS.md "Multi-step wizards" rail
  * (see NewWorkflowModal.vue's own doc comment for the full
- * Specification_Workflows.md §6 reasoning this component implements).
+ * Workflows.md §6 reasoning this component implements).
  *
  * `view` picks which half renders: 'cards' is step 2 (bare picker), 'config'
  * is step 3 (the selected kind's own fields). Splitting into one component
@@ -56,14 +56,14 @@ const dataEvent = ref({
   resource: null as string | null,
   events: [] as ('CREATE' | 'UPDATE' | 'DELETE')[],
   executeAs: null as string | null,
-  // Specification_Workflows.md §6.3.1: one run per row, or one per write with the list of rows.
+  // Workflows.md §6.3.1: one run per row, or one per write with the list of rows.
   forEach: 'ROW' as 'ROW' | 'STATEMENT',
   // The Start's own matching, the one filter grammar - JSON, empty for none.
   filterText: '',
   oldFilterText: '',
   changedFields: [] as string[]
 })
-// MANUAL Start options (Specification_Workflows.md §6.2): who it runs as, an input form, a confirmation.
+// MANUAL Start options (Workflows.md §6.2): who it runs as, an input form, a confirmation.
 type ManualFieldType = 'text' | 'number' | 'boolean' | 'date'
 const manual = ref({
   executeAs: null as string | null,
@@ -113,13 +113,13 @@ watch(workflowsSystemUserId, (id) => {
   if (id && dataEvent.value.executeAs === null) dataEvent.value.executeAs = id
 }, { immediate: true })
 
-// --- Schedule (Specification_Workflows.md §6.4) ---
+// --- Schedule (Workflows.md §6.4) ---
 const cron = ref({ expression: '', valid: false })
 const timezoneOptions = (typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['UTC'])
 // A new schedule starts in the author's own zone (My account > Preferences, else the instance's, else the browser's).
 const cronConfig = ref({ timezone: useDateTimeFormat().timezone.value ?? Intl.DateTimeFormat().resolvedOptions().timeZone, executeAs: null as string | null })
 
-// --- Webhook (Specification_Workflows.md §6.5, §13.2) ---
+// --- Webhook (Workflows.md §6.5, §13.2) ---
 const webhook = ref({
   method: 'POST' as 'POST' | 'GET',
   responseMode: 'SYNC' as 'ASYNC' | 'SYNC',

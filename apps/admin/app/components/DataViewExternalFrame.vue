@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * An EXTERNALFRAME DataView's layout: one sandboxed iframe over an
- * external https page (Specification_DataViews.md,
+ * external https page (DataViews.md,
  * "EXTERNALFRAME security"). Props in, no route reading (AGENTS.md §21A) -
  * the App page, the version preview, the wizard and the settings preview
  * all mount it the same way. `enterFullscreen()` is exposed for the host's

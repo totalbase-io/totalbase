@@ -8,9 +8,9 @@ import { resolveDataPrincipal } from "../data-principal.js";
 import { cancelExecution } from "../async-calls.js";
 
 /**
- * Execution status and cancel endpoints (Specification_Data_API.md §10.3, §10.5).
+ * Execution status and cancel endpoints (Data_API.md §10.3, §10.5).
  * Only the principal that created an execution may query it - no
- * unrestricted list endpoint (Specification_Data_API.md §10.3); administrators get broader
+ * unrestricted list endpoint (Data_API.md §10.3); administrators get broader
  * visibility through the Admin UI/API instead, not this route.
  */
 const EXECUTION_SCHEMA = dataEnvelope({
@@ -27,7 +27,7 @@ const EXECUTION_SCHEMA = dataEnvelope({
   },
 });
 
-/** One shape whatever the status (Specification_Data_API.md §2.5). */
+/** One shape whatever the status (Data_API.md §2.5). */
 function executionBody(execution: ExecutionRecord) {
   return {
     data: {

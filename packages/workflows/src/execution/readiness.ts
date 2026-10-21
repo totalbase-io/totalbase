@@ -28,7 +28,7 @@ function present(value: unknown): boolean {
 const TEMPLATE_ROOT = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)/g;
 
 /**
- * Publish-time execution readiness (Specification_Workflows.md §3.5, §10.2):
+ * Publish-time execution readiness (Workflows.md §3.5, §10.2):
  * a stricter gate than a draft save's (which only wants a well-shaped graph
  * with exactly one Start). Every issue is collected and reported at once
  * (`WORKFLOW_NOT_PUBLISHABLE`, one line each), so the author fixes them in

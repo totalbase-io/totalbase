@@ -78,7 +78,7 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     type: { type: "string", enum: ["TABLE", "VIEW", "FUNCTION"] },
     status: { type: "string", enum: ["ACTIVE", "MISSING"] },
     exposedMethods: arrayOf({ type: "string", enum: ["GET", "POST", "PATCH", "DELETE"] }),
-    exposureFixed: { type: "boolean", description: "TotalBase's own tables: `exposedMethods` is fixed by TotalBase (Specification_Security.md §10.1), access decided by grants alone." },
+    exposureFixed: { type: "boolean", description: "TotalBase's own tables: `exposedMethods` is fixed by TotalBase (Security.md §10.1), access decided by grants alone." },
     description: nullable({ type: "string" }),
     functionClass: { type: ["string", "null"], enum: ["UNCLASSIFIED", "QUERY", "ACTION", null] },
     auditRead: { type: "boolean" },

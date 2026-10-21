@@ -10,7 +10,7 @@ import { resolveSetup, setupCodeMatches } from "./setup.js";
 import { setupTestApp } from "./test-support.js";
 
 /**
- * The first-start setup (Specification.md §14.1). The test database has an administrator, so creating one is
+ * The first-start setup (Foundations.md §14.1). The test database has an administrator, so creating one is
  * covered by the image's own run; here: the code's checks, the attempts limit, and that an instance with an
  * administrator never offers a setup.
  */

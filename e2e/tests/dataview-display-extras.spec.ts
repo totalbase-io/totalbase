@@ -64,7 +64,7 @@ test('accounting negative/zero, currency, emptyText, booleanLabels, and truncate
   )
   const byName = (name: string) => fields.find(f => f.columnName === name)!
 
-  // How each reads is its table column's (Specification_DataViews.md §15) - set once, there, for all at once.
+  // How each reads is its table column's (DataViews.md §15) - set once, there, for all at once.
   await apiRequest(page, token, 'PUT', `/admin/api/resources/${itemsResource!.id}/columns/presentation`, {
     data: {
       columns: {

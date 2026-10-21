@@ -14,7 +14,7 @@ const props = defineProps<{
   /** The viewer's card size (their Density, as a table's): narrower cards, then the image alone. */
   density?: Density
   primaryKey?: string
-  /** A row condition's mark on its card (Specification_DataViews.md §15.7). */
+  /** A row condition's mark on its card (DataViews.md §15.7). */
   markOf?: (row: Record<string, unknown>) => CardMark | null
   /** Each row's "⋮" (DataViewGrid.vue's rowMenu). */
   rowMenu?: (row: Record<string, unknown>) => DropdownMenuItem[][]

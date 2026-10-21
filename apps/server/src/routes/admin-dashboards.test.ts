@@ -27,7 +27,7 @@ describe("Admin dashboards (/admin/api/dashboards)", () => {
   const dashboardIds: string[] = [];
   const MISSING = "00000000-0000-4000-8000-000000000000";
 
-  /** `payload` is the request's content - sent as `{ data: payload }` (Specification_Data_API.md §2.5). */
+  /** `payload` is the request's content - sent as `{ data: payload }` (Data_API.md §2.5). */
   const call = (method: string, url: string, payload?: unknown) =>
     app.inject({
       method: method as "GET",

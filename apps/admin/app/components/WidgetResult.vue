@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Result widget (TResult, Specification_DataViews.md §9.11): a large
+ * The Result widget (TResult, DataViews.md §9.11): a large
  * panel with an outcome at a glance - a color, an icon, a title and a
  * description - shown by the page's Code (`dataview.controls.<name>.show()`),
  * with a tone and a vibration, back to its waiting state on its own after

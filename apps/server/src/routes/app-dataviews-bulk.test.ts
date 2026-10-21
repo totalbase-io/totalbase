@@ -10,7 +10,7 @@ const PASSWORD = "a-strong-enough-password";
 const TABLE = "dv_bulk_test_invoices";
 
 /**
- * Bulk edit (Specification_DataViews.md §5.15, T74): only the rows the viewer chose, by their keys - never a set named
+ * Bulk edit (DataViews.md §5.15, T74): only the rows the viewer chose, by their keys - never a set named
  * by a filter or a search - all or nothing, within the save's cap.
  */
 describe("POST /app/api/dataviews/:slug/bulk-update", () => {

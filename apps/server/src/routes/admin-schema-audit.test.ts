@@ -17,7 +17,7 @@ interface DdlEntry {
   error_code: string | null;
 }
 
-/** Schema management writes one DDL audit entry per operation, on the DDL's own transaction (Specification_Administration.md §3.14). */
+/** Schema management writes one DDL audit entry per operation, on the DDL's own transaction (Administration.md §3.14). */
 describe("schema management DDL audit (integration)", () => {
   let app: FastifyInstance;
   let context: AppContext;

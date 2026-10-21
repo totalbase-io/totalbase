@@ -5,7 +5,7 @@ import { requireAdmin } from "../auth-guards.js";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 
 /**
- * Bulk effective-permissions views (Specification_Admin_UI.md §11.4,
+ * Bulk effective-permissions views (Admin_UI.md §11.4,
  * gap #1). Thin HTTP wrapper over EffectivePermissionService.resolveBulk() -
  * no permission logic lives here, only request shaping, matching every
  * other admin route in this directory.

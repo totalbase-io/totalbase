@@ -187,7 +187,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     },
   );
 
-  // --- The draft as one document (Specification_Dashboards.md §10.6, DM2) ---
+  // --- The draft as one document (Dashboards.md §8.3, DM2) ---
 
   /** Who sees it - its roles and embeds, read-only beside the spec: they apply at once, not on publishing. */
   const access = async (id: string) => {
@@ -344,7 +344,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
         schema: dataEnvelope(object({
           ...IDENTITY,
           menuLabel: { type: ["string", "null"], maxLength: 32, description: "What the App menu shows - empty or null: its name. Applies at once, never versioned." },
-          embeddingEnabled: { type: "boolean", description: "Whether a signed embed token may show its published version outside TotalBase (Specification_Dashboards.md §9.5)." },
+          embeddingEnabled: { type: "boolean", description: "Whether a signed embed token may show its published version outside TotalBase (Dashboards.md §9.5)." },
           variables: arrayOf(ref("DashboardVariable")),
           tabs: DASHBOARD_TABS,
         })),
@@ -602,7 +602,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     }),
   );
 
-  // --- Versions (Specification.md §13.6 - same shape for dataviews/dashboards/workflows) ---
+  // --- Versions (Foundations.md §13.6 - same shape for dataviews/dashboards/workflows) ---
 
   app.post<{ Params: { id: string }; Body: DataBody<{ note?: string }> }>(
     "/admin/api/dashboards/:id/publish",

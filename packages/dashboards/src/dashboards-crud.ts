@@ -94,7 +94,7 @@ export async function getDashboard(ctx: DashboardsContext, id: string): Promise<
   return toAdminDashboard(row);
 }
 
-/** get() plus the draft-vs-latest-version flag (Specification.md §13.5) - the editor's GET only; everything else uses the cheaper get(). */
+/** get() plus the draft-vs-latest-version flag (Foundations.md §13.5) - the editor's GET only; everything else uses the cheaper get(). */
 export async function getWithStatus(ctx: DashboardsContext, id: string): Promise<AdminDashboard> {
   const dashboard = await getDashboard(ctx, id);
   return { ...dashboard, hasUnpublishedChanges: await hasUnpublishedChanges(ctx, dashboard.id) };

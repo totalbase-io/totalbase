@@ -9,7 +9,7 @@ import type { CanvasArea, CanvasDropTarget } from '~/composables/useCustomCanvas
 export interface CanvasStep { mode: 'own' | 'focus', id: string }
 
 /**
- * What the Design canvas shows (CustomDesigner.vue, Specification_DataViews.md
+ * What the Design canvas shows (CustomDesigner.vue, DataViews.md
  * §12.2): the page, or - one step at a time, with a breadcrumb back - a
  * widget's own canvas (a Modal's header, body and footer) or one inline
  * container alone (Focus).

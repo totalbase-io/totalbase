@@ -7,7 +7,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "./context.js";
 
 /**
- * A dashboard widget's files (Specification_Dashboards.md §5.16, D14): each file its query returned - a photo of a
+ * A dashboard widget's files (Dashboards.md §5.16, D14): each file its query returned - a photo of a
  * PRIVATE file column - comes with a link TotalBase signs: this dashboard, this widget, this file, 15 minutes. The
  * link's route only checks the signature (it doesn't run the query again) and serves the file; it opens nothing
  * else. In an embed, a file that isn't PUBLIC is served only with the embed's `allowFiles` - a public link doesn't

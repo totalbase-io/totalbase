@@ -18,7 +18,7 @@ const KEYS = [
 ] as const;
 
 /**
- * The operator's branding (Specification_Admin_UI.md §4.1.1): the public
+ * The operator's branding (Admin_UI.md §4.1.1): the public
  * stylesheet /admin/theme.css, the public /api/instance presentation, and
  * what the appearance.* settings accept.
  */

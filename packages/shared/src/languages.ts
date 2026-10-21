@@ -1,5 +1,5 @@
 /**
- * The languages the UI is translated into (Specification_Admin_UI.md §14) -
+ * The languages the UI is translated into (Admin_UI.md §14) -
  * one list for the server (a user's `language` preference, the instance's
  * `system.language`) and the admin (its locale files, the language
  * pickers). Adding a language is a line here and its locale file in

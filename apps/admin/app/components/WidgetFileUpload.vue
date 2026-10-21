@@ -4,7 +4,7 @@
  * normally a real foreign key to `totalbase.files(id)` (the ONE widget
  * offered for that FK target, widget-compatibility.ts's own doc comment
  * on why `USelectMenu`/`ForeignKeySelect` can't work there at all: no
- * list route to populate a picker from, Specification_Administration.md §10).
+ * list route to populate a picker from, Administration.md §10).
  * Nuxt UI's own `modelValue` is a raw `File | null` (the
  * browser file the user just picked), never what the column actually
  * stores - this adapter uploads it immediately (multipart `POST

@@ -1,6 +1,6 @@
 import type { TileLayer } from 'leaflet'
 
-/** The base layer every map draws - GET /app/api/map-tiles (Specification_DataViews.md §5.4). */
+/** The base layer every map draws - GET /app/api/map-tiles (DataViews.md §5.4). */
 export interface MapTileLayer {
   provider: 'OPENSTREETMAP' | 'MAPBOX'
   url: string

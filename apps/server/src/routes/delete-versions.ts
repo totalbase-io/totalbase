@@ -13,7 +13,7 @@ interface DeletedVersions {
 const LABEL: Record<Pillar, string> = { dataviews: "DataView", dashboards: "dashboard", workflows: "workflow" };
 
 /**
- * `DELETE /admin/api/<pillar>/:id/versions?before=N` (Specification.md
+ * `DELETE /admin/api/<pillar>/:id/versions?before=N` (Foundations.md
  * §13.4): every version before N goes, never the live one. One route per
  * pillar, the same shape; each deletion is audited with the versions it
  * removed.

@@ -9,7 +9,7 @@ describe("mapPostgresError", () => {
     ["23001", "FOREIGN_KEY_VIOLATION", undefined],
     ["23514", "CHECK_VIOLATION", 422],
     ["P0001", "RAISE_EXCEPTION", 422],
-    // A TRUNCATE of a referenced table answered INTERNAL_ERROR, as if TotalBase had failed (MCP_Demo_Findings.md F17).
+    // A TRUNCATE of a referenced table answered INTERNAL_ERROR, as if TotalBase had failed.
     ["0A000", "FEATURE_NOT_SUPPORTED", 400],
   ])("maps SQLSTATE %s to %s", (sqlstate, code, status) => {
     const error = mapPostgresError({ code: sqlstate, message: "boom", detail: "d", hint: "h" });

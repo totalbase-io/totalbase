@@ -1,5 +1,5 @@
 /**
- * The variables engine (Specification_DataViews.md §8, §13.1):
+ * The variables engine (DataViews.md §8, §13.1):
  * turns a screen's variable definitions (`VariableDefinition[]`,
  * @totalbase/tb-catalog) into live, reactive handles - `vars.<name>` for
  * bindings and code - and keeps them in step:
@@ -104,11 +104,13 @@ export interface ResourceHandle {
   setPage: (page: number) => Promise<unknown>
   /** The row whose `column` is `value`, read on its own (the query's fields, none of its filters) - `data` stays as it is. */
   find: (column: string, value: unknown) => Promise<Record<string, unknown> | null>
+  /** The rows whose `column` is one of `values`, read on their own like `find` - a multiple select's picks. */
+  findAll: (column: string, values: unknown[]) => Promise<Record<string, unknown>[]>
   /** Creates a row of its table as the viewer (their CREATE permission) - a select's "Create" - and resolves to it. */
   create: (row: Record<string, unknown>) => Promise<Record<string, unknown>>
 }
 
-/** A failure as the API reports one (Specification_Data_API.md §2.4). */
+/** A failure as the API reports one (Data_API.md §2.4). */
 export interface ApiErrors {
   errors: { code?: string, source?: 'TOTALBASE' | 'POSTGRESQL', message: string, field?: string, operation?: string }[]
 }
@@ -291,6 +293,14 @@ export function createVariablesEngine(definitions: readonly VariableDefinition[]
         const result = await options.transport.read(definition.resource, query)
         const row = Array.isArray(result.data) ? result.data[0] : undefined
         return isRecord(row) ? row : null
+      },
+      async findAll(column, values) {
+        if (values.length === 0) return []
+        const { where: _where, ...rest } = definition.query
+        const query: Record<string, unknown> = { ...(resolveTemplates(rest, 'plain') as Record<string, unknown>), where: { [column]: { _in: values } }, limit: values.length }
+        delete query.offset
+        const result = await options.transport.read(definition.resource, query)
+        return Array.isArray(result.data) ? result.data.filter(isRecord) : []
       },
       async create(row) {
         const created = await options.transport.call({ type: 'TABLE', resource: definition.resource, action: 'CREATE' }, { data: row })

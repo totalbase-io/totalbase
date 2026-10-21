@@ -4,7 +4,7 @@
  * fixed messages TotalBase sends itself: invitation, password reset,
  * email verification, password changed, welcome. Unlike a MAILING
  * template these aren't rows: each is a `mail.templates.<slot>` setting
- * whose default lives in code (Specification_Administration.md §8.2), so there's no
+ * whose default lives in code (Administration.md §8.2), so there's no
  * create/rename/delete - only edit, and "Restore default" to drop the
  * override.
  *

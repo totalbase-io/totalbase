@@ -156,7 +156,7 @@ describe("Database (integration)", () => {
     }
   });
 
-  // A domain's CHECK carried no message: the lookup joined the constraint to a table, and a domain's has none (MCP_Demo_Findings.md F15).
+  // A domain's CHECK carried no message: the lookup joined the constraint to a table, and a domain's has none.
   it("reads a domain CHECK violation as the domain constraint's COMMENT", async () => {
     const DOMAIN = "database_pkg_test_code";
     const HOLDER = `${TABLE}_domain`;

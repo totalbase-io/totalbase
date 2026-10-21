@@ -14,7 +14,7 @@ export type AuditLogQuery = Partial<Record<'since' | 'until' | 'status' | 'princ
  * One page of the audit log, newest first - the one loader behind
  * AuditLogGrid. An administrator reads GET /audit/logs (every column, the
  * SQL included, and a capped count over the whole log); anyone else reads
- * logs through the Data API (Specification_Security.md §9.3):
+ * logs through the Data API (Security.md §9.3):
  * only the rows and columns their grants allow - a user with the default
  * grant (§10.5), their own entries. The query is the same either way;
  * only the source changes.

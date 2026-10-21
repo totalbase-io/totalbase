@@ -144,7 +144,7 @@ describe("reconcileResources (integration)", () => {
   });
 
   // A partition is a storage detail of its parent: registered as a resource of its own it could be exposed and
-  // granted apart, its rows read past the parent's grants (security regression - MCP_Demo_Findings.md F5).
+  // granted apart, its rows read past the parent's grants (security regression).
   it("registers a partitioned table but none of its partitions, and drops a table once attached as one", async () => {
     const parent = "resources_pkg_test_parted";
     try {

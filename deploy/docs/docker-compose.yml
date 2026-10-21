@@ -1,4 +1,4 @@
-# The documentation demo (specs/proposals/Docs_Demo_Field_Service.md): Acme Field Services on its own
+# The documentation demo (deploy/docs/DATASET.md): Acme Field Services on its own
 # database, totalbase_docs, installed the way the beta installs - an empty database, the baseline
 # migration, the first administrator. Shaped like deploy/lab.
 name: totalbase-docs

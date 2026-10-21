@@ -4,7 +4,7 @@ import { selectionSum, totalsParams, totalsPlan } from '~/utils/column-totals'
 
 const field = (columnName: string, config: Record<string, unknown>, visible = true) => ({ id: columnName, kind: 'COLUMN', columnName, visible, config }) as unknown as DataViewField
 
-// A grid's totals (Specification_DataViews.md §4.9, T73).
+// A grid's totals (DataViews.md §4.9, T73).
 describe('column totals', () => {
   it('asks PostgreSQL for each shown column\'s total, as the Data API\'s aggregates', () => {
     const plan = totalsPlan([field('importe', { total: 'sum' }), field('cliente', {}), field('pagado', { total: 'avg' }), field('oculto', { total: 'sum' }, false)])

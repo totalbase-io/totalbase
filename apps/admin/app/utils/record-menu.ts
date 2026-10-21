@@ -14,7 +14,7 @@ export interface RecordMenuActions {
   print?: () => void
   activity?: () => void
   delete?: () => void
-  /** The DataView's own actions on this record (Specification_DataViews.md §3.7) - a group of their own, before Delete. */
+  /** The DataView's own actions on this record (DataViews.md §3.7) - a group of their own, before Delete. */
   custom?: DropdownMenuItem[]
 }
 
@@ -23,7 +23,7 @@ export interface RecordMenuActions {
  * and a card, so they never drift: Clone | Copy, Print, Activity | its own actions | Delete.
  */
 export function recordMenu(actions: RecordMenuActions, t?: (key: string) => string): DropdownMenuItem[][] {
-  // The UI's language when the caller passes its `t` (Specification_Admin_UI.md §14); English otherwise.
+  // The UI's language when the caller passes its `t` (Admin_UI.md §14); English otherwise.
   const label = (key: string, english: string) => t ? t(key) : english
   const groups: DropdownMenuItem[][] = [
     actions.saveAndNew ? [{ label: label('dataviews.record.saveAndNew', 'Save & New'), icon: 'i-lucide-save', kbds: ['meta', 'shift', 's'], onSelect: actions.saveAndNew }] : [],

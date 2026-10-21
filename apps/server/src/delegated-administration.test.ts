@@ -10,7 +10,7 @@ const P = "delegation-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
- * Delegated administration (Specification_Security.md §9 to 6): a
+ * Delegated administration (Security.md §9 to 6): a
  * non-administrator manages people through the Data API under their own
  * permissions, plus fixed rules no grant can lift - a role's creator is
  * PostgreSQL's to record, only your own roles may be renamed or deleted,

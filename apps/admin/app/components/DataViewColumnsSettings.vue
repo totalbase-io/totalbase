@@ -2,13 +2,13 @@
 import { compatibleWidgets, type ColumnPresentation, type WidgetName } from '@totalbase/tb-catalog'
 import { TOTAL_KINDS, type TotalKind } from '~/utils/column-totals'
 /**
- * Settings' Columns (Specification_DataViews.md §4): what
+ * Settings' Columns (DataViews.md §4): what
  * the DataView reads and how its list shows it - one row per column, in
  * real table order: shown or hidden, its title (its table's column's, read
  * only), cell widget, default order and sort; a row opens its panel - a
  * sidebar over the page, as its table column's: Properties, what is the
  * list's (total, truncate, copy), and From the column, its title, format, look and conditions, read
- * only with Edit in the table (Specification_DataViews.md §15) - with Remove
+ * only with Edit in the table (DataViews.md §15) - with Remove
  * from the DataView at its foot; Add columns… / Sync columns. A form's
  * fields (required, disabled, help text) are the Form design's, never set here.
  *
@@ -50,7 +50,7 @@ const api = useAdminApi()
 const toast = useToast()
 
 // --- Columns: what this DataView reads and how its grid shows it
-// (Specification_DataViews.md §4) - a table of its
+// (DataViews.md §4) - a table of its
 // columns, in real table order via columnAttnum: shown or hidden, header,
 // cell widget, default order and sort; Add columns… / Remove from the
 // DataView. A form's fields (required, disabled, help text) are the Form
@@ -64,7 +64,7 @@ const columnWidget = ref<Record<string, string>>({})
 interface ColumnDisplay {
   copyable: boolean
   truncate: boolean
-  /** Its total at the grid's foot (Specification_DataViews.md §4.9) - empty: none. */
+  /** Its total at the grid's foot (DataViews.md §4.9) - empty: none. */
   total: '' | TotalKind
 }
 const columnDisplay = ref<Record<string, ColumnDisplay>>({})
@@ -73,7 +73,7 @@ function displayOf(f: DataViewField): ColumnDisplay {
   const config = (f.config ?? {}) as { copyable?: boolean, truncate?: boolean, total?: TotalKind }
   return { copyable: config.copyable === true, truncate: config.truncate === true, total: config.total ?? '' }
 }
-/** The title a column shows - its table's column's, else its name humanized (Specification_DataViews.md §15). */
+/** The title a column shows - its table's column's, else its name humanized (DataViews.md §15). */
 function columnTitle(f: DataViewField): string {
   if (f.inherited?.label) return f.inherited.label
   if (f.kind !== 'RELATED') return humanizeColumnName(f.columnName ?? '')
@@ -136,7 +136,7 @@ async function syncFields() {
   }
 }
 
-// --- The DataView's columns: what it reads (Specification_DataViews.md §4.1).
+// --- The DataView's columns: what it reads (DataViews.md §4.1).
 // "Add columns…" brings in the table's columns not in it yet;
 // a row's "Remove from the DataView" takes one out - it's no longer read.
 const addColumnsState = reactive({ open: false, saving: false })
@@ -191,7 +191,7 @@ function missingDisplayPaths(field: DataViewField): string[] {
   return column && field.kind !== 'RELATED' ? Object.entries(relatedAccess.value).filter(([path, roles]) => path.startsWith(`${column}.`) && roles.length).map(([path]) => path) : []
 }
 
-/** The primary key is always in the DataView - editing and deleting a row need it; it can be hidden, not removed (Specification_DataViews.md §4.1). */
+/** The primary key is always in the DataView - editing and deleting a row need it; it can be hidden, not removed (DataViews.md §4.1). */
 function isPrimaryKey(field: DataViewField): boolean {
   return Boolean(field.columnName && props.relationDetail?.primaryKey.includes(field.columnName))
 }
@@ -500,7 +500,7 @@ watch(() => props.dataview, () => {
   }
 }, { immediate: true })
 
-// --- A column's panel (Specification_DataViews.md §4, §15): beside a sidebar over the page, as its table column's - Properties, the list's;
+// --- A column's panel (DataViews.md §4, §15): beside a sidebar over the page, as its table column's - Properties, the list's;
 // From the column, its table's column's presentation, read only.
 const panelField = ref<GridColumnField | null>(null)
 const panelOpen = ref(false)
@@ -540,7 +540,7 @@ const panelShows = computed(() => {
 
 <template>
   <!-- Columns: what this DataView reads and how its grid shows it
-  (Specification_DataViews.md §4) - order,
+  (DataViews.md §4) - order,
   shown or hidden, header, cell widget, default sort; Add
   columns… and Remove from the DataView. A form's fields -
   required, disabled, help text - are the Form design's. -->

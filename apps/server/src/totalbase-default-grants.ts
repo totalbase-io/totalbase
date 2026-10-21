@@ -4,7 +4,7 @@ import type { AppContext } from "./context.js";
 
 /**
  * "Apply default permissions" on TotalBase's own tables
- * (Specification_Security.md §10.5): the grants a fresh role needs to use
+ * (Security.md §10.5): the grants a fresh role needs to use
  * the App as an ordinary user - its own account, sessions, files and
  * activity - judged safe as a default. Anything not listed gets no grant (absence is
  * denial), and an existing grant on an unlisted table is never touched.
@@ -25,7 +25,7 @@ interface DefaultAction {
   /**
    * The only fields granted; omitted = every column but the protected ones
    * and `excludeFields`. A dotted path is a relation path
-   * (Specification_Security.md §6.10), granted as it is.
+   * (Security.md §6.10), granted as it is.
    */
   fields?: string[];
 }

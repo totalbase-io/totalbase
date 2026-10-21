@@ -3,7 +3,7 @@ import { WIDGET_COLORS, type ValueKind } from "../widgets/widget-catalog.js";
 import { COLUMN_INPUT_KEYS, COLUMN_INPUTS } from "./column-inputs.js";
 
 /**
- * How a column reads wherever it shows (Specification_DataViews.md §15):
+ * How a column reads wherever it shows (DataViews.md §15):
  * set once on the resource's column
  * (`resources_columns.config`), inherited live by grid columns, form fields
  * and Table widgets, each storing only what it overrides. Presentation only -
@@ -33,7 +33,7 @@ export interface ColumnPresentation extends CellStyle {
   /** How each value of the column's CHECK list (`status IN ('A', 'I')`) shows - its values stay the CHECK's. */
   options?: Record<string, ColumnOptionPresentation>;
   /**
-   * How it looks when something holds (Specification_DataViews.md §15.7): an ordered list - the first that holds
+   * How it looks when something holds (DataViews.md §15.7): an ordered list - the first that holds
    * wins, per cell and per row (a cell's over a row's), on top of the base style. Evaluated by PostgreSQL (the Data
    * API's `flags`), never in the browser.
    */
@@ -392,7 +392,7 @@ export function validateColumnPresentation(
 
 /**
  * One column of a table - a page's Table, a Dashboard's TABLE
- * (Specification_DataViews.md §15, "A table's columns,
+ * (DataViews.md §15, "A table's columns,
  * one model"): what it shows of the value and how its cells look, plus
  * whether it's hidden. Only what was changed is stored; in a Table the
  * rest is inherited from the resource's column.
@@ -438,7 +438,7 @@ export const TABLE_COLUMN_PRESENTATION_KEYS = [
 
 /**
  * How a row of a table shows wherever a foreign key points at it
- * (Specification_DataViews.md §15.5) - set once on the table
+ * (DataViews.md §15.5) - set once on the table
  * (`resources.row_presentation`), inherited by every foreign-key
  * column that sets none of its own. A template wins over `displayField`.
  */
@@ -485,7 +485,7 @@ export function validateRowPresentation(input: unknown, columns: readonly string
 }
 
 /**
- * A column's title (Specification_DataViews.md §15): its label, else its name humanized - or, where room is short
+ * A column's title (DataViews.md §15): its label, else its name humanized - or, where room is short
  * (a list's header, a card's field name: `short`), its short label first. Filters, exports, forms and messages take
  * the label.
  */

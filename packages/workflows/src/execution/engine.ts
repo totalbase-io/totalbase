@@ -14,7 +14,7 @@ import { sanitizeError, sanitizePayload, type HistoryPolicy } from "./history-sa
 
 /**
  * Operation types whose whole `configuration` may contain `{{...}}`
- * templates (templates.ts, Specification_Workflows.md §4.3) - the operation
+ * templates (templates.ts, Workflows.md §4.3) - the operation
  * catalog's `templates: "configuration"`. Resolved centrally here, before
  * the step is even persisted, so `workflows_steps.input` holds
  * the real values the step used (the exact record a Create records step
@@ -30,7 +30,7 @@ interface DefinitionOperation {
   type: string;
   configuration_version?: number;
   configuration: Record<string, unknown>;
-  /** Owning `totalbase.for-each` operation id, for a body-scoped node - see WORKFLOW_EDITOR's own addStep() (apps/admin's [id].vue). The engine itself never reads this: it walks whatever connections exist regardless of scope (Specification_Workflows.md §3.4's "canvas position ... never define a loop" applies just as much to the engine as to the editor) - `parent` is purely a draft-save-time/editor bookkeeping field. */
+  /** Owning `totalbase.for-each` operation id, for a body-scoped node - see WORKFLOW_EDITOR's own addStep() (apps/admin's [id].vue). The engine itself never reads this: it walks whatever connections exist regardless of scope (Workflows.md §3.4's "canvas position ... never define a loop" applies just as much to the engine as to the editor) - `parent` is purely a draft-save-time/editor bookkeeping field. */
   parent?: string;
 }
 interface DefinitionConnection {
@@ -47,7 +47,7 @@ export interface WorkflowRunOutcome {
 
 /**
  * What a caller of the public HTTP routes gets back from a run
- * (Specification_Workflows.md §13): its outcome only - the workflow author
+ * (Workflows.md §13): its outcome only - the workflow author
  * decides what that is through the Finish step's result. Steps (their live
  * inputs and results, a webhook's headers included) stay with the
  * administrator: the Admin API's test run, editor run and history.
@@ -91,13 +91,13 @@ function chunk<T>(source: T[], size: number): T[][] {
 
 /**
  * Runs a workflow's current DRAFT synchronously, admin-triggered
- * ("Probar"/test-run - specs/Specification_Workflows.md §10:
+ * ("Probar"/test-run - specs/Workflows.md §10:
  * "Test runs from the editor execute the current draft directly, are
  * always manual/synchronous"). Never touches `published` - see
  * WorkflowsAdminService, which doesn't implement publish() yet either
  * (Fase 6).
  *
- * Sequential engine (Specification_Workflows.md §8.1, §8.3): one active control path, no
+ * Sequential engine (Workflows.md §8.1, §8.3): one active control path, no
  * fan-out, no parallelism, no automatic retries. Three distinct
  * concepts per step: the data `result` a handler returns, the control
  * `output` port it selects (ordinary ops: next/error; Condition:
@@ -110,7 +110,7 @@ function chunk<T>(source: T[], size: number): T[][] {
  * outputs at all, so its thrown error can never find a wired "error"
  * connection to continue down.
  *
- * History policy (Specification_Workflows.md §9) governs what's PERSISTED (SUMMARY
+ * History policy (Workflows.md §9) governs what's PERSISTED (SUMMARY
  * never stores a payload, DETAILED stores it redacted/capped) - it does
  * NOT govern what this function returns to the admin who just clicked
  * "Probar". A test run's whole point is to show its author what
@@ -120,14 +120,28 @@ function chunk<T>(source: T[], size: number): T[][] {
  * the DB rows underneath them hold whatever the history policy allows -
  * two representations of the same run, by design.
  */
-export async function runWorkflowTest(context: WorkflowEngineContext, dataPrincipal: DataPrincipal, workflowId: string, triggerInput: unknown): Promise<WorkflowRunOutcome> {
+export async function runWorkflowTest(context: WorkflowEngineContext, dataPrincipal: DataPrincipal, workflowId: string, triggerInput: unknown, options: { emailRedirect?: unknown } = {}): Promise<WorkflowRunOutcome> {
+  const emailRedirect = testEmailRedirect(options.emailRedirect);
   const { workflow, definition } = await context.workflowsAdmin.getDraft(workflowId);
-  // The draft isn't a version (Specification.md §13.3): a test run records version = NULL.
-  return runWorkflow(context, dataPrincipal, workflow, null, definition, { trigger: "MANUAL", mode: "TEST" }, triggerInput);
+  // The draft isn't a version (Foundations.md §13.3): a test run records version = NULL.
+  return runWorkflow(context, dataPrincipal, workflow, null, definition, { trigger: "MANUAL", mode: "TEST", ...(emailRedirect && { emailRedirect }) }, triggerInput);
 }
 
 /**
- * The editor's Run (Specification_Workflows.md §11.2): the immutable
+ * A test run's `emailRedirect` (Workflows.md §11.1): absent or empty, none;
+ * otherwise exactly one address - never a list, so a test can't fan out.
+ */
+export function testEmailRedirect(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const address = typeof value === "string" ? value.trim() : "";
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+$/.test(address)) {
+    throw new TotalBaseError("WORKFLOW_VALIDATION_FAILED", "The email redirect must be one email address.");
+  }
+  return address;
+}
+
+/**
+ * The editor's Run (Workflows.md §11.2): the immutable
  * **published** version, mode PRODUCTION. Requires `enabled = true` and a
  * WORKFLOW_INVOKE ALLOW for the caller (test runs bypass it: testing a
  * draft is not the question "may this principal invoke it in production").
@@ -171,7 +185,7 @@ export async function runWorkflowManual(context: WorkflowEngineContext, dataPrin
 
 /**
  * Runs executing in this process, by run id - each one's cooperative
- * cancel token (Specification_Workflows.md §8.5). TotalBase runs as one
+ * cancel token (Workflows.md §8.5). TotalBase runs as one
  * process, so this is every run that can be cancelled; a RUNNING row that
  * is not here belongs to a process that died and is left to recovery.
  */
@@ -279,7 +293,7 @@ export async function recordSuppressedAdmission(
   await context.workflowsAdmin.recordRunOutcome(workflow.id, "FAILED", threshold);
 }
 
-/** The claim a DATA_EVENT admission takes (Specification_Workflows.md §6.3.5): the outbox event and the record's position in its payload - null for a suppression of the workflow as a whole. */
+/** The claim a DATA_EVENT admission takes (Workflows.md §6.3.5): the outbox event and the record's position in its payload - null for a suppression of the workflow as a whole. */
 export interface OutboxAdmissionClaim {
   event: string;
   item: number | null;
@@ -289,17 +303,19 @@ export interface RunAdmission {
   trigger: WorkflowRunTrigger;
   mode: WorkflowRunMode;
   initiator?: unknown;
-  /** This run's own incoming causal-ancestry chain (Specification_Workflows.md §6.3.4) - only ever non-empty for a DATA_EVENT admission whose originating mutation was itself workflow-sourced with `emit_workflow_events = true` (data-event-dispatcher.ts). Every other trigger kind can never be caused by a mutation, so it stays empty. */
+  /** This run's own incoming causal-ancestry chain (Workflows.md §6.3.4) - only ever non-empty for a DATA_EVENT admission whose originating mutation was itself workflow-sourced with `emit_workflow_events = true` (data-event-dispatcher.ts). Every other trigger kind can never be caused by a mutation, so it stays empty. */
   ancestry?: string[];
   /** A DATA_EVENT admission's claim: the run is created only if no earlier attempt at that outbox event took it (§6.3.5). */
   outboxClaim?: OutboxAdmissionClaim;
+  /** A TEST run's email redirect (§11.1) - ignored on any other mode. */
+  emailRedirect?: string;
 }
 
 export interface RunOptions {
-  /** Called the moment the run row exists (well before execution finishes) - the WEBHOOK route's own SYNC/ASYNC split (Specification_Workflows.md §13.2) needs the run id immediately, without waiting for the run to complete. */
+  /** Called the moment the run row exists (well before execution finishes) - the WEBHOOK route's own SYNC/ASYNC split (Workflows.md §13.2) needs the run id immediately, without waiting for the run to complete. */
   onAdmitted?: (run: WorkflowRunRecord) => void;
   /**
-   * Cooperative cancellation (Specification_Workflows.md §8.5: "must stop cooperatively
+   * Cooperative cancellation (Workflows.md §8.5: "must stop cooperatively
    * before starting further work... prevents the next invocation,
    * and becomes CANCELLED when the active handler returns"), checked
    * once per step boundary inside `walk()` - never mid-handler, since
@@ -365,7 +381,7 @@ export async function runWorkflow(
     context.settings.get("workflows.max_history_payload_bytes"),
     context.settings.get("workflows.max_iteration_items"),
   ]);
-  // Snapshotted once at admission (Specification_Workflows.md §9.1: "snapshotted per run") -
+  // Snapshotted once at admission (Workflows.md §9.1: "snapshotted per run") -
   // a later change to the workflow's own history settings never affects
   // an already-running/finished run's stored payloads.
   const historyPolicy: HistoryPolicy = { historyLevel: workflow.historyLevel, maxPayloadBytes };
@@ -391,7 +407,7 @@ export async function runWorkflow(
     : await context.workflowRuns.createRun(runInput);
   if (!admitted) return null; // an earlier attempt at this outbox event already admitted it.
   const run = admitted;
-  // The deadline as stored (Specification_Workflows.md §8.5): no step starts after it.
+  // The deadline as stored (Workflows.md §8.5): no step starts after it.
   const deadline = new Date(run.expiresAt).getTime();
   const cancelToken: { cancelled: boolean; controller?: AbortController } = options?.cancelToken ?? { cancelled: false };
   cancelToken.controller ??= new AbortController();
@@ -406,6 +422,7 @@ export async function runWorkflow(
     stepId: "",
     initiator,
     signal: cancelToken.controller.signal,
+    ...(admission.mode === "TEST" && admission.emailRedirect && { emailRedirect: admission.emailRedirect }),
   };
 
   const state: RunState = { triggerData: triggerInput, results: new Map(), resultsByKey: new Map() };
@@ -434,7 +451,7 @@ export async function runWorkflow(
   }
 
   /**
-   * Checked at every step boundary (Specification_Workflows.md §8.5): a
+   * Checked at every step boundary (Workflows.md §8.5): a
    * cancellation request ends the run CANCELLED, a passed deadline ends it
    * INTERRUPTED - either way no further step starts.
    */
@@ -453,7 +470,7 @@ export async function runWorkflow(
 
   /**
    * Shared engine for both loop-shaped control operations - `totalbase.for-each`
-   * (Specification_Workflows.md §5.11: resolves `items`, walks the body once
+   * (Workflows.md §5.11: resolves `items`, walks the body once
    * per element) and `totalbase.process-batches` (§5.12: one body invocation
    * per fixed-size chunk). Both are sequential and fail-fast; completed
    * iterations' own effects are never rolled back. `state.currentItem`

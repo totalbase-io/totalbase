@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A dashboard's presentation widget (Specification_Dashboards.md §5.11, D3):
+ * A dashboard's presentation widget (Dashboards.md §5.11, D3):
  * one of the page catalog's display widgets, drawn by the same component a
  * page uses, from its `config` as a page control's - its literal `props`, and
  * its `bindings` evaluated over the dashboard's light context

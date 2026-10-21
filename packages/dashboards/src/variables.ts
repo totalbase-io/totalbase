@@ -5,7 +5,7 @@ import { referencedVariableNames } from "./sql-variables.js";
 
 /**
  * Dashboard variable definitions ($VAR.*) - see
- * Specification_Dashboards.md §3. A variable is a
+ * Dashboards.md §3. A variable is a
  * filter the viewer picks, never a security boundary: values are bound
  * as parameters and validated here for type/shape, but a caller can send
  * any value a UI would offer.
@@ -60,7 +60,7 @@ export interface DashboardVariable {
   default?: DashboardVariableDefault;
   /**
    * SELECT with an options query only: the variables its query reads as
-   * `$VAR.*` (Specification_Dashboards.md §3.6) - derived from the query by
+   * `$VAR.*` (Dashboards.md §3.6) - derived from the query by
    * validateVariables(), so a host reloads the options when one changes.
    */
   dependsOn?: string[];
@@ -229,7 +229,7 @@ export function validateVariables(raw: unknown): DashboardVariable[] {
 }
 
 /**
- * Dependent variables (Specification_Dashboards.md §3.6): an options query may
+ * Dependent variables (Dashboards.md §3.6): an options query may
  * read other variables as `$VAR.*` - each must exist, never itself, and the
  * chains must be acyclic ("the cities of the selected country").
  */

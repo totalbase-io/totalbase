@@ -1,7 +1,7 @@
 import { adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, sql, test, type DataViewRef } from './fixtures.js'
 
 /**
- * Create from search (Specification_DataViews.md §9.8): a FORM's foreign-key
+ * Create from search (DataViews.md §9.8): a FORM's foreign-key
  * select, with Create from search on, creates the category it lacks - a row of
  * the related table, as the viewer - and picks it.
  */

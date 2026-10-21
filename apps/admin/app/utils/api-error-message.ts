@@ -3,7 +3,7 @@ import { DEFAULT_UI_LANGUAGE } from '@totalbase/shared'
 import { AdminApiError } from '~/utils/admin-api-error'
 
 /**
- * An API error as the viewer reads it (Specification_Admin_UI.md §14): in
+ * An API error as the viewer reads it (Admin_UI.md §14): in
  * English, the server's message itself; in another language, TotalBase's
  * own errors with a fixed meaning are translated by code
  * (`errors.<CODE>` in the locale files); one whose message carries details

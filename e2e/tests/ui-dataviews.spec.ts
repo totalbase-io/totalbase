@@ -1,5 +1,6 @@
 import { expect as baseExpect, test, type Browser, type Locator, type Page } from '@playwright/test'
 import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, watchApiFailures } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every write a DataView's authoring screens make, driven through the UI
@@ -63,7 +64,7 @@ async function login(page: Page, email = ADMIN_EMAIL, password = ADMIN_PASSWORD)
 }
 
 async function adminSession(browser: Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   const token = await login(page)
   return { context, page, token }
@@ -403,7 +404,7 @@ test('settings: a FORM\'s page options and its Save and Cancel off - the publish
   const main = await settingsOf(page, id)
   const config = async () => (await getDataView(page, token, id)).viewConfig
 
-  // The page options (Specification_DataViews.md §6.7), in Form: Content width, Content align, Fit to screen.
+  // The page options (DataViews.md §6.7), in Form: Content width, Content align, Fit to screen.
   await page.goto(`/admin/dataviews/${id}/settings?section=form`)
   await main.getByRole('button', { name: 'Wide', exact: true }).click()
   await poll(async () => (await config()).page_content_width).toBe('wide')
@@ -665,7 +666,7 @@ const gridRows = (page: Page) => page.locator('main tbody tr')
 
 /** The fixture viewer's own session - a new browser context, signed in through the login page. */
 async function asViewer(browser: Browser) {
-  const context = await browser.newContext({ baseURL: 'http://localhost:3050' })
+  const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
   await login(page, USER_EMAIL, USER_PASSWORD)
   return { context, page }

@@ -4,7 +4,7 @@ import WorkflowRunStepHeader from '~/components/workflows/WorkflowRunStepHeader.
 import WorkflowRunStepDetail from '~/components/workflows/WorkflowRunStepDetail.vue'
 
 /**
- * The editor's "Test run" and "Run" (specs/Specification_Workflows.md §11):
+ * The editor's "Test run" and "Run" (specs/Workflows.md §11):
  * the trigger input as JSON, a Run button, and the run it
  * produced - status, final result or error, each step expandable to its
  * input/result/error - in the same modal.
@@ -16,7 +16,7 @@ import WorkflowRunStepDetail from '~/components/workflows/WorkflowRunStepDetail.
  *   is. A MANUAL workflow runs as the admin with the typed input; a CRON one
  *   (`scheduled`) as its schedule would, so the input editor is hidden.
  *
- * Both answer `{ run, steps }` (Specification_Workflows.md §11.3) with live, unredacted values,
+ * Both answer `{ run, steps }` (Workflows.md §11.3) with live, unredacted values,
  * whatever the history level. The run and its steps render through the same
  * components as the Logs slideover's run detail.
  */
@@ -31,14 +31,14 @@ const props = defineProps<{
   operations?: { id: string, key: string, label: string }[]
   /** Runs before the request - the editor saves the draft first; a throw stops the run. */
   prepare?: () => Promise<void>
-  /** The Start's configuration - a MANUAL one's input form and confirmation (Specification_Workflows.md §6.2). */
+  /** The Start's configuration - a MANUAL one's input form and confirmation (Workflows.md §6.2). */
   startConfiguration?: Record<string, unknown>
 }>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ 'open-logs': [runId: string] }>()
 /**
  * Open in Runs: the modal closes first, and the run opens once it has - navigating while it still closes left its
- * layer on top, so the run's slideover never got its Close or Esc (Beta_Findings 1.16).
+ * layer on top, so the run's slideover never got its Close or Esc.
  */
 const logsRun = ref<string | null>(null)
 function openInLogs(runId: string) {
@@ -60,6 +60,8 @@ const isCompact = useCompactUi()
 // payload again after an edit to the canvas is the common loop.
 const inputJson = ref('{}')
 const inputError = computed(() => jsonError(inputJson.value))
+// A test run's email redirect (Workflows.md §11.1): kept with the input, for the same loop.
+const emailRedirect = ref('')
 const editorRef = ref<{ format: () => void } | null>(null)
 
 // A MANUAL Start's input form: its fields instead of the JSON editor, and its confirmation before Run.
@@ -113,7 +115,11 @@ async function run() {
       }
     }
     const path = props.mode === 'TEST' ? 'test-run' : 'run'
-    const { data } = await api.post<WorkflowRunOutcome>(`/workflows/${props.workflowId}/${path}`, { data: props.scheduled ? null : inputFields.value.length > 0 ? formValues.value : JSON.parse(inputJson.value) })
+    const redirect = props.mode === 'TEST' ? emailRedirect.value.trim() : ''
+    const { data } = await api.post<WorkflowRunOutcome>(`/workflows/${props.workflowId}/${path}`, {
+      data: props.scheduled ? null : inputFields.value.length > 0 ? formValues.value : JSON.parse(inputJson.value),
+      ...(redirect && { emailRedirect: redirect })
+    })
     outcome.value = data
     // A failed step opens on its own - that's what the author came to read.
     expanded.value = new Set(data.steps.filter(s => s.status === 'FAILED').map(s => s.id))
@@ -195,6 +201,18 @@ function stepName(step: WorkflowRunStep): WorkflowRunStepName | undefined {
             ref="editorRef"
             v-model="inputJson"
             min-height="8rem"
+          />
+        </UFormField>
+        <UFormField
+          v-if="mode === 'TEST'"
+          :label="$t('workflows.workflowRunModal.sendEmailsTo')"
+          :description="$t('workflows.workflowRunModal.sendEmailsToHelp')"
+        >
+          <UInput
+            v-model="emailRedirect"
+            type="email"
+            autocomplete="email"
+            class="w-full"
           />
         </UFormField>
 

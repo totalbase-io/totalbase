@@ -9,7 +9,7 @@ const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", im
 const TABLE = "colpres_test_items";
 const VIEW = "colpres_test_items_view";
 
-// A column's presentation (Specification_DataViews.md §15), against a real table and view.
+// A column's presentation (DataViews.md §15), against a real table and view.
 describe("ResourcesAdminService column presentation (integration)", () => {
   let database: Database;
   let service: ResourcesAdminService;

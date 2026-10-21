@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatWidgetNumber } from '~/utils/dashboard-widget-render'
 
-// One format for every data widget (Specification_Dashboards.md §5, D4): displayFormat, and Compact on top of it.
+// One format for every data widget (Dashboards.md §5, D4): displayFormat, and Compact on top of it.
 describe('formatWidgetNumber()', () => {
   it('abbreviates by default when no format applies (Compact number)', () => {
     expect(formatWidgetNumber(11644148, { config: {}, locale: 'en' })).toBe('11.6M')

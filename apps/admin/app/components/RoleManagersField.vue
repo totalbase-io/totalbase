@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Role managers (Specification_Security.md §9.4): the roles whose
+// Role managers (Security.md §9.4): the roles whose
 // members may assign this one to users - how a delegated user hands out a
 // role they didn't create. Administrators only; applies at once.
 const props = defineProps<{ roleId: string }>()

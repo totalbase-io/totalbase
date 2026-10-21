@@ -6,7 +6,7 @@ import { createTestApiToken, setupTestApp } from "./test-support.js";
 
 /**
  * Route-level acceptance tests for the Execution status endpoint
- * (Specification_Data_API.md §10.3).
+ * (Data_API.md §10.3).
  */
 describe("Executions status endpoint", () => {
   let app: FastifyInstance;

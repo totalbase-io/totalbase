@@ -11,8 +11,8 @@ import { ReadAudit } from "../read-audit.js";
 
 
 /**
- * VIEW read endpoint. VIEW is READ-only in V1 (Specification.md §11.5); reuses
- * the same query engine as TABLE reads (Specification_Data_API.md §2.1).
+ * VIEW read endpoint. VIEW is READ-only in V1 (Foundations.md §11.5); reuses
+ * the same query engine as TABLE reads (Data_API.md §2.1).
  */
 export function registerDataViewRoutes(app: FastifyInstance, context: AppContext): void {
   app.get<{ Params: { schema: string; resource: string } }>(
@@ -68,7 +68,7 @@ export function registerDataViewRoutes(app: FastifyInstance, context: AppContext
       try {
         return await context.database.transaction(async (client) => {
           const { rows } = await client.query(compiled.sql, compiled.params);
-          // Which flags each row met (Specification_Data_API.md §3.9) - their columns out of the rows.
+          // Which flags each row met (Data_API.md §3.9) - their columns out of the rows.
           const flags = takeFlags(rows, ast.flags);
           if (ast.count && compiled.countSql) {
             const { rows: countRows } = await client.query<{ count: string }>(compiled.countSql, compiled.countParams);

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 /**
  * PostgreSQL connection and pool configuration.
- * See Specification.md §14 (Bootstrap) and Specification_Administration.md §7.4 (pool.*).
+ * See Foundations.md §14 (Bootstrap) and Administration.md §7.4 (pool.*).
  */
 export interface DatabaseConfig {
   host: string;
@@ -92,5 +92,27 @@ export function loadDatabaseConfigFromEnv(): DatabaseConfig {
     poolMaxLifetimeMs: DEFAULTS.poolMaxLifetimeMs,
 
     statementTimeoutMs: int("TOTALBASE_STATEMENT_TIMEOUT_MS", DEFAULTS.statementTimeoutMs),
+  };
+}
+
+/**
+ * The same connection for PostgreSQL's own client tools - `pg_dump`, `pg_restore` (Administration.md §12): the
+ * libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, PGSSLMODE, PGSSLROOTCERT) from POSTGRES_*, read
+ * as `loadDatabaseConfigFromEnv` reads them - the password in the child's environment, never on its command line.
+ */
+export function postgresClientEnv(): Record<string, string> {
+  const config = loadDatabaseConfigFromEnv();
+  const mode = (process.env["POSTGRES_SSL"] ?? "off").trim().toLowerCase();
+  const caPath = process.env["POSTGRES_SSL_CA"];
+  return {
+    PGHOST: config.host,
+    PGPORT: String(config.port),
+    PGDATABASE: config.database,
+    PGUSER: config.user,
+    PGPASSWORD: config.password,
+    // libpq's own names: require encrypts without verifying; verify-full checks the certificate and the host.
+    PGSSLMODE: config.ssl === false ? "disable" : config.ssl.rejectUnauthorized ? (mode === "verify-ca" ? "verify-ca" : "verify-full") : "require",
+    // Verified against POSTGRES_SSL_CA, else - as the pool does - the system's authorities (libpq 16+'s `system`).
+    ...(config.ssl !== false && config.ssl.rejectUnauthorized ? { PGSSLROOTCERT: caPath || "system" } : {}),
   };
 }

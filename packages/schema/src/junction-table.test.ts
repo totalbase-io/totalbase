@@ -6,7 +6,7 @@ const ORDERS = "schema_pkg_test_orders";
 const PRODUCTS = "schema_pkg_test_products_j";
 const JUNCTION = "schema_pkg_test_orders_products";
 
-/** A junction table (Specification_Administration.md §3.4): one CREATE TABLE with its foreign keys and the UNIQUE over them. */
+/** A junction table (Administration.md §3.4): one CREATE TABLE with its foreign keys and the UNIQUE over them. */
 describe("junction tables (integration)", () => {
   let database: Database;
   let schemaService: TableSchemaService;

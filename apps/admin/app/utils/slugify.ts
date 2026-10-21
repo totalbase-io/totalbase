@@ -1,4 +1,4 @@
-// Client-side mirror of @totalbase/shared's slugify() (Specification.md §9.3).
+// Client-side mirror of @totalbase/shared's slugify() (Foundations.md §9.3).
 // Duplicated
 // rather than imported so the admin bundle doesn't pull in a backend
 // package - same algorithm, same result. Server-side validation via

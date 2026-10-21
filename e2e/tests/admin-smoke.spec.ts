@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { login } from './helpers.js'
+import { BASE_URL } from './helpers'
 
 /**
  * Every admin screen, opened as an administrator: no uncaught error, no API
@@ -40,7 +41,7 @@ interface Problem { page: string, problem: string }
 
 async function detailPages(page: Page, token: string): Promise<string[]> {
   const get = async <T>(path: string): Promise<T[]> => {
-    const response = await page.request.get(`http://localhost:3050${path}`, { headers: { Authorization: `Bearer ${token}` } })
+    const response = await page.request.get(`${BASE_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } })
     if (!response.ok()) throw new Error(`${path} -> ${response.status()}`)
     const body = await response.json()
     return Array.isArray(body.data) ? body.data : []

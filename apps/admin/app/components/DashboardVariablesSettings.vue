@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Settings › Variables (Specification_Dashboards.md §3.3, D26): a dashboard's `$VAR.*` definitions
+ * Settings › Variables (Dashboards.md §3.3, D26): a dashboard's `$VAR.*` definitions
  * - a list on the left, the selected variable's form on the right,
  * saved as one PATCH. Its default shows and stays as stored - only a change of
  * the variable's type, multiple or source clears it (DB6). The server re-validates everything

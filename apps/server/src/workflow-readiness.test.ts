@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AppContext } from "./context.js";
 import { setupTestApp } from "./test-support.js";
 
-/** Publish readiness (Specification_Workflows.md §10.2): every issue at once, each in the editor's words. */
+/** Publish readiness (Workflows.md §10.2): every issue at once, each in the editor's words. */
 describe("workflow publish readiness", () => {
   let app: FastifyInstance;
   let context: AppContext;
@@ -77,7 +77,7 @@ describe("workflow publish readiness", () => {
     ]);
   });
 
-  it("refuses a secret header naming no secret - not left to the first run (Beta_Findings 3.6)", async () => {
+  it("refuses a secret header naming no secret - not left to the first run", async () => {
     const key = `readiness-${randomUUID().slice(0, 8)}`;
     await context.secrets.set(key, "s3cret");
     try {

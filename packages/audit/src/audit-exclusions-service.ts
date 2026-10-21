@@ -1,11 +1,11 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
-/** The writes the audit log records with their row (Specification_Security.md §11.3). */
+/** The writes the audit log records with their row (Security.md §11.3). */
 export type AuditWriteAction = "CREATE" | "UPDATE" | "DELETE";
 
 /**
- * totalbase.audits_exclusions (Specification_Security.md §11.4):
+ * totalbase.audits_exclusions (Security.md §11.4):
  * every write is audited whole by default; these are the columns of a
  * resource an administrator keeps out of the log - its `payload` and
  * `changes`, for every action. Stored by attnum (a rename keeps the
@@ -78,7 +78,7 @@ export function withoutExcludedFields(
 }
 
 /**
- * An UPDATE's `changes` (Specification_Security.md §11.4): `{ column: { old,
+ * An UPDATE's `changes` (Security.md §11.4): `{ column: { old,
  * new } }` for every column the update changed, the excluded ones left out.
  * undefined when the old row isn't known (a table without a primary key on
  * PostgreSQL 15-17 - the entry keeps the resulting row) or nothing changed.

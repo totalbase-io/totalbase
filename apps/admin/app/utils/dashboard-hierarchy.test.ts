@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildHierarchy } from './dashboard-hierarchy'
 
-// Specification_Dashboards.md §5.15 (D18): a tree by levels - a parent the sum of its children, a NULL ends the branch.
+// Dashboards.md §5.15 (D18): a tree by levels - a parent the sum of its children, a NULL ends the branch.
 describe('hierarchy from level rows', () => {
   const rows = [
     { branch: 'North', category: 'Drinks', product: 'Water', sold: 120 },

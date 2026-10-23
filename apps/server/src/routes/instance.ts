@@ -14,7 +14,7 @@ const publicFileUrl = (id: string) => (id ? `/api/totalbase/table/files/${id}` :
  * Admin_UI.md §14) and its branding (§4.1.1) - its name, its
  * mark and how the sign-in page is laid out. Public, and nothing else: no
  * version, no other setting. The colors and the custom CSS travel as a
- * stylesheet instead (/admin/theme.css).
+ * stylesheet instead (/theme.css).
  */
 export function registerInstanceRoutes(app: FastifyInstance, context: AppContext): void {
   app.get(
@@ -49,7 +49,7 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
                       slug: { type: "string" },
                       name: { type: "string" },
                       type: { type: "string", enum: ["GOOGLE", "GITHUB", "OIDC"] },
-                      signInUrl: { type: "string", description: "Where its button leads: `/api/auth/oauth/{slug}?redirect_to=<public URL>/admin/auth/oauth`." },
+                      signInUrl: { type: "string", description: "Where its button leads: `/api/auth/oauth/{slug}?redirect_to=<public URL>/auth/oauth`." },
                     },
                     required: ["slug", "name", "type", "signInUrl"],
                   },

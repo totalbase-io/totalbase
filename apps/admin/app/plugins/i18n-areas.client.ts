@@ -10,9 +10,8 @@ import { LAZY_LOCALE_AREAS, lazyAreaOfKey, type LazyLocaleArea } from '~/utils/l
  *   a page renders, so its texts are there at the first paint;
  * - a language switch (`i18n:beforeLocaleSwitch`, awaited by the module
  *   before it switches) loads every area visited so far in the new
- *   language first - and a watch on the locale catches a switch that
- *   started before this plugin's first `ensure` (the signed-in user's
- *   language applies at boot, unawaited);
+ *   language first - and a watch on the locale catches a switch made
+ *   some other way;
  * - a missing key of a lazy area (a shared component shown on a route the
  *   map doesn't list) loads that area then - the key shows for one paint.
  *

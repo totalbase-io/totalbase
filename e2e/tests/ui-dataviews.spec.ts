@@ -54,11 +54,11 @@ const state = {
  * the timeout while the app is already signed in.
  */
 async function login(page: Page, email = ADMIN_EMAIL, password = ADMIN_PASSWORD) {
-  await page.goto('/admin/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('/login', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit', timeout: 60_000 })
+  await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit', timeout: 60_000 })
   await expect.poll(() => page.evaluate(() => localStorage.getItem('totalbase_admin_token')), { timeout: 30_000 }).toBeTruthy()
   return (await page.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
 }
@@ -154,7 +154,7 @@ const getFields = (page: Page, token: string, id: string) => api<FieldRow[]>(pag
 
 /** The wizard from the DataViews screen, up to its Identity and Source steps; the rest at their defaults until Create. */
 async function createWithWizard(page: Page, options: { type: RegExp, name: string, source?: RegExp }) {
-  await page.goto('/admin/dataviews')
+  await page.goto('/dataviews')
   await page.getByRole('button', { name: 'New DataView' }).first().click()
   const wizard = page.getByRole('dialog', { name: 'New DataView' })
   await wizard.getByRole('button', { name: options.type }).click()
@@ -171,8 +171,8 @@ async function createWithWizard(page: Page, options: { type: RegExp, name: strin
   }
   await wizard.getByRole('button', { name: 'Create', exact: true }).last().click()
   await expect(page.getByText('DataView created').first()).toBeVisible()
-  await page.waitForURL(/\/admin\/dataviews\/[0-9a-f-]{36}/, { waitUntil: 'commit' })
-  const id = /\/admin\/dataviews\/([0-9a-f-]{36})/.exec(page.url())![1]!
+  await page.waitForURL(/\/dataviews\/[0-9a-f-]{36}/, { waitUntil: 'commit' })
+  const id = /\/dataviews\/([0-9a-f-]{36})/.exec(page.url())![1]!
   state.dataviews.add(id)
   return id
 }
@@ -241,7 +241,7 @@ test('wizard: a CUSTOM page with no record table', async ({ page }) => {
 // --- Settings -----------------------------------------------------------------------
 
 const settingsOf = async (page: Page, id: string) => {
-  await page.goto(`/admin/dataviews/${id}/settings`)
+  await page.goto(`/dataviews/${id}/settings`)
   const main = page.locator('main')
   await expect(main.getByRole('textbox', { name: 'Name*' })).toBeVisible()
   return main
@@ -261,19 +261,19 @@ test('settings: rename, a feature off, and the roles that open it', async ({ pag
   await poll(async () => (await getDataView(page, token, id)).name).toBe(`${PREFIX} Clientes`)
 
   // A table feature: Export off, in Actions - a draft change.
-  await page.goto(`/admin/dataviews/${id}/settings?section=actions`)
+  await page.goto(`/dataviews/${id}/settings?section=actions`)
   await main.getByRole('switch', { name: 'Export', exact: true }).click()
   await poll(async () => ((await getDataView(page, token, id)).viewConfig.features as Record<string, boolean> | undefined)?.export).toBe(false)
   await poll(async () => (await getDataView(page, token, id)).hasUnpublishedChanges).toBe(true)
 
   // Security: the fixture role opens it - applies at once.
-  await page.goto(`/admin/dataviews/${id}/settings?section=security`)
+  await page.goto(`/dataviews/${id}/settings?section=security`)
   await main.getByRole('switch', { name: `${PREFIX} Viewer sees it` }).click()
   const granted = () => api<{ role: string }[]>(page, token, 'GET', `/api/totalbase/table/dataviews_roles?fields=role&where[dataview][_eq]=${id}`)
   await poll(async () => (await granted()).map(r => r.role)).toEqual([state.roleId])
 
   // Feature back on, so the runtime tests keep their toolbar.
-  await page.goto(`/admin/dataviews/${id}/settings?section=actions`)
+  await page.goto(`/dataviews/${id}/settings?section=actions`)
   await main.getByRole('switch', { name: 'Export', exact: true }).click()
   await poll(async () => ((await getDataView(page, token, id)).viewConfig.features as Record<string, boolean> | undefined)?.export).toBe(true)
   expect(failures).toEqual([])
@@ -303,7 +303,7 @@ test('settings: columns added, synced, removed; a column\'s panel, hidden, order
   await sql(page, token, `ALTER TABLE ${SCHEMA}.clientes ADD COLUMN telefono text, ADD COLUMN notas text`)
   await api(page, token, 'POST', '/admin/api/catalog/refresh')
   const main = await settingsOf(page, id)
-  await page.goto(`/admin/dataviews/${id}/settings?section=data`)
+  await page.goto(`/dataviews/${id}/settings?section=data`)
   const fieldOf = async (column: string) => (await getFields(page, token, id)).find(f => f.columnName === column)
 
   // Add columns…: telefono, shown at the end.
@@ -360,7 +360,7 @@ test('settings: published, an earlier version restored, and one saved as a new D
   await poll(async () => (await getDataView(page, token, id)).liveVersion).toBe(1)
 
   // A change, published as v2: the table's Print off (Views › Table).
-  await page.goto(`/admin/dataviews/${id}/settings?section=views&view=TABLE`)
+  await page.goto(`/dataviews/${id}/settings?section=views&view=TABLE`)
   await main.getByRole('switch', { name: 'Print', exact: true }).first().click()
   await poll(async () => (await getDataView(page, token, id)).hasUnpublishedChanges).toBe(true)
   await publishFromHeader(page)
@@ -383,8 +383,8 @@ test('settings: published, an earlier version restored, and one saved as a new D
   await modal.getByLabel('Name').fill(`${PREFIX} Copia`)
   await modal.getByRole('button', { name: 'Create copy' }).click()
   await expect(page.getByText(`Created "${PREFIX} Copia"`, { exact: true })).toBeVisible()
-  await page.waitForURL(url => /\/admin\/dataviews\/[0-9a-f-]{36}\/settings/.test(url.pathname) && !url.pathname.includes(id), { waitUntil: 'commit' })
-  const copyId = /\/admin\/dataviews\/([0-9a-f-]{36})/.exec(page.url())![1]!
+  await page.waitForURL(url => /\/dataviews\/[0-9a-f-]{36}\/settings/.test(url.pathname) && !url.pathname.includes(id), { waitUntil: 'commit' })
+  const copyId = /\/dataviews\/([0-9a-f-]{36})/.exec(page.url())![1]!
   state.dataviews.add(copyId)
   const copy = await getDataView(page, token, copyId)
   expect(copy.name).toBe(`${PREFIX} Copia`)
@@ -405,7 +405,7 @@ test('settings: a FORM\'s page options and its Save and Cancel off - the publish
   const config = async () => (await getDataView(page, token, id)).viewConfig
 
   // The page options (DataViews.md §6.7), in Form: Content width, Content align, Fit to screen.
-  await page.goto(`/admin/dataviews/${id}/settings?section=form`)
+  await page.goto(`/dataviews/${id}/settings?section=form`)
   await main.getByRole('button', { name: 'Wide', exact: true }).click()
   await poll(async () => (await config()).page_content_width).toBe('wide')
   await main.getByRole('button', { name: 'Left', exact: true }).click()
@@ -420,7 +420,7 @@ test('settings: a FORM\'s page options and its Save and Cancel off - the publish
 
   // The App: Edit opens the record for editing, with no Cancel and Save footer.
   const { slug } = await getDataView(page, token, id)
-  await page.goto(`/admin/app/dataviews/${slug}`)
+  await page.goto(`/app/dataviews/${slug}`)
   const app = page.locator('main')
   await app.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(app.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
@@ -436,7 +436,7 @@ test('design: widgets added, moved and resized, code saved, then published', asy
   const token = await login(page)
   const failures = watchApiFailures(page)
   const id = state.created.CUSTOM!.id
-  await page.goto(`/admin/dataviews/${id}/design`)
+  await page.goto(`/dataviews/${id}/design`)
   const main = page.locator('main')
   const pageWidgets = async () => (await getFields(page, token, id)).filter(f => f.parent === null && f.widget)
     .sort((a, b) => a.gridY - b.gridY || a.gridX - b.gridX)
@@ -496,7 +496,7 @@ test('design: ?field= reopens a widget\'s inspector and follows the selection', 
   const main = page.locator('main')
 
   // Opened on a widget: its inspector, not the empty one.
-  await page.goto(`/admin/dataviews/${id}/design?field=${first!.id}`)
+  await page.goto(`/dataviews/${id}/design?field=${first!.id}`)
   await expect(main.locator(`[data-canvas-item="${second!.id}"]`)).toBeVisible()
   await expect(main.getByText('No widget selected')).toHaveCount(0)
 
@@ -508,7 +508,7 @@ test('design: ?field= reopens a widget\'s inspector and follows the selection', 
   await expect(main.getByText('No widget selected')).toHaveCount(0)
 
   // A widget no longer on the page selects nothing, and leaves the URL.
-  await page.goto(`/admin/dataviews/${id}/design?field=00000000-0000-0000-0000-000000000000`)
+  await page.goto(`/dataviews/${id}/design?field=00000000-0000-0000-0000-000000000000`)
   await expect(main.getByText('No widget selected')).toBeVisible()
   await page.waitForURL(url => !url.searchParams.has('field'), { waitUntil: 'commit' })
   expect(failures).toEqual([])
@@ -553,7 +553,7 @@ test('app menu: a published DataView listed, reordered, grouped, and the arrange
   const pagina = state.created.CUSTOM!.id
   const GROUP = `${PREFIX} Grupo`.slice(0, 32)
   try {
-    await page.goto('/admin/app?edit')
+    await page.goto('/app?edit')
     const main = page.locator('main')
     const row = (name: string) => main.getByRole('treeitem').filter({ hasText: name })
     // Both published DataViews are in the menu.
@@ -611,7 +611,7 @@ test('app menu: sorted by name Z → A at every level, groups first, and the arr
       && groups.every(g => sortedDesc(g.children ?? []))
   }
   try {
-    await page.goto('/admin/app?edit')
+    await page.goto('/app?edit')
     const main = page.locator('main')
     await main.getByRole('button', { name: 'Actions', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Sort by name…' }).click()
@@ -638,7 +638,7 @@ test('app menu: an item hidden from the menu, listed under Hidden, and shown aga
   const name = `${PREFIX} Clientes`
   const scope = async () => (await api<{ scope: string }>(page, token, 'GET', `/admin/api/dataviews/${id}`)).scope
   try {
-    await page.goto('/admin/app?edit')
+    await page.goto('/app?edit')
     const main = page.locator('main')
     const row = main.getByRole('treeitem').filter({ hasText: name })
     // Its Edit: Remove from the menu.
@@ -660,7 +660,7 @@ test('app menu: an item hidden from the menu, listed under Hidden, and shown aga
 // --- Runtime: saved views, shares, the viewer's own prefs, export/print audit ----------
 
 async function openGrid(page: Page, slug: string, query = '') {
-  await page.goto(`/admin/app/dataviews/${slug}${query}`)
+  await page.goto(`/app/dataviews/${slug}${query}`)
   const main = page.locator('main')
   await expect(main.locator('tbody tr').first()).toBeVisible()
   return main

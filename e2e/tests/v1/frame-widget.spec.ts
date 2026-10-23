@@ -40,7 +40,7 @@ test('a record page frames the URL with the record\'s value, encoded', async ({ 
   await publish(page, token, form.id)
   const [row] = await api<{ id: number, nombre: string }[]>(page, token, 'GET', '/api/public/table/e2e_v1_clientes?fields=id,nombre&order_by=id&limit=1')
 
-  await page.goto(`/admin/app/dataviews/${form.slug}/${row!.id}/edit`)
+  await page.goto(`/app/dataviews/${form.slug}/${row!.id}/edit`)
   const frame = page.locator('main iframe[title="Customer site"]')
   await expect(frame).toHaveAttribute('src', `https://example.com/customers/${encodeURIComponent(row!.nombre)}?from=totalbase`)
   await expect(frame).toHaveAttribute('sandbox', /allow-scripts/)
@@ -48,7 +48,7 @@ test('a record page frames the URL with the record\'s value, encoded', async ({ 
 })
 
 test('the Design canvas shows the template instead of loading it', async ({ page, token: _ }) => {
-  await page.goto(`/admin/dataviews/${form.id}/design`)
+  await page.goto(`/dataviews/${form.id}/design`)
   await expect(page.locator('main').getByText('https://example.com/customers/{{vars.record.data.nombre}}?from=totalbase')).toBeVisible()
   await expect(page.locator('main iframe[title="Customer site"]')).toHaveCount(0)
 })

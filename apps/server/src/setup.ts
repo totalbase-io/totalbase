@@ -65,11 +65,11 @@ export async function resolveSetup(database: Database, envCode: string | undefin
   // The one place a code is shown - a person reads the server's log; a program (TOTALBASE_SETUP_CODE) already knows it.
   if (source !== "ENV") {
     // One line: the log is JSON, where a framed banner would read as escaped newlines.
-    const url = `${link}/admin/setup?code=${encodeURIComponent(code)}`;
+    const url = `${link}/setup?code=${encodeURIComponent(code)}`;
     const hint = linkIsGuess ? " (this process's own port: behind Docker or a proxy, open the same path on the address you published, or set TOTALBASE_PUBLIC_URL)" : "";
     logger.warn({ setupUrl: url }, `TotalBase needs its first administrator - open ${url}${hint}`);
   } else {
-    logger.warn("TotalBase needs its first administrator: POST /api/setup with TOTALBASE_SETUP_CODE, or open /admin/setup");
+    logger.warn("TotalBase needs its first administrator: POST /api/setup with TOTALBASE_SETUP_CODE, or open /setup");
   }
   return { code, source, file };
 }

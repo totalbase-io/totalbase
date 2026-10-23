@@ -31,7 +31,7 @@ const EMBED_SCHEMAS = {
     lastUsedAt: { type: ["string", "null"], format: "date-time" },
     createdAt: DATE_TIME,
     updatedAt: DATE_TIME,
-    link: { type: ["string", "null"], description: "LINK only: its secret (tbe_…) - the page is /admin/embed/<link>." },
+    link: { type: ["string", "null"], description: "LINK only: its secret (tbe_…) - the page is /embed/<link>." },
     url: {
       type: "string",
       description: "Its page under system.public_url: a LINK's whole address (what is shared); a SIGNED one's, to which the portal appends #<token> per visit.",
@@ -84,7 +84,7 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
   // An absolute link leaving TotalBase comes from system.public_url (else TOTALBASE_PUBLIC_URL), never the request's Host (AGENTS.md §19A).
   const withUrl = async <E extends { id: string; type: string; link: string | null }>(embed: E) => {
     const publicUrl = await context.auth.mailer.publicUrl();
-    return { ...embed, url: `${publicUrl}/admin/embed/${embed.type === "LINK" && embed.link ? embed.link : embed.id}` };
+    return { ...embed, url: `${publicUrl}/embed/${embed.type === "LINK" && embed.link ? embed.link : embed.id}` };
   };
 
   app.get<{ Params: { id: string } }>(base, {
@@ -167,7 +167,7 @@ export function registerAdminDashboardEmbedsRoutes(app: FastifyInstance, context
     ...adminDoc("dashboards", {
       summary: "Preview an embed being designed",
       description:
-        "A token for /admin/embed/preview#<token> showing the published dashboard (or its one widget) with this display and these variables - " +
+        "A token for /embed/preview#<token> showing the published dashboard (or its one widget) with this display and these variables - " +
         "signed by TotalBase with a key derived from the master key, valid 10 minutes, whether or not embedding is on.",
       pathParameters: ID,
       requestBody: { schema: { type: "object", properties: { data: object({ display: { type: "object", additionalProperties: true }, variables: { type: "object", additionalProperties: true }, widget: { type: ["string", "null"], format: "uuid" } }) } } },

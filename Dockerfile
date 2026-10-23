@@ -1,5 +1,5 @@
 # TotalBase - one service on one port: the Data/Admin APIs and the built admin
-# SPA (/admin/), served by apps/server (AGENTS.md §4B). The image keeps the
+# SPA (at the root), served by apps/server (AGENTS.md §4B). The image keeps the
 # monorepo's layout, so the server finds the admin build and the migrations
 # where it always does (apps/admin/.output/public, migrations/totalbase).
 #
@@ -59,7 +59,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production \
     TOTALBASE_HOST=0.0.0.0 \
-    TOTALBASE_PORT=3050 \
+    TOTALBASE_PORT=3030 \
     TOTALBASE_PG_BIN=/usr/lib/postgresql/18/bin
 WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json /app/pnpm-workspace.yaml ./
@@ -77,7 +77,7 @@ RUN mkdir -p /var/lib/totalbase/files /var/lib/totalbase/backups && chown -R nod
 # The image's command line: `totalbase restore <archive>` (Administration.md §12.5).
 RUN printf '#!/bin/sh\nexec node /app/apps/server/dist/cli.js "$@"\n' > /usr/local/bin/totalbase && chmod 755 /usr/local/bin/totalbase
 USER node
-EXPOSE 3050
+EXPOSE 3030
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.TOTALBASE_PORT||3050)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.TOTALBASE_PORT||3030)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/server/dist/index.js"]

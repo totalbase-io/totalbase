@@ -38,7 +38,7 @@ test.afterAll(async ({ browser }) => {
 const noSidewaysScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
 
 test('a grid on a phone: its rows, no sideways page scroll, a record form to edit with a finger', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${table.slug}`)
+  await page.goto(`/app/dataviews/${table.slug}`)
   const main = page.locator('main')
   await expect(main.locator('tbody tr').filter({ hasText: 'Acme SA' })).toBeVisible()
   expect(await noSidewaysScroll(page)).toBe(true)
@@ -62,14 +62,14 @@ test('a grid on a phone: its rows, no sideways page scroll, a record form to edi
 })
 
 test('the App shell on a phone: a header and a menu that slides over, never a rail', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${table.slug}`)
+  await page.goto(`/app/dataviews/${table.slug}`)
   await expect(page.locator('main tbody tr').first()).toBeVisible()
   await page.getByRole('button', { name: /menu|navigation/i }).first().tap()
   await expect(page.getByRole('link', { name: TABLE })).toBeVisible()
 })
 
 test('a CUSTOM page on a phone: one column, its widgets full width', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${custom.slug}`)
+  await page.goto(`/app/dataviews/${custom.slug}`)
   const main = page.locator('main')
   await expect(main.getByText('Dentro de la tarjeta')).toBeVisible()
   expect(await noSidewaysScroll(page)).toBe(true)

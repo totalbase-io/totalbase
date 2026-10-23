@@ -116,9 +116,9 @@ Either way the result is the same: ordinary PostgreSQL tables and objects you op
 
 ## Status
 
-**Beta** (`0.1.0-beta.4`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
+**Beta** (`0.1.0-beta.5`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
 
-The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.4` pins this version.
+The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.5` pins this version.
 
 ## Requirements
 
@@ -128,12 +128,12 @@ The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/tota
 
 ## Quick start
 
-TotalBase runs as one container, on one port: the admin at `/admin/`, the Data API at `/api/`, the MCP server at `/mcp`.
+TotalBase runs as one container, on one port: the admin and the App at the root (`/`), the Data API at `/api/`, the MCP server at `/mcp`.
 
 **Against a PostgreSQL you already run**, the connection is all it needs:
 
 ```bash
-docker run -d --name totalbase -p 3050:3050 \
+docker run -d --name totalbase -p 3030:3030 \
   -v totalbase-data:/var/lib/totalbase \
   -e POSTGRES_HOST=your-server -e POSTGRES_DB=acme \
   -e POSTGRES_USER=totalbase -e POSTGRES_PASSWORD=... \
@@ -176,7 +176,7 @@ services:
     volumes:
       - data:/var/lib/totalbase   # uploaded files and the generated master key
     ports:
-      - "3050:3050"
+      - "3030:3030"
 
 volumes:
   pgdata:
@@ -207,7 +207,7 @@ pnpm -r run build
 docker build --target server -t totalbase:local .
 ```
 
-For development, `pnpm dev` runs the server and the admin together on one origin (`http://localhost:3050/admin/`); copy `.env.example` to `.env` first. See [CONTRIBUTING.md](CONTRIBUTING.md).
+For development, `pnpm dev` runs the server and the admin together on one origin (`http://localhost:3030/`); copy `.env.example` to `.env` first. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 

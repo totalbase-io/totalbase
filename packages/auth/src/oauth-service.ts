@@ -89,7 +89,7 @@ export class OAuthService {
 
   /** The portal's own page that receives a provider sign-in (`#token=`), always an allowed redirect for a provider shown on the sign-in page. */
   async portalCallbackUrl(): Promise<string> {
-    return `${(await this.resolvePublicUrl()).replace(/\/$/, "")}/admin/auth/oauth`;
+    return `${(await this.resolvePublicUrl()).replace(/\/$/, "")}/auth/oauth`;
   }
 
   /** GET /api/auth/oauth/:provider - returns the URL to redirect the end user's browser to. */

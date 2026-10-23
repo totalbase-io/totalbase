@@ -55,7 +55,7 @@ test('a TREE DataView shows a hierarchy, moves a row by dragging and is guarded 
   expect(dataview.viewConfig.tree_layout.parentColumn).toBe('parent')
   try {
     await publishDataView(page, token, dataview.id)
-    await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+    await page.goto(`/app/dataviews/${dataview.slug}`)
 
     const tree = page.getByRole('tree', { name: 'Tree' })
     const item = (name: string) => tree.getByRole('treeitem', { name: new RegExp(`^${name}\\b`) })

@@ -45,6 +45,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const colorMode = useColorMode()
+// Resolved in the row that renders it: a deferred file image is fetched only for the rows shown.
+const { resolveFileSrc } = useFileObjectUrl()
 const formula = useLayoutFormula(() => props.fields, () => [props.layout?.titleFormula, props.layout?.descriptionFormula, props.layout?.iconFormula, props.layout?.colorFormula, props.layout?.imageFormula])
 
 /** An avatar's derivative: the org chart's (40px) at twice the pixels, the tree's smaller one reuses it. */
@@ -299,7 +301,7 @@ const capped = computed(() => cappedNotice(props.total, props.limit, t('dataview
             v-if="node.data.image !== null"
             :name="node.data.title"
             :description="node.data.description || undefined"
-            :avatar="{ src: node.data.image || undefined, alt: node.data.title }"
+            :avatar="{ src: resolveFileSrc(node.data.image), alt: node.data.title }"
             size="xs"
             class="min-w-0"
           />

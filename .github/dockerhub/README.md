@@ -22,7 +22,7 @@ One image, one port, on top of your PostgreSQL 15 to 18:
 Against a PostgreSQL you already run, the connection is all it needs:
 
 ```bash
-docker run -d --name totalbase -p 3050:3050 \
+docker run -d --name totalbase -p 3030:3030 \
   -v totalbase-data:/var/lib/totalbase \
   -e POSTGRES_HOST=your-server -e POSTGRES_DB=acme \
   -e POSTGRES_USER=totalbase -e POSTGRES_PASSWORD=... \
@@ -31,7 +31,7 @@ docker run -d --name totalbase -p 3050:3050 \
 docker logs totalbase   # the link that creates the first administrator
 ```
 
-Open the link, create your administrator, and you're in the admin at `http://localhost:3050/admin/`. With PostgreSQL included, from scratch: the Docker Compose example in [Installation](https://docs.totalbase.io/getting-started/installation).
+Open the link, create your administrator, and you're in the admin at `http://localhost:3030/`. With PostgreSQL included, from scratch: the Docker Compose example in [Installation](https://docs.totalbase.io/getting-started/installation).
 
 The database role should not be a superuser: TotalBase can do exactly what its role can do, and nothing more.
 
@@ -40,7 +40,7 @@ The database role should not be a superuser: TotalBase can do exactly what its r
 | Tag | |
 |---|---|
 | `beta` | the latest beta |
-| `0.1.0-beta.4` | this version - pin one in production |
+| `0.1.0-beta.5` | this version - pin one in production |
 
 Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release.
 
@@ -53,7 +53,7 @@ Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable
 | `TOTALBASE_PUBLIC_URL` | no | The address users reach it at, for links in emails; the first setup asks for it too |
 | `TOTALBASE_MASTER_KEY` | no | Encrypts stored secrets, at least 32 characters. Unset: generated into the data volume on the first start |
 | `TOTALBASE_ADMIN_EMAIL`, `TOTALBASE_ADMIN_PASSWORD` | no | The first administrator, for automated installs. Unset: the setup link in the log |
-| `TOTALBASE_PORT` | no | `3050` |
+| `TOTALBASE_PORT` | no | `3030` |
 
 Every variable: [Environment](https://docs.totalbase.io/reference/environment).
 
@@ -63,7 +63,7 @@ Every variable: [Environment](https://docs.totalbase.io/reference/environment).
 
 | Port | |
 |---|---|
-| `3050` | The admin (`/admin/`), the App, the Data API (`/api/`) and the MCP server (`/mcp`); health at `/health/ready` |
+| `3030` | The admin and the App (`/`), the Data API (`/api/`) and the MCP server (`/mcp`); health at `/health/ready` |
 
 ## Upgrading
 

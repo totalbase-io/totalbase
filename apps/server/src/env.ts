@@ -21,11 +21,11 @@ export interface ServerEnv {
   /** TOTALBASE_PUBLIC_URL - this instance's own externally-reachable origin, until system.public_url is set (the setup asks for it); unset: http://localhost:<port>. Required for OAuth (the redirect_uri registered with a provider must be a stable, known-good URL - never derived from a request's Host header, which a caller controls). */
   publicUrl: string | undefined;
 
-  /** Serve the built apps/admin SPA under /admin/ from this same process (default) - set to "false" to run this instance API-only. */
+  /** Serve the built apps/admin SPA at the root from this same process (default) - set to "false" to run this instance API-only. */
   adminUiEnabled: boolean;
   /** Override for where the built admin SPA lives; defaults to the apps/admin workspace sibling (see admin-ui.ts). */
   adminUiDir: string | undefined;
-  /** Local dev only: origin of a `nuxt dev` process (e.g. http://localhost:3001) to reverse-proxy /admin/* to, so the API and the hot-reloading UI both answer on this same port instead of two. Unset in prod - the static build is served directly. */
+  /** Local dev only: origin of a `nuxt dev` process (e.g. http://localhost:3001) to reverse-proxy the SPA's paths to, so the API and the hot-reloading UI both answer on this same port instead of two. Unset in prod - the static build is served directly. */
   adminUiDevProxyTarget: string | undefined;
 }
 
@@ -37,10 +37,10 @@ function required(name: string): string {
   return value;
 }
 
-/** TOTALBASE_PORT: 3050 when unset (the same default as .env.example, scripts/dev.sh and the Dockerfile); anything but a port refuses to boot. */
+/** TOTALBASE_PORT: 3030 when unset (the same default as .env.example, scripts/dev.sh and the Dockerfile); anything but a port refuses to boot. */
 function portFromEnv(): number {
   const raw = process.env["TOTALBASE_PORT"];
-  if (raw === undefined || raw === "") return 3050;
+  if (raw === undefined || raw === "") return 3030;
   const port = Number(raw);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`TOTALBASE_PORT must be a port number (1-65535), got "${raw}".`);

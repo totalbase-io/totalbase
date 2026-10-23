@@ -139,7 +139,7 @@ function toResults(event: KeyboardEvent) {
 /** Enter in the box opens the first result. */
 function openFirst() {
   const first = resultLinks()[0]
-  if (first) void navigateTo(first.getAttribute('href')!.replace(/^\/admin/, ''))
+  if (first) void navigateTo(first.getAttribute('href')!)
 }
 /** A short label found by its full name ("Mapa" - "Mapa de sucursales"): the name shown beside it, marked. */
 function fullNameFound(item: NavigationMenuItem): string | null {

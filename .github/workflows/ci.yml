@@ -100,8 +100,8 @@ jobs:
           TOTALBASE_ADMIN_EMAIL=admin@totalbase.local
           TOTALBASE_ADMIN_PASSWORD=ci-admin-password-1
           TOTALBASE_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          TOTALBASE_PUBLIC_URL=http://localhost:3050
-          TOTALBASE_PORT=3050
+          TOTALBASE_PUBLIC_URL=http://localhost:3030
+          TOTALBASE_PORT=3030
           NODE_ENV=test
           LOG_LEVEL=warn
           ENV

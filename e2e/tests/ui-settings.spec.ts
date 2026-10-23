@@ -62,7 +62,7 @@ for (const setting of NUMBER_SETTINGS) {
     const changed = original + 1
 
     try {
-      await page.goto(`/admin/settings/${setting.route}`)
+      await page.goto(`/settings/${setting.route}`)
       const row = page.locator(`#setting-${setting.key.replaceAll('.', '-')}`)
       const input = row.getByRole('spinbutton', { name: field.label })
       await expect(input).toHaveValue(String(original))
@@ -102,7 +102,7 @@ test('settings: a toggled boolean saves with the page and toggles back', async (
   const read = async () => (await api<Record<string, boolean>>(page, token, 'GET', '/admin/api/settings/auth'))[key]
   const original = await read()
   try {
-    await page.goto('/admin/settings/auth')
+    await page.goto('/settings/auth')
     const toggle = page.locator(`#setting-${key.replaceAll('.', '-')}`).getByRole('switch', { name: 'Email changed notice' })
     await toggle.click()
     await saveButton(page).click()
@@ -120,7 +120,7 @@ test('settings: a toggled boolean saves with the page and toggles back', async (
 test('settings: an invalid value shows the server message under the field', async ({ page }) => {
   await login(page)
   const failures = watchApiFailures(page, [/^PATCH \/admin\/api\/settings\/sql_console$/])
-  await page.goto('/admin/settings/sql-console')
+  await page.goto('/settings/sql-console')
   const row = page.locator('#setting-sql_console-history_retention_days')
   const input = row.getByRole('spinbutton')
   const before = await input.inputValue()
@@ -143,7 +143,7 @@ test('settings: several edits save together with one Save, and Cancel drops them
     if (request.method() === 'PATCH' && request.url().includes('/admin/api/settings/')) patches.push(request.url())
   })
   try {
-    await page.goto('/admin/settings/workflows')
+    await page.goto('/settings/workflows')
     const inputs = keys.map(key => page.locator(`#setting-${key.replaceAll('.', '-')}`).getByRole('spinbutton'))
     for (const [i, key] of keys.entries()) await inputs[i]!.fill(String(original[key]! + 1))
     await expect(page.getByText('2 unsaved changes')).toBeVisible()
@@ -176,7 +176,7 @@ test('settings: the default role for self-registration is picked from the roles 
   const original = await read()
   const role = await api<{ id: string, name: string }>(page, token, 'POST', '/api/totalbase/table/roles', { name: `ui-settings ${SUFFIX}`, api_access: true })
   try {
-    await page.goto('/admin/settings/auth')
+    await page.goto('/settings/auth')
     const row = page.locator(`#setting-${key.replaceAll('.', '-')}`)
     const picker = row.getByRole('button', { name: 'Default role for self-registration' })
     await picker.click()
@@ -208,7 +208,7 @@ test('settings: SMTP "Send test email" shows the error when SMTP is not configur
   test.skip(!!smtp['smtp.host'] && !!smtp['smtp.from'], 'SMTP is configured on this instance')
   // Without SMTP the server answers 409 SMTP_NOT_CONFIGURED - provoked on purpose.
   const failures = watchApiFailures(page, [/^POST \/admin\/api\/settings\/mail\/test$/])
-  await page.goto('/admin/settings/smtp')
+  await page.goto('/settings/smtp')
   await page.getByRole('button', { name: 'Send test email' }).click()
   await page.getByLabel('Send to').fill(`ui-settings-${SUFFIX}@example.com`)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
@@ -224,7 +224,7 @@ test('settings: SMTP "Test connection" reports the relay without sending', async
   // may not be reachable (502 SMTP_CONNECTION_FAILED) - both answers are
   // what the button is there to show.
   const failures = watchApiFailures(page, [/^POST \/admin\/api\/settings\/mail\/verify$/])
-  await page.goto('/admin/settings/smtp')
+  await page.goto('/settings/smtp')
   const verify = page.waitForResponse(r => r.url().endsWith('/admin/api/settings/mail/verify') && r.request().method() === 'POST')
   await page.getByRole('button', { name: 'Test connection' }).click()
   const response = await verify
@@ -249,7 +249,7 @@ test('secrets: create, replace the value, delete', async ({ page }) => {
   const key = `ui-settings.secret-${SUFFIX}`
   const find = async () => (await api<SecretMetadata[]>(page, token, 'GET', '/admin/api/secrets')).find(s => s.key === key)
   try {
-    await page.goto('/admin/settings/secrets')
+    await page.goto('/settings/secrets')
     // The header's, and on an instance with no secret yet the empty state's too - both open the same form.
     await page.getByRole('button', { name: 'New secret' }).first().click()
     const dialog = page.getByRole('dialog')
@@ -301,7 +301,7 @@ test('auth providers: create, edit, disable/enable, copy redirect URI, delete', 
   await api(page, token, 'PUT', `/admin/api/secrets/${encodeURIComponent(secretKey)}`, { value: 'client-secret-value' })
   let providerId: string | undefined
   try {
-    await page.goto('/admin/settings/auth-providers')
+    await page.goto('/settings/auth-providers')
     await page.getByRole('button', { name: 'New provider' }).first().click()
     const wizard = page.getByRole('dialog')
     await wizard.getByRole('button', { name: 'GitHub' }).click()
@@ -375,7 +375,7 @@ test('system emails: edit, preview, save, toggle sending, restore default', asyn
   test.skip(before.overridden, 'This email is already customized - restoring it would drop real content.')
   const subject = `UI Settings ${SUFFIX} - {{instance.name}} email changed`
   try {
-    await page.goto(`/admin/templates/system/${slot}`)
+    await page.goto(`/templates/system/${slot}`)
     const subjectInput = page.getByLabel('Subject')
     await expect(subjectInput).toHaveValue(before.template.subject)
     await subjectInput.fill(subject)
@@ -424,13 +424,13 @@ const TEMPLATES = '/api/totalbase/table/templates'
 interface TemplateRow { id: string, name: string, slug: string, kind: string, content: { subject?: string, message?: string } | null }
 
 async function createTemplateThroughUi(page: Page, kind: 'Email' | 'PDF', name: string) {
-  await page.goto('/admin/templates')
+  await page.goto('/templates')
   await page.getByRole('button', { name: 'New template' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('radio', { name: kind }).click()
   await dialog.getByLabel('Name', { exact: true }).fill(name)
   await dialog.getByRole('button', { name: 'Create' }).click()
-  await page.waitForURL(/\/admin\/templates\/[0-9a-f-]{36}$/)
+  await page.waitForURL(/\/templates\/[0-9a-f-]{36}$/)
   return page.url().split('/').pop()!
 }
 
@@ -441,7 +441,7 @@ async function deleteTemplateThroughUi(page: Page) {
   await dialog.getByRole('checkbox', { name: 'Confirm' }).click()
   await dialog.getByRole('button', { name: 'Delete' }).click()
   await toast(page, 'Template deleted')
-  await page.waitForURL(/\/admin\/templates$/)
+  await page.waitForURL(/\/templates$/)
 }
 
 test('templates: create an email template, edit details and content, delete', async ({ page }) => {
@@ -534,17 +534,17 @@ test.describe('my account', () => {
     const userContext = await browser.newContext()
     const me = await userContext.newPage()
     try {
-      await me.goto('/admin/login')
+      await me.goto('/login')
       await me.getByLabel('Email').fill(email)
       await me.getByLabel('Password', { exact: true }).fill(password)
       await me.getByRole('button', { name: 'Sign in' }).click()
-      await me.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
+      await me.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
       const token = (await me.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
       const failures = watchApiFailures(me)
       const account = () => api<{ name: string, avatarUrl: string | null }>(me, token, 'GET', '/app/api/me')
 
       // --- Name ---
-      await me.goto('/admin/account')
+      await me.goto('/account')
       await me.getByLabel('Name').fill(`UI Settings Renamed ${SUFFIX}`)
       await me.getByRole('button', { name: 'Save', exact: true }).click()
       await toast(me, 'Profile saved')

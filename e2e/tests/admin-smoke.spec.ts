@@ -10,29 +10,29 @@ import { BASE_URL } from './helpers'
  */
 
 const STATIC_PAGES = [
-  '/admin/',
-  '/admin/account',
-  '/admin/users',
-  '/admin/users/insights/activity',
-  '/admin/users/insights/sign-ins',
-  '/admin/roles',
-  '/admin/sessions',
-  '/admin/tokens',
-  '/admin/resources',
-  '/admin/dataviews',
-  '/admin/dashboards',
-  '/admin/workflows',
-  '/admin/templates',
-  '/admin/files',
-  '/admin/logs',
-  '/admin/sql-console',
-  '/admin/docs/endpoints',
-  '/admin/docs/openapi',
-  '/admin/app',
+  '/',
+  '/account',
+  '/users',
+  '/users/insights/activity',
+  '/users/insights/sign-ins',
+  '/roles',
+  '/sessions',
+  '/tokens',
+  '/resources',
+  '/dataviews',
+  '/dashboards',
+  '/workflows',
+  '/templates',
+  '/files',
+  '/logs',
+  '/sql-console',
+  '/docs/endpoints',
+  '/docs/openapi',
+  '/app',
   ...[
     'system', 'connector', 'maintenance', 'smtp', 'auth', 'auth-providers', 'api-tokens', 'network', 'secrets', 'audit',
     'api', 'transactions', 'async-executions', 'openapi', 'dataviews', 'dashboards', 'files', 'workflows', 'sql-console'
-  ].map(group => `/admin/settings/${group}`)
+  ].map(group => `/settings/${group}`)
 ]
 
 const API = /\/(admin\/api|app\/api|api)\//
@@ -50,36 +50,36 @@ async function detailPages(page: Page, token: string): Promise<string[]> {
 
   const pages: string[] = []
   const user = await first<{ id: string }>('/api/totalbase/table/users?limit=1&fields=id')
-  if (user) pages.push(`/admin/users/${user.id}`)
+  if (user) pages.push(`/users/${user.id}`)
   const role = await first<{ id: string }>('/api/totalbase/table/roles?limit=1&fields=id')
-  if (role) pages.push(`/admin/roles/${role.id}`)
+  if (role) pages.push(`/roles/${role.id}`)
   const template = await first<{ id: string }>('/api/totalbase/table/templates?limit=1&fields=id')
-  if (template) pages.push(`/admin/templates/${template.id}`)
-  pages.push('/admin/templates/system/user_invitation')
+  if (template) pages.push(`/templates/${template.id}`)
+  pages.push('/templates/system/user_invitation')
 
   const resources = await get<{ id: string, postgres_oid: number, type: string, status: string }>(
     '/api/totalbase/table/resources?fields=id,postgres_oid,type,status&where[status][_eq]=ACTIVE&where[schema][_eq]=public&limit=200'
   )
   const ofType = (type: string) => resources.find(r => r.type === type)
   const table = ofType('TABLE')
-  if (table) pages.push(`/admin/resources/${table.id}`, `/admin/resources/${table.id}/data`, `/admin/database/tables/${table.postgres_oid}`, `/admin/database/tables/${table.postgres_oid}/data`)
+  if (table) pages.push(`/resources/${table.id}`, `/resources/${table.id}/data`, `/database/tables/${table.postgres_oid}`, `/database/tables/${table.postgres_oid}/data`)
   const view = ofType('VIEW')
-  if (view) pages.push(`/admin/database/views/${view.postgres_oid}`)
+  if (view) pages.push(`/database/views/${view.postgres_oid}`)
   const fn = ofType('FUNCTION')
-  if (fn) pages.push(`/admin/database/functions/${fn.postgres_oid}`)
+  if (fn) pages.push(`/database/functions/${fn.postgres_oid}`)
 
   const dataview = await first<{ id: string }>('/admin/api/dataviews')
-  if (dataview) pages.push(`/admin/dataviews/${dataview.id}/design`, `/admin/dataviews/${dataview.id}/settings`)
+  if (dataview) pages.push(`/dataviews/${dataview.id}/design`, `/dataviews/${dataview.id}/settings`)
   const dashboard = await first<{ id: string }>('/admin/api/dashboards')
-  if (dashboard) pages.push(`/admin/dashboards/${dashboard.id}`)
+  if (dashboard) pages.push(`/dashboards/${dashboard.id}`)
   const workflow = await first<{ id: string }>('/admin/api/workflows')
-  if (workflow) pages.push(`/admin/workflows/${workflow.id}`)
+  if (workflow) pages.push(`/workflows/${workflow.id}`)
 
   // The app portal: a published DataView and dashboard.
   const appDataview = await first<{ slug: string }>('/app/api/dataviews')
-  if (appDataview) pages.push(`/admin/app/dataviews/${appDataview.slug}`)
+  if (appDataview) pages.push(`/app/dataviews/${appDataview.slug}`)
   const appDashboard = await first<{ slug: string }>('/app/api/dashboards')
-  if (appDashboard) pages.push(`/admin/app/dashboards/${appDashboard.slug}`)
+  if (appDashboard) pages.push(`/app/dashboards/${appDashboard.slug}`)
   return pages
 }
 

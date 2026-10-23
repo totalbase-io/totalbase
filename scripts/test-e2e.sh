@@ -7,11 +7,11 @@
 #   scripts/test-e2e.sh tests/ui-users.spec.ts  only these (any Playwright argument)
 #
 # Steps, each one here so none is forgotten:
-#   1. build the packages and the admin (the production code path: one process serves the API and /admin/);
+#   1. build the packages and the admin (the production code path: one process serves the API and the SPA);
 #   2. drop and create the test database (TOTALBASE_E2E_DB, default totalbase_e2e) on TOTALBASE_E2E_PG_PORT
 #      (default 5415, PostgreSQL 15 - the baseline, Foundations.md §21.4), as POSTGRES_USER - it needs CREATEDB, never superuser - and migrate it;
 #   3. start the server on it, on TOTALBASE_PORT, with a throwaway data directory;
-#   4. raise the two limits a whole suite exceeds from one IP and one admin: security.rate_limit_per_minute (300)
+#   4. raise the two limits a whole suite exceeds from one IP and one admin: security.rate_limit_per_minute (3000)
 #      and auth.max_sessions_per_user (20) - on this instance only, the product's defaults stay;
 #   5. run Playwright (e2e/playwright.config.ts: the v1 files one at a time, the rest in parallel);
 #   6. stop the server, whatever happened. The database stays, to look into a failure; the next run drops it.
@@ -25,7 +25,7 @@ set +a
 
 DB="${TOTALBASE_E2E_DB:-totalbase_e2e}"
 PG_PORT="${TOTALBASE_E2E_PG_PORT:-5415}"
-PORT="${TOTALBASE_PORT:-3050}"
+PORT="${TOTALBASE_PORT:-3030}"
 BASE_URL="http://localhost:$PORT"
 
 if curl -s -o /dev/null "$BASE_URL/"; then
@@ -60,8 +60,8 @@ LOG="$DATA_DIR/server.log"
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null || true; wait "$SERVER" 2>/dev/null || true' EXIT
 
-for _ in $(seq 1 60); do curl -s -o /dev/null -f "$BASE_URL/admin/" && break; sleep 1; done
-curl -s -o /dev/null -f "$BASE_URL/admin/" || { echo "The server didn't start - $LOG:" >&2; tail -20 "$LOG" >&2; exit 1; }
+for _ in $(seq 1 60); do curl -s -o /dev/null -f "$BASE_URL/" && break; sleep 1; done
+curl -s -o /dev/null -f "$BASE_URL/" || { echo "The server didn't start - $LOG:" >&2; tail -20 "$LOG" >&2; exit 1; }
 
 BASE_URL="$BASE_URL" node -e '
   const { BASE_URL: base, TOTALBASE_ADMIN_EMAIL: email, TOTALBASE_ADMIN_PASSWORD: password } = process.env;

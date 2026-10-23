@@ -86,7 +86,7 @@ test('dragging toward the top-left crops the red quadrant', async ({ page }) => 
   const fileId = await uploadFile(page, token, 'quadrants-tl.png', await quadrantsPng(page))
   cleanup = () => deleteFile(page, token, fileId)
 
-  await page.goto('/admin/files')
+  await page.goto('/files')
   await page.getByText('quadrants-tl.png').last().click()
   await page.getByRole('button', { name: 'Edit' }).last().click()
   await expect(page.getByRole('heading', { name: 'Edit quadrants-tl.png' })).toBeVisible()
@@ -108,7 +108,7 @@ test('dragging toward the bottom-right crops the yellow quadrant', async ({ page
   const fileId = await uploadFile(page, token, 'quadrants-br.png', await quadrantsPng(page))
   cleanup = () => deleteFile(page, token, fileId)
 
-  await page.goto('/admin/files')
+  await page.goto('/files')
   await page.getByText('quadrants-br.png').last().click()
   await page.getByRole('button', { name: 'Edit' }).last().click()
   await expect(page.getByRole('heading', { name: 'Edit quadrants-br.png' })).toBeVisible()

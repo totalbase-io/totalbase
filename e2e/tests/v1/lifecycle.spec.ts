@@ -35,7 +35,7 @@ test('created with the wizard, published, changed, restored and deleted - all th
   test.setTimeout(150_000)
 
   // --- The wizard ---
-  await page.goto('/admin/dataviews')
+  await page.goto('/dataviews')
   await page.getByRole('button', { name: 'New DataView' }).first().click()
   const wizard = page.getByRole('dialog', { name: 'New DataView' })
   await wizard.getByRole('button', { name: /^Table A sortable/ }).click()
@@ -52,16 +52,16 @@ test('created with the wizard, published, changed, restored and deleted - all th
   await expect(page.getByText('DataView created').first()).toBeVisible()
 
   // --- A draft until published: not in the App yet ---
-  await page.waitForURL(/\/admin\/dataviews\/[0-9a-f-]+/)
+  await page.waitForURL(/\/dataviews\/[0-9a-f-]+/)
   const settingsUrl = page.url()
   // The grid's Search is in Actions, with the toolbar's other features (DataViews.md §3.6).
-  const actionsUrl = `/admin/dataviews/${settingsUrl.match(/\/admin\/dataviews\/([0-9a-f-]+)/)![1]}/settings?section=actions`
+  const actionsUrl = `/dataviews/${settingsUrl.match(/\/dataviews\/([0-9a-f-]+)/)![1]}/settings?section=actions`
   const main = page.locator('main')
   await expect(main.getByRole('button', { name: /^Draft/ })).toBeVisible()
   await publishFromHeader(page)
   await expect(main.getByRole('button', { name: /Active: v1/ })).toBeVisible()
 
-  await page.goto('/admin/app/dataviews/v1-ciclo')
+  await page.goto('/app/dataviews/v1-ciclo')
   await expect(page.locator('main tbody tr').filter({ hasText: 'Acme SA' })).toBeVisible()
   await expect(page.locator('main').getByRole('heading', { name: NAME })).toBeVisible()
 
@@ -72,19 +72,19 @@ test('created with the wizard, published, changed, restored and deleted - all th
   await main.getByRole('textbox', { name: 'Name*' }).blur()
   await expect.poll(status).toContain('Saved')
   expect(await status()).not.toContain('Unpublished changes')
-  await page.goto('/admin/app/dataviews/v1-ciclo')
+  await page.goto('/app/dataviews/v1-ciclo')
   await expect(page.locator('main').getByRole('heading', { name: `${NAME} 2` })).toBeVisible()
 
   // --- A versioned change (the grid's Search off): a draft until published ---
   await page.goto(actionsUrl)
   await main.getByRole('switch', { name: 'Search', exact: true }).click()
   await expect.poll(status).toContain('Unpublished changes')
-  await page.goto('/admin/app/dataviews/v1-ciclo')
+  await page.goto('/app/dataviews/v1-ciclo')
   await expect(page.locator('main').getByRole('textbox', { name: 'Search', exact: true })).toBeVisible()
   await page.goto(settingsUrl)
   await publishFromHeader(page)
   await expect.poll(status).not.toContain('Unpublished changes')
-  await page.goto('/admin/app/dataviews/v1-ciclo')
+  await page.goto('/app/dataviews/v1-ciclo')
   await expect(page.locator('main tbody tr').first()).toBeVisible()
   await expect(page.locator('main').getByRole('textbox', { name: 'Search', exact: true })).toHaveCount(0)
 
@@ -105,6 +105,6 @@ test('created with the wizard, published, changed, restored and deleted - all th
   const confirm = page.getByRole('dialog').last()
   await confirm.getByRole('checkbox', { name: 'Confirm' }).check().catch(() => undefined)
   await confirm.getByRole('button', { name: /^Delete/ }).click()
-  await page.goto('/admin/app/dataviews/v1-ciclo')
+  await page.goto('/app/dataviews/v1-ciclo')
   await expect(page.locator('main tbody tr')).toHaveCount(0)
 })

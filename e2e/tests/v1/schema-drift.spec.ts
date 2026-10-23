@@ -33,7 +33,7 @@ test('a column renamed in PostgreSQL keeps its field; one added appears once syn
   await sql(page, token, 'ALTER TABLE public.e2e_v1_clientes RENAME COLUMN telefono TO celular; ALTER TABLE public.e2e_v1_clientes ADD COLUMN whatsapp text')
   await api(page, token, 'POST', '/admin/api/catalog/refresh')
 
-  await page.goto(`/admin/dataviews/${dataview.id}/settings?section=data`)
+  await page.goto(`/dataviews/${dataview.id}/settings?section=data`)
   const main = page.locator('main')
   await main.getByRole('button', { name: 'Sync columns' }).click()
   // The renamed column: the same field, its new name.
@@ -46,7 +46,7 @@ test('a column renamed in PostgreSQL keeps its field; one added appears once syn
   const published = page.waitForResponse(r => r.url().includes(`/admin/api/dataviews/${dataview.id}/publish`) && r.request().method() === 'POST')
   await page.getByRole('dialog').getByRole('button', { name: 'Publish', exact: true }).last().click()
   expect((await published).status()).toBe(201)
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
   const acme = page.locator('main tbody tr').filter({ hasText: 'Acme SA' })
   await expect(acme).toContainText('011 4000-1000')
   await expect(page.locator('main').getByRole('columnheader', { name: 'Celular' })).toBeVisible()

@@ -19,10 +19,10 @@ const KEYS = [
 
 /**
  * The operator's branding (Admin_UI.md §4.1.1): the public
- * stylesheet /admin/theme.css, the public /api/instance presentation, and
+ * stylesheet /theme.css, the public /api/instance presentation, and
  * what the appearance.* settings accept.
  */
-describe("Appearance: /admin/theme.css, /api/instance and the appearance.* settings", () => {
+describe("Appearance: /theme.css, /api/instance and the appearance.* settings", () => {
   let app: FastifyInstance;
   let context: AppContext;
   let database: Database;
@@ -54,21 +54,21 @@ describe("Appearance: /admin/theme.css, /api/instance and the appearance.* setti
   it("serves the stylesheet public, as text/css, cached on its ETag with 304 on a match", async () => {
     await context.settings.reset("appearance.primary_color");
     await context.settings.reset("appearance.custom_css");
-    const res = await app.inject({ method: "GET", url: "/admin/theme.css" });
+    const res = await app.inject({ method: "GET", url: "/theme.css" });
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toContain("text/css");
     expect(res.headers["cache-control"]).toBe("no-cache");
     expect(res.body).not.toContain("--ui-color-primary");
     const etag = res.headers.etag as string;
     expect(etag).toMatch(/^".+"$/);
-    const again = await app.inject({ method: "GET", url: "/admin/theme.css", headers: { "if-none-match": etag } });
+    const again = await app.inject({ method: "GET", url: "/theme.css", headers: { "if-none-match": etag } });
     expect(again.statusCode).toBe(304);
   });
 
   it("writes the primary color's shades, then the custom CSS verbatim, and a change changes the ETag", async () => {
-    const before = (await app.inject({ method: "GET", url: "/admin/theme.css" })).headers.etag;
+    const before = (await app.inject({ method: "GET", url: "/theme.css" })).headers.etag;
     expect((await patch("appearance", { primary_color: "#0F766E", custom_css: ":root { --ui-radius: 0 }\nhtml[data-surface=\"app\"] { font-family: serif }" })).statusCode).toBe(200);
-    const res = await app.inject({ method: "GET", url: "/admin/theme.css" });
+    const res = await app.inject({ method: "GET", url: "/theme.css" });
     expect(res.body).toContain("--ui-color-primary-500: oklch(");
     expect(res.body).toContain("--ui-color-primary-950: oklch(");
     expect(res.body.indexOf("--ui-color-primary-50:")).toBeLessThan(res.body.indexOf(":root { --ui-radius: 0 }"));
@@ -78,9 +78,9 @@ describe("Appearance: /admin/theme.css, /api/instance and the appearance.* setti
 
   it("writes a neutral other than slate as its palette, and refuses a name it doesn't know", async () => {
     await context.settings.reset("appearance.neutral_color");
-    expect((await app.inject({ method: "GET", url: "/admin/theme.css" })).body).not.toContain("--ui-color-neutral");
+    expect((await app.inject({ method: "GET", url: "/theme.css" })).body).not.toContain("--ui-color-neutral");
     expect((await patch("appearance", { neutral_color: "zinc" })).statusCode).toBe(200);
-    const res = await app.inject({ method: "GET", url: "/admin/theme.css" });
+    const res = await app.inject({ method: "GET", url: "/theme.css" });
     expect(res.body).toContain("--ui-color-neutral-50: oklch(");
     expect(res.body).toContain("--ui-color-neutral-950: oklch(14.1% 0.005 285.823);");
     expect((await patch("appearance", { neutral_color: "blue" })).statusCode).toBe(400);
@@ -150,6 +150,6 @@ describe("Appearance: /admin/theme.css, /api/instance and the appearance.* setti
   it("only an administrator writes the appearance; anyone reads the sheet and the presentation", async () => {
     expect((await app.inject({ method: "PATCH", url: "/admin/api/settings/appearance", payload: { data: { primary_color: "#000000" } } })).statusCode).toBe(401);
     expect((await app.inject({ method: "GET", url: "/api/instance" })).statusCode).toBe(200);
-    expect((await app.inject({ method: "GET", url: "/admin/theme.css" })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: "/theme.css" })).statusCode).toBe(200);
   });
 });

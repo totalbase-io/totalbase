@@ -51,7 +51,7 @@ let roleId = ''
  * spec signing the shared admin out (its sessions revoked) never ends ours.
  */
 async function login(page: Page) {
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(ADMIN_EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   const [response] = await Promise.all([
@@ -59,7 +59,7 @@ async function login(page: Page) {
     page.getByRole('button', { name: 'Sign in' }).click()
   ])
   if (!response.ok()) throw new Error(`Sign in failed: ${response.status()} ${await response.text()}`)
-  await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
+  await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
   const token = await page.evaluate(() => localStorage.getItem('totalbase_admin_token'))
   if (!token) throw new Error('Login did not produce a bearer token')
   return token
@@ -142,19 +142,19 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   const main = page.locator('main')
 
   // --- Created ---
-  await page.goto('/admin/dashboards')
+  await page.goto('/dashboards')
   await page.getByRole('button', { name: 'New Dashboard' }).click()
   await page.getByRole('menuitem', { name: /^Blank/ }).click()
   const create = page.getByRole('dialog')
   await create.getByLabel('Name').fill(DASHBOARD)
   await create.getByRole('button', { name: 'Create' }).click()
-  await page.waitForURL(/\/admin\/dashboards\/[0-9a-f-]+$/)
+  await page.waitForURL(/\/dashboards\/[0-9a-f-]+$/)
   const id = page.url().split('/').pop()!
   cleanup.dashboards.push(id)
 
   // --- Its settings page (D26): General, at once; Security, at once ---
   await main.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.waitForURL(new RegExp(`/admin/dashboards/${id}/settings`))
+  await page.waitForURL(new RegExp(`/dashboards/${id}/settings`))
   await main.getByLabel('Name').fill(`${DASHBOARD} Renamed`)
   await main.getByLabel('Description').fill('Edited through the UI')
   await expect.poll(async () => (await apiRequest<{ name: string, description: string }>(page, token, 'GET', `/admin/api/dashboards/${id}`))).toMatchObject({ name: `${DASHBOARD} Renamed`, description: 'Edited through the UI' })
@@ -248,7 +248,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   // --- Published as v1, viewed in the App with a SELECT variable changed ---
   await publishFromHeader(page)
   await expect(main.getByRole('button', { name: /Active: v1/ })).toBeVisible()
-  await page.goto(`/admin/app/dashboards/${saved.slug}`)
+  await page.goto(`/app/dashboards/${saved.slug}`)
   await expect(card(page, 'Valor')).toContainText('11')
   await main.getByRole('button', { name: 'Estado del alta' }).or(main.getByRole('combobox', { name: 'Estado del alta' })).first().click()
   await page.getByRole('option', { name: 'BAJA', exact: true }).click()
@@ -256,7 +256,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   await expect(page).toHaveURL(/estado=BAJA/)
 
   // --- Changed and published as v2, then v1 restored into the draft ---
-  await page.goto(`/admin/dashboards/${id}`)
+  await page.goto(`/dashboards/${id}`)
   await card(page, 'Valor').getByRole('button', { name: 'Widget actions' }).click()
   await page.getByRole('menuitem', { name: /^Edit/ }).click()
   await drawer.getByRole('textbox', { name: 'Title' }).fill('Valor v2')
@@ -279,7 +279,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   const saveAs = page.getByRole('dialog', { name: 'Save as a new copy' })
   await saveAs.getByLabel('Name').fill(`${DASHBOARD} Copy`)
   await saveAs.getByRole('button', { name: 'Create copy' }).click()
-  await page.waitForURL(url => /\/admin\/dashboards\/[0-9a-f-]+$/.test(url.pathname) && !url.pathname.endsWith(id))
+  await page.waitForURL(url => /\/dashboards\/[0-9a-f-]+$/.test(url.pathname) && !url.pathname.endsWith(id))
   const copyId = page.url().split('/').pop()!
   cleanup.dashboards.push(copyId)
   const copyWidgets = await apiRequest<DashboardWidget[]>(page, token, 'GET', `/admin/api/dashboards/${copyId}/widgets`)
@@ -289,7 +289,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   expect(copy.variables.map(v => v.name)).toEqual(['estado'])
 
   // --- The original deleted from its menu ---
-  await page.goto(`/admin/dashboards/${id}`)
+  await page.goto(`/dashboards/${id}`)
   await main.getByRole('button', { name: 'Actions', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Delete…' }).click()
   const confirm = page.getByRole('dialog', { name: 'Delete this Dashboard?' })
@@ -309,7 +309,7 @@ test('a widget\'s SQL: Optional filter writes the standard pattern for a variabl
   await apiRequest(page, token, 'PATCH', `/admin/api/dashboards/${dashboard.id}`, { data: { variables: [{ name: 'tags', label: 'Tags', type: 'SELECT', multiple: true, options: { source: 'STATIC', values: ['a', 'b'] } }] } })
   const widget = await apiRequest<{ id: string }>(page, token, 'POST', `/admin/api/dashboards/${dashboard.id}/widgets`, { data: { type: 'KPI', label: 'Count', gridX: 0, gridY: 0, gridW: 3, gridH: 2 } })
 
-  await page.goto(`/admin/dashboards/${dashboard.id}`)
+  await page.goto(`/dashboards/${dashboard.id}`)
   await card(page, 'Count').getByRole('button', { name: 'Configure' }).click()
   const drawer = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: 'Run' }) })
   await typeSql(page, 'SELECT count(*) AS n FROM (VALUES (\'a\'), (\'b\')) t(tag) WHERE ')
@@ -342,7 +342,7 @@ test('dependent variables: picking a country narrows the cities offered, droppin
     { name: 'city', label: 'City', type: 'SELECT', options: { source: 'QUERY', query: 'SELECT c FROM (VALUES (\'AR\', \'Rosario\'), (\'UY\', \'Salto\')) t(k, c) WHERE ($VAR.country IS NULL OR k = $VAR.country) ORDER BY 1' } }
   ] } })
 
-  await page.goto(`/admin/dashboards/${dashboard.id}`)
+  await page.goto(`/dashboards/${dashboard.id}`)
   const main = page.locator('main')
   const control = (name: string) => main.getByRole('button', { name }).or(main.getByRole('combobox', { name })).first()
   await control('City').click()
@@ -369,7 +369,7 @@ test('versions: Delete old versions keeps the chosen one and newer, after a Conf
     await apiRequest(page, token, 'POST', `/admin/api/dashboards/${dashboard.id}/publish`)
   }
 
-  await page.goto(`/admin/dashboards/${dashboard.id}`)
+  await page.goto(`/dashboards/${dashboard.id}`)
   await page.locator('main').getByRole('button', { name: /Draft/ }).click()
   await page.getByRole('menuitem', { name: 'Delete old versions…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Delete old versions' })
@@ -398,7 +398,7 @@ test('a dashboard\'s auto-refresh: set in Settings › Data, the App re-runs its
   await apiRequest(page, token, 'POST', `/admin/api/dashboards/${dashboard.id}/publish`)
 
   // --- Set in Settings › Data: live at once, nothing to publish ---
-  await page.goto(`/admin/dashboards/${dashboard.id}/settings?section=data`)
+  await page.goto(`/dashboards/${dashboard.id}/settings?section=data`)
   await main.getByRole('combobox', { name: 'Auto-refresh' }).click()
   await page.getByRole('option', { name: 'Every 30 seconds' }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
@@ -414,7 +414,7 @@ test('a dashboard\'s auto-refresh: set in Settings › Data, the App re-runs its
     if (request.method() === 'POST' && request.url().includes(`/app/api/dashboards/${slug}/widgets/${widget.id}/data`)) runs++
   })
   await page.clock.install()
-  await page.goto(`/admin/app/dashboards/${slug}`)
+  await page.goto(`/app/dashboards/${slug}`)
   await expect(main.getByText('42', { exact: true })).toBeVisible()
   await expect(page.getByText('Auto-refresh: every 30 seconds')).toBeVisible()
   await expect.poll(() => runs, POLL).toBe(1)
@@ -458,7 +458,7 @@ interface WorkflowDraft { workflow: { id: string, slug?: string, enabled: boolea
 
 /** The New workflow wizard: name, a trigger card, its configuration, access, auditing. */
 async function createWorkflow(page: Page, name: string, trigger: 'Manual' | 'Webhook', configure: (dialog: ReturnType<Page['getByRole']>) => Promise<void>, roles: string[] = []) {
-  await page.goto('/admin/workflows')
+  await page.goto('/workflows')
   await page.getByRole('button', { name: 'New workflow' }).click()
   const wizard = page.getByRole('dialog', { name: 'New workflow' })
   await wizard.getByLabel('Name').fill(name)
@@ -471,7 +471,7 @@ async function createWorkflow(page: Page, name: string, trigger: 'Manual' | 'Web
   for (const role of roles) await wizard.getByRole('switch', { name: `${role} sees it` }).click()
   await wizard.getByRole('button', { name: 'Next' }).click()
   await wizard.getByRole('button', { name: 'Create' }).click()
-  await page.waitForURL(/\/admin\/workflows\/[0-9a-f-]+$/)
+  await page.waitForURL(/\/workflows\/[0-9a-f-]+$/)
   const id = page.url().split('/').pop()!
   cleanup.workflows.push(id)
   return id
@@ -517,7 +517,7 @@ async function openWorkflowSettings(page: Page, section?: 'General' | 'Trigger' 
 /** Back to the canvas from the settings page. */
 async function backToDesign(page: Page) {
   await page.locator('main').getByRole('button', { name: 'Workflow design' }).click()
-  await page.waitForURL(/\/admin\/workflows\/[0-9a-f-]+$/)
+  await page.waitForURL(/\/workflows\/[0-9a-f-]+$/)
 }
 
 /** Run, from the header's menu: Test (the draft) or Production (the live version). */
@@ -599,7 +599,7 @@ test('a MANUAL workflow: created with invoke roles, trigger edited, a step added
   const detail = page.getByRole('dialog', { name: 'Run', exact: true })
   await expect(detail).toContainText('MANUAL · PRODUCTION')
   // A run reached through Open in Runs, its Close doesn't close it - the list opened anew.
-  await page.goto(`/admin/workflows/${id}/settings?section=runs`)
+  await page.goto(`/workflows/${id}/settings?section=runs`)
   await expect(detail).toBeHidden()
 
   // --- Runs: both, the total in meta ---
@@ -627,7 +627,7 @@ test('a MANUAL workflow: created with invoke roles, trigger edited, a step added
   const saveAs = page.getByRole('dialog', { name: 'Save as a new copy' })
   await saveAs.getByLabel('Name').fill(`${MANUAL} Copy`)
   await saveAs.getByRole('button', { name: 'Create copy' }).click()
-  await page.waitForURL(url => /\/admin\/workflows\/[0-9a-f-]+$/.test(url.pathname) && !url.pathname.endsWith(id))
+  await page.waitForURL(url => /\/workflows\/[0-9a-f-]+$/.test(url.pathname) && !url.pathname.endsWith(id))
   const copyId = page.url().split('/').pop()!
   cleanup.workflows.push(copyId)
   const copy = await workflowDraft(page, token, copyId)
@@ -635,7 +635,7 @@ test('a MANUAL workflow: created with invoke roles, trigger edited, a step added
   expect(copy.workflow.enabled).toBe(false)
 
   // --- The original deleted from its menu ---
-  await page.goto(`/admin/workflows/${id}`)
+  await page.goto(`/workflows/${id}`)
   await main.getByRole('button', { name: 'Actions', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Delete…' }).click()
   const confirm = page.getByRole('dialog', { name: 'Delete this workflow?' })
@@ -703,7 +703,7 @@ test('a MANUAL Start\'s input form and confirmation: Run asks for the fields, th
   await apiRequest(page, token, 'POST', `/admin/api/workflows/${id}/publish`, { data: { revision: (await workflowDraft(page, token, id)).workflow.revision } })
   await apiRequest(page, token, 'PATCH', `/admin/api/workflows/${id}`, { data: { revision: (await workflowDraft(page, token, id)).workflow.revision, enabled: true } })
 
-  await page.goto(`/admin/workflows/${id}`)
+  await page.goto(`/workflows/${id}`)
   await openRun(page, 'Production')
   const run = page.getByRole('dialog', { name: 'Run', exact: true })
   const runButton = run.getByRole('button', { name: 'Run', exact: true })
@@ -722,7 +722,7 @@ test('workflow settings: name, description and slug edited, history turned off, 
   const token = await login(page)
   const failures = watchApiFailures(page)
   const id = await apiWorkflow(page, token, `UI Settings ${RUN}`)
-  await page.goto(`/admin/workflows/${id}`)
+  await page.goto(`/workflows/${id}`)
 
   // General, saved at once: the saved slug is never re-proposed from a new name.
   const settings = await openWorkflowSettings(page)
@@ -757,7 +757,7 @@ test('a CRON schedule: the saved expression reopens as Custom, a weekly preset w
   const token = await login(page)
   const failures = watchApiFailures(page)
   const id = await apiWorkflow(page, token, `UI Cron ${RUN}`, { trigger: 'CRON', cron_expression: '0 9 * JAN-JUN MON', timezone: 'UTC', execute_as: cleanup.users[0] })
-  await page.goto(`/admin/workflows/${id}`)
+  await page.goto(`/workflows/${id}`)
 
   // Settings › Trigger, saved to the draft as edited.
   const settings = await openWorkflowSettings(page, 'Trigger')
@@ -797,7 +797,7 @@ test('the step limit: at 100 operations every Add step entry is disabled, saying
   })
   expect(saved.status(), await saved.text()).toBe(200)
 
-  await page.goto(`/admin/workflows/${id}`)
+  await page.goto(`/workflows/${id}`)
   const last = page.locator('main').getByRole('button', { name: 'Step actions' }).last()
   await last.scrollIntoViewIfNeeded()
   await last.click()

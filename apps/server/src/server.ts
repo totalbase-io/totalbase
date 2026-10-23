@@ -2,7 +2,7 @@ import { randomUUID, randomBytes } from "node:crypto";
 import Fastify from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import type { DocumentedRoute, RouteInfo } from "@totalbase/openapi";
-import { registerAdminUi } from "./admin-ui.js";
+import { registerAdminUi, routeNotFound } from "./admin-ui.js";
 import { registerMcpEndpoint } from "./mcp-endpoint.js";
 import type { AppContext } from "./context.js";
 import { catalogChanged } from "./invalidations.js";
@@ -70,7 +70,7 @@ import { registerOpenApiRoutes } from "./routes/openapi.js";
 /** A request's URL as the log keeps it: no query string, an embed's key masked (its path is the secret). */
 export function redactedUrl(url: string): string {
   const path = url.split("?")[0] ?? "";
-  return path.replace(/^(\/admin\/embed\/)[^/]+/, "$1[redacted]");
+  return path.replace(/^(\/embed\/)(?!api\/)[^/]+/, "$1[redacted]");
 }
 
 export async function buildServer(
@@ -93,7 +93,7 @@ export async function buildServer(
       level: logLevel,
       // What a request line logs: never its query string - a password-reset,
       // invitation or verification token travels in `?token=`, OAuth's callback carries `code` and `state`
-      // - and never a public embed's key, which is its path (`/admin/embed/tbe_…`).
+      // - and never a public embed's key, which is its path (`/embed/tbe_…`).
       serializers: {
         req: (request) => ({
           method: request.method,
@@ -137,9 +137,6 @@ export async function buildServer(
     if (doc && routeOptions.url.startsWith("/api/")) {
       for (const method of methods) if (method !== "HEAD") dataRoutes.push({ method, url: routeOptions.url, doc });
     }
-    // "/admin/" also covers the admin UI's static routes (admin-ui.ts) -
-    // scoped to "/admin/api/" so those don't pollute this Admin API's own
-    // OpenAPI document.
     if (!routeOptions.url.startsWith("/admin/api/")) return;
     // admin-ui.ts's "/admin/api/*" catch-all only answers 404 for an
     // unknown path - not an operation to document.
@@ -167,6 +164,13 @@ export async function buildServer(
     if (reply.statusCode < 200 || reply.statusCode >= 300) return;
     if (!request.url.startsWith("/admin/api/") || request.url.startsWith("/admin/api/auth/")) return;
     await catalogChanged(context).catch((error: unknown) => request.log.warn({ error }, "catalog invalidation signal failed"));
+  });
+
+  // Any path nothing answers - another method on an SPA path, any unknown
+  // path of an API-only instance: the error envelope, never Fastify's own
+  // body (Foundations.md §4.1).
+  app.setNotFoundHandler(async (request) => {
+    throw routeNotFound(request);
   });
 
   app.setErrorHandler((error, request, reply) => {

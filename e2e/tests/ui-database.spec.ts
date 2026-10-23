@@ -96,7 +96,7 @@ async function choose(page: Page, select: Locator, option: string) {
 
 /** The Database group's own panel (DatabaseTree.vue), switched to the fixture schema. */
 async function openTree(page: Page) {
-  await page.goto('/admin/resources')
+  await page.goto('/resources')
   // The panel holding the Schema picker - the innermost such box.
   const tree = page.locator('[data-slot="root"]').filter({ has: page.getByRole('combobox', { name: 'Schema' }) }).last()
   await choose(page, tree.getByRole('combobox', { name: 'Schema' }), SCHEMA)
@@ -130,7 +130,7 @@ test('New schema creates a PostgreSQL schema', async ({ page }) => {
   const token = await login(page)
   const failures = watchApiFailures(page)
 
-  await page.goto('/admin/resources')
+  await page.goto('/resources')
   // In the New table button's menu, with New view and New function.
   await page.getByRole('button', { name: 'More to create' }).click()
   await page.getByRole('menuitem', { name: 'New schema' }).click()
@@ -162,7 +162,7 @@ test('New table, then a NOT NULL column with a default and a relation column', a
   await expect(dialog).toBeHidden()
 
   // Lands on the new table's own page.
-  await page.waitForURL(/\/admin\/resources\/[0-9a-f-]{36}$/)
+  await page.waitForURL(/\/resources\/[0-9a-f-]{36}$/)
   const resource = await mustResource(page, token, CREATED_TABLE)
   expect(page.url()).toContain(resource.id)
   let detail = await tableDetail(page, token, resource.id)
@@ -210,7 +210,7 @@ test('New table, then a NOT NULL column with a default and a relation column', a
 async function openEditDrawer(page: Page, table: string) {
   const tree = await openTree(page)
   await tree.getByRole('button', { name: /^Tables/ }).click()
-  await page.waitForURL(/\/admin\/resources$/)
+  await page.waitForURL(/\/resources$/)
   await page.locator('main').getByRole('button', { name: `Actions for ${SCHEMA}.${table}`, exact: true }).click()
   await page.getByRole('menuitem', { name: 'Edit' }).click()
   // AppDrawer's title is a plain heading, not the dialog's accessible name.
@@ -302,7 +302,7 @@ test('Constraints: add a CHECK with a message, then drop it', async ({ page }) =
   const failures = watchApiFailures(page)
   const checked = await mustResource(page, token, 'checked')
 
-  await page.goto(`/admin/resources/${checked.id}`)
+  await page.goto(`/resources/${checked.id}`)
   const main = page.locator('main')
   await main.getByRole('button', { name: 'Add Constraint' }).click()
   const dialog = page.getByRole('dialog', { name: 'Add check constraint' })
@@ -332,7 +332,7 @@ test('Indexes: create one, then drop it', async ({ page }) => {
   const checked = await mustResource(page, token, 'checked')
   const indexNames = async () => (await apiRequest<{ name: string, columns: string[], isUnique: boolean }[]>(page, token, 'GET', `/admin/api/catalog/table/${checked.id}/indexes`))
 
-  await page.goto(`/admin/resources/${checked.id}`)
+  await page.goto(`/resources/${checked.id}`)
   const main = page.locator('main')
   await main.getByRole('button', { name: 'Add Index' }).click()
   const dialog = page.getByRole('dialog', { name: 'Add index' })
@@ -358,7 +358,7 @@ test('Table settings: description, exposed methods and a column\'s presentation'
   const failures = watchApiFailures(page)
   const checked = await mustResource(page, token, 'checked')
 
-  await page.goto(`/admin/resources/${checked.id}`)
+  await page.goto(`/resources/${checked.id}`)
   const main = page.locator('main')
   await main.getByRole('textbox', { name: 'Description' }).fill('Prices to check')
   await main.getByRole('textbox', { name: 'Description' }).blur()
@@ -393,7 +393,7 @@ test('Auditing: audit reads on and off with its warning, and a column excluded f
   const logs = async (action: string) => apiRequest<{ id: string, action: string, changes: unknown, payload: Record<string, unknown> | null, metadata: Record<string, unknown> | null }[]>(page, token, 'GET', `/admin/api/audit/logs?resource=${audited.id}&action=${action}&limit=1`)
   const newestLog = async (action: string) => (await logs(action))[0]
 
-  await page.goto(`/admin/resources/${audited.id}`)
+  await page.goto(`/resources/${audited.id}`)
   const main = page.locator('main')
   const auditReads = main.getByRole('switch', { name: 'Audit reads' })
   await expect(auditReads).not.toBeChecked()
@@ -447,7 +447,7 @@ test('View: description and endpoints, then drop it', async ({ page }) => {
 
   const tree = await openTree(page)
   await tree.getByRole('button', { name: 'items_view' }).click()
-  await page.waitForURL(new RegExp(`/admin/resources/${view.id}$`))
+  await page.waitForURL(new RegExp(`/resources/${view.id}$`))
   const main = page.locator('main')
   await main.getByRole('textbox', { name: 'Description' }).fill('A fixture view')
   await main.getByRole('textbox', { name: 'Description' }).blur()
@@ -473,7 +473,7 @@ test('Function: class and description, then drop it', async ({ page }) => {
   const failures = watchApiFailures(page)
   const fn = await mustResource(page, token, 'double_it')
 
-  await page.goto(`/admin/resources/${fn.id}`)
+  await page.goto(`/resources/${fn.id}`)
   const main = page.locator('main')
   await choose(page, main.getByLabel('Function class'), 'QUERY')
   await expect.poll(async () => (await resourceById(page, token, fn.id))?.function_class).toBe('QUERY')
@@ -497,7 +497,7 @@ test('Drop column, then drop the renamed table', async ({ page }) => {
   const failures = watchApiFailures(page)
   const table = await mustResource(page, token, RENAMED_TABLE)
 
-  await page.goto(`/admin/resources/${table.id}`)
+  await page.goto(`/resources/${table.id}`)
   const main = page.locator('main')
   await main.getByRole('button', { name: 'Delete column remark' }).click()
   await page.getByRole('dialog').filter({ hasText: 'Delete this column?' }).getByRole('button', { name: 'Delete' }).click()
@@ -550,7 +550,7 @@ test('SQL Console: SELECT, a transactional statement, EXPLAIN, history and purge
   const total = ((await history.json()) as { meta?: { total?: number } }).meta?.total ?? 0
   for (let i = total; i <= 100; i++) await sql(page, token, `SELECT ${i} AS ui_db_history_seed`)
 
-  await page.goto('/admin/sql-console')
+  await page.goto('/sql-console')
   const main = page.locator('main')
   await expect(main.locator('.monaco-editor .view-lines')).toBeVisible({ timeout: 30_000 })
 
@@ -601,7 +601,7 @@ test('Maintenance: ANALYZE a table, then start a batch and stop it', async ({ pa
   const maintTable = async (name: string) => (await apiRequest<{ tables: MaintenanceTable[] }>(page, token, 'GET', '/admin/api/maintenance/tables')).tables.find(t => t.schema === SCHEMA && t.name === name)
   const maint = (await maintTable('maint'))!
 
-  await page.goto('/admin/settings/maintenance')
+  await page.goto('/settings/maintenance')
   const main = page.locator('main')
   await main.getByPlaceholder('Search tables...').fill(SCHEMA)
   await main.getByRole('cell', { name: `${SCHEMA}.maint`, exact: true }).click()
@@ -647,7 +647,7 @@ test('Data browser: a UTable that pages, sorts, edits a cell, adds and deletes r
   await apiRequest(page, token, 'PATCH', `/admin/api/resources/${browsed.id}`, { data: { exposedMethods: ['GET', 'POST', 'PATCH', 'DELETE'] } })
   const label = async (id: number) => (await sql(page, token, `SELECT label FROM ${SCHEMA}.browsed WHERE id = ${id}`)).rows[0]?.label
 
-  await page.goto(`/admin/resources/${browsed.id}/data`)
+  await page.goto(`/resources/${browsed.id}/data`)
   const main = page.locator('main')
   const table = main.getByRole('table')
   await expect(table.getByRole('cell', { name: 'row 1', exact: true })).toBeVisible({ timeout: 30_000 })
@@ -704,14 +704,14 @@ test('Require an idempotency key: the switch saves, and the admin\'s own Add row
   await apiRequest(page, token, 'PATCH', `/admin/api/resources/${keyed.id}`, { data: { exposedMethods: ['GET', 'POST'] } })
   const required = async () => (await resourceById(page, token, keyed.id))?.require_idempotency_key
 
-  await page.goto(`/admin/resources/${keyed.id}`)
+  await page.goto(`/resources/${keyed.id}`)
   const main = page.locator('main')
   const toggle = main.getByRole('switch', { name: 'Require an idempotency key' })
   await toggle.click()
   await expect(toggle).toBeChecked()
   await expect.poll(required).toBe(true)
 
-  await page.goto(`/admin/resources/${keyed.id}/data`)
+  await page.goto(`/resources/${keyed.id}/data`)
   const table = main.getByRole('table')
   await main.getByRole('button', { name: 'Add row' }).first().click()
   await table.getByRole('textbox', { name: 'id' }).fill('7')
@@ -721,7 +721,7 @@ test('Require an idempotency key: the switch saves, and the admin\'s own Add row
   expect((await keyedPost).request().headers()['idempotency-key']).toBeTruthy()
   await expect.poll(async () => (await sql(page, token, `SELECT label FROM ${SCHEMA}.keyed WHERE id = 7`)).rows[0]?.label).toBe('keyed row')
 
-  await page.goto(`/admin/resources/${keyed.id}`)
+  await page.goto(`/resources/${keyed.id}`)
   await toggle.click()
   await expect(toggle).not.toBeChecked()
   await expect.poll(required).toBe(false)
@@ -731,7 +731,7 @@ test('Require an idempotency key: the switch saves, and the admin\'s own Add row
 test('SQL Console: a failed statement shows PostgreSQL\'s diagnostics and marks the editor', async ({ page }) => {
   await login(page)
   const failures = watchApiFailures(page, [/^POST \/admin\/api\/sql\/execute$/])
-  await page.goto('/admin/sql-console')
+  await page.goto('/sql-console')
   const main = page.locator('main')
   await expect(main.locator('.monaco-editor .view-lines')).toBeVisible({ timeout: 30_000 })
 
@@ -776,7 +776,7 @@ test('Add Column: a UID column PostgreSQL fills from another column, and the tab
   const token = await login(page)
   const failures = watchApiFailures(page)
   const table = await mustResource(page, token, 'checked')
-  await page.goto(`/admin/resources/${table.id}`)
+  await page.goto(`/resources/${table.id}`)
   const main = page.locator('main')
 
   // UID: generated from price - its slug, whoever writes the row.
@@ -815,7 +815,7 @@ test('Add Column: the type picker filters by name or description, says when noth
   const failures = watchApiFailures(page)
   const table = await mustResource(page, token, 'checked')
 
-  await page.goto(`/admin/resources/${table.id}`)
+  await page.goto(`/resources/${table.id}`)
   await page.locator('main').getByRole('button', { name: 'Add Column' }).click()
   const wizard = page.getByRole('dialog', { name: 'Add column' })
   const search = wizard.getByRole('searchbox', { name: 'Search' })
@@ -859,7 +859,7 @@ test('A table the PostgreSQL role doesn\'t own: structure editing is disabled, w
     await route.fulfill({ response, json: { ...body, data: { ...body.data, owner: 'someone_else', canAlter: false } } })
   })
 
-  await page.goto(`/admin/resources/${table.id}`)
+  await page.goto(`/resources/${table.id}`)
   const main = page.locator('main')
   await expect(main.getByTestId('not-owned-note')).toContainText('TotalBase\'s PostgreSQL role doesn\'t own this table', { timeout: 30_000 })
   await expect(main.getByTestId('not-owned-note')).toContainText('someone_else')
@@ -887,7 +887,7 @@ test('Functions list: overloads grouped by name, each signature with its own act
 
   const tree = await openTree(page)
   await tree.getByRole('button', { name: /^Functions/ }).click()
-  await page.waitForURL(/\/admin\/resources$/)
+  await page.waitForURL(/\/resources$/)
   const main = page.locator('main')
   // A single function: an ordinary row, its signature beside the name.
   await expect(main.getByText('(a integer)', { exact: true })).toBeVisible()
@@ -906,7 +906,7 @@ test('Functions list: overloads grouped by name, each signature with its own act
 
   // Each overload keeps its own page (its own resource id).
   await group.getByRole('link', { name: 'overloaded(x text, y integer)' }).click()
-  await page.waitForURL(/\/admin\/resources\/[0-9a-f-]{36}$/)
+  await page.waitForURL(/\/resources\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop()
   expect(overloads.map(r => r.id)).toContain(id)
   expect(failures).toEqual([])
@@ -921,7 +921,7 @@ test('A function the PostgreSQL role doesn\'t own: Delete is disabled, with the 
     const body = await response.json() as { data: Record<string, unknown> }
     await route.fulfill({ response, json: { ...body, data: { ...body.data, owner: 'someone_else', canAlter: false } } })
   })
-  await page.goto(`/admin/resources/${fn.id}`)
+  await page.goto(`/resources/${fn.id}`)
   const main = page.locator('main')
   await expect(main.getByTestId('not-owned-note')).toContainText('doesn\'t own this function', { timeout: 30_000 })
   await expect(main.getByRole('button', { name: 'Delete function' })).toBeDisabled()

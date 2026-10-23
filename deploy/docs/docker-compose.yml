@@ -44,7 +44,7 @@ services:
     volumes:
       - files:/var/lib/totalbase/files
     ports:
-      - "3080:3050"
+      - "3080:3030"
 
   # Catches the demo's email (workflows, invitations) - its inbox at http://localhost:8026.
   mailpit:

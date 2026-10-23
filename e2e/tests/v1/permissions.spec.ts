@@ -73,11 +73,11 @@ test.afterAll(async ({ browser }) => {
 async function asSeller(browser: Browser) {
   const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(/\/admin\/app/)
+  await page.waitForURL(/\/app/)
   const token = await page.evaluate(() => localStorage.getItem('totalbase_admin_token'))
   return { context, page, token: token! }
 }
@@ -85,10 +85,10 @@ async function asSeller(browser: Browser) {
 test('the menu lists the DataView their role opens, and no other; the other one\'s URL shows nothing', async ({ browser, token: _ }) => {
   const { context, page } = await asSeller(browser)
   try {
-    await page.goto('/admin/app')
+    await page.goto('/app')
     await expect(page.getByRole('link', { name: OPEN })).toBeVisible()
     await expect(page.getByRole('link', { name: CLOSED })).toHaveCount(0)
-    await page.goto(`/admin/app/dataviews/${closed.slug}`)
+    await page.goto(`/app/dataviews/${closed.slug}`)
     await expect(page.locator('main tbody tr').filter({ hasText: 'Acme SA' })).toHaveCount(0)
     await expect(page.locator('main')).toContainText(/not available|not found|access|permission/i)
   } finally {
@@ -99,7 +99,7 @@ test('the menu lists the DataView their role opens, and no other; the other one\
 test('in it: only active customers, no credit limit, edit but no New nor Delete', async ({ browser, token: _ }) => {
   const { context, page } = await asSeller(browser)
   try {
-    await page.goto(`/admin/app/dataviews/${open.slug}`)
+    await page.goto(`/app/dataviews/${open.slug}`)
     const main = page.locator('main')
     await expect(main.locator('tbody tr').filter({ hasText: 'Acme SA' })).toBeVisible()
     // The row filter: Gamma Coop is inactive.

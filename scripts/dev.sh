@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Runs the backend and the admin UI together behind ONE port
-# (TOTALBASE_PORT, default 3050 per .env) - the same "one service, one
+# (TOTALBASE_PORT, default 3030 per .env) - the same "one service, one
 # origin" shape production uses (apps/server/src/admin-ui.ts serves
-# /admin/* itself there), instead of two separate dev ports that keep
+# the SPA at the root itself there), instead of two separate dev ports that keep
 # drifting (3000 taken -> Nuxt falls back to 3001, etc.).
 #
 # The admin UI still hot-reloads: a real `nuxt dev` process runs on its
-# own internal port, and apps/server reverse-proxies /admin/* (and
-# /_fonts/*) to it via TOTALBASE_ADMIN_UI_DEV_PROXY_TARGET - see
+# own internal port, and apps/server reverse-proxies every path outside
+# its own to it via TOTALBASE_ADMIN_UI_DEV_PROXY_TARGET - see
 # admin-ui.ts's own doc comment for the mechanism. There is only ever
-# one URL to open: http://localhost:$TOTALBASE_PORT/admin/.
+# one URL to open: http://localhost:$TOTALBASE_PORT/.
 #
 # See AGENTS.md section 4B for the full explanation.
 set -euo pipefail
@@ -81,7 +81,7 @@ for _ in $(seq 1 60); do
 done
 
 echo "==> Starting backend (tsx watch) on port $PORT, proxying the admin UI..."
-echo "==> Open http://localhost:$PORT/admin/"
+echo "==> Open http://localhost:$PORT/"
 (
   cd apps/server
   TOTALBASE_PORT="$PORT" TOTALBASE_ADMIN_UI_DEV_PROXY_TARGET="http://localhost:$ADMIN_DEV_PORT" pnpm run dev

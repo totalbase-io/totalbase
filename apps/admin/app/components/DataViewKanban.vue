@@ -193,12 +193,12 @@ const richHtml = useRichHtml(() => props.lanes.flatMap(lane => lane.cards))
             v-if="card.imageSrc !== null"
             class="flex aspect-video w-full items-center justify-center overflow-hidden bg-elevated"
           >
-            <img
+            <FileImage
               v-if="card.imageSrc"
               :src="card.imageSrc"
               alt=""
               class="size-full object-cover"
-            >
+            />
             <UIcon
               v-else
               name="i-lucide-image"

@@ -41,7 +41,7 @@ test.afterAll(async ({ browser }) => {
 
 test('a Gantt bar\'s end dragged three days later reschedules its row', async ({ page, token }) => {
   await page.clock.setFixedTime(new Date('2026-10-08T12:00:00'))
-  await page.goto(`/admin/app/dataviews/${gantt.slug}`)
+  await page.goto(`/app/dataviews/${gantt.slug}`)
   // The bar is named by its title (and its progress) - a short bar's title beside it is its second, hidden handle.
   const bar = page.getByRole('button', { name: /^Diseñar pantallas/ })
   await bar.scrollIntoViewIfNeeded()
@@ -66,7 +66,7 @@ test('a Gantt bar\'s end dragged three days later reschedules its row', async ({
 })
 
 test('a Kanban card dragged to another lane changes its category', async ({ page, token }) => {
-  await page.goto(`/admin/app/dataviews/${kanban.slug}`)
+  await page.goto(`/app/dataviews/${kanban.slug}`)
   const card = page.locator('main').getByText('Delta y Asociados', { exact: true })
   await expect(card).toBeVisible()
   const target = page.locator('main').getByText('Gobierno', { exact: true }).first()

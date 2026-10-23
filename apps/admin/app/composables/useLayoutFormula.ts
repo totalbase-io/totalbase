@@ -2,6 +2,7 @@ import { parseISO } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import type { DataViewField } from '~/types/dataview'
 import { FILE_VALUE_WIDGETS } from '@totalbase/tb-catalog'
+import { deferredFileSrc } from '~/composables/useFileObjectUrl'
 import { computedValueResolver } from '~/utils/build-dataview-columns'
 import { applyRelationFieldValues, collectRelationFieldRefs } from '~/utils/relation-field-refs'
 import { evaluateFormula, type FormulaRichSegment } from '~/utils/formula-engine'
@@ -11,6 +12,8 @@ import { foreignKeyDisplayFields, foreignKeyTexts } from '~/utils/display-field'
 const BARE_FORMULA_TOKEN = /^\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}$/
 /** A card's or a kanban card's image: a scaled copy, not the original. */
 const IMAGE_SLOT_WIDTH = 640
+/** What an image formula may give: a web address, a path on this origin, or an inline image. */
+const IMAGE_URL = /^(https?:\/\/|\/|data:image\/|blob:)/i
 
 /**
  * Evaluates a DataView layout's formulas (card title, pin color, bar
@@ -24,7 +27,6 @@ const IMAGE_SLOT_WIDTH = 640
  */
 export function useLayoutFormula(fields: () => DataViewField[], formulas: () => (string | null | undefined)[]) {
   const { defaults } = useDisplayFormatDefaults()
-  const { fileObjectUrl } = useFileObjectUrl()
   const cellValue = computed(() => computedValueResolver(fields(), defaults.value))
   const relationRefs = computed(() => collectRelationFieldRefs([], formulas()))
   /** Temporal kinds only, so a date column is boxed as a real `Date` for formula arithmetic - see `temporalColumnKinds`. */
@@ -67,13 +69,15 @@ export function useLayoutFormula(fields: () => DataViewField[], formulas: () => 
   }
 
   /**
-   * An image slot's URL. A bare `{{column}}` on a file column (a FK to
+   * An image slot's src. A bare `{{column}}` on a file column (a FK to
    * `files` - UFileUpload or TCamera) holds a file id: a PRIVATE
    * file answers only a request carrying the viewer's token, which an
-   * <img src> can't send, so it is fetched with it and shown as a blob: URL
-   * (useFileObjectUrl - undefined while it loads, then reactive), at `width` (an avatar asks for its own size,
-   * not a card's). Any real
-   * formula can't be a file id, so it's treated as an already-resolved URL.
+   * <img src> can't send, so it is a deferred reference (deferredFileSrc) that
+   * FileImage.vue, or resolveFileSrc where the image renders, fetches with it
+   * once on screen - at `width` (an avatar asks for its own size, not a card's).
+   * Any other formula must give a URL (http(s), a path, data:image, blob:): anything
+   * else - a bare id from a view's column, which carries no foreign key - is
+   * no image, never a src the browser would resolve against the page.
    */
   function imageSrc(source: string | null | undefined, row: Record<string, unknown>, width = IMAGE_SLOT_WIDTH): string | undefined {
     if (!source) return undefined
@@ -81,9 +85,10 @@ export function useLayoutFormula(fields: () => DataViewField[], formulas: () => 
     const bareField = bareColumn ? fields().find(f => f.kind === 'COLUMN' && f.columnName === bareColumn) : undefined
     if (bareField?.widget && FILE_VALUE_WIDGETS.includes(bareField.widget)) {
       const raw = cellValue.value(row, bareColumn!)
-      return raw ? fileObjectUrl(String(raw), width) : undefined
+      return raw ? deferredFileSrc(String(raw), width) : undefined
     }
-    return evaluate(source, row) || undefined
+    const url = evaluate(source, row).trim()
+    return IMAGE_URL.test(url) ? url : undefined
   }
 
   /**

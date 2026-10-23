@@ -59,7 +59,7 @@ test.afterAll(async ({ browser }) => {
 const card = (page: Page, title: string) => page.locator('main div.rounded-lg.border').filter({ has: page.getByText(title, { exact: true }) }).last()
 
 test('a TABLE widget: its _ columns never shown, a row tinted, a column as badges, totals, sorting, a column\'s title and format', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dashboards/${report.slug}`)
+  await page.goto(`/app/dashboards/${report.slug}`)
   const table = card(page, 'Pedidos')
   await expect(table.locator('tbody tr')).toHaveCount(3)
   const headers = await table.locator('thead').getByRole('columnheader').allTextContents()
@@ -90,7 +90,7 @@ test.describe('on a tablet and on a phone', () => {
     const page = await context.newPage()
     const { login } = await import('../helpers.js')
     await login(page)
-    await page.goto(`/admin/app/dashboards/${report.slug}`)
+    await page.goto(`/app/dashboards/${report.slug}`)
     await expect(card(page, 'Cuatro')).toContainText('4')
     const grid = (await page.locator('main .grid-stack').first().boundingBox())!.width
     expect(grid).toBeGreaterThan(640)
@@ -105,7 +105,7 @@ test.describe('on a tablet and on a phone', () => {
     const page = await context.newPage()
     const { login } = await import('../helpers.js')
     await login(page)
-    await page.goto(`/admin/app/dashboards/${report.slug}`)
+    await page.goto(`/app/dashboards/${report.slug}`)
     await expect(card(page, 'Cuatro')).toContainText('4')
     // Dashboards.md §7.2: a phone has 2 columns - Uno and Dos share a row, Pedidos takes it whole.
     await expect.poll(async () => Math.abs(await topOf(page, 'Uno') - await topOf(page, 'Dos'))).toBeLessThan(4)
@@ -120,7 +120,7 @@ test('versions: a change published as v2, then v1 restored and published again',
   const uno = kpis.find(w => w.label === 'Uno')!
   await api(page, token, 'PATCH', `/admin/api/dashboards/${report.id}/widgets/${uno.id}`, { data: { query: 'SELECT 100 AS n' } })
   await publishDashboard(page, token, report.id)
-  await page.goto(`/admin/app/dashboards/${report.slug}`)
+  await page.goto(`/app/dashboards/${report.slug}`)
   await expect(card(page, 'Uno')).toContainText('100')
 
   const versions = await api<{ version: number }[]>(page, token, 'GET', `/admin/api/dashboards/${report.id}/versions`)
@@ -135,7 +135,7 @@ test('versions: a change published as v2, then v1 restored and published again',
 })
 
 test('a dashboard inside a CUSTOM page: its variable set by the page, hidden from its bar', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/v1-dash-pagina`)
+  await page.goto(`/app/dataviews/v1-dash-pagina`)
   const table = card(page, 'Filtrados')
   await expect(table.locator('tbody tr')).toHaveCount(1)
   await expect(table).toContainText('Luis')

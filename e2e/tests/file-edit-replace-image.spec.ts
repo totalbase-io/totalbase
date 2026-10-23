@@ -13,7 +13,7 @@ test('Replace image swaps the file content for a completely different picture', 
   cleanup = () => deleteFile(page, token, fileId)
   const solidPurple = await drawPng(page, 100, 100, [{ color: '#a020f0', x: 0, y: 0, w: 100, h: 100 }])
 
-  await page.goto('/admin/files')
+  await page.goto('/files')
   await page.getByText('replace-target.png').last().click()
   await page.getByRole('button', { name: 'Edit' }).last().click()
   await expect(page.getByRole('heading', { name: 'Edit replace-target.png' })).toBeVisible()

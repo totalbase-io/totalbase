@@ -2,10 +2,10 @@
 /**
  * A dashboard embed (Dashboards.md §9.5), framed by another
  * site. Its address says which:
- * - `/admin/embed/tbe_…` - a public link: the path is its credential;
- * - `/admin/embed/<embed id>#<token>` - a signed embed: a portal's backend
+ * - `/embed/tbe_…` - a public link: the path is its credential;
+ * - `/embed/<embed id>#<token>` - a signed embed: a portal's backend
  *   signs the token per visit;
- * - `/admin/embed/preview#<token>` - the drawer's preview, signed by
+ * - `/embed/preview#<token>` - the drawer's preview, signed by
  *   TotalBase for an administrator.
  * A token sits in the URL's fragment - never sent to a server, so never in
  * a log or a Referer. The credential goes to /embed/api in a header. No app

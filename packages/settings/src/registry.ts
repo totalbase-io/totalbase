@@ -55,7 +55,7 @@ export interface SettingsRegistry {
   "auth.mfa_required": string;
   // Where the single-use links in system emails point - `{{public_url}}`
   // and `{{token}}` are filled in by TotalBase. Default: the built-in
-  // pages under /admin/auth/*; point them at your own app instead.
+  // pages under /auth/*; point them at your own app instead.
   "auth.links.invitation": string;
   "auth.links.password_reset": string;
   "auth.links.email_verification": string;
@@ -85,7 +85,7 @@ export interface SettingsRegistry {
   "system.datetime_format": string;
 
   // The operator's branding (Admin_UI.md §4.1.1): served
-  // public, before sign-in, by /api/instance and /admin/theme.css.
+  // public, before sign-in, by /api/instance and /theme.css.
   /** Id of a PUBLIC image in Files shown as the product mark; "" = the built-in mark. */
   /** #rrggbb; "" = the product's blue. */
   "appearance.primary_color": string;
@@ -119,6 +119,7 @@ export interface SettingsRegistry {
 
   "security.rate_limit_enabled": boolean;
   "security.rate_limit_per_minute": number;
+  "security.rate_limit_sign_in_per_minute": number;
   "security.cors_enabled": boolean;
   "security.cors_origins": string[];
   "security.trust_proxy": boolean;
@@ -391,9 +392,9 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.lockout_max_attempts": 5,
   "auth.lockout_duration_minutes": 15,
   "auth.mfa_required": "NONE",
-  "auth.links.invitation": "{{public_url}}/admin/auth/accept-invitation?token={{token}}",
-  "auth.links.password_reset": "{{public_url}}/admin/auth/reset-password?token={{token}}",
-  "auth.links.email_verification": "{{public_url}}/admin/auth/verify-email?token={{token}}",
+  "auth.links.invitation": "{{public_url}}/auth/accept-invitation?token={{token}}",
+  "auth.links.password_reset": "{{public_url}}/auth/reset-password?token={{token}}",
+  "auth.links.email_verification": "{{public_url}}/auth/verify-email?token={{token}}",
   "auth.password_changed_email_enabled": true,
   "auth.email_changed_email_enabled": true,
   "auth.welcome_email_enabled": false,
@@ -435,8 +436,9 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "audit.store_sql": true,
   "audit.store_sql_params": false,
 
-  "security.rate_limit_enabled": true,
-  "security.rate_limit_per_minute": 300,
+  "security.rate_limit_enabled": false,
+  "security.rate_limit_per_minute": 3000,
+  "security.rate_limit_sign_in_per_minute": 5,
   "security.cors_enabled": true,
   "security.cors_origins": [],
   "security.trust_proxy": false,
@@ -641,6 +643,7 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api_keys.purge_after_days": { min: 0, max: 3650 },
 
   "security.rate_limit_per_minute": { min: 1 },
+  "security.rate_limit_sign_in_per_minute": { min: 1, max: 1000 },
   "auth.access_review_interval_days": { min: 0, max: 3650 },
 
   "files.max_file_size_bytes": { min: 1 },

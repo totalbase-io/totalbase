@@ -109,8 +109,8 @@ describe("Dashboard embeds", () => {
     // address even while the setting is empty.
     const publicUrl = await context.auth.mailer.publicUrl();
     expect(publicUrl).toMatch(/^https?:\/\//);
-    expect(created.json().data.url).toBe(`${publicUrl}/admin/embed/${link}`);
-    expect(signed.json().data.url).toBe(`${publicUrl}/admin/embed/${signedId}`);
+    expect(created.json().data.url).toBe(`${publicUrl}/embed/${link}`);
+    expect(signed.json().data.url).toBe(`${publicUrl}/embed/${signedId}`);
 
     const { rows: audit } = await database.query(`SELECT metadata->>'event' AS event FROM totalbase.logs WHERE metadata->>'embed' = $1`, [linkId]);
     expect(audit).toEqual([{ event: "dashboard_embed.create" }]);
@@ -193,10 +193,10 @@ describe("Dashboard embeds", () => {
   });
 
   it("frames an embed only from its sites, within the instance's - TotalBase itself always", async () => {
-    expect(await embedFrameAncestors(context, `/admin/embed/${link}`)).toBe(`'self' ${PARTNER}`);
-    expect(await embedFrameAncestors(context, `/admin/embed/${signedId}`)).toBe(`'self' ${PARTNER} ${OTHER}`);
-    expect(await embedFrameAncestors(context, "/admin/embed/preview")).toBe("'self'");
-    expect(await embedFrameAncestors(context, "/admin/embed/tbe_unknown")).toBe("'self'");
+    expect(await embedFrameAncestors(context, `/embed/${link}`)).toBe(`'self' ${PARTNER}`);
+    expect(await embedFrameAncestors(context, `/embed/${signedId}`)).toBe(`'self' ${PARTNER} ${OTHER}`);
+    expect(await embedFrameAncestors(context, "/embed/preview")).toBe("'self'");
+    expect(await embedFrameAncestors(context, "/embed/tbe_unknown")).toBe("'self'");
   });
 
   it("fails closed when a variable it locks leaves the dashboard - and the editor can tell before publishing", async () => {

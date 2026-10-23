@@ -33,7 +33,7 @@ describe("validateFrameUrl (EXTERNALFRAME)", () => {
   });
 
   it("rejects TotalBase's own origin, whatever the path or case", () => {
-    for (const raw of ["https://totalbase.example.com/admin/", "https://TOTALBASE.example.com:443/app", `${OWN}/api/auth/me`]) {
+    for (const raw of ["https://totalbase.example.com/status", "https://TOTALBASE.example.com:443/app", `${OWN}/api/auth/me`]) {
       expect(() => validateFrameUrl(raw, `${OWN}/`)).toThrow(/own pages/);
     }
   });

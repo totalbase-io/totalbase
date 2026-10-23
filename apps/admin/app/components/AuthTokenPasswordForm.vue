@@ -36,9 +36,7 @@ async function submit() {
   }
   submitting.value = true
   try {
-    // baseURL '/': the public auth API lives at /api/*, outside the admin's
-    // own /admin/ app base that Nuxt's $fetch would otherwise prepend.
-    await $fetch(props.endpoint, { baseURL: '/', method: 'POST', body: { token: token.value, password: password.value } })
+    await $fetch(props.endpoint, { method: 'POST', body: { token: token.value, password: password.value } })
     done.value = true
   } catch (err) {
     const data = (err as { data?: { errors?: Array<{ code?: string, message?: string }> } }).data

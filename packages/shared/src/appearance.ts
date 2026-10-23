@@ -1,7 +1,7 @@
 /**
  * The operator's branding (Admin_UI.md §4.1.1): what the
  * `appearance.*` settings may hold, and the primary color's shades - shared
- * by the server (validation, /admin/theme.css) and the admin (the Appearance
+ * by the server (validation, /theme.css) and the admin (the Appearance
  * page's preview).
  */
 
@@ -103,7 +103,7 @@ export function primaryColorCss(hex: string): string {
 // --- The neutral palette -------------------------------------------------
 //
 // Grays: text, borders, backgrounds. Tailwind's own five, by name - slate, TotalBase's bluish gray (its
-// dark mode included), by default; served as --ui-color-neutral-* by /admin/theme.css, over app.config's.
+// dark mode included), by default; served as --ui-color-neutral-* by /theme.css, over app.config's.
 
 export const NEUTRAL_COLORS = ["slate", "gray", "zinc", "neutral", "stone"] as const;
 export type NeutralColor = (typeof NEUTRAL_COLORS)[number];

@@ -68,7 +68,7 @@ async function pick(page: Page, variable: string, option: string) {
 }
 
 test('each variable filters the widgets that use it, and the defaults apply on open', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dashboards/${dashboard.slug}`)
+  await page.goto(`/app/dashboards/${dashboard.slug}`)
   // No value set: every order, every customer.
   await expect(value(page, 'Por estado')).toHaveText('22')
   await expect(value(page, 'Por texto')).toHaveText('30')
@@ -101,7 +101,7 @@ test('each variable filters the widgets that use it, and the defaults apply on o
 })
 
 test('the values live in the URL - a shared link shows the same', async ({ page, browser, token: _ }) => {
-  await page.goto(`/admin/app/dashboards/${dashboard.slug}`)
+  await page.goto(`/app/dashboards/${dashboard.slug}`)
   await pick(page, 'Estado', 'ANULADO')
   await expect(value(page, 'Por estado')).toHaveText('5')
   await expect(page).toHaveURL(/estado=ANULADO/)
@@ -116,7 +116,7 @@ test('the values live in the URL - a shared link shows the same', async ({ page,
 })
 
 test('changing a variable runs again only the widgets that use it', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dashboards/${dashboard.slug}`)
+  await page.goto(`/app/dashboards/${dashboard.slug}`)
   await expect(value(page, 'Fijo')).toHaveText('7')
   const runs: string[] = []
   page.on('request', (request) => {

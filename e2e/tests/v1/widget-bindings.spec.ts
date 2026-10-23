@@ -177,7 +177,7 @@ test('a CUSTOM page runs every binding of the review', async ({ page, token }) =
   test.setTimeout(120_000)
   const id = await setUp(page, token)
   try {
-    await page.goto(`/admin/app/dataviews/${SLUG}`)
+    await page.goto(`/app/dataviews/${SLUG}`)
     const main = page.locator('main')
     const flag = main.getByRole('switch', { name: 'Flag' })
     await expect(flag).toBeVisible()
@@ -264,7 +264,7 @@ test('the Design form edits the new bindings', async ({ page, token }) => {
   try {
     const fields = await api<{ id: string, widget: string | null }[]>(page, token, 'GET', `/admin/api/dataviews/${id}/fields`)
     const main = page.locator('main')
-    await page.goto(`/admin/dataviews/${id}/design`)
+    await page.goto(`/dataviews/${id}/design`)
     // A click on the canvas selects the innermost widget under it - a click on the widget's own box selects it, not what it holds.
     const open = async (widget: string) => {
       await main.locator(`[data-canvas-item="${fields.find(f => f.widget === widget)!.id}"]`).dispatchEvent('click')
@@ -338,14 +338,14 @@ test('a linked DataView\'s Read only follows a formula over the page and its rec
     // The embedded DataView's own New - the page's header has one too, for its record.
     const embedNew = main.locator('[data-test="TDataView"]').getByRole('button', { name: /^New/ })
     // Order 1: its items can be added - until the page's flag says otherwise.
-    await page.goto(`/admin/app/dataviews/${dataview.slug}?pk=1`)
+    await page.goto(`/app/dataviews/${dataview.slug}?pk=1`)
     await expect(main.locator('table tbody tr')).toHaveCount(2)
     await expect(embedNew).toBeVisible()
     await main.getByRole('switch', { name: 'Flag' }).click()
     await expect(embedNew).toHaveCount(0)
 
     // Order 2: read only from its record alone.
-    await page.goto(`/admin/app/dataviews/${dataview.slug}?pk=2`)
+    await page.goto(`/app/dataviews/${dataview.slug}?pk=2`)
     await expect(main.locator('table tbody tr')).toHaveCount(1)
     await expect(embedNew).toHaveCount(0)
   } finally {

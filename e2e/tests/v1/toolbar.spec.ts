@@ -35,7 +35,7 @@ test.afterAll(async ({ browser }) => {
 })
 
 async function openGrid(page: Page) {
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
   const main = page.locator('main')
   await expect(main.locator('tbody tr').first()).toBeVisible()
   return main

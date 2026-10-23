@@ -72,7 +72,7 @@ test.afterAll(async ({ browser }) => {
 })
 
 test('Settings › Share: a live preview of the design, then a public link', async ({ page, token }) => {
-  await page.goto(`/admin/dashboards/${dashboardId}`)
+  await page.goto(`/dashboards/${dashboardId}`)
   const main = page.locator('main')
   // Share, a section of its settings (D26).
   await main.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -96,7 +96,7 @@ test('Settings › Share: a live preview of the design, then a public link', asy
   expect(link!.link).toMatch(/^tbe_/)
   // Right where it was created: the link to paste, ready to copy.
   await expect(drawer.getByText('Link to paste in the page')).toBeVisible()
-  await expect(drawer.getByText(`/admin/embed/${link!.link}`).first()).toBeVisible()
+  await expect(drawer.getByText(`/embed/${link!.link}`).first()).toBeVisible()
   await expect(drawer.getByRole('button', { name: 'Copy link' }).first()).toBeVisible()
 })
 
@@ -106,7 +106,7 @@ test('another site frames the public link - the locked value bound, the embed\'s
   const visitor = await context.newPage()
   const requests: string[] = []
   visitor.on('request', r => requests.push(r.url()))
-  const frame = await openHost(visitor, `/admin/embed/${link!.link}?var-region=Sur&var-customer=Evil`)
+  const frame = await openHost(visitor, `/embed/${link!.link}?var-region=Sur&var-customer=Evil`)
   await expect(frame.getByText('Cliente Acme / Sur')).toBeVisible({ timeout: 15_000 })
   await expect(frame.getByRole('heading', { name: NAME })).toBeVisible()
   await expect.poll(async () => Number(await visitor.locator('#height').textContent())).toBeGreaterThan(100)
@@ -119,25 +119,25 @@ test('a signed embed for a portal: the token names the embed and gives the visit
   const context = await browser.newContext()
   const visitor = await context.newPage()
   const jwt = sign({ resource: { embed: signed.id }, params: { customer: 'Globex' }, exp: Math.floor(Date.now() / 1000) + 600 })
-  const frame = await openHost(visitor, `/admin/embed/${signed.id}#${jwt}`)
+  const frame = await openHost(visitor, `/embed/${signed.id}#${jwt}`)
   await expect(frame.getByText('Cliente Globex / todas')).toBeVisible({ timeout: 15_000 })
   // An expired token shows nothing.
   const stale = sign({ resource: { embed: signed.id }, params: { customer: 'Globex' }, exp: Math.floor(Date.now() / 1000) - 10 })
-  const staleFrame = await openHost(visitor, `/admin/embed/${signed.id}#${stale}`)
+  const staleFrame = await openHost(visitor, `/embed/${signed.id}#${stale}`)
   await expect(staleFrame.getByText('Dashboard not available')).toBeVisible({ timeout: 15_000 })
   await context.close()
 })
 
 test('only the embed\'s sites may frame it; opened on its own, a public link says so', async ({ browser, page, token }) => {
   const [link] = (await embeds(page, token)).filter(e => e.name === 'Sitio web')
-  const res = await page.request.get(`${BASE_URL}/admin/embed/${link!.link}`)
+  const res = await page.request.get(`${BASE_URL}/embed/${link!.link}`)
   expect(res.headers()['content-security-policy']).toBe(`frame-ancestors 'self' ${HOST}`)
-  const other = await page.request.get(`${BASE_URL}/admin/`)
+  const other = await page.request.get(`${BASE_URL}/`)
   expect(other.headers()['content-security-policy']).toBe('frame-ancestors \'self\'')
 
   const context = await browser.newContext()
   const visitor = await context.newPage()
-  await visitor.goto(`/admin/embed/${link!.link}`)
+  await visitor.goto(`/embed/${link!.link}`)
   await expect(visitor.getByText('Only available embedded')).toBeVisible()
   await context.close()
 })
@@ -146,7 +146,7 @@ test('a publish that would stop an embed says so first', async ({ page, token })
   await api(page, token, 'PATCH', `/admin/api/dashboards/${dashboardId}`, { data: { variables: [
     { name: 'region', label: 'Region', type: 'SELECT', options: { source: 'STATIC', values: ['Norte', 'Sur'] } }
   ] } })
-  await page.goto(`/admin/dashboards/${dashboardId}`)
+  await page.goto(`/dashboards/${dashboardId}`)
   await page.locator('main').getByRole('button', { name: 'Publish', exact: true }).first().click()
   await expect(page.getByText(/Stops 2 embeds "Sitio web", "Portal": they lock customer/)).toBeVisible()
 })

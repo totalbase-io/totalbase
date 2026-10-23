@@ -36,6 +36,5 @@ export function isAppPath(path: string): boolean {
 /** The header, while previewing and on an App page - never on an admin screen, which stays the administrator's. */
 export function viewAsHeader(): Record<string, string> {
   if (!viewAsState.value || !import.meta.client) return {}
-  const path = window.location.pathname.replace(/^\/admin(?=\/|$)/, '')
-  return isAppPath(path) ? { 'X-TotalBase-View-As': `${viewAsState.value.kind}:${viewAsState.value.id}` } : {}
+  return isAppPath(window.location.pathname) ? { 'X-TotalBase-View-As': `${viewAsState.value.kind}:${viewAsState.value.id}` } : {}
 }

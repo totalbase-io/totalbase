@@ -51,7 +51,7 @@ test('importing a CSV auto-matches columns and creates rows', async ({ page }) =
   created = { token, id: dataview.id }
 
   await publishDataView(page, token, dataview.id)
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
 
   await page.locator('main').getByRole('button', { name: 'Actions', exact: true }).click()
   await page.getByRole('menuitem', { name: /^Import/ }).click()

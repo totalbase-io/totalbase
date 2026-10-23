@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3050',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3030',
     headless: true
   },
   reporter: [['list']],

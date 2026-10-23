@@ -36,7 +36,7 @@ test('appearance: color, sign-in layout and custom CSS saved from the page reach
   const CSS = ':root { --ui-radius: 0px }\nhtml[data-surface="auth"] { --totalbase-e2e: on }'
 
   try {
-    await page.goto('/admin/settings/appearance')
+    await page.goto('/settings/appearance')
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible()
     // Tailwind's own blue is an oklch() too: the test tells the shades apart by value.
     const defaultPrimary = await primary500(page)
@@ -67,13 +67,13 @@ test('appearance: color, sign-in layout and custom CSS saved from the page reach
     expect(saved['appearance.custom_css']).toContain('--totalbase-e2e: on')
 
     // The sheet itself, as the browser gets it.
-    const sheet = await page.request.get(`${BASE}/admin/theme.css`)
+    const sheet = await page.request.get(`${BASE}/theme.css`)
     expect(await sheet.text()).toContain('--ui-color-primary-500: oklch(')
     expect(await sheet.text()).toContain('--totalbase-e2e: on')
 
     // Seen on the sign-in page, with no session.
     await page.evaluate(() => localStorage.removeItem('totalbase_admin_token'))
-    await page.goto('/admin/login')
+    await page.goto('/login')
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('data-surface', 'auth')
     await expect(page.locator('[data-login-layout="SIMPLE"]')).toBeVisible()
@@ -82,7 +82,7 @@ test('appearance: color, sign-in layout and custom CSS saved from the page reach
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--totalbase-e2e').trim())).toBe('on')
 
     // Safe mode: the same page without the sheet.
-    await page.goto('/admin/login?safe-css')
+    await page.goto('/login?safe-css')
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
     await expect(page.locator('#totalbase-theme')).toHaveCount(0)
     expect(await primary500(page)).toBe(defaultPrimary)

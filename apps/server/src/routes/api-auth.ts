@@ -353,7 +353,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       summary: "Start an OAuth/OIDC sign-in",
       description:
         "Redirects to the provider. After sign-in the browser returns to `redirect_to` (which must be on the provider's " +
-        "allowlist - or the portal's own `/admin/auth/oauth`, for a provider shown on the sign-in page) with " +
+        "allowlist - or the portal's own `/auth/oauth`, for a provider shown on the sign-in page) with " +
         "`#token=<session token>`, `#error=access_denied` for an account without API access (portal access for the portal's page), " +
         "`#error=email_required` when the provider shared no email for a first sign-in, or `#error=email_not_verified` " +
         "when email verification is required and neither the account nor the provider has verified its address.",

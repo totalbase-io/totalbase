@@ -375,11 +375,11 @@ describe("AuthService (integration)", () => {
     it("builds links on TOTALBASE_PUBLIC_URL until system.public_url is set", async () => {
       const user = await invitee("link-base");
       const first = await auth.createInvitation(user, "link");
-      expect(first).toMatch(/^https:\/\/env\.example\.com\/admin\/auth\/accept-invitation\?token=/);
+      expect(first).toMatch(/^https:\/\/env\.example\.com\/auth\/accept-invitation\?token=/);
 
       await settings.set("system.public_url", "https://app.example.com");
       const second = await auth.createInvitation(user, "link");
-      expect(second).toMatch(/^https:\/\/app\.example\.com\/admin\/auth\/accept-invitation\?token=/);
+      expect(second).toMatch(/^https:\/\/app\.example\.com\/auth\/accept-invitation\?token=/);
 
       await settings.set("auth.links.invitation", "https://myapp.example.com/join/{{token}}");
       expect(await auth.createInvitation(user, "link")).toMatch(/^https:\/\/myapp\.example\.com\/join\/[^/?]+$/);

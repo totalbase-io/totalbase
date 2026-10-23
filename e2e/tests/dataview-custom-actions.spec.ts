@@ -40,7 +40,7 @@ test('custom actions: set up in Settings, shown where their condition holds, run
 
   try {
     // --- Settings › Actions: Issue, a function on a row, only on drafts, asked first ---
-    await page.goto(`/admin/dataviews/${dataview.id}/settings?section=actions`)
+    await page.goto(`/dataviews/${dataview.id}/settings?section=actions`)
     const main = page.locator('main')
     await main.getByRole('button', { name: 'New action' }).click()
     const panel = page.getByRole('dialog', { name: 'New action' })
@@ -65,7 +65,7 @@ test('custom actions: set up in Settings, shown where their condition holds, run
     await publishDataView(page, token, dataview.id)
 
     // --- The App: Issue on the draft only, asked, run ---
-    await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+    await page.goto(`/app/dataviews/${dataview.slug}`)
     const row = (numero: number) => main.locator('tbody tr').filter({ has: page.getByRole('cell', { name: String(numero), exact: true }) })
     await expect(row(1)).toBeVisible()
     await row(2).getByRole('button', { name: 'Record actions' }).click()

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FolderNode } from '~/composables/useFilesApi'
 import type { FileNode } from '~/types/file'
+import { deferredFileSrc } from '~/composables/useFileObjectUrl'
 import { useApiErrorMessage } from '~/utils/api-error-message'
 // Absolute dates/times in the user's zone and format (My account > Preferences).
 const dates = useDateTimeFormat()
@@ -40,8 +41,6 @@ const editDescription = ref('')
 const editTags = ref<string[]>([])
 const previewUrls = ref<Map<string, string>>(new Map())
 const previewsLoading = ref<Set<string>>(new Set())
-const thumbnailUrls = ref<Map<string, string>>(new Map())
-const thumbnailsLoading = ref<Set<string>>(new Set())
 const isEditorOpen = ref(false)
 const editorFile = ref<FileNode | null>(null)
 const editorContent = ref('')
@@ -415,11 +414,8 @@ function onImageReplaced(file: FileNode) {
   const previous = previewUrls.value.get(file.id)
   if (previous) URL.revokeObjectURL(previous)
   previewUrls.value.delete(file.id)
-  const previousThumb = thumbnailUrls.value.get(file.id)
-  if (previousThumb) URL.revokeObjectURL(previousThumb)
-  thumbnailUrls.value.delete(file.id)
+  forgetFile(file.id)
   replaceStoredFile(file)
-  loadThumbnail(file)
   if (selectedFile.value?.id === file.id) loadDetailPreview(file)
 }
 
@@ -469,31 +465,21 @@ async function loadPreview(file: FileNode, width: number, target: Map<string, st
   }
 }
 
-// Two sizes, two caches: a small thumbnail for the table row's icon
-// slot, a larger one for the slideover's detail preview - reusing one
-// size for both would mean either a blurry upscale in the slideover or
-// a wastefully large fetch for every row icon.
+// Two sizes: a small thumbnail for the table row's icon slot - the
+// shared file images (useFileObjectUrl), fetched by FileImage.vue only
+// for the rows on screen, a few at a time - and a larger one for the
+// slideover's detail preview. Reusing one size for both would mean either
+// a blurry upscale in the slideover or a wastefully large fetch per row.
 const THUMBNAIL_WIDTH = 64
 const DETAIL_PREVIEW_WIDTH = 640
-function loadThumbnail(file: FileNode) {
-  return loadPreview(file, THUMBNAIL_WIDTH, thumbnailUrls.value, thumbnailsLoading.value)
-}
+const { forgetFile } = useFileObjectUrl()
 function loadDetailPreview(file: FileNode) {
   return loadPreview(file, DETAIL_PREVIEW_WIDTH, previewUrls.value, previewsLoading.value)
 }
 
 onBeforeUnmount(() => {
   for (const url of previewUrls.value.values()) URL.revokeObjectURL(url)
-  for (const url of thumbnailUrls.value.values()) URL.revokeObjectURL(url)
 })
-
-// The thumbnails of the page shown - one fetch per image row on the
-// page, never of the whole folder: the page is what is visible.
-watch(pageFiles, (files) => {
-  for (const file of files) {
-    if (isImageFile(file)) loadThumbnail(file)
-  }
-}, { immediate: true })
 
 function replaceStoredFile(file: FileNode) {
   filesPage.value = { ...filesPage.value, files: pageFiles.value.map(current => current.id === file.id ? file : current) }
@@ -945,13 +931,12 @@ const folderTreeBindings = computed(() => ({
             </template>
             <template #name-cell="{ row }">
               <div class="flex min-w-64 cursor-pointer items-center gap-3">
-                <img
-                  v-if="isImageFile(row.original) && thumbnailUrls.get(row.original.id)"
-                  :src="thumbnailUrls.get(row.original.id)"
-                  class="size-8 shrink-0 rounded-md border border-default object-cover"
+                <FileImage
+                  v-if="isImageFile(row.original)"
+                  :src="deferredFileSrc(row.original.id, THUMBNAIL_WIDTH)"
+                  class="size-8 shrink-0 rounded-md border border-default bg-default object-cover"
                   alt=""
-                  loading="lazy"
-                >
+                />
                 <div
                   v-else
                   class="flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-default"

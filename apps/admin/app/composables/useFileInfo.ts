@@ -1,4 +1,5 @@
 import type { FileNode } from '~/types/file'
+import { fileRequests } from '~/utils/rate-limit'
 
 /**
  * A file's row from Files (Administration.md §10) - its name and type - read once per file and
@@ -14,7 +15,8 @@ export function useFileInfo() {
   async function load(id: string) {
     loading.add(id)
     try {
-      infos.set(id, (await dataApi.get<FileNode>(`/totalbase/table/files/${id}/info`)).data)
+      // Through the limiter the files' images share: a grid of file cells asks a few at a time (utils/rate-limit.ts).
+      infos.set(id, (await fileRequests.run(() => dataApi.get<FileNode>(`/totalbase/table/files/${id}/info`))).data)
     } catch {
       infos.set(id, null)
     } finally {

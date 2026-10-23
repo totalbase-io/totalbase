@@ -1,6 +1,7 @@
 import type { AdminApiSuccessEnvelope } from '~/types/api'
 import { isErrorEnvelope } from '~/types/api'
 import { AdminApiError } from '~/utils/admin-api-error'
+import { retryingRateLimit } from '~/utils/rate-limit'
 
 export interface ApiResult<T> {
   data: T
@@ -25,20 +26,19 @@ const NETWORK_ERROR = { source: 'TOTALBASE' as const, code: 'NETWORK_ERROR', mes
  * every API client composable shares; each adds its own prefix, headers
  * and session handling.
  *
- * `baseURL: ''` on every call: Nuxt's global $fetch carries the app's own
- * `/admin` baseURL as its default, and ofetch only skips prepending it when
- * the URL already starts with it - true for `/admin/api/...`, not for the
- * other families, which would silently become `/admin/api/...` and 404.
+ * `baseURL: ''` on every call: the URL is the route family's own absolute
+ * path, never relative to the app's baseURL, Nuxt's global $fetch default.
  */
 export async function apiRequest<T>(url: string, method: ApiMethod, options: ApiRequestOptions = {}): Promise<ApiResult<T>> {
   try {
-    const response = await $fetch.raw<unknown>(url, {
+    // A read refused for the rate limit waits its Retry-After and goes again (utils/rate-limit.ts).
+    const response = await retryingRateLimit(method === 'GET', () => $fetch.raw<unknown>(url, {
       method,
       body: options.body as BodyInit | Record<string, unknown> | null | undefined,
       query: options.query,
       headers: options.headers,
       baseURL: ''
-    })
+    }))
     const body = response._data
     if (body === null || body === undefined) return { data: undefined as T }
     if (isErrorEnvelope(body)) throw new AdminApiError(response.status, body.errors)

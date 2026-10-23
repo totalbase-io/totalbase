@@ -28,13 +28,12 @@ export default defineNuxtConfig({
     enabled: true
   },
 
-  // apps/server serves the built output of this app under /admin/, from
-  // the same process/port as the API (Admin_UI.md §1.1, "one service") — every asset
-  // and client-side route has to be generated relative to that prefix, in
-  // dev too, so dev behavior actually matches what gets deployed rather
-  // than only matching once base path bugs are found in prod.
+  // apps/server serves the built output of this app at the root, from
+  // the same process/port as the API (Admin_UI.md §1.1, "one service");
+  // every path outside the server's reserved prefixes is this app's
+  // (Foundations.md §4.1).
   app: {
-    baseURL: '/admin/',
+    baseURL: '/',
     // The operator's stylesheet (Admin_UI.md §4.1.1): the
     // primary color and the custom CSS, served by apps/server from the
     // appearance.* settings. Linked here, in <head>, so it applies before
@@ -43,9 +42,9 @@ export default defineNuxtConfig({
     head: {
       // tagPriority low: after the app's own stylesheets, so a rule of the operator's wins on order too.
       link: [
-        { rel: 'stylesheet', href: '/admin/theme.css', id: 'totalbase-theme', tagPriority: 'low' },
-        { rel: 'icon', href: '/admin/favicon.ico', sizes: '16x16 32x32 48x48' },
-        { rel: 'icon', href: '/admin/logo.svg', type: 'image/svg+xml' }
+        { rel: 'stylesheet', href: '/theme.css', id: 'totalbase-theme', tagPriority: 'low' },
+        { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+        { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }
       ]
     }
   },
@@ -54,41 +53,37 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2026-06-30',
 
-  // Dev-only: forwards Admin API calls to the running apps/server so the UI
-  // can call same-origin relative paths (`/admin/api/...`) in both dev and
-  // prod. In prod, apps/server serves this app's static build under `/admin/`
-  // itself, so no proxy is needed there — see Admin_UI.md §1.1.
-  //
-  // `/api` (root, no `/admin` prefix) is the *public* REST Data API
-  // (useDataApi.ts) - a DataView's grid/Edit form call this directly, same
-  // as prod where apps/server answers both prefixes on one origin. Without
-  // this second rule, Vite's own dev server (base: '/admin/') 302-redirects
-  // any request outside that base into it *before* the proxy even runs -
-  // `/api/...` becomes `/admin/api/...`, which the rule above then forwards
-  // to a route that doesn't exist there (that prefix is admin-management
-  // only). A dedicated rule for the bare `/api` prefix intercepts first,
-  // so the request reaches apps/server at the exact path it actually
-  // registers the public Data API on. `/app/api` (the App's own routes -
-  // its menu, published DataViews/Dashboards, My account) needs the same
-  // rule for the same reason.
+  // Dev-only, when this app is opened on its own port (AGENTS.md §4B):
+  // forwards the server's paths (Foundations.md §4.1) to a running
+  // apps/server so the UI can call same-origin relative paths in both dev
+  // and prod. In prod, and under `pnpm dev`, apps/server answers them on
+  // the one origin itself, so no proxy is needed there.
   vite: {
     server: {
       proxy: {
         '/admin/api': {
-          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3050',
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
           changeOrigin: true
         },
         '/api': {
-          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3050',
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
           changeOrigin: true
         },
         '/app/api': {
-          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3050',
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
           changeOrigin: true
         },
-        // The operator's stylesheet (app.head above) - apps/server's, not a built asset.
-        '/admin/theme.css': {
-          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3050',
+        '/embed/api': {
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
+          changeOrigin: true
+        },
+        // The operator's stylesheet (app.head above) and the picked icons - apps/server's, not built assets.
+        '/theme.css': {
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
+          changeOrigin: true
+        },
+        '/_icons': {
+          target: process.env.TOTALBASE_API_PROXY_TARGET ?? 'http://localhost:3030',
           changeOrigin: true
         }
       }
@@ -128,12 +123,11 @@ export default defineNuxtConfig({
   // Icons: the ones the source names literally (`i-lucide-…`, .ts too -
   // the default globs leave it out) ship in the client bundle; the rest -
   // icons a user picks for a DataView, a Dashboard, a menu group - come
-  // from apps/server's /admin/_icons (admin-icons.ts), in the Iconify API's
+  // from apps/server's /_icons (admin-icons.ts), in the Iconify API's
   // format. Never api.iconify.design (`fallbackToApi: false`): works
   // offline, and no third party learns what an instance uses. Nuxt Icon's
-  // own endpoint can't serve them - it would sit under /admin/api (the
-  // Admin API's prefix), and the production build is static, with no Nuxt
-  // server. The icon picker's full catalog (utils/lucide-icon-names.ts)
+  // own endpoint can't serve them - the production build is static, with no
+  // Nuxt server. The icon picker's full catalog (utils/lucide-icon-names.ts)
   // stays out of the scan: bundling all ~1,850 icons for a picker most
   // sessions never open.
   icon: {

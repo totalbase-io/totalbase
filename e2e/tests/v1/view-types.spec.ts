@@ -55,7 +55,7 @@ test.afterAll(async ({ browser }) => {
   await context.close()
 })
 
-const open = (page: import('@playwright/test').Page, type: string, query = '') => page.goto(`/admin/app/dataviews/${created[type]!.slug}${query}`)
+const open = (page: import('@playwright/test').Page, type: string, query = '') => page.goto(`/app/dataviews/${created[type]!.slug}${query}`)
 
 test('TABLE lists its rows, its foreign key by its row, its numbers and dates formatted', async ({ page, token: _ }) => {
   await open(page, 'TABLE')

@@ -66,7 +66,7 @@ describe("EXTERNALFRAME DataViews", () => {
 
   it("rejects unsafe URLs with 422 on create and update", async () => {
     const ownOrigin = new URL(await context.auth.mailer.publicUrl()).origin;
-    for (const frameUrl of ["javascript:alert(1)", "http://reports.example.com", `${ownOrigin}/admin/`, "https://u:p@example.com"]) {
+    for (const frameUrl of ["javascript:alert(1)", "http://reports.example.com", `${ownOrigin}/app`, "https://u:p@example.com"]) {
       const created = await request("POST", "/admin/api/dataviews", adminToken, {
         data: {
           name: "Bad frame",

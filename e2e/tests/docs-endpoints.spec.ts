@@ -12,7 +12,7 @@ const SHOTS = process.env.E2E_SHOTS_DIR
 test('endpoints list every route and open one in the API docs', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await login(page)
-  await page.goto('/admin/docs/endpoints')
+  await page.goto('/docs/endpoints')
   await expect(page.getByRole('heading', { name: 'Endpoints' })).toBeVisible()
 
   await page.getByRole('combobox', { name: 'Type' }).click()
@@ -34,7 +34,7 @@ test('endpoints list every route and open one in the API docs', async ({ page, c
 
   await row.getByRole('button', { name: 'Endpoint actions' }).click()
   await page.getByRole('menuitem', { name: 'Open in API docs' }).click()
-  await page.waitForURL(/\/admin\/docs\/openapi\?/)
+  await page.waitForURL(/\/docs\/openapi\?/)
   await expect(page.getByText(/paths visible to Administrators/)).toBeVisible()
   // Scrolled to the route: its key is in view.
   await expect(page.locator('.monaco-editor .view-line', { hasText: '"/api/auth/login": {' })).toBeVisible()

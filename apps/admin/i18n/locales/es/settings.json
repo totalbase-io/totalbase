@@ -877,11 +877,15 @@
         },
         "security__rate_limit_enabled": {
           "label": "Activar la limitación de solicitudes",
-          "description": "Activa o desactiva la limitación de la tasa de solicitudes de la API pública."
+          "description": "Limita las solicitudes y los inicios de sesión fallidos de cada dirección IP. Detrás de un proxy, activa también Confiar en las cabeceras del proxy inverso: si no, todos tienen la dirección del proxy y comparten un mismo límite."
         },
         "security__rate_limit_per_minute": {
           "label": "Solicitudes por minuto",
-          "description": "La mayor cantidad de solicitudes que puede hacer quien llama en una ventana de un minuto antes de ser limitado."
+          "description": "La mayor cantidad de solicitudes que puede hacer una dirección IP en una ventana de un minuto antes de ser limitada."
+        },
+        "security__rate_limit_sign_in_per_minute": {
+          "label": "Inicios de sesión fallidos por minuto",
+          "description": "La mayor cantidad de intentos fallidos de inicio de sesión desde una dirección IP en un minuto; un inicio de sesión correcto no cuenta. Además, cada cuenta se bloquea tras sus propios intentos fallidos, en Acceso."
         },
         "security__cors_enabled": {
           "label": "Activar CORS",

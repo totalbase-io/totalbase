@@ -11,7 +11,7 @@ import { signal } from "../invalidations.js";
 
 /**
  * The first-start setup (Foundations.md §14.1): whether the instance still needs its first administrator, and
- * creating it with the code - from /admin/setup or from a program (TotalBase Manager). Public: the code is the
+ * creating it with the code - from /setup or from a program (TotalBase Manager). Public: the code is the
  * credential. Gone (404) once an administrator exists.
  */
 interface SetupBody { code?: unknown; email?: unknown; name?: unknown; password?: unknown; publicUrl?: unknown; language?: unknown }

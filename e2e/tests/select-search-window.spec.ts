@@ -53,7 +53,7 @@ test('a select menu\'s search window finds a row by another column and picks it'
     await apiRequest(page, token, 'PATCH', `/admin/api/dataviews/${dataview.id}`, { data: { viewConfig: { variables } } })
     await publishDataView(page, token, dataview.id)
 
-    await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+    await page.goto(`/app/dataviews/${dataview.slug}`)
     await expect(page.getByText('No rows found')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: 'New' }).first().click()
     await expect(page.getByLabel('Title')).toBeVisible({ timeout: 20_000 })

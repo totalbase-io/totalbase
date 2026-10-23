@@ -32,7 +32,7 @@ function fileInfo(page: Page, token: string, id: string) {
 }
 
 async function openFolder(page: Page, name: string) {
-  await page.goto('/admin/files')
+  await page.goto('/files')
   await page.locator('aside').getByRole('button', { name, exact: true }).click()
 }
 

@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import qs from "qs";
 import { TotalBaseError } from "@totalbase/errors";
 import type { SettingsService } from "@totalbase/settings";
+import { isServerPath } from "./admin-ui.js";
 
 /**
  * Where the hardening hooks read their settings from - the settings
@@ -96,6 +97,12 @@ export class RateLimiter {
     return true;
   }
 
+  /** Whether `key` has used up `limitPerMinute` in its current window - a check that counts nothing. */
+  exhausted(key: string, limitPerMinute: number, now = Date.now()): boolean {
+    const window = this.windows.get(key);
+    return window !== undefined && window.resetAt > now && window.count >= limitPerMinute;
+  }
+
   /** Whole seconds until `key`'s window resets - a refusal's Retry-After (RFC 9110 §10.2.3). */
   retryAfterSeconds(key: string, now = Date.now()): number {
     const window = this.windows.get(key);
@@ -116,6 +123,28 @@ export class RateLimiter {
  * run before route handlers so oversized/abusive requests are rejected
  * "before expensive SQL compilation or execution" (Data_API.md §12).
  */
+/**
+ * The routes that check a credential (a password, a second factor, an
+ * emailed token): their failed attempts - a 4xx other than 429 - count per
+ * IP in security.rate_limit_sign_in_per_minute, under the same switch as the
+ * general limit (Administration.md §7.7). A correct sign-in counts nothing,
+ * so a whole office signing in at nine never meets it. Each account's own
+ * lockout (Security.md §2.4) applies whatever this says.
+ */
+const SIGN_IN_PATHS = new Set([
+  "/api/auth/login",
+  "/admin/api/auth/login",
+  "/api/auth/mfa/verify",
+  "/admin/api/auth/mfa/verify",
+  "/api/auth/password/reset",
+  "/api/auth/invitations/accept",
+  "/api/auth/email/verify",
+]);
+
+function isSignIn(request: FastifyRequest): boolean {
+  return request.method === "POST" && SIGN_IN_PATHS.has(request.url.split("?")[0] ?? "");
+}
+
 /** The header an in-process request carries (the MCP endpoint's calls to the APIs), with a key made at boot that never leaves the process. */
 export const INTERNAL_REQUEST_HEADER = "x-totalbase-internal";
 
@@ -127,7 +156,11 @@ function isInternalRequest(header: string | string[] | undefined, key: string): 
 
 export function registerHardeningHooks(app: FastifyInstance, settings: HardeningSettingsSource, options: { internalKey?: string } = {}): void {
   const rateLimiter = new RateLimiter();
-  const sweepInterval = setInterval(() => rateLimiter.sweep(), 60_000);
+  const signInFailures = new RateLimiter();
+  const sweepInterval = setInterval(() => {
+    rateLimiter.sweep();
+    signInFailures.sweep();
+  }, 60_000);
   sweepInterval.unref();
   app.addHook("onClose", (_instance, done) => {
     clearInterval(sweepInterval);
@@ -135,23 +168,24 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
   });
 
   app.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
-    // Admin UI asset/HMR traffic (everything under /admin/ except the
-    // Admin API itself, at /admin/api/*) isn't API traffic these guards
+    // Admin UI asset/HMR traffic (every path outside the server's own,
+    // admin-ui.ts's isServerPath) isn't API traffic these guards
     // were sized for - a `nuxt dev` page load alone fires far more than
     // security.rate_limit_per_minute in module/HMR requests through the
     // dev proxy (admin-ui.ts), tripping RATE_LIMIT_EXCEEDED on the UI
     // itself rather than on abusive API use.
-    if (request.url.startsWith("/admin/") && !request.url.startsWith("/admin/api")) {
+    if (!isServerPath(request.url)) {
       return;
     }
 
-    const [corsEnabled, corsOrigins, maxQueryStringBytes, maxQueryParameters, rateLimitEnabled, rateLimitPerMinute] = await Promise.all([
+    const [corsEnabled, corsOrigins, maxQueryStringBytes, maxQueryParameters, rateLimitEnabled, rateLimitPerMinute, signInPerMinute] = await Promise.all([
       settings.get("security.cors_enabled"),
       settings.get("security.cors_origins"),
       settings.get("api.max_query_string_bytes"),
       settings.get("api.max_query_parameters"),
       settings.get("security.rate_limit_enabled"),
       settings.get("security.rate_limit_per_minute"),
+      settings.get("security.rate_limit_sign_in_per_minute"),
     ]);
 
     // --- CORS (Administration.md §7.8) ---
@@ -197,6 +231,20 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       reply.header("retry-after", String(rateLimiter.retryAfterSeconds(request.ip)));
       throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many requests. Please slow down.");
     }
+    if (rateLimitEnabled && isSignIn(request) && signInFailures.exhausted(request.ip, signInPerMinute)) {
+      reply.header("retry-after", String(signInFailures.retryAfterSeconds(request.ip)));
+      throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many failed sign-in attempts from this address. Please wait a minute.");
+    }
+  });
+
+  // A failed attempt on a credential route counts once it's answered (SIGN_IN_PATHS).
+  app.addHook("onResponse", async (request, reply) => {
+    if (!isSignIn(request) || reply.statusCode < 400 || reply.statusCode >= 500 || reply.statusCode === 429) return;
+    const [rateLimitEnabled, signInPerMinute] = await Promise.all([
+      settings.get("security.rate_limit_enabled"),
+      settings.get("security.rate_limit_sign_in_per_minute"),
+    ]);
+    if (rateLimitEnabled) signInFailures.consume(request.ip, signInPerMinute);
   });
 
   // --- REQUEST_BODY_TOO_LARGE (Data_API.md §12) ---

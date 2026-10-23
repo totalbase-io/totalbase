@@ -189,7 +189,7 @@ test('every widget of the catalog has a place on this page', () => {
 
 test('every widget runs in the App, with no console error', async ({ page, token: _ }) => {
   test.setTimeout(120_000)
-  await page.goto(`/admin/app/dataviews/v1-widgets`)
+  await page.goto(`/app/dataviews/v1-widgets`)
   const main = page.locator('main')
   await expect(main.getByText('A heading')).toBeVisible()
 
@@ -233,7 +233,7 @@ test('every widget runs in the App, with no console error', async ({ page, token
 test('every widget is drawn on the Design form\'s canvas, with no console error', async ({ page, token }) => {
   test.setTimeout(120_000)
   const fields = await api<{ id: string, widget: string | null, parent: string | null }[]>(page, token, 'GET', `/admin/api/dataviews/${dataview.id}/fields`)
-  await page.goto(`/admin/dataviews/${dataview.id}/design`)
+  await page.goto(`/dataviews/${dataview.id}/design`)
   const main = page.locator('main')
   // Every widget placed on the page itself (not inside an overlay's own canvas) is on the canvas.
   const onPage = fields.filter(f => f.widget && f.parent === null)

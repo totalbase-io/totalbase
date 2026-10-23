@@ -42,7 +42,7 @@ test('a report built, published and deleted through the editor', async ({ page, 
   const main = page.locator('main')
 
   // --- Created ---
-  await page.goto('/admin/dashboards')
+  await page.goto('/dashboards')
   await expect(async () => {
     await page.getByRole('button', { name: 'New Dashboard' }).click()
     await page.getByRole('menuitem', { name: /^Blank/ }).click({ timeout: 2000 })
@@ -50,7 +50,7 @@ test('a report built, published and deleted through the editor', async ({ page, 
   const create = page.getByRole('dialog')
   await create.getByLabel('Name').fill(NAME)
   await create.getByRole('button', { name: 'Create' }).click()
-  await page.waitForURL(/\/admin\/dashboards\/[0-9a-f-]+$/)
+  await page.waitForURL(/\/dashboards\/[0-9a-f-]+$/)
   const editorUrl = page.url()
 
   // --- A KPI from the palette, configured in its drawer ---
@@ -107,7 +107,7 @@ test('a report built, published and deleted through the editor', async ({ page, 
   await page.getByRole('dialog').getByRole('button', { name: 'Publish', exact: true }).last().click()
   await expect(main.getByRole('button', { name: /Active: v1/ })).toBeVisible()
   const slug = NAME.toLowerCase().replace(/\s+/g, '-')
-  await page.goto(`/admin/app/dashboards/${slug}`)
+  await page.goto(`/app/dashboards/${slug}`)
   await expect(card(page, 'Ventas')).toContainText(/1[.,]3K/)
   await expect(card(page, 'Clientes').getByRole('cell', { name: 'Acme SA' })).toBeVisible()
 
@@ -126,7 +126,7 @@ test('a report built, published and deleted through the editor', async ({ page, 
   const confirm = page.getByRole('dialog').last()
   await confirm.getByRole('checkbox', { name: 'Confirm' }).check().catch(() => undefined)
   await confirm.getByRole('button', { name: /^Delete/ }).click()
-  await page.goto(`/admin/app/dashboards/${slug}`)
+  await page.goto(`/app/dashboards/${slug}`)
   await expect(page.locator('main')).toContainText(/not found|not available|doesn't exist/i)
 })
 
@@ -137,7 +137,7 @@ test('a variable defined in Settings › Variables appears in the bar, its optio
   const dashboard = await createDashboard(page, token, VARS)
   try {
     // The ⚙ beside the variables bar opens Settings › Variables (D26).
-    await page.goto(`/admin/dashboards/${dashboard.id}`)
+    await page.goto(`/dashboards/${dashboard.id}`)
     await page.locator('main').getByRole('button', { name: 'Edit variables' }).click()
     await page.waitForURL(/section=variables/)
     const dialog = page.locator('main')

@@ -15,7 +15,7 @@ You need Node.js 22, pnpm 10 and a reachable PostgreSQL 15-18 with a role that o
 ```bash
 pnpm install
 cp .env.example .env        # the connection, a master key, the first administrator
-pnpm dev                    # server and admin on one origin: http://localhost:3050/admin/
+pnpm dev                    # server and admin on one origin: http://localhost:3030/
 ```
 
 `pnpm dev` runs the API server and the admin's dev server together; open only the URL it prints. Its migrations run on start, in the `totalbase` schema.

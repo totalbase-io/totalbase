@@ -41,7 +41,7 @@ export interface AdminClientConfig {
 
 /**
  * The instance limits requests per client IP over a fixed one-minute window
- * (security.rate_limit_per_minute, 300 by default) - and every call of this
+ * (security.rate_limit_per_minute, 3000 by default, when rate limiting is on) - and every call of this
  * server comes from one IP. A refused request waits for the window to turn
  * and runs again, so a long build slows down instead of failing midway.
  */
@@ -201,7 +201,7 @@ export function whereParams(where: Record<string, unknown>, prefix = "where"): R
 /** The stdio binary's configuration: TOTALBASE_URL and TOTALBASE_TOKEN (a plane="ADMIN" personal access token). */
 export function loadConfigFromEnv(): AdminClientConfig {
   const baseUrl = process.env["TOTALBASE_URL"];
-  if (!baseUrl) throw new Error("TOTALBASE_URL is required (e.g. http://localhost:3050).");
+  if (!baseUrl) throw new Error("TOTALBASE_URL is required (e.g. http://localhost:3030).");
   const token = process.env["TOTALBASE_TOKEN"];
   if (!token) throw new Error("TOTALBASE_TOKEN is required (a plane=\"ADMIN\" personal access token).");
   return { baseUrl, token };

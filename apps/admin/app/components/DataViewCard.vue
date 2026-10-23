@@ -126,12 +126,12 @@ const descriptionHtml = computed(() => richHtml.value.card?.description)
       class="flex w-full items-center justify-center overflow-hidden bg-elevated"
       :class="imageBox.box"
     >
-      <img
+      <FileImage
         v-if="imageSrc"
         :src="imageSrc"
         alt=""
         :class="imageBox.image"
-      >
+      />
       <UIcon
         v-else
         name="i-lucide-image"

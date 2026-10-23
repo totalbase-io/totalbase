@@ -2,19 +2,19 @@ import type { Page } from '@playwright/test'
 
 /** Shared across every ad-hoc repro/verification spec in this scratch project - see the chat: schema-drift fix, then the wide-fields widget survey. */
 /** The instance under test - the dev server, or another one (the lab) with E2E_BASE_URL. */
-export const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3050'
+export const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3030'
 export const ADMIN_EMAIL = process.env.TOTALBASE_ADMIN_EMAIL ?? 'admin@totalbase.local'
 export const ADMIN_PASSWORD = process.env.TOTALBASE_ADMIN_PASSWORD ?? '1234567'
 
 export async function login(page: Page) {
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(ADMIN_EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   // The token, not the page's `load` event: a busy dev server can hold
   // `load` (every module of the home page) long after the sign-in worked.
-  // An administrator lands on Status (/admin/status), an App user on /admin/app.
-  await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
+  // An administrator lands on Status (/status), an App user on /app.
+  await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
   const handle = await page.waitForFunction(() => localStorage.getItem('totalbase_admin_token'), undefined, { timeout: 30_000 })
   const token = await handle.jsonValue()
   if (!token) throw new Error('Login did not produce a bearer token')
@@ -51,7 +51,7 @@ export async function apiRequest<T>(
 
 /**
  * DataViews are drafts until explicitly published (Foundations.md §13.1)
- * - the consumer pages (`/admin/dataviews/:slug`, `/new`, `/:pk/edit`)
+ * - the consumer pages (`/dataviews/:slug`, `/new`, `/:pk/edit`)
  * render the live version, so publish whatever the test just set up first.
  */
 export async function publishDataView(page: Page, token: string, dataviewId: string) {

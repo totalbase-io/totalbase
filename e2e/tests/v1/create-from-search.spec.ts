@@ -38,7 +38,7 @@ test.afterAll(async ({ browser }) => {
 })
 
 test('a category the select lacks is created from what was typed, picked and saved with the record', async ({ page, token }) => {
-  await page.goto(`/admin/app/dataviews/${form.slug}`)
+  await page.goto(`/app/dataviews/${form.slug}`)
   const main = page.locator('main')
   // A FORM opens on its first record, read-only: New starts the record to create.
   await main.getByRole('button', { name: 'New', exact: true }).click()

@@ -26,7 +26,7 @@ test('a DataView over a view shows the view\'s rows', async ({ page }) => {
   })
   try {
     await publishDataView(page, token, dataview.id)
-    await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+    await page.goto(`/app/dataviews/${dataview.slug}`)
     for (const label of ['Row 1', 'Row 2', 'Row 3']) await expect(page.getByText(label, { exact: true })).toBeVisible({ timeout: 30_000 })
     expect(failures).toEqual([])
   } finally {

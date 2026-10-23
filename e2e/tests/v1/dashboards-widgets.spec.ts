@@ -82,14 +82,14 @@ test('every widget type of the catalog is on this dashboard', () => {
 
 test('every widget type runs its Example in the App, with no console error', async ({ page, token: _ }) => {
   test.setTimeout(90_000)
-  await page.goto(`/admin/app/dashboards/${dashboard.slug}`)
+  await page.goto(`/app/dashboards/${dashboard.slug}`)
   await expect(page.locator('main').getByRole('heading', { name: NAME })).toBeVisible()
   for (const type of DASHBOARD_WIDGET_TYPES) await expectDrawn(page, type)
 })
 
 test('every widget type is drawn in the editor too', async ({ page, token: _ }) => {
   test.setTimeout(90_000)
-  await page.goto(`/admin/dashboards/${dashboard.id}`)
+  await page.goto(`/dashboards/${dashboard.id}`)
   await expect(page.locator('main').getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
   for (const type of DASHBOARD_WIDGET_TYPES) await expectDrawn(page, type)
 })

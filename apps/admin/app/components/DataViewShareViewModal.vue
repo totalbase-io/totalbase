@@ -125,7 +125,7 @@ async function remove(id: string) {
 /** The link itself is the credential (DataViewsStatesService.getForLink) - nothing to create server-side. */
 function copyLink() {
   if (!props.view) return
-  const url = `${window.location.origin}/admin/app/dataviews/${props.dataviewSlug}?view=${props.view.id}`
+  const url = `${window.location.origin}/app/dataviews/${props.dataviewSlug}?view=${props.view.id}`
   navigator.clipboard?.writeText(url)
     .then(() => toast.add({ title: t('dataviews.shareView.linkCopied'), color: 'success' }))
     .catch(() => toast.add({ title: t('dataviews.shareView.copyError'), color: 'error' }))

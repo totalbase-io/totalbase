@@ -16,6 +16,8 @@ const emit = defineEmits<{
 const collapsed = defineModel<string[]>('collapsed', { required: true })
 
 const { t } = useI18n()
+// Resolved here, where a shown node renders: a deferred file image is fetched only for the nodes on the page.
+const { resolveFileSrc } = useFileObjectUrl()
 const open = computed(() => !collapsed.value.includes(props.node.id))
 const kids = computed(() => props.node.children ?? [])
 function toggle() {
@@ -23,7 +25,7 @@ function toggle() {
 }
 const color = computed(() => props.swatch(props.node.data.color))
 const avatar = computed(() => {
-  if (props.node.data.image !== null) return { src: props.node.data.image || undefined, alt: props.node.data.title }
+  if (props.node.data.image !== null) return { src: resolveFileSrc(props.node.data.image), alt: props.node.data.title }
   if (props.node.data.icon) return { icon: props.node.data.icon, style: color.value ? { color: color.value } : undefined }
   return undefined
 })

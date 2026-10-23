@@ -77,7 +77,7 @@ test('an input shows the chosen customer\'s email - another widget\'s state, no 
   test.setTimeout(120_000)
   const id = await setUp(page, token)
   try {
-    await page.goto(`/admin/app/dataviews/${SLUG}`)
+    await page.goto(`/app/dataviews/${SLUG}`)
     const main = page.locator('main')
     const email = main.getByRole('textbox', { name: 'Email' })
     await expect(email).toBeVisible()
@@ -112,7 +112,7 @@ test('the Design form binds an input\'s Value to a formula', async ({ page, toke
   const id = await setUp(page, token)
   try {
     const fields = await api<{ id: string, widget: string | null }[]>(page, token, 'GET', `/admin/api/dataviews/${id}/fields`)
-    await page.goto(`/admin/dataviews/${id}/design`)
+    await page.goto(`/dataviews/${id}/design`)
     const main = page.locator('main')
     await main.locator(`[data-canvas-item="${fields.find(f => f.widget === 'UInput')!.id}"]`).dispatchEvent('click')
     // Its Value: no variable, a formula - shown under it, its button bound.

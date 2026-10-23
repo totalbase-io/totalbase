@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
   clearTimeout(previewTimer)
   clearInterval(renewer)
 })
-const previewSrc = computed(() => (previewToken.value ? `/admin/embed/preview#${previewToken.value}` : ''))
+const previewSrc = computed(() => (previewToken.value ? `/embed/preview#${previewToken.value}` : ''))
 
 // Each change mounts a new frame, blank until the embedded app boots: a
 // spinner covers it until the embed says it rendered (its first resize

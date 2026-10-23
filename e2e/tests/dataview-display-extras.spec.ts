@@ -80,7 +80,7 @@ test('accounting negative/zero, currency, emptyText, booleanLabels, and truncate
   })
 
   await publishDataView(page, token, dataview.id)
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
 
   // Accounting: negative wrapped in parens, zero shows the literal "-".
   await expect(page.getByRole('cell', { name: '(1.234,50)' })).toBeVisible()

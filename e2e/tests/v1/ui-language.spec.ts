@@ -30,13 +30,13 @@ test.afterAll(async ({ browser }) => {
 test('a user switches to Spanish in My account - at once, and after a reload', async ({ browser }) => {
   const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForFunction(() => localStorage.getItem('totalbase_admin_token'))
 
-  await page.goto('/admin/account?tab=preferences')
+  await page.goto('/account?tab=preferences')
   const main = page.locator('main')
   await expect(main.getByRole('heading', { name: 'Date and time' })).toBeVisible()
   await main.getByLabel('Language').click()

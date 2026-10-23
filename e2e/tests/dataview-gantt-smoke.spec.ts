@@ -77,7 +77,7 @@ test('a GANTT DataView renders bars grouped into swimlanes by project', async ({
 
   // project_id shows its project's `name` - the column a foreign key shows by default (DataViews.md §4.4).
   await publishDataView(page, token, dataview.id)
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
   await expect(page.getByText('Launch (2)')).toBeVisible()
   await expect(page.getByText('Migration (1)')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Design' })).toBeVisible()

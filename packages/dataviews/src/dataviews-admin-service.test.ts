@@ -321,7 +321,7 @@ describe("DataViewsAdminService (integration)", () => {
   it("rejects an EXTERNALFRAME pointing at the instance's own origin", async () => {
     const withOrigin = new DataViewsAdminService(database, async () => "https://totalbase.example.com");
     await expect(
-      withOrigin.create({ name: "Self Frame", viewType: "EXTERNALFRAME", viewConfig: { frame_url: "https://totalbase.example.com/admin/" } }),
+      withOrigin.create({ name: "Self Frame", viewType: "EXTERNALFRAME", viewConfig: { frame_url: "https://totalbase.example.com/status" } }),
     ).rejects.toMatchObject({ code: "DATAVIEW_FRAME_URL_INVALID" } satisfies Partial<TotalBaseError>);
   });
 

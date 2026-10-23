@@ -183,13 +183,13 @@ async function embedViewer(context: AppContext, request: FastifyRequest) {
 
 /**
  * The sites that may frame an embed page (`frame-ancestors`), from its path:
- * `/admin/embed/<tbe_…>` a link, `/admin/embed/<uuid>` a signed embed - its
+ * `/embed/<tbe_…>` a link, `/embed/<uuid>` a signed embed - its
  * own sites within dashboards.embed_allowed_origins, all of those when it
  * names none; anything else (the preview, an unknown key) only TotalBase
  * itself. Always TotalBase too: the drawer's preview frames it.
  */
 export async function embedFrameAncestors(context: AppContext, path: string): Promise<string> {
-  const key = decodeURIComponent(path.slice("/admin/embed/".length).split("/")[0] ?? "");
+  const key = decodeURIComponent(path.slice("/embed/".length).split("/")[0] ?? "");
   const instance = await context.settings.get("dashboards.embed_allowed_origins");
   let embed = null;
   if (key.startsWith(EMBED_LINK_PREFIX)) embed = await context.dashboardEmbeds.findByLink(key);

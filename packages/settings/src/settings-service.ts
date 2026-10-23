@@ -83,12 +83,12 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "dataviews.content_align": (value) => (value === "left" || value === "center" || value === "right" ? null : 'Expected "left", "center" or "right".'),
   "mcp.mode": (value) => (MCP_MODES.includes(value as never) ? null : `Expected one of ${MCP_MODES.join(", ")}.`),
   "mcp.instructions": (value) => ((value as string).length <= MCP_INSTRUCTIONS_MAX ? null : `At most ${MCP_INSTRUCTIONS_MAX} characters.`),
-  // What a request's Host header may be - a hostname, with a port or not: localhost:3050, totalbase.example.com.
+  // What a request's Host header may be - a hostname, with a port or not: localhost:3030, totalbase.example.com.
   "mcp.allowed_hosts": (value) => {
     for (const entry of value as string[]) {
       const [host, port, extra] = entry.trim().split(":");
       if (extra === undefined && (HOSTNAME.test(host ?? "") || isIP(host ?? "") === 4) && (port === undefined || (/^\d{1,5}$/.test(port) && Number(port) <= 65_535))) continue;
-      return `"${entry}" is not a host - write it as totalbase.example.com or localhost:3050.`;
+      return `"${entry}" is not a host - write it as totalbase.example.com or localhost:3030.`;
     }
     return null;
   },

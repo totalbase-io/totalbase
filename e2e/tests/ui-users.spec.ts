@@ -82,11 +82,11 @@ async function ok<T>(method: string, path: string, body?: unknown): Promise<T> {
 
 /** The admin UI, signed in as the fixture administrator. */
 async function signIn(page: Page) {
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(FIXTURE_ADMIN.email)
   await page.getByLabel('Password', { exact: true }).fill(FIXTURE_ADMIN.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
+  await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
 }
 
 let counter = 0
@@ -150,9 +150,9 @@ function toast(page: Page, title: string) {
   return page.locator('[data-slot="title"]', { hasText: title }).first()
 }
 
-/** The new id at the end of /admin/<section>/<id>. */
+/** The new id at the end of /<section>/<id>. */
 async function idFromUrl(page: Page, section: string) {
-  await page.waitForURL(new RegExp(`/admin/${section}/[0-9a-f-]{36}`))
+  await page.waitForURL(new RegExp(`/${section}/[0-9a-f-]{36}`))
   return page.url().split('/').pop()!.split('?')[0]!
 }
 
@@ -165,7 +165,7 @@ test('create a user with a password and roles', async ({ page }) => {
   const name = unique('Created')
   const email = uniqueEmail()
 
-  await page.goto('/admin/users')
+  await page.goto('/users')
   await page.getByRole('button', { name: 'New user' }).click()
   const dialog = page.getByRole('dialog', { name: 'New user' })
   await dialog.getByLabel('Name').fill(name)
@@ -195,7 +195,7 @@ test('invite a user without a password', async ({ page }) => {
   const name = unique('Invited')
   const email = uniqueEmail()
 
-  await page.goto('/admin/users')
+  await page.goto('/users')
   await page.getByRole('button', { name: 'Invite user' }).click()
   const dialog = page.getByRole('dialog', { name: 'Invite user' })
   await dialog.getByLabel('Name').fill(name)
@@ -226,7 +226,7 @@ test('edit a user: name, email, roles and avatar', async ({ page }) => {
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/users/${user.id}`)
+  await page.goto(`/users/${user.id}`)
   // Name - saved from the header.
   const newName = unique('Renamed')
   await page.getByLabel('Name').fill(newName)
@@ -278,7 +278,7 @@ test('set a user\'s password, send a password reset, revoke sessions', async ({ 
   await signIn(page)
   const failures = watchApiFailures(page, [SMTP_SEND])
 
-  await page.goto(`/admin/users/${user.id}`)
+  await page.goto(`/users/${user.id}`)
   await page.getByRole('button', { name: 'Set password' }).click()
   const dialog = page.getByRole('dialog', { name: 'Set password' })
   const newPassword = 'UiUsers-Changed-67890'
@@ -318,7 +318,7 @@ test('deactivate, activate and delete a user from its page', async ({ page }) =>
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/users/${user.id}`)
+  await page.goto(`/users/${user.id}`)
   await page.getByRole('button', { name: 'Deactivate' }).click()
   await expect(page.getByRole('button', { name: 'Activate' })).toBeVisible()
   expect((await getUser(user.id)).active).toBe(false)
@@ -330,7 +330,7 @@ test('deactivate, activate and delete a user from its page', async ({ page }) =>
   const dialog = page.getByRole('dialog', { name: 'Delete this user?' })
   await dialog.getByRole('checkbox', { name: 'Confirm' }).click()
   await dialog.getByRole('button', { name: 'Delete' }).click()
-  await page.waitForURL(/\/admin\/users$/)
+  await page.waitForURL(/\/users$/)
   expect((await call('GET', `/admin/api/users/${user.id}`)).status).toBe(404)
   expect(failures).toEqual([])
 })
@@ -347,7 +347,7 @@ test('the users list: row deactivate/activate, row delete and bulk delete', asyn
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto('/admin/users')
+  await page.goto('/users')
   await searchUsers(page, `ui-users-${RUN}-`)
   await expect(page.getByRole('button', { name: `Actions for ${a.name}`, exact: true })).toBeVisible()
 
@@ -384,7 +384,7 @@ test('the users list: bulk Add to role, Remove from role and Deactivate', async 
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto('/admin/users')
+  await page.goto('/users')
   await searchUsers(page, `ui-users-${RUN}-`)
   await expect(page.getByRole('button', { name: `Actions for ${b.name}`, exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Actions for ${a.name}`, exact: true })).toBeVisible()
@@ -420,7 +420,7 @@ test('a role\'s members: move the checked ones to another role', async ({ page }
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/roles/${from.id}`)
+  await page.goto(`/roles/${from.id}`)
   await page.getByRole('link', { name: /Members/ }).click()
   await page.getByRole('checkbox', { name: `Select ${member.name}` }).click()
   await page.getByRole('button', { name: 'Move to role…' }).click()
@@ -441,7 +441,7 @@ test('a role\'s access reviews: record one, PostgreSQL keeps who and the members
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/roles/${role.id}`)
+  await page.goto(`/roles/${role.id}`)
   await page.getByRole('link', { name: /Access reviews/ }).click()
   await expect(page.getByText('No reviews yet')).toBeVisible()
   await page.getByRole('button', { name: 'Record review' }).click()
@@ -463,7 +463,7 @@ test('create a role', async ({ page }) => {
   const failures = watchApiFailures(page)
   const name = unique('NewRole')
 
-  await page.goto('/admin/roles')
+  await page.goto('/roles')
   await page.getByRole('button', { name: 'New role' }).click()
   const dialog = page.getByRole('dialog', { name: 'New role' })
   await dialog.getByLabel('Name').fill(name)
@@ -485,7 +485,7 @@ test('edit a role, deactivate and activate it, and delete it', async ({ page }) 
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/roles/${role.id}`)
+  await page.goto(`/roles/${role.id}`)
   // General: its details edited in place.
   const dialog = page.locator('main')
   const newName = unique('EditedRole')
@@ -511,7 +511,7 @@ test('edit a role, deactivate and activate it, and delete it', async ({ page }) 
   const deleteDialog = page.getByRole('dialog', { name: 'Delete this role?' })
   await deleteDialog.getByRole('checkbox', { name: 'Confirm' }).click()
   await deleteDialog.getByRole('button', { name: 'Delete' }).click()
-  await page.waitForURL(/\/admin\/roles$/)
+  await page.waitForURL(/\/roles$/)
   expect(await getRole(role.id)).toBeUndefined()
   expect(failures).toEqual([])
 })
@@ -524,7 +524,7 @@ test('grant and revoke a role permission with a row filter and a field restricti
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/roles/${role.id}?section=permissions`)
+  await page.goto(`/roles/${role.id}?section=permissions`)
   await page.getByRole('combobox', { name: 'Schema' }).click()
   await page.getByRole('option', { name: 'totalbase' }).click()
   await page.getByPlaceholder('Filter resources...').fill('templates')
@@ -560,7 +560,7 @@ test('set a role\'s managers, add and remove a member', async ({ page }) => {
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto(`/admin/roles/${role.id}`)
+  await page.goto(`/roles/${role.id}`)
   await page.getByRole('link', { name: 'Members' }).click()
   await pickOptions(page, page.getByRole('button', { name: 'Managed by' }), [manager.name])
   await expect.poll(managers).toEqual([manager.id])
@@ -592,7 +592,7 @@ test('create, regenerate, revoke and delete an API token', async ({ page }) => {
   const failures = watchApiFailures(page)
   const name = `ui-users-${RUN}`
 
-  await page.goto('/admin/tokens')
+  await page.goto('/tokens')
   await page.getByRole('button', { name: 'New token' }).first().click()
   const drawer = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'New token' }) })
   await drawer.getByRole('button', { name: 'User', exact: true }).click()
@@ -640,7 +640,7 @@ test('change and restore an API token setting', async ({ page }) => {
   await signIn(page)
   const failures = watchApiFailures(page)
   try {
-    await page.goto('/admin/settings/api-tokens')
+    await page.goto('/settings/api-tokens')
     const field = page.getByRole('spinbutton', { name: 'Rotation warning window' })
     await field.fill(String(original! + 1))
     await page.getByRole('button', { name: 'Save' }).click()
@@ -672,7 +672,7 @@ test('revoke a user\'s session', async ({ page }) => {
   await signIn(page)
   const failures = watchApiFailures(page)
 
-  await page.goto('/admin/sessions')
+  await page.goto('/sessions')
   await page.getByPlaceholder('User, IP or browser').fill(user.email)
   await expect(page.getByRole('link', { name: new RegExp(user.email) })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Session actions' })).toHaveCount(1)

@@ -38,25 +38,25 @@ test('access levels route each user to what their roles open', async ({ page, br
   // --- An APP user lands in the app and can't reach the admin. ---
   const appContext = await browser.newContext()
   const appPage = await appContext.newPage()
-  await appPage.goto('/admin/login')
+  await appPage.goto('/login')
   await appPage.getByLabel('Email').fill(APP_EMAIL)
   await appPage.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await appPage.getByRole('button', { name: 'Sign in' }).click()
-  await appPage.waitForURL(/\/admin\/app$/)
+  await appPage.waitForURL(/\/app$/)
 
-  await appPage.goto('/admin/database/resources')
-  await appPage.waitForURL(/\/admin\/app$/)
+  await appPage.goto('/database/resources')
+  await appPage.waitForURL(/\/app$/)
   await appContext.close()
 
   // --- An API-only user can't log into the portal. ---
   const apiContext = await browser.newContext()
   const apiPage = await apiContext.newPage()
-  await apiPage.goto('/admin/login')
+  await apiPage.goto('/login')
   await apiPage.getByLabel('Email').fill(API_EMAIL)
   await apiPage.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await apiPage.getByRole('button', { name: 'Sign in' }).click()
   await expect(apiPage.getByText('Invalid email or password.')).toBeVisible()
-  await expect(apiPage).toHaveURL(/\/admin\/login/)
+  await expect(apiPage).toHaveURL(/\/login/)
   await apiContext.close()
 
   for (const user of (await apiRequest<User[]>(page, token, 'GET', '/admin/api/users')).filter(u => u.email === APP_EMAIL || u.email === API_EMAIL)) {

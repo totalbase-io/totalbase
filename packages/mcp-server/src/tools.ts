@@ -81,7 +81,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         email: me.email,
         name: me.name,
         ...(me.environment && { environment: me.environment }),
-        ...(me.publicUrl && { publicUrl: me.publicUrl, appUrl: `${me.publicUrl.replace(/\/$/, "")}/admin/` }),
+        ...(me.publicUrl && { publicUrl: me.publicUrl, appUrl: `${me.publicUrl.replace(/\/$/, "")}/` }),
         ...(me.display?.timezone && { timezone: me.display.timezone }),
         ...(me.display?.language && { language: me.display.language }),
       });

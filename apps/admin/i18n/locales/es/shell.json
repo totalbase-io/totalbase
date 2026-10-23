@@ -1,5 +1,6 @@
 {
   "common": {
+    "rateLimited": "Demasiadas solicitudes: reintentando en {seconds} s",
     "collapse": "Contraer",
     "expand": "Expandir",
     "selectedPoint": "Punto elegido",

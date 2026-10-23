@@ -74,7 +74,7 @@ const DEVICE_SIZE: Record<Exclude<Device, 'desktop'>, { width: number, height: n
   phone: { width: 390, height: 844 }
 }
 const device = ref<Device>('desktop')
-const frameSrc = computed(() => (dataview.value ? `/admin/app/dataviews/${dataview.value.slug}?draft=true` : ''))
+const frameSrc = computed(() => (dataview.value ? `/app/dataviews/${dataview.value.slug}?draft=true` : ''))
 </script>
 
 <template>

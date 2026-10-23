@@ -1,5 +1,6 @@
 {
   "common": {
+    "rateLimited": "Too many requests - retrying in {seconds} s",
     "collapse": "Collapse",
     "expand": "Expand",
     "selectedPoint": "Selected point",

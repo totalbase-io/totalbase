@@ -140,7 +140,7 @@ const { recordTable, recordTableName, recordColumns, recordRelations, recordJunc
 /** A record column's presentation, in Database - its table's page opens it. */
 const router = useRouter()
 function presentationLink(column: string): string | undefined {
-  // Resolved (the app's /admin/ base included): it opens in a new tab.
+  // Resolved (the app's base included): it opens in a new tab.
   return props.dataview.sourceResource ? router.resolve({ path: `/resources/${props.dataview.sourceResource}`, query: { presentation: column } }).href : undefined
 }
 provide(WIDGET_RUNTIME_KEY, designRuntime(allWidgets, CustomCanvasArea, { resourceColumns, resourceFields, resourcePresentation, recordPresentation }))

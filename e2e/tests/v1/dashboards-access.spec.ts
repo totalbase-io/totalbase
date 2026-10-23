@@ -61,11 +61,11 @@ test.afterAll(async ({ browser }) => {
 async function asManager(browser: Browser) {
   const context = await browser.newContext({ baseURL: BASE_URL })
   const page = await context.newPage()
-  await page.goto('/admin/login')
+  await page.goto('/login')
   await page.getByLabel('Email').fill(EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(/\/admin\/app/)
+  await page.waitForURL(/\/app/)
   const token = (await page.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
   const call = (method: string, path: string, data?: unknown) => page.request.fetch(`${BASE_URL}${path}`, { method, data, headers: { Authorization: `Bearer ${token}` } })
   return { context, page, call }
@@ -74,7 +74,7 @@ async function asManager(browser: Browser) {
 test('the menu lists the dashboard granted to the role, and no other; the other\'s URL shows nothing', async ({ browser, token: _ }) => {
   const { context, page, call } = await asManager(browser)
   try {
-    await page.goto('/admin/app')
+    await page.goto('/app')
     await expect(page.getByRole('link', { name: GRANTED })).toBeVisible()
     await expect(page.getByRole('link', { name: HIDDEN })).toHaveCount(0)
     expect((await call('GET', `/app/api/dashboards/${hidden.slug}`)).status()).toBe(404)
@@ -115,7 +115,7 @@ test('a viewer gets the layout, never the SQL - and a widget runs its published 
 test('$USER.* is the viewer\'s own row', async ({ browser, token: _ }) => {
   const { context, page } = await asManager(browser)
   try {
-    await page.goto(`/admin/app/dashboards/${granted.slug}`)
+    await page.goto(`/app/dashboards/${granted.slug}`)
     await expect(page.locator('main').getByRole('cell', { name: EMAIL })).toBeVisible()
   } finally {
     await context.close()
@@ -128,7 +128,7 @@ test('a draft change reaches no viewer until published; an unconfigured widget n
   const { context, page: viewer } = await asManager(browser)
   try {
     const card = (label: string) => viewer.locator('main div.rounded-lg.border').filter({ has: viewer.getByText(label, { exact: true }) }).last()
-    await viewer.goto(`/admin/app/dashboards/${granted.slug}`)
+    await viewer.goto(`/app/dashboards/${granted.slug}`)
     await expect(card('Pedidos')).toContainText('22')
 
     await publishDashboard(page, token, granted.id)

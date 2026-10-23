@@ -35,7 +35,7 @@ describe("the first-start setup", () => {
 
   it("an instance with an administrator has no setup: no code, the file removed, 404", async () => {
     await writeFile(join(dir, "setup-code"), "LEFT-OVER-CODE-0000\n");
-    const state = await resolveSetup(database, undefined, dir, logger, "http://localhost:3050");
+    const state = await resolveSetup(database, undefined, dir, logger, "http://localhost:3030");
     expect(state.code).toBeNull();
     await expect(stat(join(dir, "setup-code"))).rejects.toMatchObject({ code: "ENOENT" });
     expect((await app.inject({ method: "GET", url: "/api/setup" })).json().data).toEqual({ required: false });
@@ -60,6 +60,6 @@ describe("the first-start setup", () => {
   });
 
   it("never reads TOTALBASE_SETUP_CODE once an administrator exists - not even to check it", async () => {
-    await expect(resolveSetup(database, "short", dir, logger, "http://localhost:3050")).resolves.toMatchObject({ code: null });
+    await expect(resolveSetup(database, "short", dir, logger, "http://localhost:3030")).resolves.toMatchObject({ code: null });
   });
 });

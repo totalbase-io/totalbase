@@ -65,7 +65,7 @@ describe("/admin/api/system-emails", () => {
     await context.settings.set("system.public_url", "https://public.example.com");
     const preview = await inject("POST", "/admin/api/system-emails/user_invitation/preview", template);
     expect(preview.statusCode).toBe(200);
-    expect(preview.json().data.html).toContain("https://public.example.com/admin/auth/accept-invitation?token=sample-token");
+    expect(preview.json().data.html).toContain("https://public.example.com/auth/accept-invitation?token=sample-token");
 
     const reset = await inject("DELETE", "/admin/api/system-emails/user_invitation");
     expect(reset.json().data).toMatchObject({ overridden: false });

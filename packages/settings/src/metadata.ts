@@ -668,12 +668,18 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   // --- security.* ---
   "security.rate_limit_enabled": {
     label: "Enable rate limiting",
-    description: "Turns request rate limiting on or off for the public API.",
+    description: "Limits the requests and the failed sign-ins of each IP address. Behind a proxy, turn on Trust reverse proxy headers with it - otherwise every caller has the proxy's address and shares one limit.",
     section: "Rate limiting",
   },
   "security.rate_limit_per_minute": {
     label: "Requests per minute",
-    description: "The most requests a single caller can make in a one-minute window before being throttled.",
+    description: "The most requests one IP address can make in a one-minute window before being throttled.",
+    section: "Rate limiting",
+    dependsOn: "security.rate_limit_enabled",
+  },
+  "security.rate_limit_sign_in_per_minute": {
+    label: "Failed sign-ins per minute",
+    description: "The most failed sign-in attempts from one IP address in a minute - a correct sign-in doesn't count. Each account also locks after its own failed attempts, in Access.",
     section: "Rate limiting",
     dependsOn: "security.rate_limit_enabled",
   },

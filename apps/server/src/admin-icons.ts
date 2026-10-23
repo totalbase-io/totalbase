@@ -6,7 +6,7 @@ import { TotalBaseError } from "@totalbase/errors";
  * The admin UI's icon source for icons its client bundle doesn't carry -
  * the ones a user picks (a DataView's, a Dashboard's, a menu group's).
  * Nuxt Icon (apps/admin/nuxt.config.ts, `provider: 'server'`) asks
- * `/admin/_icons/<collection>.json?icons=a,b` in the Iconify API's own
+ * `/_icons/<collection>.json?icons=a,b` in the Iconify API's own
  * format, so the admin never reaches out to api.iconify.design: works
  * offline, tells no third party what an instance uses.
  *
@@ -93,7 +93,7 @@ export function pickIcons(collection: IconifyCollection, names: string[]) {
 }
 
 export function registerAdminIcons(app: FastifyInstance): void {
-  app.get<{ Params: { file: string }; Querystring: { icons?: string } }>("/admin/_icons/:file", async (request, reply) => {
+  app.get<{ Params: { file: string }; Querystring: { icons?: string } }>("/_icons/:file", async (request, reply) => {
     const match = /^([a-z0-9-]+)\.json$/.exec(request.params.file);
     const collection = match ? loadCollection(match[1]!) : undefined;
     if (!collection) {

@@ -525,7 +525,7 @@ Every failure is TotalBase's own CODE: message - PostgreSQL's when PostgreSQL de
 ## Transient - retry once, later
 SERIALIZATION_FAILURE, DEADLOCK_DETECTED, QUERY_CANCELED (a timeout - simplify or index the query).
 
-RATE_LIMIT_EXCEEDED: the instance allows security.rate_limit_per_minute requests per client IP in a one-minute window (300 by default) - and every call of this server is one IP. The tools wait for the window and retry by themselves, three times; still refused, slow down: batch (grant_permissions, write_records with a list), or ask an administrator to raise the setting while building. Over HTTP (POST /mcp) each token has its own limit, mcp.rate_limit_per_minute (600 by default - a build's pace), and /mcp never counts toward the per-IP API limit; its 429 carries Retry-After, the seconds until the window resets.`;
+RATE_LIMIT_EXCEEDED: with rate limiting on (security.rate_limit_enabled, off by default), the instance allows security.rate_limit_per_minute requests per client IP in a one-minute window (3000 by default) - and every call of this server is one IP. The tools wait for the window and retry by themselves, three times; still refused, slow down: batch (grant_permissions, write_records with a list), or ask an administrator to raise the setting while building. Over HTTP (POST /mcp) each token has its own limit, mcp.rate_limit_per_minute (600 by default - a build's pace), and /mcp never counts toward the per-IP API limit; its 429 carries Retry-After, the seconds until the window resets.`;
 
 export const WORKFLOWS = `# Workflows
 

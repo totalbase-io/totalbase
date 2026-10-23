@@ -40,7 +40,7 @@ const money = (n: number) => new RegExp(n.toLocaleString('en-US', { minimumFract
 const cell = (page: Page, column: string, line: number) => page.locator('main').getByLabel(`${column}, line ${line}`, { exact: true })
 
 test('an order shows its items, each amount computed by PostgreSQL and formatted as money', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${dataview.slug}?pk=2`)
+  await page.goto(`/app/dataviews/${dataview.slug}?pk=2`)
   const main = page.locator('main')
   await expect(cell(page, 'Descripcion', 1)).toHaveValue('Cable 10 m')
   // `importe` is generated (cantidad * precio): a read-only amount, grouped like any number.
@@ -49,7 +49,7 @@ test('an order shows its items, each amount computed by PostgreSQL and formatted
 })
 
 test('items added in the grid - Tab past the last cell adds a line - saved with the order in one go, its total recomputed', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${dataview.slug}?pk=2`)
+  await page.goto(`/app/dataviews/${dataview.slug}?pk=2`)
   const main = page.locator('main')
   await expect(cell(page, 'Descripcion', 1)).toHaveValue('Cable 10 m')
   await main.getByRole('button', { name: 'Add item' }).click()
@@ -70,7 +70,7 @@ test('items added in the grid - Tab past the last cell adds a line - saved with 
 })
 
 test('a line refused by its CHECK (cantidad > 0) refuses the whole save - nothing changes, Cancel drops it', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${dataview.slug}?pk=2`)
+  await page.goto(`/app/dataviews/${dataview.slug}?pk=2`)
   const main = page.locator('main')
   await expect(cell(page, 'Descripcion', 1)).toHaveValue('Cable 10 m')
   const lines = await main.locator('tbody tr').count()
@@ -88,7 +88,7 @@ test('a line refused by its CHECK (cantidad > 0) refuses the whole save - nothin
 })
 
 test('a new order: opened blank - its customer is required, nothing refused before it\'s chosen - saved with its items in one go', async ({ page, token: _ }) => {
-  await page.goto(`/admin/app/dataviews/${dataview.slug}`)
+  await page.goto(`/app/dataviews/${dataview.slug}`)
   const main = page.locator('main')
   // It needs a customer: no save tried on open, no error shown; its items are typed before it exists.
   await expect(main.getByRole('button', { name: 'Add item' })).toBeVisible()

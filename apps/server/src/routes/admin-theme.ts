@@ -12,11 +12,11 @@ import type { AppContext } from "../context.js";
  * browser on its ETag: `no-cache` makes it revalidate each load (one 304),
  * so a saved change shows on the next reload.
  *
- * Registered on the app itself, ahead of the /admin/* static mount or dev
- * proxy, like /admin/_icons: a static route beats their wildcard.
+ * Registered on the app itself, ahead of the SPA's static mount or dev
+ * proxy, like /_icons: a static route beats their wildcard.
  */
 export function registerAdminThemeRoutes(app: FastifyInstance, context: AppContext): void {
-  app.get("/admin/theme.css", async (request, reply) => {
+  app.get("/theme.css", async (request, reply) => {
     const [primaryColor, neutralColor, customCss] = await Promise.all([
       context.settings.get("appearance.primary_color"),
       context.settings.get("appearance.neutral_color"),

@@ -41,4 +41,4 @@ sql 06-seed.sql   # again: it sets the images on their rows by file name
 node 12-pages.mjs
 node mcp.mjs 11-menu.json
 node 13-extras.mjs
-echo "Acme Field Services is up at $BASE/admin/ - Mailpit at http://localhost:8026"
+echo "Acme Field Services is up at $BASE/ - Mailpit at http://localhost:8026"

@@ -138,8 +138,6 @@ export async function dispatchDataEvent(context: WorkflowEngineContext, outboxEv
 }
 
 async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renewLease: () => Promise<void>): Promise<void> {
-  if (outbox.event === "EXECUTE") return; // DATA_EVENT Starts only match CREATE/UPDATE/DELETE (Workflows.md §6.3.1).
-
   // The event says where it came from itself (never the audit log, which audit.enabled may switch off).
   let incomingAncestry: string[] = [];
   if (outbox.source === "workflow") {
@@ -150,6 +148,9 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
   // Most writes have no DATA_EVENT workflow to admit at all: one cached
   // EXISTS settles that before anything is loaded or parsed.
   if (!(await context.workflowsAdmin.hasEnabledPublishedDataEventStart())) return;
+
+  // A function's call (Workflows.md §6.3.1): one run, its input the call's arguments and result.
+  if (outbox.event === "EXECUTE") return dispatchFunctionCall(context, outbox, incomingAncestry, renewLease);
 
   const rows = Array.isArray(outbox.payload) ? (outbox.payload as Record<string, unknown>[]) : outbox.payload ? [outbox.payload as Record<string, unknown>] : [];
   if (rows.length === 0) return; // "zero affected records admits no run" (Workflows.md §6.3.3).
@@ -299,5 +300,58 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
         row,
       );
     }
+  }
+}
+
+/**
+ * A function's EXECUTE event (Workflows.md §6.3.3): each enabled, published DATA_EVENT workflow on that function
+ * admits one run, its input `{ arguments, result }` - the arguments as the outbox keeps them (a password one
+ * redacted). The same ancestry and claim rules as a table's events; instead of a row's re-projection through READ,
+ * the executor must hold EXECUTE on the function now - the call having been allowed grants nothing.
+ */
+async function dispatchFunctionCall(context: WorkflowEngineContext, outbox: OutboxRow, incomingAncestry: string[], renewLease: () => Promise<void>): Promise<void> {
+  const payload = (outbox.payload ?? {}) as { data?: unknown; result?: unknown };
+  const input = { arguments: payload.data ?? {}, result: payload.result ?? null };
+  const candidates = await context.workflowsAdmin.listEnabledPublishedByStart({ trigger: "DATA_EVENT", resource: outbox.resource });
+  const [maxRuntimeBytes, maxChainDepth] = await Promise.all([
+    context.settings.get("workflows.max_runtime_value_bytes"),
+    context.settings.get("workflows.max_chain_depth"),
+  ]);
+  for (const { workflow, definition } of candidates) {
+    const start = ((definition.operations as DefinitionOperation[] | undefined) ?? []).find((op) => op.type === "totalbase.start");
+    const config = start?.configuration ?? {};
+    if (config.trigger !== "DATA_EVENT" || config.resource !== outbox.resource) continue;
+    if (!((config.events as string[] | undefined) ?? []).includes("EXECUTE")) continue;
+
+    const initiator = { type: "DATA_EVENT", resource: outbox.resource, event: outbox.event, requestId: outbox.request_id };
+    const outboxClaim = { event: outbox.id, item: null };
+    await renewLease();
+    if (incomingAncestry.includes(workflow.id)) {
+      await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, outboxClaim }, { code: "WORKFLOW_INVALID_DESIGN", message: "This workflow's own id already appears earlier in this admission's causal-ancestry chain (a loop)." });
+      continue;
+    }
+    if (incomingAncestry.length >= maxChainDepth) {
+      await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, outboxClaim }, { code: "WORKFLOW_LIMIT_EXCEEDED", message: `This admission's causal-ancestry chain would exceed the maximum depth of ${maxChainDepth} (workflows.max_chain_depth).` });
+      continue;
+    }
+    const executeAs = config.execute_as as string | undefined;
+    if (!executeAs) {
+      await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, outboxClaim }, { code: "WORKFLOW_INVALID_DESIGN", message: "This workflow has no execution user (execute_as) configured." });
+      continue;
+    }
+    let executor;
+    try {
+      executor = await resolveDataPrincipalForConfiguredUser(context, executeAs);
+    } catch (error) {
+      await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, outboxClaim }, { code: "WORKFLOW_INVALID_DESIGN", message: `This workflow's execution user could not be resolved: ${error instanceof Error ? error.message : String(error)}` });
+      continue;
+    }
+    if ((await context.effectivePermissions.resolve(executor.roleIds, outbox.resource, "EXECUTE")).action !== "ALLOW") continue;
+    const size = Buffer.byteLength(JSON.stringify(input), "utf8");
+    if (size > maxRuntimeBytes) {
+      await recordSuppressedAdmission(context, workflow, definition, { trigger: "DATA_EVENT", initiator, executor: { type: executor.principal.type, id: executor.principal.id }, outboxClaim }, { code: "WORKFLOW_LIMIT_EXCEEDED", message: `This call's arguments and result (${size} bytes) exceed the maximum trigger payload size of ${maxRuntimeBytes} bytes (workflows.max_runtime_value_bytes).` });
+      continue;
+    }
+    await runWorkflow(context, executor, workflow, workflow.publishedVersion!, definition, { trigger: "DATA_EVENT", mode: "PRODUCTION", initiator, ancestry: incomingAncestry, outboxClaim }, input);
   }
 }

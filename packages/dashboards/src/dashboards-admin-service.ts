@@ -158,6 +158,11 @@ export class DashboardsAdminService {
     return runner.brokenWidgets(this.ctx, timeoutMs);
   }
 
+  /** The live version's widgets that never name `$USER.*`, with the tables each reads - for the diagnosis (DataViews.md §18). */
+  unscopedWidgetTables(dashboardId: string, timeoutMs: number): Promise<{ widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[]> {
+    return runner.unscopedWidgetTables(this.ctx, dashboardId, timeoutMs);
+  }
+
   /** Drops every memoized plan - after a catalog refresh (apps/server's reconcileCatalog), when columns may have changed under a query. */
   forgetPlans(): void {
     runner.forgetPlans(this.ctx);

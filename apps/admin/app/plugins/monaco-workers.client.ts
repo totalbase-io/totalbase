@@ -25,4 +25,12 @@ export default defineNuxtPlugin(() => {
       return new EditorWorker()
     }
   }
+  // Disposing an editor mid-request (a drawer closing while a hover or a
+  // completion is pending) rejects Monaco's own promise with its
+  // CancellationError, which nobody awaits - it's not a failure, so it
+  // doesn't surface as an uncaught rejection.
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason as { name?: unknown, message?: unknown } | null
+    if (reason?.name === 'Canceled' && reason.message === 'Canceled') event.preventDefault()
+  })
 })

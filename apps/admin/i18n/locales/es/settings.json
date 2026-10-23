@@ -274,7 +274,7 @@
       "unsaved": "Sin guardar",
       "unsavedCount": "{n} cambio sin guardar | {n} cambios sin guardar",
       "noSecrets": "Todavía no hay secretos: crea uno en {link}.",
-      "secretsLink": "Configuración › Secretos",
+      "secretsLink": "Configuración › Seguridad › Secretos",
       "restartPending": "Guardado: el servidor sigue funcionando con {value} hasta que se reinicie.",
       "defaultValue": "Predeterminado: {value} ·",
       "restoreDefault": "Restaurar valor predeterminado",
@@ -873,7 +873,7 @@
         },
         "s3__secret_key": {
           "label": "Clave secreta de acceso (clave del secreto)",
-          "description": "La clave de una entrada de Ajustes → Secretos que guarda la clave secreta de acceso; nunca se guarda aquí en texto plano."
+          "description": "La clave de una entrada de Configuración › Seguridad › Secretos que guarda la clave secreta de acceso; nunca se guarda aquí en texto plano."
         },
         "security__rate_limit_enabled": {
           "label": "Activar la limitación de solicitudes",
@@ -1195,7 +1195,7 @@
         },
         "appearance__login_layout": {
           "label": "Página de inicio de sesión",
-          "description": "Qué rodea a la tarjeta de inicio de sesión. Simple, Panel de la empresa e Imagen muestran tu marca (Ajustes › General: tu logo y tu nombre) y solo un \"Funciona con TotalBase\" chico al pie; en el celular son la tarjeta bajo tu marca (Imagen conserva su foto de fondo).",
+          "description": "Qué rodea a la tarjeta de inicio de sesión. Simple, Panel de la empresa e Imagen muestran tu marca (Configuración › General › General: tu logo y tu nombre) y solo un \"Funciona con TotalBase\" chico al pie; en el celular son la tarjeta bajo tu marca (Imagen conserva su foto de fondo).",
           "options": {
             "SPLIT": "Predeterminada (TotalBase)",
             "SIMPLE": "Simple",
@@ -1394,7 +1394,7 @@
         },
         "backups__schedule": {
           "label": "Programación",
-          "description": "Cuándo, como expresión cron en la zona horaria de la instancia (Settings › General). 0 3 * * *: todos los días a las 03:00."
+          "description": "Cuándo, como expresión cron en la zona horaria de la instancia (Configuración › General › General). 0 3 * * *: todos los días a las 03:00."
         },
         "backups__keep": {
           "label": "Backups a conservar",

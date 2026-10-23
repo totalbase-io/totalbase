@@ -88,13 +88,6 @@ async function referencePaths(client: AdminClient, resource: ResourceRow): Promi
   return paths;
 }
 
-/** A filter's field paths - its keys, through _and/_or/_not. */
-function filterPaths(filter: unknown): string[] {
-  if (Array.isArray(filter)) return filter.flatMap(filterPaths);
-  if (!filter || typeof filter !== "object") return [];
-  return Object.entries(filter).flatMap(([key, value]) => (["_and", "_or", "_not"].includes(key) ? filterPaths(value) : [key]));
-}
-
 type Action = "CREATE" | "READ" | "UPDATE" | "DELETE" | "EXECUTE";
 interface GrantOptions {
   effect: Effect;
@@ -227,8 +220,6 @@ async function prepareGrant(client: AdminClient, roleId: string, resource: Resou
         const filled = (await writeColumns().filled).filter((column) => !granted.includes(column));
         if (filled.length > 0) warnings.push(`Every field left out what the database fills: ${filled.join(", ")} (a default, identity, generated, the writer or the time). Name one in fields to let the role write it.`);
       }
-      const relationFilter = filterPaths(permission.whereClause).filter((path) => path.includes("."));
-      if (action !== "READ" && relationFilter.length > 0) warnings.push(`A ${action} row filter can't follow a relation (${relationFilter.join(", ")}): writes answer INVALID_RELATION. Filter by the table's own columns.`);
       return {
         role: roleId,
         resource: `${resource.schema}.${resource.name}`,

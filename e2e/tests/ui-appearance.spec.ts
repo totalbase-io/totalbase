@@ -60,7 +60,7 @@ test('appearance: color, sign-in layout and custom CSS saved from the page reach
     await page.keyboard.insertText(CSS)
 
     await SAVE(page).click()
-    await expect(page.getByText('3 settings saved')).toBeVisible()
+    await expect(page.getByText('3 settings saved', { exact: true })).toBeVisible()
     const saved = await read()
     expect(saved['appearance.primary_color']).toBe('#0f766e')
     expect(saved['appearance.login_layout']).toBe('SIMPLE')

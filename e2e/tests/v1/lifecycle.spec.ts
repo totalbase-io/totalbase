@@ -94,7 +94,7 @@ test('created with the wizard, published, changed, restored and deleted - all th
   await page.getByRole('menuitemcheckbox', { name: /^v1 / }).click()
   await expect(main.getByText(/read-only/).first()).toBeVisible()
   await main.getByRole('button', { name: 'Restore', exact: true }).click()
-  await expect(page.getByText('Restored v1 into the draft')).toBeVisible()
+  await expect(page.getByText('Restored v1 into the draft', { exact: true })).toBeVisible()
   await page.goto(actionsUrl)
   await expect(main.getByRole('switch', { name: 'Search', exact: true })).toBeChecked()
   await expect.poll(status).toContain('Unpublished changes')

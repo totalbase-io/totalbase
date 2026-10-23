@@ -23,6 +23,10 @@ describe("object ownership (integration)", () => {
     await database.query(`CREATE ROLE ${ROLE} LOGIN PASSWORD '${ROLE}' NOSUPERUSER`);
     await database.query(`CREATE ROLE ${OWNER_GROUP} NOLOGIN`);
     await database.query(`GRANT ${OWNER_GROUP} TO ${ROLE}`);
+    // Giving a table to a role needs membership in it, which CREATEROLE grants itself, and the role's CREATE on the
+    // schema - no superuser (test-matrix.sh).
+    await database.query(`GRANT ${ROLE}, ${OWNER_GROUP} TO CURRENT_USER`);
+    await database.query(`GRANT CREATE ON SCHEMA public TO ${ROLE}, ${OWNER_GROUP}`);
     await database.query(`CREATE TABLE public.${OWN} (id int PRIMARY KEY)`);
     await database.query(`ALTER TABLE public.${OWN} OWNER TO ${ROLE}`);
     await database.query(`CREATE TABLE public.${FOREIGN} (id int PRIMARY KEY)`);
@@ -36,7 +40,7 @@ describe("object ownership (integration)", () => {
     await probe.close();
     await database.query(`DROP TABLE IF EXISTS public.${OWN}, public.${FOREIGN}, public.${VIA_GROUP}`);
     await database.query(`DROP FUNCTION IF EXISTS public.${FOREIGN_FN}()`);
-    await database.query(`DROP OWNED BY ${ROLE}`);
+    await database.query(`DROP OWNED BY ${ROLE}, ${OWNER_GROUP}`);
     await database.query(`DROP ROLE IF EXISTS ${ROLE}`);
     await database.query(`DROP ROLE IF EXISTS ${OWNER_GROUP}`);
     await database.close();

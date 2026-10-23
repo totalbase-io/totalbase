@@ -20,6 +20,7 @@ function text(issue: DiagnosisIssue): string {
     resource: issue.resource?.name ?? '',
     columns: (issue.columns ?? []).join(', '),
     variable: issue.variable ?? '',
+    widget: issue.widget?.name ?? '',
     actions: (issue.actions ?? []).map(a => t(`shell.diagnosis.actions.${a}`)).join(', ')
   }
   const code = issue.code === 'BROKEN_REFERENCE' && !issue.columns ? 'BROKEN_SOURCE' : issue.code
@@ -29,6 +30,7 @@ function text(issue: DiagnosisIssue): string {
 function fix(issue: DiagnosisIssue): { label: string, to: string } | null {
   if (issue.code === 'NO_ROLES') return { label: t('shell.diagnosis.fixes.roles'), to: settings('security') }
   if (issue.code === 'BROKEN_REFERENCE') return { label: t('shell.diagnosis.fixes.data'), to: settings('data') }
+  if (issue.code === 'WIDGET_IGNORES_ROW_FILTER') return { label: t('shell.diagnosis.fixes.widget'), to: `/dashboards/${props.objectId}` }
   if (issue.code === 'CONSTRAINT_WITHOUT_MESSAGE' && issue.resource) return { label: t('shell.diagnosis.fixes.constraints'), to: `/resources/${issue.resource.id}` }
   if (issue.role) return { label: t('shell.diagnosis.fixes.permissions', { role: issue.role.name }), to: `/roles/${issue.role.id}` }
   return null

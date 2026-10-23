@@ -56,7 +56,7 @@ const state = {
 async function login(page: Page, email = ADMIN_EMAIL, password = ADMIN_PASSWORD) {
   await page.goto('/admin/login', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit', timeout: 60_000 })
   await expect.poll(() => page.evaluate(() => localStorage.getItem('totalbase_admin_token')), { timeout: 30_000 }).toBeTruthy()
@@ -619,7 +619,10 @@ test('app menu: sorted by name Z → A at every level, groups first, and the arr
     await dialog.getByRole('radio', { name: 'Z → A' }).check()
     await dialog.getByRole('button', { name: 'Sort', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    await poll(async () => sortedDesc(await read())).toBe(true)
+    // What the other files publish meanwhile joins the end of the menu (Security.md §8.2): only what was there is judged.
+    const known = new Set(flatten(original.nodes).map(e => e.node.id))
+    const theirs = (list: MenuNode[]): MenuNode[] => list.filter(n => n.kind === 'GROUP' || known.has(n.id)).map(n => (n.kind === 'GROUP' ? { ...n, children: theirs(n.children ?? []) } : n))
+    await poll(async () => sortedDesc(theirs(await read()))).toBe(true)
   } finally {
     const present = new Set(flatten(await read()).map(e => e.node.id))
     const keep = (list: MenuNode[]): MenuNode[] => list.filter(n => n.kind === 'GROUP' || present.has(n.id)).map(n => (n.kind === 'GROUP' ? { ...n, children: keep(n.children ?? []) } : n))

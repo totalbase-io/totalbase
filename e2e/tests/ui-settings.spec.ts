@@ -536,7 +536,7 @@ test.describe('my account', () => {
     try {
       await me.goto('/admin/login')
       await me.getByLabel('Email').fill(email)
-      await me.getByLabel('Password').fill(password)
+      await me.getByLabel('Password', { exact: true }).fill(password)
       await me.getByRole('button', { name: 'Sign in' }).click()
       await me.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
       const token = (await me.evaluate(() => localStorage.getItem('totalbase_admin_token')))!

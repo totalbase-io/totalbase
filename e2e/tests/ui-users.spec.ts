@@ -84,7 +84,7 @@ async function ok<T>(method: string, path: string, body?: unknown): Promise<T> {
 async function signIn(page: Page) {
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(FIXTURE_ADMIN.email)
-  await page.getByLabel('Password').fill(FIXTURE_ADMIN.password)
+  await page.getByLabel('Password', { exact: true }).fill(FIXTURE_ADMIN.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/admin\/(status|app)?\/?$/, { waitUntil: 'commit' })
 }

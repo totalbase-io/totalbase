@@ -57,6 +57,10 @@ describe("maintenance stats (integration)", () => {
     beforeAll(async () => {
       version = (await database.query<{ v: number }>(`SELECT current_setting('server_version_num')::int AS v`)).rows[0]!.v;
       await database.query(`CREATE ROLE ${ROLE} LOGIN PASSWORD '${ROLE}' NOSUPERUSER`);
+      // Giving a table to a role needs membership in it, which CREATEROLE grants itself, and the role's CREATE on the
+      // schema - no superuser (test-matrix.sh).
+      await database.query(`GRANT ${ROLE} TO CURRENT_USER`);
+      await database.query(`GRANT CREATE ON SCHEMA public TO ${ROLE}`);
       await database.query(`CREATE TABLE public.${OWN} (id int PRIMARY KEY)`);
       await database.query(`ALTER TABLE public.${OWN} OWNER TO ${ROLE}`);
       await database.query(`CREATE TABLE public.${FOREIGN} (id int PRIMARY KEY)`);

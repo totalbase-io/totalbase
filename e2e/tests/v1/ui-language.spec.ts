@@ -32,7 +32,7 @@ test('a user switches to Spanish in My account - at once, and after a reload', a
   const page = await context.newPage()
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(EMAIL)
-  await page.getByLabel('Password').fill(PASSWORD)
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForFunction(() => localStorage.getItem('totalbase_admin_token'))
 

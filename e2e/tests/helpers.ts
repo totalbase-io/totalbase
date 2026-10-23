@@ -9,7 +9,7 @@ export const ADMIN_PASSWORD = process.env.TOTALBASE_ADMIN_PASSWORD ?? '1234567'
 export async function login(page: Page) {
   await page.goto('/admin/login')
   await page.getByLabel('Email').fill(ADMIN_EMAIL)
-  await page.getByLabel('Password').fill(ADMIN_PASSWORD)
+  await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   // The token, not the page's `load` event: a busy dev server can hold
   // `load` (every module of the home page) long after the sign-in worked.
@@ -65,8 +65,7 @@ export async function publishDataView(page: Page, token: string, dataviewId: str
  */
 export function watchApiFailures(page: Page, expected: RegExp[] = []) {
   const failures: string[] = []
-  // Monaco's own "Canceled" when an editor closes mid-request - not the page's.
-  page.on('pageerror', (error) => { if (error.message !== 'Canceled') failures.push(`uncaught: ${error.message}`) })
+  page.on('pageerror', (error) => { failures.push(`uncaught: ${error.message}`) })
   page.on('response', (response) => {
     const url = new URL(response.url())
     if (!/\/(admin\/api|app\/api|api)\//.test(url.pathname) || response.status() < 400) return

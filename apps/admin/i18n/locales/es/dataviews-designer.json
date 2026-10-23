@@ -2850,7 +2850,7 @@
         "title": "Ninguna variable seleccionada"
       },
       "notes": {
-        "noLimit": "La consulta no tiene límite: aquí, todos los registros que coinciden; en la página, la página predeterminada de la Data API (Configuración › API).",
+        "noLimit": "La consulta no tiene límite: aquí, todos los registros que coinciden; en la página, la página predeterminada de la Data API (Configuración › Data API › Límites).",
         "variablesLeftOut": "Se omitieron las condiciones que leen una variable de la página - aquí no tienen valor."
       },
       "queryValues": "Los valores pueden usar {formula}.",

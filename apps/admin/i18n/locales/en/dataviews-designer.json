@@ -2850,7 +2850,7 @@
         "title": "No variable selected"
       },
       "notes": {
-        "noLimit": "The query has no limit: here, every matching record; on the page, the Data API's default page (Settings › API).",
+        "noLimit": "The query has no limit: here, every matching record; on the page, the Data API's default page (Settings › Data API › Limits).",
         "variablesLeftOut": "Conditions reading a page variable were left out - they have no value here."
       },
       "queryValues": "Values can use {formula}.",

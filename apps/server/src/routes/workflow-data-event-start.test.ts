@@ -112,16 +112,8 @@ describe("DATA_EVENT Start: For each row / statement, filters", () => {
     await expect(workflow("CREATE", { filter: { status: { _nope: 1 } } })).rejects.toMatchObject({ code: "WORKFLOW_NOT_PUBLISHABLE" });
   });
 
-  it("save refuses a Start that could never run - a function's events, an event that isn't one (M27)", async () => {
+  it("save refuses a Start that could never run - a function's event on a table, an event that isn't one (M27)", async () => {
     await expect(workflow("CREATE", { events: ["EXECUTE"] })).rejects.toMatchObject({ code: "WORKFLOW_INVALID_DESIGN", message: 'Start (DATA_EVENT): events are CREATE, UPDATE, DELETE - got "EXECUTE".' });
-    const fn = (await database.query<{ id: string }>(
-      `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
-       VALUES (to_regproc('pg_catalog.now')::oid, 'pg_catalog', 'now_m27', 'FUNCTION', 'ACTIVE', ARRAY['POST']) RETURNING id`,
-    )).rows[0]!.id;
-    try {
-      await expect(workflow("CREATE", { resource: fn })).rejects.toMatchObject({ code: "WORKFLOW_INVALID_DESIGN", message: expect.stringContaining("pg_catalog.now_m27 is a FUNCTION - a data event comes from a TABLE") });
-    } finally {
-      await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [fn]);
-    }
+    await expect(workflow("CREATE", { events: ["TRUNCATE"] })).rejects.toMatchObject({ code: "WORKFLOW_INVALID_DESIGN", message: 'Start (DATA_EVENT): events are CREATE, UPDATE, DELETE - got "TRUNCATE".' });
   });
 });

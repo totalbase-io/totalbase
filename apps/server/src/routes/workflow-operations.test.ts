@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:http";
@@ -314,6 +314,7 @@ describe("workflow operations", () => {
   describe("Sign (§5.15.2)", () => {
     const CERT = "wfop_sign_cert";
     const KEY = "wfop_sign_key";
+    const HMAC_KEY = "wfop_sign_hmac";
     let dir: string;
     beforeAll(async () => {
       dir = mkdtempSync(join(tmpdir(), "tb-wfop-sign-"));
@@ -322,10 +323,14 @@ describe("workflow operations", () => {
       await context.secrets.set(KEY, readFileSync(join(dir, "key.pem"), "utf8"));
       await publishedWorkflow(`${PREFIX}-sign`, { type: "totalbase.sign", configuration: { format: "CMS", data: "<ticket/>", certificate: CERT, privateKey: KEY } });
       await publishedWorkflow(`${PREFIX}-sign-missing`, { type: "totalbase.sign", configuration: { format: "CMS", data: "<ticket/>", certificate: CERT, privateKey: "wfop_sign_nope" } });
+      await context.secrets.set(HMAC_KEY, "pseudonym-key");
+      await publishedWorkflow(`${PREFIX}-hmac`, { type: "totalbase.sign", configuration: { format: "HMAC_SHA256", data: "30111222", key: HMAC_KEY } });
+      await publishedWorkflow(`${PREFIX}-hmac-b64`, { type: "totalbase.sign", configuration: { format: "HMAC_SHA256", data: "30111222", key: HMAC_KEY, encoding: "BASE64" } });
     });
     afterAll(async () => {
       await context.secrets.delete(CERT);
       await context.secrets.delete(KEY);
+      await context.secrets.delete(HMAC_KEY);
       rmSync(dir, { recursive: true, force: true });
     });
 
@@ -336,6 +341,16 @@ describe("workflow operations", () => {
       expect(Buffer.from(data.result.data.signature, "base64").toString("binary")).toContain("<ticket/>");
       const { rows } = await database.query<{ definition: unknown }>(`SELECT definition FROM totalbase.workflows WHERE slug = $1`, [`${PREFIX}-sign`]);
       expect(JSON.stringify(rows[0]!.definition)).not.toContain("BEGIN");
+    });
+
+    it("computes an HMAC-SHA256 with a secret as its key - hex by default, base64 when asked", async () => {
+      const expected = (encoding: "hex" | "base64") => createHmac("sha256", "pseudonym-key").update("30111222", "utf8").digest(encoding);
+      const hex = (await run(`${PREFIX}-hmac`)).json().data;
+      expect(hex).toMatchObject({ status: "SUCCEEDED", result: { data: { format: "HMAC_SHA256", signature: expected("hex") } } });
+      const b64 = (await run(`${PREFIX}-hmac-b64`)).json().data;
+      expect(b64.result.data.signature).toBe(expected("base64"));
+      const { rows } = await database.query<{ definition: unknown }>(`SELECT definition FROM totalbase.workflows WHERE slug = $1`, [`${PREFIX}-hmac`]);
+      expect(JSON.stringify(rows[0]!.definition)).not.toContain("pseudonym-key");
     });
 
     it("fails with SECRET_NOT_FOUND when a secret doesn't exist", async () => {

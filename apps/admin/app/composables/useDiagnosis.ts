@@ -3,7 +3,7 @@
  * one check, read by the header's warnings and the publish dialog. `refresh` after a change that may fix one.
  */
 export interface DiagnosisIssue {
-  code: 'NOT_PUBLISHED' | 'NO_ROLES' | 'BROKEN_REFERENCE' | 'CONSTRAINT_WITHOUT_MESSAGE' | 'ROLE_CANNOT_READ' | 'ROLE_FIELDS_HIDDEN' | 'ROLE_SEES_KEY' | 'ROLE_VARIABLE_REFUSED' | 'ROLE_CANNOT_WRITE'
+  code: 'NOT_PUBLISHED' | 'NO_ROLES' | 'BROKEN_REFERENCE' | 'CONSTRAINT_WITHOUT_MESSAGE' | 'ROLE_CANNOT_READ' | 'ROLE_FIELDS_HIDDEN' | 'ROLE_SEES_KEY' | 'ROLE_VARIABLE_REFUSED' | 'ROLE_CANNOT_WRITE' | 'WIDGET_IGNORES_ROW_FILTER'
   severity: 'warning' | 'info'
   message: string
   role: { id: string, name: string } | null
@@ -11,6 +11,7 @@ export interface DiagnosisIssue {
   actions: ('CREATE' | 'UPDATE' | 'DELETE')[] | null
   columns: string[] | null
   variable: string | null
+  widget: { id: string, name: string } | null
 }
 
 export function useDiagnosis(kind: () => 'dataview' | 'dashboard', id: () => string | undefined) {

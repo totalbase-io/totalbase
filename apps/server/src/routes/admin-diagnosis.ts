@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { objectReachIssues, type DiagnosisIssue } from "@totalbase/dataviews";
+import { dashboardRowFilterIssues, objectReachIssues, type DiagnosisIssue } from "@totalbase/dataviews";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
 import { type DataBody, requestData } from "../request-body.js";
@@ -14,7 +14,7 @@ import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
  */
 const NAMED = object({ id: UUID, name: { type: "string" } }, ["id", "name"]);
 const ISSUE = object({
-  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE"] },
+  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "WIDGET_IGNORES_ROW_FILTER"] },
   severity: { type: "string", enum: ["warning", "info"] },
   message: { type: "string", description: "The issue in English." },
   role: { ...NAMED, type: ["object", "null"], description: "The role it is about - null for the object itself." },
@@ -22,14 +22,18 @@ const ISSUE = object({
   actions: { type: ["array", "null"], items: { type: "string", enum: ["CREATE", "UPDATE", "DELETE"] }, description: "ROLE_CANNOT_WRITE: what the role lacks." },
   columns: { type: ["array", "null"], items: { type: "string" }, description: "The columns or related paths." },
   variable: { type: ["string", "null"], description: "ROLE_VARIABLE_REFUSED: the variable." },
-}, ["code", "severity", "message", "role", "resource", "actions", "columns", "variable"]);
+  widget: { ...NAMED, type: ["object", "null"], description: "WIDGET_IGNORES_ROW_FILTER: the dashboard's widget." },
+}, ["code", "severity", "message", "role", "resource", "actions", "columns", "variable", "widget"]);
 
 export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
 
   async function dashboardIssues(dashboard: { id: string; liveVersion?: number | null }): Promise<DiagnosisIssue[]> {
-    const roles = await context.dashboardsAdmin.listRoles(dashboard.id);
-    return (await objectReachIssues(context, "dashboard", { id: dashboard.id, liveVersion: dashboard.liveVersion ?? null }, roles)).issues;
+    const roleIds = await context.dashboardsAdmin.listRoles(dashboard.id);
+    const { issues, roles } = await objectReachIssues(context, "dashboard", { id: dashboard.id, liveVersion: dashboard.liveVersion ?? null }, roleIds);
+    if (roles.length === 0 || (dashboard.liveVersion ?? null) === null) return issues;
+    const widgets = await context.dashboardsAdmin.unscopedWidgetTables(dashboard.id, await context.settings.get("dashboards.query_timeout_ms"));
+    return [...issues, ...await dashboardRowFilterIssues(context, context.effectivePermissions, roles, widgets)];
   }
 
   app.get<{ Params: { id: string } }>("/admin/api/dataviews/:id/diagnosis", {
@@ -53,7 +57,10 @@ export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppC
     preHandler,
     ...adminDoc("dashboards", {
       summary: "What stops a dashboard from reaching its viewers",
-      description: "Not published, no role opens it. A dashboard's data is its author's (its SQL), so no role lacks a grant on it.",
+      description:
+        "Not published, no role opens it; and per role that opens it, a published widget whose SQL never names " +
+        "`$USER.*` reading a table the role may read only some rows of: its SQL runs with the dashboard's authority, so " +
+        "the role sees every row through it. Decided by PostgreSQL's plan and the Permission Resolver; never grants anything.",
       pathParameters: { id: { description: "The dashboard's id.", schema: UUID } },
       response: ok(arrayOf(ISSUE)),
     }),

@@ -167,8 +167,8 @@
       "forEachStatement": "For each statement",
       "forEachStatementDescription": "One run per write, with the list of rows - {path}.",
       "filterInvalid": "Must be a JSON filter object.",
-      "table": "Table",
-      "tableDescription": "The table whose changes admit a run.",
+      "table": "Table or function",
+      "tableDescription": "The table whose changes admit a run, or the function whose calls do.",
       "events": "Events",
       "eventsDescription": "At least one event that triggers this workflow.",
       "eventCreate": "Create",
@@ -205,7 +205,7 @@
       "sync": "Synchronous",
       "async": "Asynchronous",
       "waitTime": "Wait time",
-      "waitTimeDescription": "Seconds to wait for a result before applying the timeout action - never more than Settings › Workflows › Maximum synchronous wait.",
+      "waitTimeDescription": "Seconds to wait for a result before applying the timeout action - never more than Settings › Features › Workflows › Maximum synchronous wait.",
       "onTimeout": "On timeout",
       "onTimeoutDescription": "What happens when the wait time elapses without a result.",
       "continueInBackground": "Continue in background",
@@ -215,7 +215,8 @@
       "public": "Public",
       "authenticated": "Authenticated",
       "executeAsWebhookPublic": "Required - a public webhook has an anonymous initiator and must use a specific execution user.",
-      "executeAsWebhookAuthenticated": "Optional - defaults to the authenticated caller when left unset."
+      "executeAsWebhookAuthenticated": "Optional - defaults to the authenticated caller when left unset.",
+      "functionCall": "Each call to this function through the Data API starts one run, after it commits: its arguments in {args}, what it returned in {result}. A workflow's own Execute function step doesn't start one. To act only on some calls, add a Condition after Start."
     },
     "cron": {
       "hourly": "Hourly",
@@ -457,7 +458,7 @@
     },
     "signModal": {
       "sign": "Sign",
-      "signDataWithAStoredCertificate": "Sign a text with a certificate and its private key from Settings > Secrets.",
+      "signDataWithAStoredCertificate": "Sign a text with a certificate and its private key, or a key, from Settings > Secrets.",
       "format": "Format",
       "cmsDescription": "CMS / PKCS#7 SignedData: the text attached, the certificate included, SHA-256, DER in base64 - what openssl cms -sign produces and a WSAA login takes.",
       "data": "Data",
@@ -467,7 +468,12 @@
       "privateKey": "Private key",
       "aSecretHoldingThePemKey": "The secret holding the certificate's private key, in PEM. An RSA key.",
       "passphrase": "Passphrase",
-      "onlyWhenTheKeyIsEncrypted": "Only when the private key is encrypted: the secret holding its passphrase."
+      "onlyWhenTheKeyIsEncrypted": "Only when the private key is encrypted: the secret holding its passphrase.",
+      "hmacDescription": "HMAC-SHA256: a keyed hash of the text with a secret as its key - a webhook's signature, or a pseudonym only that secret can recompute.",
+      "key": "Key",
+      "aSecretHoldingTheKey": "The secret holding the key, used as text.",
+      "encoding": "Encoding",
+      "encodingDescription": "How the signature is written: hexadecimal (lowercase) or base64."
     },
     "json": {
       "mustBeObject": "Must be a JSON object.",

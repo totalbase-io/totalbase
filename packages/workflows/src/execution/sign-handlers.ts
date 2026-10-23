@@ -1,4 +1,4 @@
-import { createPrivateKey, X509Certificate, type KeyObject } from "node:crypto";
+import { createHmac, createPrivateKey, X509Certificate, type KeyObject } from "node:crypto";
 import { TotalBaseError } from "@totalbase/errors";
 import forge from "node-forge";
 import type { OperationHandler } from "./types.js";
@@ -6,10 +6,12 @@ import type { OperationHandler } from "./types.js";
 /**
  * Sign (Workflows.md §5.15.2): signs a text with a certificate
  * and its private key kept in `totalbase.secrets`, read when the step runs -
- * never in the definition, a version or the history. The one format today is
- * `CMS`: a PKCS#7/CMS SignedData with the content attached, the certificate
- * included, SHA-256, DER, base64 - what `openssl cms -sign -nodetach -outform
- * DER` produces, and what a WSAA-style login (AFIP) takes.
+ * never in the definition, a version or the history. Two formats: `CMS`, a
+ * PKCS#7/CMS SignedData with the content attached, the certificate included,
+ * SHA-256, DER, base64 - what `openssl cms -sign -nodetach -outform DER`
+ * produces, and what a WSAA-style login (AFIP) takes; and `HMAC_SHA256`, a
+ * keyed hash with a secret as its key - a webhook's signature, or a
+ * pseudonym that only the secret's holder can recompute.
  *
  * `node:crypto` reads the key (every PEM form, a passphrase) and checks the
  * certificate - that it parses, is in its validity period and matches the key;
@@ -23,6 +25,17 @@ export interface SignedCms {
   /** The DER-encoded SignedData, base64. */
   signature: string;
   certificate: { subject: string; issuer: string; serialNumber: string; validFrom: string; validTo: string };
+}
+
+export interface SignedHmac {
+  format: "HMAC_SHA256";
+  /** The HMAC-SHA256 of the data, hex (lowercase) or base64. */
+  signature: string;
+}
+
+/** HMAC-SHA256 of `data` (UTF-8 text) under `key` (the secret's value, as UTF-8 text). */
+export function signHmac(data: string, key: string, encoding: "HEX" | "BASE64"): SignedHmac {
+  return { format: "HMAC_SHA256", signature: createHmac("sha256", key).update(data, "utf8").digest(encoding === "BASE64" ? "base64" : "hex") };
 }
 
 function failed(message: string): TotalBaseError {
@@ -95,9 +108,15 @@ function secretName(configuration: Record<string, unknown>, field: string, what:
 
 const sign: OperationHandler = async ({ context, configuration }) => {
   const format = configuration.format ?? "CMS";
-  if (format !== "CMS") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's format must be CMS.");
+  if (format !== "CMS" && format !== "HMAC_SHA256") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's format must be CMS or HMAC_SHA256.");
   const data = configuration.data;
   if (typeof data !== "string" || data === "") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's data must resolve to a non-empty text.");
+  if (format === "HMAC_SHA256") {
+    const encoding = configuration.encoding ?? "HEX";
+    if (encoding !== "HEX" && encoding !== "BASE64") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's encoding must be HEX or BASE64.");
+    const key = await context.secrets.decrypt(secretName(configuration, "key", "key"));
+    return { output: "next", result: signHmac(data, key, encoding) };
+  }
   const names = { certificate: secretName(configuration, "certificate", "certificate"), privateKey: secretName(configuration, "privateKey", "private key") };
   const passphraseName = typeof configuration.passphrase === "string" && configuration.passphrase.trim() ? configuration.passphrase.trim() : undefined;
   const [certificatePem, privateKeyPem, passphrase] = await Promise.all([

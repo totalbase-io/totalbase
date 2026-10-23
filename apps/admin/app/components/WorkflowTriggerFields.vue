@@ -31,8 +31,11 @@ const { t } = useI18n()
 const triggerOptions = useTriggerOptions()
 
 const { resources } = useResourcesList()
-const tables = computed(() => resources.value.filter(resource => resource.type === 'TABLE' && resource.status === 'ACTIVE'))
-const tableItems = computed(() => tables.value.map(table => ({ label: table.name, value: table.id })).sort((a, b) => a.label.localeCompare(b.label)))
+// A data event comes from a table's rows, or from a function's calls (Workflows.md §6.3.1).
+const sources = computed(() => resources.value.filter(resource => (resource.type === 'TABLE' || resource.type === 'FUNCTION') && resource.status === 'ACTIVE'))
+const tableItems = computed(() => sources.value
+  .map(source => ({ label: source.name, value: source.id, icon: source.type === 'FUNCTION' ? 'i-lucide-square-function' : 'i-lucide-table' }))
+  .sort((a, b) => a.label.localeCompare(b.label)))
 
 // `executeAs` defaults to the seeded "Workflows" system account (migration
 // 000074), not to whoever happens to be creating the workflow - a
@@ -54,7 +57,7 @@ const { data: workflowsSystemUser } = useAsyncData(
 const workflowsSystemUserId = computed(() => workflowsSystemUser.value?.id ?? null)
 const dataEvent = ref({
   resource: null as string | null,
-  events: [] as ('CREATE' | 'UPDATE' | 'DELETE')[],
+  events: [] as ('CREATE' | 'UPDATE' | 'DELETE' | 'EXECUTE')[],
   executeAs: null as string | null,
   // Workflows.md §6.3.1: one run per row, or one per write with the list of rows.
   forEach: 'ROW' as 'ROW' | 'STATEMENT',
@@ -94,11 +97,18 @@ function parseFilterText(text: string): Record<string, unknown> | null | undefin
 }
 const filterError = computed(() => parseFilterText(dataEvent.value.filterText) === undefined ? t('workflows.triggerFields.filterInvalid') : undefined)
 const oldFilterError = computed(() => parseFilterText(dataEvent.value.oldFilterText) === undefined ? t('workflows.triggerFields.filterInvalid') : undefined)
+// A function's call starts one run, its event EXECUTE - no rows to filter or group (a Condition after Start does it).
+const FUNCTION_CALL_PATHS = { args: '{{start.data.arguments.<name>}}', result: '{{start.data.result}}' }
+const isFunction = computed(() => sources.value.find(source => source.id === dataEvent.value.resource)?.type === 'FUNCTION')
+watch(isFunction, (fn, was) => {
+  if (fn) dataEvent.value.events = ['EXECUTE']
+  else if (was) dataEvent.value.events = []
+})
 // The table's columns, for "Changed fields".
 const tableColumns = ref<string[]>([])
 watch(() => dataEvent.value.resource, async (resourceId) => {
   tableColumns.value = []
-  if (!resourceId) return
+  if (!resourceId || isFunction.value) return
   try {
     const { data } = await api.get<{ columns: { name: string }[] }>(`/catalog/table/${resourceId}`)
     tableColumns.value = data.columns.map(c => c.name)
@@ -138,7 +148,7 @@ function parseInitial(config: Record<string, unknown> | undefined) {
   if (trigger === 'DATA_EVENT') {
     dataEvent.value = {
       resource: (config.resource as string | null) ?? null,
-      events: (config.events as ('CREATE' | 'UPDATE' | 'DELETE')[] | undefined) ?? [],
+      events: (config.events as ('CREATE' | 'UPDATE' | 'DELETE' | 'EXECUTE')[] | undefined) ?? [],
       executeAs: (config.execute_as as string | null | undefined) ?? null,
       forEach: config.for_each === 'STATEMENT' ? 'STATEMENT' : 'ROW',
       filterText: config.filter ? JSON.stringify(config.filter, null, 2) : '',
@@ -184,6 +194,9 @@ const valid = computed(() => {
 watch(valid, v => emit('update:valid', v), { immediate: true })
 
 function buildConfiguration(): Record<string, unknown> {
+  if (kind.value === 'DATA_EVENT' && isFunction.value) {
+    return { trigger: 'DATA_EVENT', resource: dataEvent.value.resource, events: ['EXECUTE'], execute_as: dataEvent.value.executeAs }
+  }
   if (kind.value === 'DATA_EVENT') {
     const updates = dataEvent.value.events.includes('UPDATE')
     const filter = parseFilterText(dataEvent.value.filterText)
@@ -274,63 +287,71 @@ defineExpose({ buildConfiguration, valid })
             @update:model-value="(value: string) => { dataEvent.resource = value }"
           />
         </UFormField>
-        <UFormField
-          :label="t('workflows.triggerFields.events')"
-          required
-          :description="t('workflows.triggerFields.eventsDescription')"
+        <p
+          v-if="isFunction"
+          class="text-xs text-muted"
         >
-          <UCheckboxGroup
-            v-model="dataEvent.events"
-            :items="[
-              { label: t('workflows.triggerFields.eventCreate'), value: 'CREATE' },
-              { label: t('workflows.triggerFields.eventUpdate'), value: 'UPDATE' },
-              { label: t('workflows.triggerFields.eventDelete'), value: 'DELETE' }
-            ]"
-          />
-        </UFormField>
-        <UFormField
-          :label="t('workflows.triggerFields.forEach')"
-          :description="t('workflows.triggerFields.forEachDescription')"
-        >
-          <URadioGroup
-            v-model="dataEvent.forEach"
-            :items="FOR_EACH_OPTIONS"
-            :aria-label="t('workflows.triggerFields.forEach')"
-          />
-        </UFormField>
-        <UFormField
-          :label="t('workflows.triggerFields.filter')"
-          :error="filterError"
-          :description="t('workflows.triggerFields.filterDescription', { example: '{ &quot;status&quot;: { &quot;_eq&quot;: &quot;PAID&quot; } }' })"
-        >
-          <JsonEditor
-            v-model="dataEvent.filterText"
-            min-height="5rem"
-          />
-        </UFormField>
-        <template v-if="dataEvent.events.includes('UPDATE')">
+          {{ t('workflows.triggerFields.functionCall', FUNCTION_CALL_PATHS) }}
+        </p>
+        <template v-else>
           <UFormField
-            :label="t('workflows.triggerFields.changedFields')"
-            :description="t('workflows.triggerFields.changedFieldsDescription')"
+            :label="t('workflows.triggerFields.events')"
+            required
+            :description="t('workflows.triggerFields.eventsDescription')"
           >
-            <USelectMenu
-              v-model="dataEvent.changedFields"
-              :items="tableColumns"
-              multiple
-              :aria-label="t('workflows.triggerFields.changedFields')"
-              class="w-full"
+            <UCheckboxGroup
+              v-model="dataEvent.events"
+              :items="[
+                { label: t('workflows.triggerFields.eventCreate'), value: 'CREATE' },
+                { label: t('workflows.triggerFields.eventUpdate'), value: 'UPDATE' },
+                { label: t('workflows.triggerFields.eventDelete'), value: 'DELETE' }
+              ]"
             />
           </UFormField>
           <UFormField
-            :label="t('workflows.triggerFields.oldFilter')"
-            :error="oldFilterError"
-            :description="t('workflows.triggerFields.oldFilterDescription', { example: '{ &quot;status&quot;: { &quot;_eq&quot;: &quot;PENDING&quot; } }' })"
+            :label="t('workflows.triggerFields.forEach')"
+            :description="t('workflows.triggerFields.forEachDescription')"
+          >
+            <URadioGroup
+              v-model="dataEvent.forEach"
+              :items="FOR_EACH_OPTIONS"
+              :aria-label="t('workflows.triggerFields.forEach')"
+            />
+          </UFormField>
+          <UFormField
+            :label="t('workflows.triggerFields.filter')"
+            :error="filterError"
+            :description="t('workflows.triggerFields.filterDescription', { example: '{ &quot;status&quot;: { &quot;_eq&quot;: &quot;PAID&quot; } }' })"
           >
             <JsonEditor
-              v-model="dataEvent.oldFilterText"
+              v-model="dataEvent.filterText"
               min-height="5rem"
             />
           </UFormField>
+          <template v-if="dataEvent.events.includes('UPDATE')">
+            <UFormField
+              :label="t('workflows.triggerFields.changedFields')"
+              :description="t('workflows.triggerFields.changedFieldsDescription')"
+            >
+              <USelectMenu
+                v-model="dataEvent.changedFields"
+                :items="tableColumns"
+                multiple
+                :aria-label="t('workflows.triggerFields.changedFields')"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField
+              :label="t('workflows.triggerFields.oldFilter')"
+              :error="oldFilterError"
+              :description="t('workflows.triggerFields.oldFilterDescription', { example: '{ &quot;status&quot;: { &quot;_eq&quot;: &quot;PENDING&quot; } }' })"
+            >
+              <JsonEditor
+                v-model="dataEvent.oldFilterText"
+                min-height="5rem"
+              />
+            </UFormField>
+          </template>
         </template>
         <UFormField
           :label="t('workflows.triggerFields.executeAs')"

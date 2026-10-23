@@ -23,7 +23,8 @@ export type DiagnosisCode =
   | "ROLE_FIELDS_HIDDEN"
   | "ROLE_SEES_KEY"
   | "ROLE_VARIABLE_REFUSED"
-  | "ROLE_CANNOT_WRITE";
+  | "ROLE_CANNOT_WRITE"
+  | "WIDGET_IGNORES_ROW_FILTER";
 
 export interface DiagnosisIssue {
   code: DiagnosisCode;
@@ -39,12 +40,14 @@ export interface DiagnosisIssue {
   columns: string[] | null;
   /** ROLE_VARIABLE_REFUSED: the variable's name. */
   variable: string | null;
+  /** WIDGET_IGNORES_ROW_FILTER: the dashboard's widget. */
+  widget: { id: string; name: string } | null;
 }
 
 /** One issue, every key present (one response shape): what it doesn't name is null. */
 type IssueInput = Pick<DiagnosisIssue, "code" | "severity" | "message"> & Partial<Omit<DiagnosisIssue, "code" | "severity" | "message">>;
 function issue(input: IssueInput): DiagnosisIssue {
-  return { role: null, resource: null, actions: null, columns: null, variable: null, ...input };
+  return { role: null, resource: null, actions: null, columns: null, variable: null, widget: null, ...input };
 }
 
 /**
@@ -155,6 +158,46 @@ export async function diagnoseDataView(ctx: DataViewsContext, permissions: Effec
         issues.push(issue({
           code: "ROLE_VARIABLE_REFUSED", severity: "warning", role, resource, variable: variable.name, ...(denied && { columns: denied }),
           message: `${role.name} may not read ${denied ? denied.join(", ") + " on " : ""}${resource.name}: the page's variable ${variable.name} is refused for them.`,
+        }));
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * A dashboard's widget runs with its author's authority (Dashboards.md §2), so a role whose READ on a table is
+ * limited to some rows sees all of them through a widget that never names `$USER.*`. `widgets` are the live
+ * version's such widgets with the tables PostgreSQL plans them to read (`unscopedWidgetTables`); the row filters are
+ * the Permission Resolver's. A warning, never a refusal - a dashboard of everyone's figures can be intended.
+ */
+export async function dashboardRowFilterIssues(
+  ctx: Pick<DataViewsContext, "database">,
+  permissions: EffectivePermissionService,
+  roles: { id: string; name: string }[],
+  widgets: { widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[],
+): Promise<DiagnosisIssue[]> {
+  if (roles.length === 0 || widgets.length === 0) return [];
+  const names = [...new Set(widgets.flatMap((w) => w.tables.map((t) => `${t.schema}.${t.name}`)))];
+  const { rows: resources } = await ctx.database.query<{ id: string; name: string }>(
+    `SELECT id, "schema" || '.' || name AS name FROM totalbase.resources
+     WHERE "schema" || '.' || name = ANY($1::text[]) AND status = 'ACTIVE' ORDER BY name`,
+    [names],
+  );
+  const issues: DiagnosisIssue[] = [];
+  for (const role of roles) {
+    const limited = new Set<string>();
+    for (const resource of resources) {
+      const read = await permissions.resolve([role.id], resource.id, "READ");
+      const allows = (read.rowFilterSources ?? []).filter((source) => source.effect === "ALLOW");
+      // Every ALLOW grant filtered: some rows only. One without a filter makes the OR every row.
+      if (read.action === "ALLOW" && allows.length > 0 && allows.every((source) => source.whereClause !== null && source.whereClause !== undefined)) limited.add(resource.name);
+    }
+    for (const { widget, tables } of widgets) {
+      for (const resource of resources.filter((r) => limited.has(r.name) && tables.some((t) => `${t.schema}.${t.name}` === r.name))) {
+        issues.push(issue({
+          code: "WIDGET_IGNORES_ROW_FILTER", severity: "warning", role, resource, widget,
+          message: `The widget ${widget.name} reads ${resource.name}, which ${role.name} may read only some rows of, and its SQL never filters by $USER: ${role.name} sees every row through it.`,
         }));
       }
     }

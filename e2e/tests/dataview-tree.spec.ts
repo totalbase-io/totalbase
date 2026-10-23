@@ -78,7 +78,7 @@ test('a TREE DataView shows a hierarchy, moves a row by dragging and is guarded 
     await page.mouse.down()
     await page.mouse.move(to.x + 40, to.y + to.height / 2, { steps: 8 })
     await page.mouse.up()
-    await expect(page.getByText(/can't go under/)).toBeVisible()
+    await expect(page.getByText(/can't go under/).first()).toBeVisible()
     await expect(item('Cash')).toHaveAttribute('aria-level', '3')
 
     // Bank into Liabilities: its parent changes; Liabilities' children are numbered again.

@@ -167,8 +167,8 @@
       "forEachStatement": "Por cada sentencia",
       "forEachStatementDescription": "Una ejecución por escritura, con la lista de filas - {path}.",
       "filterInvalid": "Debe ser un objeto de filtro JSON.",
-      "table": "Tabla",
-      "tableDescription": "La tabla cuyos cambios admiten una ejecución.",
+      "table": "Tabla o función",
+      "tableDescription": "La tabla cuyos cambios admiten una ejecución, o la función cuyas llamadas lo hacen.",
       "events": "Eventos",
       "eventsDescription": "Al menos un evento que dispare este workflow.",
       "eventCreate": "Crear",
@@ -205,7 +205,7 @@
       "sync": "Síncrona",
       "async": "Asíncrona",
       "waitTime": "Tiempo de espera",
-      "waitTimeDescription": "Segundos que se espera un resultado antes de aplicar la acción de tiempo agotado - nunca más que Configuración › Workflows › Espera síncrona máxima.",
+      "waitTimeDescription": "Segundos que se espera un resultado antes de aplicar la acción de tiempo agotado - nunca más que Configuración › Funcionalidades › Workflows › Espera síncrona máxima.",
       "onTimeout": "Al agotarse el tiempo",
       "onTimeoutDescription": "Qué ocurre cuando transcurre el tiempo de espera sin un resultado.",
       "continueInBackground": "Continuar en segundo plano",
@@ -215,7 +215,8 @@
       "public": "Público",
       "authenticated": "Autenticado",
       "executeAsWebhookPublic": "Obligatorio - un webhook público tiene un iniciador anónimo y debe usar un usuario de ejecución específico.",
-      "executeAsWebhookAuthenticated": "Opcional - si se deja vacío, se usa el llamador autenticado."
+      "executeAsWebhookAuthenticated": "Opcional - si se deja vacío, se usa el llamador autenticado.",
+      "functionCall": "Cada llamada a esta función por la Data API inicia una ejecución, después de confirmarse: sus argumentos en {args}, lo que devolvió en {result}. El paso Ejecutar función de un workflow no inicia ninguna. Para actuar solo sobre algunas llamadas, agrega una Condición después de Inicio."
     },
     "cron": {
       "hourly": "Cada hora",
@@ -457,7 +458,7 @@
     },
     "signModal": {
       "sign": "Firmar",
-      "signDataWithAStoredCertificate": "Firma un texto con un certificado y su clave privada de Configuración > Secretos.",
+      "signDataWithAStoredCertificate": "Firma un texto con un certificado y su clave privada, o con una clave, de Configuración > Secretos.",
       "format": "Formato",
       "cmsDescription": "CMS / PKCS#7 SignedData: el texto adjunto, el certificado incluido, SHA-256, DER en base64 - lo que produce openssl cms -sign y lo que recibe un login WSAA.",
       "data": "Datos",
@@ -467,7 +468,12 @@
       "privateKey": "Clave privada",
       "aSecretHoldingThePemKey": "El secreto que guarda la clave privada del certificado, en PEM. Una clave RSA.",
       "passphrase": "Contraseña de la clave",
-      "onlyWhenTheKeyIsEncrypted": "Solo si la clave privada está cifrada: el secreto que guarda su contraseña."
+      "onlyWhenTheKeyIsEncrypted": "Solo si la clave privada está cifrada: el secreto que guarda su contraseña.",
+      "hmacDescription": "HMAC-SHA256: un hash con clave del texto, con un secreto como clave - la firma de un webhook, o un seudónimo que solo ese secreto puede recalcular.",
+      "key": "Clave",
+      "aSecretHoldingTheKey": "El secreto que guarda la clave, usada como texto.",
+      "encoding": "Codificación",
+      "encodingDescription": "Cómo se escribe la firma: hexadecimal (minúsculas) o base64."
     },
     "json": {
       "mustBeObject": "Debe ser un objeto JSON.",

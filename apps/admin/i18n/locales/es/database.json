@@ -279,7 +279,7 @@
       "rowsAffected": "{count} fila(s) afectada(s).",
       "noRowsMatch": "Ninguna fila coincide con \"{search}\".",
       "rowsDuration": "{count} fila(s) — {ms}ms",
-      "truncated": "· se muestran las primeras {shown} (Configuración › Consola SQL › Límite de filas del resultado)",
+      "truncated": "· se muestran las primeras {shown} (Configuración › PostgreSQL › Consola SQL › Límite de filas del resultado)",
       "notices": "{n} aviso | {n} avisos"
     },
     "sqlConsolePage": {
@@ -519,7 +519,7 @@
       "readsWarningTitle": "Cada lectura escribe una entrada de auditoría",
       "readsWarning": "En una tabla muy consultada pueden ser miles por día, y se conservan {days}. Cámbialo en {retention}, o mira cuánto ocupa el log en {maintenance}.",
       "days": "{n} día | {n} días",
-      "retentionLink": "Configuración › Auditoría",
+      "retentionLink": "Configuración › Seguridad › Auditoría",
       "maintenanceLink": "Mantenimiento",
       "excludedColumns": "Columnas excluidas de la auditoría",
       "excludedColumnsDescription": "Nunca se graban en el log: ni con la fila ni en los cambios de un UPDATE. Las contraseñas y columnas protegidas nunca se graban de todos modos.",

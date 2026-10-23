@@ -40,6 +40,8 @@ export interface OperationRequirement {
   missing: string;
   /** An empty text counts as set (a file's content may be empty). */
   allowEmpty?: boolean;
+  /** Only when another field holds one of these values - `undefined` for unset (Sign's certificate is CMS's, not HMAC's). */
+  when?: { field: string; is: readonly (string | undefined)[] };
 }
 
 export interface OperationDefinition {
@@ -357,19 +359,26 @@ const CATALOG = [
     group: "integration",
     icon: "i-lucide-signature",
     label: "Sign",
-    description: "Sign data with a stored certificate",
+    description: "Sign data with a stored certificate or key",
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
-    required: [{ field: "data", missing: "no data" }, { field: "certificate", missing: "no certificate" }, { field: "privateKey", missing: "no private key" }],
+    required: [
+      { field: "data", missing: "no data" },
+      { field: "certificate", missing: "no certificate", when: { field: "format", is: [undefined, "CMS"] } },
+      { field: "privateKey", missing: "no private key", when: { field: "format", is: [undefined, "CMS"] } },
+      { field: "key", missing: "no key", when: { field: "format", is: ["HMAC_SHA256"] } },
+    ],
     configuration: {
       type: "object",
       fields: {
-        format: { type: "enum", options: ["CMS"] },
+        format: { type: "enum", options: ["CMS", "HMAC_SHA256"] },
         data: TEXT,
         certificate: TEXT,
         privateKey: TEXT,
         passphrase: TEXT,
+        key: TEXT,
+        encoding: { type: "enum", options: ["HEX", "BASE64"] },
       },
     },
   },
@@ -564,6 +573,7 @@ export function missingConfiguration(type: string, configuration: Record<string,
   const values = configuration ?? {};
   return (BY_TYPE.get(type)?.required ?? [])
     .filter((requirement) => {
+      if (requirement.when && !requirement.when.is.includes(values[requirement.when.field] as string | undefined)) return false;
       const fields = typeof requirement.field === "string" ? [requirement.field] : requirement.field;
       return !fields.some((field) => isSet(values[field], requirement.allowEmpty === true));
     })

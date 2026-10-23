@@ -40,7 +40,7 @@ test('access levels route each user to what their roles open', async ({ page, br
   const appPage = await appContext.newPage()
   await appPage.goto('/admin/login')
   await appPage.getByLabel('Email').fill(APP_EMAIL)
-  await appPage.getByLabel('Password').fill(PASSWORD)
+  await appPage.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await appPage.getByRole('button', { name: 'Sign in' }).click()
   await appPage.waitForURL(/\/admin\/app$/)
 
@@ -53,7 +53,7 @@ test('access levels route each user to what their roles open', async ({ page, br
   const apiPage = await apiContext.newPage()
   await apiPage.goto('/admin/login')
   await apiPage.getByLabel('Email').fill(API_EMAIL)
-  await apiPage.getByLabel('Password').fill(PASSWORD)
+  await apiPage.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await apiPage.getByRole('button', { name: 'Sign in' }).click()
   await expect(apiPage.getByText('Invalid email or password.')).toBeVisible()
   await expect(apiPage).toHaveURL(/\/admin\/login/)

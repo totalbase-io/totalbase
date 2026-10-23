@@ -647,7 +647,8 @@
         "ROLE_SEES_KEY": "{role} can't read {columns}: they see an id instead of the row it points to.",
         "ROLE_VARIABLE_REFUSED": "{role} can't read {resource}: the page's variable {variable} fails for them.",
         "ROLE_CANNOT_WRITE": "{role} can't {actions} here: those options are hidden for them.",
-        "CONSTRAINT_WITHOUT_MESSAGE": "{columns} have no message: a refused write reads a generic text instead of what to fix."
+        "CONSTRAINT_WITHOUT_MESSAGE": "{columns} have no message: a refused write reads a generic text instead of what to fix.",
+        "WIDGET_IGNORES_ROW_FILTER": "The widget {widget} reads {resource}, which {role} may read only some rows of, but its SQL never filters by $USER: {role} sees every row through it."
       },
       "actions": {
         "CREATE": "create",
@@ -658,7 +659,8 @@
         "roles": "Choose roles",
         "permissions": "{role}'s permissions",
         "data": "Data",
-        "constraints": "The table's constraints"
+        "constraints": "The table's constraints",
+        "widget": "Open the editor"
       }
     },
     "viewAs": {

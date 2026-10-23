@@ -6,13 +6,13 @@ import { markVariables, resolveMarks, widgetTotals } from "./widget-marks.js";
 import { PIVOT_MAX_COLUMNS, pivotDistinctColumnsSql, pivotSql, type PivotAggregate, type PivotSpec } from "./pivot-query.js";
 import { cacheKey } from "./widget-runs.js";
 import type { DashboardRoleDecision } from "./dashboard-spec.js";
-import { bindSqlVariables, referencedVariableNames } from "./sql-variables.js";
+import { bindSqlVariables, listSqlVariableRefs, referencedVariableNames } from "./sql-variables.js";
 import type { DashboardVariable } from "./variables.js";
 import { MAX_MEMOIZED, toWidgetContent, type AdminDashboardWidgetContent, type BrokenDashboardWidget, type DashboardDraftRun, type DashboardQueryContext, type DashboardQueryLimits, type DashboardQueryResult, type DashboardsContext, type DashboardViewer, type WidgetSnapshotRow } from "./dashboards-types.js";
 import { VariableResolver } from "./dashboards-variable-resolver.js";
 import { getDashboard } from "./dashboards-crud.js";
 import { assertRolesDraw, clickTargetProblems, getWidget } from "./dashboards-widgets.js";
-import { latestVersionNumber, versionSnapshot } from "./dashboards-versions.js";
+import { getLiveSnapshot, latestVersionNumber, versionSnapshot } from "./dashboards-versions.js";
 
 /** What a query names that PostgreSQL can lose under it - a dropped or renamed column, table, view or function. */
 export const BROKEN_QUERY_CODES = new Set(["UNDEFINED_COLUMN", "UNDEFINED_TABLE", "UNDEFINED_FUNCTION"]);
@@ -212,6 +212,64 @@ export async function planQuery(ctx: DashboardsContext, rawSql: string, variable
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * The tables a query reads, as PostgreSQL plans it: `EXPLAIN (VERBOSE, FORMAT JSON)` in a READ ONLY transaction,
+ * variables NULL of their type - nothing is run. Views come out as the tables under them; a table read inside a
+ * function the query calls doesn't show. Null when PostgreSQL refuses the query.
+ */
+export async function queryTables(ctx: DashboardsContext, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<{ schema: string; name: string }[] | null> {
+  try {
+    const plan = await ctx.database.readOnlyTransaction(async (client) => {
+      await client.query("SELECT set_config('statement_timeout', $1, true)", [String(Math.max(1, Math.floor(timeoutMs)))]);
+      const resolver = new VariableResolver(client, { userId: null, variables, values: {} }, true);
+      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref));
+      const { rows } = await client.query<{ "QUERY PLAN": unknown }>(`EXPLAIN (VERBOSE, FORMAT JSON) SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query`, bound.params);
+      return rows[0]?.["QUERY PLAN"];
+    });
+    const tables = new Map<string, { schema: string; name: string }>();
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      const { "Relation Name": name, Schema: schema, ...rest } = node as Record<string, unknown>;
+      if (typeof name === "string" && typeof schema === "string") tables.set(`${schema}.${name}`, { schema, name });
+      Object.values(rest).forEach(walk);
+    };
+    walk(plan);
+    if (tables.size === 0) return [];
+    // A partition reads as its partitioned table - the resource (Foundations.md §11.1).
+    const found = [...tables.values()];
+    const { rows } = await ctx.database.query<{ schema: string; name: string }>(
+      `SELECT DISTINCT rn.nspname AS "schema", rc.relname AS name
+       FROM unnest($1::text[], $2::text[]) AS t(s, n)
+       JOIN pg_namespace ns ON ns.nspname = t.s
+       JOIN pg_class c ON c.relnamespace = ns.oid AND c.relname = t.n
+       JOIN pg_class rc ON rc.oid = coalesce(pg_partition_root(c.oid), c.oid)
+       JOIN pg_namespace rn ON rn.oid = rc.relnamespace
+       ORDER BY 1, 2`,
+      [found.map((t) => t.schema), found.map((t) => t.name)],
+    );
+    return rows;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The live version's widgets whose query never names `$USER.*`, each with the tables it reads (`queryTables`) - what
+ * the diagnosis checks against its viewers' row filters (DataViews.md §18). A widget PostgreSQL refuses is left out:
+ * the broken-references check reports it.
+ */
+export async function unscopedWidgetTables(ctx: DashboardsContext, dashboardId: string, timeoutMs: number): Promise<{ widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[]> {
+  const snapshot = await getLiveSnapshot(ctx, dashboardId);
+  const found: { widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[] = [];
+  for (const widget of snapshot?.widgets ?? []) {
+    if (!widget.query || listSqlVariableRefs(widget.query).some((ref) => ref.kind === "USER")) continue;
+    const tables = await queryTables(ctx, widget.query, snapshot!.variables, timeoutMs);
+    if (tables?.length) found.push({ widget: { id: widget.id, name: widget.label || dashboardWidgetDefinition(widget.type).label }, tables });
+  }
+  return found;
 }
 
 /** `planQuery`'s columns - null when PostgreSQL refuses the query (saving it is allowed: running it says why). */

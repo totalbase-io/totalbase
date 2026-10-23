@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# The integration suite on every supported PostgreSQL major (15-18, Foundations.md §21.4) against this machine's
+# The integration suite on the supported PostgreSQL majors (15-18, Foundations.md §21.4) against this machine's
 # servers - run before scripts/publish-public.sh, so the private repository spends no CI minutes: the public
 # repository's CI runs the same matrix, free, on what is published.
 #
-#   scripts/test-matrix.sh           every major
+#   scripts/test-matrix.sh           PostgreSQL 15, the baseline - the default, for a change nothing version-specific touches
+#   scripts/test-matrix.sh all       every major - a change that uses or gates something by version (§21.4)
 #   scripts/test-matrix.sh 15 18     only these
 #
 # TOTALBASE_TEST_PG_PORTS maps each major to its port ("15:5415 16:5416 17:5417 18:5418" by default), on .env's
 # POSTGRES_HOST (or TOTALBASE_TEST_PG_HOST). A server without the test database (TOTALBASE_TEST_DB) gets it,
 # owned by POSTGRES_USER, created as POSTGRES_SUPERUSER (default postgres) with POSTGRES_SUPERUSER_PASSWORD.
 # POSTGRES_USER needs CREATEDB and CREATEROLE (never superuser): the schema-ownership and object-ownership
-# tests create databases and roles - as CI's test role can.
+# tests create databases and roles. CI's role is the image's superuser, so this matrix is the stricter of the two.
 # Each major's output goes to $TMPDIR/totalbase-test-matrix/pg<major>.log; the summary is printed at the end.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +29,8 @@ mkdir -p "$LOGS"
 declare -A PORT_OF
 for pair in $PORTS; do PORT_OF[${pair%%:*}]=${pair#*:}; done
 MAJORS=("$@")
-[ ${#MAJORS[@]} -gt 0 ] || MAJORS=($(printf '%s\n' "${!PORT_OF[@]}" | sort -n))
+[ ${#MAJORS[@]} -gt 0 ] || MAJORS=(15)
+[ "${MAJORS[*]}" != "all" ] || MAJORS=($(printf '%s\n' "${!PORT_OF[@]}" | sort -n))
 
 # What CI prepares too (.github/workflows/ci.yml): files.storage_local_path's default, writable.
 if ! mkdir -p /var/lib/totalbase/files 2>/dev/null || [ ! -w /var/lib/totalbase/files ]; then

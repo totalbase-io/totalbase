@@ -34,6 +34,10 @@ describe("operation catalog", () => {
   it("lists what a step lacks to be published", () => {
     expect(missingConfiguration("totalbase.create-records", {})).toEqual(["no table", "no records to create"]);
     expect(missingConfiguration("totalbase.create-records", { resource: "r", records: "{{start.data}}" })).toEqual([]);
+    // Sign's requirements follow its format: a certificate and a key for CMS (the default), a key for HMAC.
+    expect(missingConfiguration("totalbase.sign", { data: "x" })).toEqual(["no certificate", "no private key"]);
+    expect(missingConfiguration("totalbase.sign", { format: "HMAC_SHA256", data: "x" })).toEqual(["no key"]);
+    expect(missingConfiguration("totalbase.sign", { format: "HMAC_SHA256", data: "x", key: "k" })).toEqual([]);
     expect(missingConfiguration("totalbase.send-email", { to: "a@x.com", template: "t" })).toEqual([]);
     expect(missingConfiguration("totalbase.send-email", { to: "a@x.com" })).toEqual(["no subject or template"]);
     expect(missingConfiguration("totalbase.create-file", { name: "a.txt", content: "" })).toEqual([]);

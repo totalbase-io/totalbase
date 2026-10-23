@@ -92,8 +92,9 @@ function validateDefinition(definition: Record<string, unknown>): void {
   validateWorkflowGraph(definition);
 }
 
-/** What a data event is (Workflows.md §6.3.1): a table's row created, updated or deleted. */
+/** What a data event is (Workflows.md §6.3.1): a table's row created, updated or deleted, or a function called. */
 const DATA_EVENTS = ["CREATE", "UPDATE", "DELETE"];
+const FUNCTION_EVENTS = ["EXECUTE"];
 /** How long `hasEnabledPublishedDataEventStart()` trusts its last answer without an invalidation. */
 const DATA_EVENT_START_CACHE_MS = 5_000;
 
@@ -101,28 +102,36 @@ export class WorkflowsAdminService {
   constructor(private readonly database: Database) {}
 
   /**
-   * A DATA_EVENT Start that could never run is refused on save (M27): its resource a table - a view or a function
-   * emits no data event (a function's EXECUTE comes later) - and its events among CREATE, UPDATE and DELETE.
+   * A DATA_EVENT Start that could never run is refused on save (M27): its resource a table, its events among
+   * CREATE, UPDATE and DELETE - or a function, its event EXECUTE, one call one run, with nothing to filter by column
+   * (a Condition after Start does it). A view emits no data event.
    */
   private async assertDataEventStart(definition: Record<string, unknown>): Promise<void> {
     const operations = Array.isArray(definition.operations) ? (definition.operations as { type?: unknown; configuration?: Record<string, unknown> }[]) : [];
     const start = operations.find((op) => op.type === "totalbase.start");
     const configuration = start?.configuration ?? {};
     if (configuration.trigger !== "DATA_EVENT") return;
+    const resource = configuration.resource;
+    const { rows } = typeof resource === "string" && resource
+      ? await this.database.query<{ type: string; schema: string; name: string }>(`SELECT type, "schema", name FROM totalbase.resources WHERE id::text = $1`, [resource])
+      : { rows: [] };
+    const found = rows[0];
+    if (found && found.type !== "TABLE" && found.type !== "FUNCTION") {
+      throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Start (DATA_EVENT): ${found.schema}.${found.name} is a ${found.type} - a data event comes from a TABLE (its rows created, updated or deleted) or a FUNCTION (called).`);
+    }
+    const allowed = found?.type === "FUNCTION" ? FUNCTION_EVENTS : DATA_EVENTS;
     const events = configuration.events;
     if (events !== undefined && events !== null) {
-      const wrong = Array.isArray(events) ? events.filter((e) => typeof e !== "string" || !DATA_EVENTS.includes(e)) : [events];
-      if (wrong.length) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Start (DATA_EVENT): events are ${DATA_EVENTS.join(", ")} - got ${wrong.map((e) => JSON.stringify(e)).join(", ")}.`);
+      const wrong = Array.isArray(events) ? events.filter((e) => typeof e !== "string" || !allowed.includes(e)) : [events];
+      if (wrong.length) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Start (DATA_EVENT): ${found?.type === "FUNCTION" ? "a function's event is" : "events are"} ${allowed.join(", ")} - got ${wrong.map((e) => JSON.stringify(e)).join(", ")}.`);
     }
-    const resource = configuration.resource;
-    if (typeof resource !== "string" || !resource) return;
-    const { rows } = await this.database.query<{ type: string; schema: string; name: string }>(
-      `SELECT type, "schema", name FROM totalbase.resources WHERE id::text = $1`,
-      [resource],
-    );
-    const found = rows[0];
-    if (found && found.type !== "TABLE") {
-      throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Start (DATA_EVENT): ${found.schema}.${found.name} is a ${found.type} - a data event comes from a TABLE (its rows created, updated or deleted).`);
+    if (found?.type === "FUNCTION") {
+      const set: string[] = (["filter", "old_filter", "changed_fields"] as const).filter((key) => {
+        const value = configuration[key];
+        return value !== undefined && value !== null && !(Array.isArray(value) ? value.length === 0 : typeof value === "object" && Object.keys(value).length === 0);
+      });
+      if (configuration.for_each === "STATEMENT") set.push("for_each");
+      if (set.length) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Start (DATA_EVENT): a function's call starts one run, with no ${set.join(", ")} - check its arguments or result with a Condition after Start.`);
     }
   }
 

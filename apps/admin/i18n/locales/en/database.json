@@ -279,7 +279,7 @@
       "rowsAffected": "{count} row(s) affected.",
       "noRowsMatch": "No rows match \"{search}\".",
       "rowsDuration": "{count} row(s) — {ms}ms",
-      "truncated": "· showing the first {shown} (Settings › SQL Console › Result row cap)",
+      "truncated": "· showing the first {shown} (Settings › PostgreSQL › SQL Console › Result row cap)",
       "notices": "{n} notice | {n} notices"
     },
     "sqlConsolePage": {
@@ -519,7 +519,7 @@
       "readsWarningTitle": "Every read writes an audit entry",
       "readsWarning": "On a busy table that can be thousands a day, kept for {days}. Change it under {retention}, or see how much the log takes in {maintenance}.",
       "days": "{n} day | {n} days",
-      "retentionLink": "Settings › Audit",
+      "retentionLink": "Settings › Security › Audit",
       "maintenanceLink": "Maintenance",
       "excludedColumns": "Columns excluded from the audit",
       "excludedColumnsDescription": "Never written to the log - not with the row, not in an UPDATE's changes. Password and protected columns never are anyway.",

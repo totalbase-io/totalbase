@@ -274,7 +274,7 @@
       "unsaved": "Unsaved",
       "unsavedCount": "{n} unsaved change | {n} unsaved changes",
       "noSecrets": "No secrets yet - create one under {link}.",
-      "secretsLink": "Settings › Secrets",
+      "secretsLink": "Settings › Security › Secrets",
       "restartPending": "Saved - the server still runs with {value} until it restarts.",
       "defaultValue": "Default: {value} ·",
       "restoreDefault": "Restore default",
@@ -1195,7 +1195,7 @@
         },
         "appearance__login_layout": {
           "label": "Sign-in page",
-          "description": "What surrounds the sign-in card. Simple, Company panel and Image show your mark (Settings › General: your logo and name) and only a small \"Powered by TotalBase\" at the foot; on a phone they're the card under your mark (Image keeps its picture behind).",
+          "description": "What surrounds the sign-in card. Simple, Company panel and Image show your mark (Settings › General › General: your logo and name) and only a small \"Powered by TotalBase\" at the foot; on a phone they're the card under your mark (Image keeps its picture behind).",
           "options": {
             "SPLIT": "Default (TotalBase)",
             "SIMPLE": "Simple",
@@ -1394,7 +1394,7 @@
         },
         "backups__schedule": {
           "label": "Schedule",
-          "description": "When, as a cron expression in the instance's timezone (Settings › General). 0 3 * * *: every day at 03:00."
+          "description": "When, as a cron expression in the instance's timezone (Settings › General › General). 0 3 * * *: every day at 03:00."
         },
         "backups__keep": {
           "label": "Backups to keep",

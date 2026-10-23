@@ -164,6 +164,7 @@ const SUBTITLES: Record<string, Subtitle> = {
   },
   'totalbase.sign': (configuration, { t }) => {
     const config = configuration as SignConfiguration
+    if (config.format === 'HMAC_SHA256') return config.key && config.data ? `HMAC-SHA256 · ${config.key}` : t('workflows.editor.notConfigured')
     return config.certificate && config.privateKey && config.data ? `CMS · ${config.certificate}` : t('workflows.editor.notConfigured')
   },
   'totalbase.send-email': (configuration, { t }) => {

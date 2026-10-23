@@ -7,5 +7,10 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3050',
     headless: true
   },
-  reporter: [['list']]
+  reporter: [['list']],
+  projects: [
+    { name: 'parallel', testIgnore: /[\\/]v1[\\/]/ },
+    // Every v1 file recreates the same e2e_v1_* tables in its beforeAll (v1/fixtures.ts resetSchema): one at a time.
+    { name: 'v1', testMatch: /[\\/]v1[\\/].*\.spec\.ts$/, workers: 1 }
+  ]
 })

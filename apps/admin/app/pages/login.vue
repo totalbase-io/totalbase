@@ -55,6 +55,7 @@ const apiErrorMessage = useApiErrorMessage()
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 // The password was right but the email isn't verified yet (EMAIL_NOT_VERIFIED,
@@ -370,11 +371,24 @@ async function submit() {
             <UFormField :label="t('auth.login.password')">
               <UInput
                 v-model="password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 autocomplete="current-password"
                 required
                 class="w-full"
-              />
+                :ui="{ base: 'pr-9' }"
+              >
+                <template #trailing>
+                  <UButton
+                    :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                    :aria-label="showPassword ? t('auth.tokenPassword.hidePassword') : t('auth.tokenPassword.showPassword')"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    :padded="false"
+                    @click="showPassword = !showPassword"
+                  />
+                </template>
+              </UInput>
             </UFormField>
 
             <UAlert

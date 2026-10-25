@@ -390,8 +390,7 @@ async function openTextEditor(file: FileNode) {
   try {
     const response = await $fetch.raw(`/api/totalbase/table/files/${file.id}`, {
       baseURL: '',
-      responseType: 'text',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'text'
     })
     editorContent.value = String(response._data ?? '')
   } catch (err) {
@@ -453,8 +452,7 @@ async function loadPreview(file: FileNode, width: number, target: Map<string, st
   try {
     const response = await $fetch.raw(`/api/totalbase/table/files/${file.id}?width=${width}&fit=cover`, {
       baseURL: '',
-      responseType: 'blob',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'blob'
     })
     const blob = response._data as Blob
     target.set(file.id, URL.createObjectURL(blob))

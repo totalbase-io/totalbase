@@ -209,6 +209,10 @@ export interface Role {
   adminAccess: boolean;
   appAccess: boolean;
   apiAccess: boolean;
+  /** The role above it - its ceiling (Security.md §9.5); null = a root. */
+  parent: string | null;
+  /** Its access is reviewed periodically (Security.md §1.8) - Administrators' always is. */
+  reviewRequired: boolean;
   createdAt: Date;
 }
 
@@ -223,6 +227,8 @@ interface RoleRow {
   admin_access: boolean;
   app_access: boolean;
   api_access: boolean;
+  parent: string | null;
+  review_required: boolean;
   created_at: Date;
 }
 
@@ -238,6 +244,8 @@ function toRole(row: RoleRow): Role {
     adminAccess: row.admin_access,
     appAccess: row.app_access,
     apiAccess: row.api_access,
+    parent: row.parent,
+    reviewRequired: row.review_required,
     createdAt: row.created_at,
   };
 }
@@ -294,14 +302,14 @@ export class RolesService {
 
   async list(): Promise<Role[]> {
     const { rows } = await this.database.query<RoleRow>(
-      `SELECT id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, created_at FROM totalbase.roles ORDER BY name`,
+      `SELECT id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, parent, review_required, created_at FROM totalbase.roles ORDER BY name`,
     );
     return rows.map(toRole);
   }
 
   async findById(id: string): Promise<Role | null> {
     const { rows } = await this.database.query<RoleRow>(
-      `SELECT id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, created_at FROM totalbase.roles WHERE id = $1`,
+      `SELECT id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, parent, review_required, created_at FROM totalbase.roles WHERE id = $1`,
       [id],
     );
     return rows[0] ? toRole(rows[0]) : null;
@@ -399,10 +407,63 @@ export class RolesService {
       const { rows } = await this.database.query<RoleRow>(
         `INSERT INTO totalbase.roles (name, description, icon, color, app_access, api_access)
          VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, created_at`,
+         RETURNING id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, parent, review_required, created_at`,
         [validName, description, icon, color, appAccess, apiAccess],
       );
       return toRole(rows[0]!);
+    } catch (error) {
+      mapRoleNameConflict(error);
+    }
+  }
+
+  /**
+   * A copy of a role (Security.md §9.5): its description, look, access flags, App home, parent, grants and object
+   * access - never its members. An administrator's copy keeps its capabilities and managers too; a manager's
+   * (`delegated`) doesn't - granting those is an administrator's. `actorUserId` is recorded as its creator and
+   * its grants' grantor. A reserved role isn't copied.
+   */
+  async duplicate(id: string, name: string, options: { delegated: boolean; actorUserId?: string | undefined }): Promise<Role> {
+    const validName = validateRoleName(name)!;
+    try {
+      return await this.database.transaction(async (client) => {
+        const { rows } = await client.query<RoleRow>(
+          `INSERT INTO totalbase.roles (name, description, icon, color, app_access, api_access, home_dataview, home_dashboard, parent, review_required)
+           SELECT $2, description, icon, color, app_access, api_access, home_dataview, home_dashboard, parent, review_required
+           FROM totalbase.roles WHERE id = $1 AND NOT reserved
+           RETURNING id, name, description, icon, color, active, reserved, admin_access, app_access, api_access, parent, review_required, created_at`,
+          [id, validName],
+        );
+        const copy = rows[0];
+        if (!copy) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Role not found, or reserved.");
+        await client.query(
+          `INSERT INTO totalbase.permissions (role, resource, action, effect, where_clause, field_overrides, payload_checks)
+           SELECT $2, resource, action, effect, where_clause, field_overrides, payload_checks FROM totalbase.permissions WHERE role = $1`,
+          [id, copy.id],
+        );
+        for (const [table, column] of [["dataviews_roles", "dataview"], ["dashboards_roles", "dashboard"], ["workflows_roles", "workflow"]] as const) {
+          await client.query(`INSERT INTO totalbase.${table} (${column}, role) SELECT ${column}, $2 FROM totalbase.${table} WHERE role = $1`, [id, copy.id]);
+        }
+        if (!options.delegated) {
+          await client.query(
+            `INSERT INTO totalbase.roles_capabilities (role, capability, effect) SELECT $2, capability, effect FROM totalbase.roles_capabilities WHERE role = $1`,
+            [id, copy.id],
+          );
+          // The roles it can't be held with.
+          await client.query(
+            `INSERT INTO totalbase.roles_incompatibilities (role, other)
+             SELECT least($2::uuid, x), greatest($2::uuid, x)
+             FROM (SELECT CASE WHEN role = $1 THEN other ELSE role END AS x FROM totalbase.roles_incompatibilities WHERE role = $1 OR other = $1) pairs`,
+            [id, copy.id],
+          );
+          // Its managers - a role that managed itself manages the copy as the copy.
+          await client.query(
+            `INSERT INTO totalbase.roles_managers (role, manager)
+             SELECT $2, CASE WHEN manager = $1 THEN $2 ELSE manager END FROM totalbase.roles_managers WHERE role = $1`,
+            [id, copy.id],
+          );
+        }
+        return toRole(copy);
+      }, { actorUserId: options.actorUserId });
     } catch (error) {
       mapRoleNameConflict(error);
     }
@@ -486,7 +547,8 @@ export class RolesService {
     const role = await this.findById(id);
     if (!role) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Role not found.");
     if (role.adminAccess) throw new TotalBaseError("PERMISSION_DENIED", `The "${role.name}" role can only be assigned by an administrator.`);
-    const unique = [...new Set(managerIds)].filter((manager) => manager !== id);
+    // The role itself may be among them: its members then add one another (Security.md §9.4).
+    const unique = [...new Set(managerIds)];
     await this.database.transaction(async (client) => {
       await client.query(`DELETE FROM totalbase.roles_managers WHERE role = $1 AND manager <> ALL($2::uuid[])`, [id, unique]);
       if (unique.length > 0) {
@@ -497,6 +559,40 @@ export class RolesService {
       }
     });
     return this.listManagers(id);
+  }
+
+  /** The roles no user may hold together with this one (Security.md §1.9). */
+  async listIncompatible(id: string): Promise<string[]> {
+    const { rows } = await this.database.query<{ id: string }>(
+      `SELECT CASE WHEN role = $1 THEN other ELSE role END AS id FROM totalbase.roles_incompatibilities
+       WHERE role = $1 OR other = $1 ORDER BY created_at`,
+      [id],
+    );
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Replaces the roles incompatible with this one, atomically. A pair some user already holds is refused by
+   * PostgreSQL (`roles_incompatibilities_unheld`, 23514) - one of the two goes first.
+   */
+  async setIncompatible(id: string, roleIds: string[]): Promise<string[]> {
+    if (!(await this.findById(id))) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Role not found.");
+    const others = [...new Set(roleIds)].filter((other) => other !== id);
+    await this.database.transaction(async (client) => {
+      await client.query(
+        `DELETE FROM totalbase.roles_incompatibilities
+         WHERE (role = $1 AND other <> ALL($2::uuid[])) OR (other = $1 AND role <> ALL($2::uuid[]))`,
+        [id, others],
+      );
+      for (const other of others) {
+        await client.query(
+          `INSERT INTO totalbase.roles_incompatibilities (role, other) VALUES (least($1::uuid, $2::uuid), greatest($1::uuid, $2::uuid))
+           ON CONFLICT (role, other) DO NOTHING`,
+          [id, other],
+        );
+      }
+    });
+    return this.listIncompatible(id);
   }
 
   private async assertNotReserved(id: string): Promise<void> {

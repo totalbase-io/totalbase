@@ -422,6 +422,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     unit: "hours",
     section: "Accounts & sessions",
   },
+  "auth.session_idle_minutes": {
+    label: "Sign out after inactivity",
+    description: "A session unused this long ends, and its user signs in again - for shared or unattended computers. 0 keeps a session until its lifetime ends.",
+    unit: "minutes",
+    section: "Accounts & sessions",
+  },
   "auth.password_reset_ttl_minutes": {
     label: "Password reset link lifetime",
     description: "How long a \"reset your password\" link stays valid after it's sent.",
@@ -455,6 +461,18 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     label: "Lock after failed sign-ins",
     description: "Consecutive wrong passwords that lock the account for a while. The person sees the usual \"invalid email or password\" either way; an admin can unlock them early. 0 turns lockout off.",
     unit: "attempts",
+    section: "Sign-in protection",
+  },
+  "auth.dormant_account_days": {
+    label: "Deactivate unused accounts",
+    description: "An account with no sign-in, no session and no token used for this many days is deactivated - someone who left, an account nobody remembered. The owner never is. 0 turns it off.",
+    unit: "days",
+    section: "Accounts & sessions",
+  },
+  "auth.reauthentication_minutes": {
+    label: "Confirm identity for sensitive actions",
+    description: "How long after signing in, or confirming their password again, an administrator can issue an administrator token, assign Administrators, or change another account's email, password or two-factor authentication. Past it, they're asked for their password (or a code) first.",
+    unit: "minutes",
     section: "Sign-in protection",
   },
   "auth.lockout_duration_minutes": {
@@ -497,6 +515,18 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "auth.email_changed_email_enabled": {
     label: "Email changed notice",
     description: "Email the previous address whenever an admin changes a user's email - a security notice.",
+    section: "Notices",
+    links: [{ setting: "smtp.host" }, { page: "templates" }],
+  },
+  "auth.mfa_disabled_email_enabled": {
+    label: "Two-factor turned off notice",
+    description: "Email the account owner whenever their two-factor authentication is turned off, or reset by an admin - a security notice.",
+    section: "Notices",
+    links: [{ setting: "smtp.host" }, { page: "templates" }],
+  },
+  "auth.token_created_email_enabled": {
+    label: "New API token notice",
+    description: "Email the account owner whenever an API token is created or regenerated for them - a security notice.",
     section: "Notices",
     links: [{ setting: "smtp.host" }, { page: "templates" }],
   },

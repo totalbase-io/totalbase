@@ -3,7 +3,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { UserApiPlane } from "@totalbase/users-apis";
 import type { AppContext } from "../context.js";
 import { dataEnvelope, type RouteDoc } from "@totalbase/openapi";
-import { requireUser } from "../auth-guards.js";
+import { assertRecentAuthentication, requireUser } from "../auth-guards.js";
 import { TOKEN_SCHEMAS } from "../openapi-docs.js";
 
 const TOKEN = { $ref: "#/components/schemas/ApiToken" };
@@ -57,6 +57,8 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
     async (request, reply) => {
       const body = request.body?.data;
       if (!body) throw new TotalBaseError("INVALID_QUERY", "A request body { data } is required.");
+      // An administrator's token is the instance's keys (Security.md §2.19).
+      if (body.plane === "ADMIN") await assertRecentAuthentication(context, request);
       const { plainKey, userApi } = await context.usersApis.create({
         userId: request.userId!,
         name: body.name,
@@ -64,6 +66,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
         plane: body.plane ?? "API",
         ttlDays: body.ttlDays,
       });
+      await context.auth.notifyTokenCreated(userApi.user, userApi);
       reply.code(201);
       // The plaintext token is returned exactly once and never again.
       return { data: { ...userApi, key: plainKey } };
@@ -93,7 +96,9 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
     },
     async (request) => {
       await assertOwnToken(context, request.userId!, request.params.id);
+      if ((await context.usersApis.findById(request.params.id))?.plane === "ADMIN") await assertRecentAuthentication(context, request);
       const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, request.body?.data?.ttlDays, request.body?.data?.graceHours);
+      await context.auth.notifyTokenCreated(userApi.user, userApi);
       return { data: { ...userApi, key: plainKey } };
     },
   );

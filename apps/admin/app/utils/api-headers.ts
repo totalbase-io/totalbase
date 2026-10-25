@@ -4,13 +4,13 @@ import { viewAsHeader } from '~/utils/view-as'
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 /**
- * Every API request's headers: the session's bearer token, and the
- * browser's zone - the server's last resort for this viewer's time zone
- * (their profile's, then the instance's, come first), Security.md §4.2.
+ * Every API request's headers: the browser's zone - the server's last
+ * resort for this viewer's time zone (their profile's, then the
+ * instance's, come first), Security.md §4.2. The session needs none: its
+ * cookie goes with every same-origin request (Security.md §2.18).
  */
-export function apiHeaders(token: string | null | undefined): Record<string, string> {
+export function apiHeaders(): Record<string, string> {
   return {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'X-TotalBase-Timezone': BROWSER_TIMEZONE,
     // Previewing the App as a role or a user (view-as.ts).
     ...viewAsHeader()

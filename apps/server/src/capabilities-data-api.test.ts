@@ -168,7 +168,9 @@ describe("Transactions capability through the Data API", () => {
       const { create, update } = writeBodies(res.json());
       for (const column of ADMIN_WRITTEN) {
         expect(create).toContain(column);
-        expect(update).toContain(column);
+        // An account's email is set on create only - its route changes it (Security.md §10.2).
+        if (column === "email") expect(update).not.toContain(column);
+        else expect(update).toContain(column);
       }
       expect(create).not.toContain("owner");
       expect(update).not.toContain("owner");

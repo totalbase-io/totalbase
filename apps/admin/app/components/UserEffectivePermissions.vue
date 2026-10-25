@@ -265,6 +265,12 @@ const compact = (value: unknown) => JSON.stringify(value)
                     {{ roleName(roleId) }}
                   </li>
                 </ul>
+                <p
+                  v-if="decisionFor(resource.id, action).ceiling?.length"
+                  class="text-xs text-muted"
+                >
+                  {{ t('users.effective.limitedBy', { roles: decisionFor(resource.id, action).ceiling!.map(roleName).join(', ') }) }}
+                </p>
               </div>
 
               <template v-if="decisionFor(resource.id, action).decision === 'ALLOW'">

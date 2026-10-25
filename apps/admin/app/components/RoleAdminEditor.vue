@@ -86,9 +86,11 @@ const roleMenuItems = computed(() => {
         ? { label: t('users.roleEditor.deactivate'), icon: 'i-lucide-toggle-left', disabled: reserved, onSelect: toggleActive }
         : { label: t('users.roleEditor.activate'), icon: 'i-lucide-toggle-right', disabled: reserved, onSelect: toggleActive }
     ],
+    [{ label: t('users.duplicateRole.action'), icon: 'i-lucide-copy', disabled: reserved, onSelect: () => { duplicateOpen.value = true } }],
     [{ label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, disabled: reserved, onSelect: () => { deleteOpen.value = true } }]
   ]
 })
+const duplicateOpen = ref(false)
 
 const { resources, refresh: refreshResources } = useResourcesList()
 
@@ -544,7 +546,7 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
       <RoleAccessReviews
         v-else-if="section === 'reviews'"
         :role-id="roleId"
-        :reminder="role.reserved && role.adminAccess && !isWorkflowsRole(role)"
+        :reminder="(role.reserved && role.adminAccess && !isWorkflowsRole(role)) || role.reviewRequired === true"
       />
       <!-- General: the role's own fields (RoleForm.vue), Save at the end as on a settings page. -->
       <div
@@ -574,6 +576,7 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
           class="mx-auto w-full max-w-3xl"
         >
           <RoleManagersField :role-id="roleId" />
+          <RoleIncompatibleField :role-id="roleId" />
         </div>
         <RoleUsersPanel
           :role-id="roleId"
@@ -596,6 +599,13 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
       @saved="refreshGrants"
     />
 
+    <DuplicateRoleModal
+      v-if="role"
+      v-model:open="duplicateOpen"
+      :role-id="role.id"
+      :role-name="role.name"
+      :delegated="false"
+    />
     <UModal
       v-model:open="deleteOpen"
       :title="t('users.roleEditor.deleteTitle')"

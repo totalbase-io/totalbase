@@ -42,6 +42,12 @@ export interface SettingsRegistry {
   "auth.email_verification_required": boolean;
   "auth.password_min_length": number;
   "auth.session_ttl_hours": number;
+  /** Minutes a session may go unused before it stops validating; 0 = off (Security.md §2.2). */
+  "auth.session_idle_minutes": number;
+  /** Minutes a sign-in or re-authentication lets a session do what asks for one (Security.md §2.19). */
+  "auth.reauthentication_minutes": number;
+  /** Days an account may go unused before the hourly job deactivates it; 0 = off (Security.md §1.11). */
+  "auth.dormant_account_days": number;
   "auth.password_reset_ttl_minutes": number;
   "auth.email_verification_ttl_hours": number;
   "auth.invitation_ttl_hours": number;
@@ -61,6 +67,8 @@ export interface SettingsRegistry {
   "auth.links.email_verification": string;
   "auth.password_changed_email_enabled": boolean;
   "auth.email_changed_email_enabled": boolean;
+  "auth.mfa_disabled_email_enabled": boolean;
+  "auth.token_created_email_enabled": boolean;
   "auth.welcome_email_enabled": boolean;
   "auth.access_review_interval_days": number;
 
@@ -106,6 +114,8 @@ export interface SettingsRegistry {
   "mail.templates.email_verification": MailTemplate;
   "mail.templates.password_changed": MailTemplate;
   "mail.templates.email_changed": MailTemplate;
+  "mail.templates.mfa_disabled": MailTemplate;
+  "mail.templates.token_created": MailTemplate;
   "mail.templates.user_welcome": MailTemplate;
 
   "api_keys.default_ttl_days": number;
@@ -384,6 +394,9 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.email_verification_required": true,
   "auth.password_min_length": 12,
   "auth.session_ttl_hours": 720,
+  "auth.session_idle_minutes": 0,
+  "auth.reauthentication_minutes": 15,
+  "auth.dormant_account_days": 0,
   "auth.password_reset_ttl_minutes": 15,
   "auth.email_verification_ttl_hours": 24,
   "auth.invitation_ttl_hours": 168,
@@ -397,6 +410,8 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.links.email_verification": "{{public_url}}/auth/verify-email?token={{token}}",
   "auth.password_changed_email_enabled": true,
   "auth.email_changed_email_enabled": true,
+  "auth.mfa_disabled_email_enabled": true,
+  "auth.token_created_email_enabled": true,
   "auth.welcome_email_enabled": false,
   "auth.access_review_interval_days": 90,
 
@@ -424,6 +439,8 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "mail.templates.email_verification": MAIL_TEMPLATE_DEFAULTS.email_verification,
   "mail.templates.password_changed": MAIL_TEMPLATE_DEFAULTS.password_changed,
   "mail.templates.email_changed": MAIL_TEMPLATE_DEFAULTS.email_changed,
+  "mail.templates.mfa_disabled": MAIL_TEMPLATE_DEFAULTS.mfa_disabled,
+  "mail.templates.token_created": MAIL_TEMPLATE_DEFAULTS.token_created,
   "mail.templates.user_welcome": MAIL_TEMPLATE_DEFAULTS.user_welcome,
 
   "api_keys.default_ttl_days": 365,
@@ -631,6 +648,9 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
 
   "auth.password_min_length": { min: 8, max: 128 },
   "auth.session_ttl_hours": { min: 1 },
+  "auth.session_idle_minutes": { min: 0, max: 10_080 },
+  "auth.reauthentication_minutes": { min: 1, max: 1440 },
+  "auth.dormant_account_days": { min: 0, max: 3650 },
   "auth.password_reset_ttl_minutes": { min: 1 },
   "auth.email_verification_ttl_hours": { min: 1 },
   "auth.invitation_ttl_hours": { min: 1 },

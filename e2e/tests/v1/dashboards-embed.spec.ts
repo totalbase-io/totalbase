@@ -131,9 +131,9 @@ test('a signed embed for a portal: the token names the embed and gives the visit
 test('only the embed\'s sites may frame it; opened on its own, a public link says so', async ({ browser, page, token }) => {
   const [link] = (await embeds(page, token)).filter(e => e.name === 'Sitio web')
   const res = await page.request.get(`${BASE_URL}/embed/${link!.link}`)
-  expect(res.headers()['content-security-policy']).toBe(`frame-ancestors 'self' ${HOST}`)
+  expect(res.headers()['content-security-policy']).toContain(`frame-ancestors 'self' ${HOST}`)
   const other = await page.request.get(`${BASE_URL}/`)
-  expect(other.headers()['content-security-policy']).toBe('frame-ancestors \'self\'')
+  expect(other.headers()['content-security-policy']).toMatch(/frame-ancestors 'self'$/)
 
   const context = await browser.newContext()
   const visitor = await context.newPage()

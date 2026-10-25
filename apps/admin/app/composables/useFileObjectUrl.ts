@@ -43,15 +43,12 @@ export function deferredFileSrc(id: string, width?: number): string {
 }
 
 export function useFileObjectUrl() {
-  const session = useSession()
-
   async function load(key: string, id: string, width: number | undefined) {
     loading.add(key)
     try {
       const response = await fileRequests.run(() => retryingRateLimit(true, () => $fetch.raw(`/api/totalbase/table/files/${id}${width ? `?width=${width}&fit=cover` : ''}`, {
         baseURL: '',
-        responseType: 'blob',
-        headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+        responseType: 'blob'
       })))
       remember(key, URL.createObjectURL(response._data as Blob))
     } catch {

@@ -1,4 +1,5 @@
 import type { Database } from "@totalbase/database";
+import type { SettingsService } from "@totalbase/settings";
 import { generateOpaqueToken, hashToken } from "./tokens.js";
 import type { User } from "./users-service.js";
 
@@ -55,14 +56,30 @@ function toSession(row: SessionRow): Session {
  */
 export type SessionStatusFilter = "ACTIVE" | "EXPIRED" | "REVOKED" | "ALL";
 
-const SESSION_STATUS_CONDITION: Record<Exclude<SessionStatusFilter, "ALL">, string> = {
-  ACTIVE: "s.revoked_at IS NULL AND s.expires_at > now()",
-  EXPIRED: "s.revoked_at IS NULL AND s.expires_at <= now()",
-  REVOKED: "s.revoked_at IS NOT NULL",
-};
+/**
+ * When session `s` stops validating, given auth.session_idle_minutes bound
+ * as `idle` (Security.md §2.2): its fixed `expires_at`, or earlier, once it
+ * has gone unused that long. Every status - validation, the lists, the
+ * counts, the per-user limit, the purge - reads this one expression, and
+ * the session's `expiresAt` is its value.
+ */
+const sessionEnd = (idle: string) =>
+  `CASE WHEN ${idle}::int > 0 THEN least(s.expires_at, s.last_seen_at + make_interval(mins => ${idle}::int)) ELSE s.expires_at END`;
+
+function statusCondition(status: Exclude<SessionStatusFilter, "ALL">, idle: string): string {
+  if (status === "REVOKED") return "s.revoked_at IS NOT NULL";
+  return `s.revoked_at IS NULL AND ${sessionEnd(idle)} ${status === "ACTIVE" ? ">" : "<="} now()`;
+}
 
 export class SessionsService {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly settings: Pick<SettingsService, "get">,
+  ) {}
+
+  private idleMinutes(): Promise<number> {
+    return this.settings.get("auth.session_idle_minutes");
+  }
 
   async create(input: {
     user: string;
@@ -94,12 +111,12 @@ export class SessionsService {
       `UPDATE totalbase.sessions
        SET revoked_at = now()
        WHERE id IN (
-         SELECT id FROM totalbase.sessions
-         WHERE "user" = $1 AND revoked_at IS NULL AND expires_at > now()
-         ORDER BY created_at DESC
+         SELECT s.id FROM totalbase.sessions s
+         WHERE s."user" = $1 AND ${statusCondition("ACTIVE", "$3")}
+         ORDER BY s.created_at DESC
          OFFSET $2
        )`,
-      [userId, max],
+      [userId, max, await this.idleMinutes()],
     );
   }
 
@@ -126,6 +143,7 @@ export class SessionsService {
       params.push(value);
       return `$${params.length}`;
     };
+    const idle = push(await this.idleMinutes());
     if (filter.user) conditions.push(`s."user" = ${push(filter.user)}::uuid`);
     if (filter.q?.trim()) {
       const pattern = push(`%${filter.q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
@@ -135,19 +153,19 @@ export class SessionsService {
     const facetWhere = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const { rows: countRows } = await this.database.query<{ active: number; expired: number; revoked: number }>(
-      `SELECT count(*) FILTER (WHERE ${SESSION_STATUS_CONDITION.ACTIVE})::int AS active,
-              count(*) FILTER (WHERE ${SESSION_STATUS_CONDITION.EXPIRED})::int AS expired,
-              count(*) FILTER (WHERE ${SESSION_STATUS_CONDITION.REVOKED})::int AS revoked
+      `SELECT count(*) FILTER (WHERE ${statusCondition("ACTIVE", idle)})::int AS active,
+              count(*) FILTER (WHERE ${statusCondition("EXPIRED", idle)})::int AS expired,
+              count(*) FILTER (WHERE ${statusCondition("REVOKED", idle)})::int AS revoked
        ${base} ${facetWhere}`,
       params,
     );
     const counts = { ACTIVE: countRows[0]!.active, EXPIRED: countRows[0]!.expired, REVOKED: countRows[0]!.revoked };
 
-    const where = [...conditions, ...(filter.status === "ALL" ? [] : [SESSION_STATUS_CONDITION[filter.status]])];
+    const where = [...conditions, ...(filter.status === "ALL" ? [] : [statusCondition(filter.status, idle)])];
     const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
     // LIMIT NULL is no limit.
     const { rows } = await this.database.query<SessionRow & { user_email: string; user_name: string | null }>(
-      `SELECT s.id, s."user", s.ip, s.user_agent, s.created_at, s.last_seen_at, s.expires_at, s.revoked_at,
+      `SELECT s.id, s."user", s.ip, s.user_agent, s.created_at, s.last_seen_at, ${sessionEnd(idle)} AS expires_at, s.revoked_at,
               u.email AS user_email, u.name AS user_name
        ${base} ${whereSql}
        ORDER BY s.last_seen_at DESC, s.id
@@ -164,7 +182,8 @@ export class SessionsService {
 
   /**
    * Validates a bearer token and returns the associated user, or null if
-   * the session does not exist, is expired, or has been revoked.
+   * the session does not exist, is expired - idle too long included - or
+   * has been revoked.
    *
    * `userRow` is the user's whole row as PostgreSQL returns it (custom
    * columns included) - what `$USER.*` resolves from - read in the same
@@ -172,6 +191,7 @@ export class SessionsService {
    */
   async validate(token: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
     const tokenHash = hashToken(token);
+    const idleMinutes = await this.idleMinutes();
 
     // u.* first, then the session's columns under a prefix no user column
     // carries (both tables have `id` and `created_at`).
@@ -179,15 +199,14 @@ export class SessionsService {
       `SELECT u.*,
          s.id AS __session_id, s."user" AS __session_user, s.ip AS __session_ip, s.user_agent AS __session_user_agent,
          s.created_at AS __session_created_at, s.last_seen_at AS __session_last_seen_at,
-         s.expires_at AS __session_expires_at, s.revoked_at AS __session_revoked_at
+         ${sessionEnd("$2")} AS __session_expires_at, s.revoked_at AS __session_revoked_at
        FROM totalbase.sessions s
        JOIN totalbase.users u ON u.id = s."user"
        WHERE s.token_hash = $1
-         AND s.revoked_at IS NULL
-         AND s.expires_at > now()
+         AND ${statusCondition("ACTIVE", "$2")}
          AND u.active = true
          AND u.can_login = true`,
-      [tokenHash],
+      [tokenHash, idleMinutes],
     );
 
     const row = rows[0];
@@ -203,12 +222,14 @@ export class SessionsService {
     // last_seen_at is minute-grained: written only when the stored value is
     // older than a minute, so a busy session costs one write a minute, not
     // one per request (the column is indexed, so each write is a full new
-    // row version). Nothing depends on it being exact - expiry never does
-    // (expires_at is fixed at sign-in); the Sessions screen shows it.
+    // row version). The idle timeout reads it, so under a timeout of less
+    // than five minutes it is written once a fifth of the timeout instead -
+    // a session in use never looks idle.
     await this.database.query(
       `UPDATE totalbase.sessions SET last_seen_at = now()
-       WHERE id = $1 AND last_seen_at < now() - interval '1 minute'`,
-      [session.id],
+       WHERE id = $1
+         AND last_seen_at < now() - CASE WHEN $2::int BETWEEN 1 AND 4 THEN make_interval(secs => $2::int * 12) ELSE interval '1 minute' END`,
+      [session.id, idleMinutes],
     );
 
     return {
@@ -226,6 +247,24 @@ export class SessionsService {
       session,
       userRow,
     };
+  }
+
+  /** The session's user just confirmed their identity again (Security.md §2.19). */
+  async markReauthenticated(sessionId: string, userId: string): Promise<void> {
+    await this.database.query(
+      `UPDATE totalbase.sessions SET reauthenticated_at = now() WHERE id = $1 AND "user" = $2`,
+      [sessionId, userId],
+    );
+  }
+
+  /** Whether the session signed in, or re-authenticated, within the last `minutes` - PostgreSQL's clock decides. */
+  async authenticatedWithin(sessionId: string, minutes: number): Promise<boolean> {
+    const { rows } = await this.database.query<{ recent: boolean }>(
+      `SELECT greatest(created_at, coalesce(reauthenticated_at, created_at)) > now() - make_interval(mins => $2::int) AS recent
+       FROM totalbase.sessions WHERE id = $1`,
+      [sessionId, minutes],
+    );
+    return rows[0]?.recent ?? false;
   }
 
   async revokeByToken(token: string): Promise<void> {
@@ -263,9 +302,9 @@ export class SessionsService {
   async purgeEnded(retentionDays: number): Promise<number> {
     if (retentionDays <= 0) return 0;
     const { rowCount } = await this.database.query(
-      `DELETE FROM totalbase.sessions
-       WHERE coalesce(revoked_at, expires_at) < now() - make_interval(days => $1)`,
-      [retentionDays],
+      `DELETE FROM totalbase.sessions s
+       WHERE coalesce(s.revoked_at, ${sessionEnd("$2")}) < now() - make_interval(days => $1)`,
+      [retentionDays, await this.idleMinutes()],
     );
     return rowCount ?? 0;
   }
@@ -284,7 +323,8 @@ export class SessionsService {
   /** Sessions still signed in - not revoked, not expired (the Users panel's count). */
   async countActive(): Promise<number> {
     const { rows } = await this.database.query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM totalbase.sessions WHERE revoked_at IS NULL AND expires_at > now()`,
+      `SELECT count(*)::text AS count FROM totalbase.sessions s WHERE ${statusCondition("ACTIVE", "$1")}`,
+      [await this.idleMinutes()],
     );
     return Number(rows[0]!.count);
   }

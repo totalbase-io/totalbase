@@ -67,7 +67,7 @@ export class AuthService {
     options: AuthServiceOptions,
   ) {
     this.users = new UsersService(database);
-    this.sessions = new SessionsService(database);
+    this.sessions = new SessionsService(database, settings);
     this.authTokens = new AuthTokensService(database);
     this.mailer = new SystemMailer(settings, emailSender, options.publicUrl ?? "");
     this.mfa = new MfaService(database, settings, options.masterKey, { isAdministrator: options.isAdministrator });
@@ -103,6 +103,32 @@ export class AuthService {
     if (!(await this.settings.get("auth.email_changed_email_enabled"))) return;
     this.sendBestEffort("email_changed email", () =>
       this.mailer.send("email_changed", previous, undefined, { new_email: newEmail }),
+    );
+  }
+
+  /**
+   * The security notice that an account's two-factor authentication was turned off - by its owner, or reset by
+   * an administrator (auth.mfa_disabled_email_enabled, Security.md §2.17). Best-effort, after the change.
+   */
+  async notifyMfaDisabled(userId: string): Promise<void> {
+    if (!(await this.settings.get("auth.mfa_disabled_email_enabled"))) return;
+    const user = await this.users.findById(userId);
+    if (!user?.email || !user.canLogin) return;
+    this.sendBestEffort("mfa_disabled email", () =>
+      this.mailer.send("mfa_disabled", { email: user.email!, name: user.name }),
+    );
+  }
+
+  /**
+   * The security notice that a new key can act as the account - an API token created or regenerated for it, by its
+   * owner or an administrator (auth.token_created_email_enabled, Security.md §3.3). Best-effort, after the change.
+   */
+  async notifyTokenCreated(userId: string, token: { name: string; plane: string }): Promise<void> {
+    if (!(await this.settings.get("auth.token_created_email_enabled"))) return;
+    const user = await this.users.findById(userId);
+    if (!user?.email || !user.canLogin) return;
+    this.sendBestEffort("token_created email", () =>
+      this.mailer.send("token_created", { email: user.email!, name: user.name }, undefined, { "token.name": token.name, "token.plane": token.plane }),
     );
   }
 
@@ -436,6 +462,51 @@ export class AuthService {
       signOut: input.signOutOthers,
       keepSessionId: input.keepSessionId,
     });
+  }
+
+  /**
+   * Re-authentication (Security.md §2.19): the session's user confirms their identity again - their password, or a
+   * code (or recovery code) from their second factor - and the session counts as recently authenticated from now.
+   * A wrong proof counts toward the account's lockout, like a wrong password at sign-in; a locked account can't.
+   * Every refusal is REAUTHENTICATION_FAILED (400): the session itself is fine.
+   */
+  async reauthenticate(input: { userId: string; sessionId: string; password?: unknown; code?: unknown; recoveryCode?: unknown }): Promise<void> {
+    const refuse = (message: string): never => {
+      throw new TotalBaseError("REAUTHENTICATION_FAILED", message);
+    };
+    const user = await this.users.findByIdWithPasswordHash(input.userId);
+    if (!user) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid session or token.");
+    if (await this.users.isLocked(user.id)) refuse("This account is locked for a while after too many failed attempts.");
+    const countFailure = async () => {
+      const [maxAttempts, lockMinutes] = await Promise.all([
+        this.settings.get("auth.lockout_max_attempts"),
+        this.settings.get("auth.lockout_duration_minutes"),
+      ]);
+      await this.users.recordFailedLogin(user.id, maxAttempts, lockMinutes);
+    };
+    if (typeof input.password === "string") {
+      if (!user.passwordHash) refuse("This account has no password - confirm with your authenticator app, or sign in again.");
+      if (!(await verifyPassword(user.passwordHash!, input.password))) {
+        await countFailure();
+        refuse("The password is incorrect.");
+      }
+    } else if (input.code !== undefined || input.recoveryCode !== undefined) {
+      try {
+        await this.mfa.confirm(user.id, { code: input.code, recoveryCode: input.recoveryCode });
+      } catch (error) {
+        if (!(error instanceof TotalBaseError)) throw error;
+        if (error.code === "INVALID_MFA_CODE") await countFailure();
+        refuse(error.code === "MFA_NOT_ENABLED" ? "This account has no authenticator app - confirm with your password." : error.message);
+      }
+    } else {
+      throw new TotalBaseError("INVALID_QUERY", "password, code or recoveryCode is required.");
+    }
+    await this.sessions.markReauthenticated(input.sessionId, user.id);
+  }
+
+  /** Whether the session signed in or re-authenticated within auth.reauthentication_minutes (Security.md §2.19). */
+  async recentlyAuthenticated(sessionId: string): Promise<boolean> {
+    return this.sessions.authenticatedWithin(sessionId, await this.settings.get("auth.reauthentication_minutes"));
   }
 
   /** Confirms the current password of an account that has one - My account's email change asks for it. */

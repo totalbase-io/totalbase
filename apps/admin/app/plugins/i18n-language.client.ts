@@ -30,7 +30,7 @@ export default defineNuxtPlugin({
     // instead of the keys showing until they arrive - the signed-in user's
     // (the session plugin has read /auth/me), else the visitor's.
     const route = useRoute()
-    if (session.token.value) await apply(session.admin.value?.display?.language)
+    if (session.admin.value) await apply(session.admin.value.display?.language)
     else if (!route.path.startsWith('/embed/')) await apply(storedPublicLanguage() ?? useInstance().instance.value.language)
 
     return { provide: { uiLanguage: { settled: () => pending } } }

@@ -14,9 +14,11 @@ export interface RetentionResult {
   tokens: number;
   challenges: number;
   derivatives: { expired: number; orphanedFiles: number };
+  expiredAssignments: number;
+  dormantAccounts: number;
 }
 
-type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "idempotency" | "filesTransform" | "logger" | "auth">;
+type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "idempotency" | "filesTransform" | "logger" | "auth" | "roleAssignments">;
 
 /**
  * The hourly retention job (index.ts): every purge whose window is a
@@ -34,10 +36,13 @@ type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "id
  *   api_keys.purge_after_days;
  * - MFA sign-in challenges used or expired a day ago (Security.md §2.17);
  * - image derivatives older than files.transforms.cache_ttl_seconds, and
- *   those of deleted files.
+ *   those of deleted files;
+ * - role assignments past their expiry (Security.md §1.10), and the
+ *   accounts unused for auth.dormant_account_days, deactivated (§1.11) -
+ *   both audited, as the system.
  */
 export async function runRetention(context: RetentionContext): Promise<RetentionResult> {
-  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, derivatives: { expired: 0, orphanedFiles: 0 } };
+  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, derivatives: { expired: 0, orphanedFiles: 0 }, expiredAssignments: 0, dormantAccounts: 0 };
   const { logger } = context;
 
   try {
@@ -103,6 +108,41 @@ export async function runRetention(context: RetentionContext): Promise<Retention
     if (result.derivatives.expired + result.derivatives.orphanedFiles > 0) logger.info(result.derivatives, "image derivatives purged");
   } catch (error) {
     logger.error({ error }, "image derivative purge failed");
+  }
+
+  // Access governance (Security.md §1.10, §1.11): what lapsed, recorded as the system's own access events.
+  const recordAccess = (event: string, metadata: Record<string, unknown>) =>
+    context.audit.record(context.database, {
+      requestId: randomUUID(),
+      principal: SYSTEM_PRINCIPAL,
+      action: "AUTH",
+      status: "EXECUTED",
+      source: "system",
+      metadata: { event, ...metadata },
+      startedAt: new Date(),
+      finishedAt: new Date(),
+    });
+
+  try {
+    result.expiredAssignments = await context.roleAssignments.purgeExpired();
+    if (result.expiredAssignments > 0) {
+      await recordAccess("assignment.expired", { deletedCount: result.expiredAssignments });
+      logger.info({ deletedCount: result.expiredAssignments }, "expired role assignments removed");
+    }
+  } catch (error) {
+    logger.error({ error }, "expired role assignments purge failed");
+  }
+
+  try {
+    const days = await context.settings.get("auth.dormant_account_days");
+    const deactivated = await context.auth.users.deactivateDormant(days);
+    result.dormantAccounts = deactivated.length;
+    if (deactivated.length > 0) {
+      await recordAccess("user.dormant_deactivated", { userIds: deactivated, dormantDays: days });
+      logger.info({ count: deactivated.length, days }, "dormant accounts deactivated");
+    }
+  } catch (error) {
+    logger.error({ error }, "dormant accounts deactivation failed");
   }
 
   return result;

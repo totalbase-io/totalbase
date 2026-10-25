@@ -104,7 +104,7 @@ async function buildDataApiSpec(context: AppContext, dataRoutes: DocumentedRoute
     idempotencyEnabled: await context.settings.get("idempotency.enabled"),
     guardFieldDecision: (resource, action, decision) => {
       const guarded = protectedFieldDecision(resource, decision);
-      return action === "CREATE" || action === "UPDATE" ? guardedColumnsWriteFieldDecision(resource, guarded, caller) : guarded;
+      return action === "CREATE" || action === "UPDATE" ? guardedColumnsWriteFieldDecision(resource, guarded, caller, action) : guarded;
     },
   });
   if (!(await context.settings.get("openapi.cache_enabled"))) return build();

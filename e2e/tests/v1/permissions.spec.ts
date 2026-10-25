@@ -1,6 +1,6 @@
 import type { Browser, Page } from '@playwright/test'
 import { adminSession, api, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test, type DataViewRef } from './fixtures.js'
-import { BASE_URL } from '../helpers'
+import { BASE_URL, sessionToken } from '../helpers'
 
 /**
  * A sales user (an APP role, not an administrator) as a real system has one
@@ -78,8 +78,7 @@ async function asSeller(browser: Browser) {
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/app/)
-  const token = await page.evaluate(() => localStorage.getItem('totalbase_admin_token'))
-  return { context, page, token: token! }
+  return { context, page, token: await sessionToken(page) }
 }
 
 test('the menu lists the DataView their role opens, and no other; the other one\'s URL shows nothing', async ({ browser, token: _ }) => {

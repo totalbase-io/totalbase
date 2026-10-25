@@ -87,14 +87,18 @@ export class PermissionsService {
     return rows.map((row) => this.toPermission(row));
   }
 
-  /** Upserts one (role, resource, action) permission - the atomic unit Security.md §5.3 describes. */
+  /**
+   * Upserts one (role, resource, action) permission - the atomic unit Security.md §5.3 describes.
+   * `actorUserId`: who grants it - recorded as `granted_by` (Security.md §5.1).
+   */
   async set(
     roleId: string,
     resourceId: string,
     action: ResourceAction,
     input: SetPermissionInput,
+    options: { actorUserId?: string | undefined } = {},
   ): Promise<Permission> {
-    return this.database.transaction((client) => this.setOn(client, roleId, resourceId, action, input));
+    return this.database.transaction((client) => this.setOn(client, roleId, resourceId, action, input), { actorUserId: options.actorUserId });
   }
 
   /**
@@ -103,12 +107,31 @@ export class PermissionsService {
    * of one per grant). Each is `set`'s own upsert; answered in the order
    * given.
    */
-  async setMany(roleId: string, grants: { resourceId: string; action: ResourceAction; input: SetPermissionInput }[]): Promise<Permission[]> {
+  async setMany(
+    roleId: string,
+    grants: { resourceId: string; action: ResourceAction; input: SetPermissionInput }[],
+    options: { actorUserId?: string | undefined } = {},
+  ): Promise<Permission[]> {
     return this.database.transaction(async (client) => {
       const permissions: Permission[] = [];
       for (const grant of grants) permissions.push(await this.setOn(client, roleId, grant.resourceId, grant.action, grant.input));
       return permissions;
-    });
+    }, { actorUserId: options.actorUserId });
+  }
+
+  /** The same grant on one (resource, action) for several roles, in one transaction - all of them, or none. */
+  async setForRoles(
+    roleIds: string[],
+    resourceId: string,
+    action: ResourceAction,
+    input: SetPermissionInput,
+    options: { actorUserId?: string | undefined } = {},
+  ): Promise<Permission[]> {
+    return this.database.transaction(async (client) => {
+      const permissions: Permission[] = [];
+      for (const roleId of roleIds) permissions.push(await this.setOn(client, roleId, resourceId, action, input));
+      return permissions;
+    }, { actorUserId: options.actorUserId });
   }
 
   private async setOn(client: Queryable, roleId: string, resourceId: string, action: ResourceAction, input: SetPermissionInput): Promise<Permission> {

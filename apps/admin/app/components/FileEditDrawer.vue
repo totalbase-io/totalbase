@@ -17,7 +17,6 @@ const open = defineModel<boolean>('open', { required: true })
 
 const filesApi = useFilesApi()
 const toast = useToast()
-const session = useSession()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 
@@ -59,10 +58,6 @@ function resetParams() {
   blur.value = null
   sharpen.value = false
   crop.value = null
-}
-
-function authHeaders() {
-  return session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
 }
 
 function buildQuery(): Record<string, string> {
@@ -112,8 +107,7 @@ async function refreshPreviewNow() {
     const qs = queryString.value
     const response = await $fetch.raw(`/api/totalbase/table/files/${props.file.id}${qs ? `?${qs}` : ''}`, {
       baseURL: '',
-      responseType: 'blob',
-      headers: authHeaders()
+      responseType: 'blob'
     })
     const blob = response._data as Blob
     revokePreview()
@@ -149,8 +143,7 @@ async function ensureOriginalLoaded() {
   if (originalUrl.value || !props.file) return
   const response = await $fetch.raw(`/api/totalbase/table/files/${props.file.id}`, {
     baseURL: '',
-    responseType: 'blob',
-    headers: authHeaders()
+    responseType: 'blob'
   })
   const blob = response._data as Blob
   originalObjectUrl = URL.createObjectURL(blob)

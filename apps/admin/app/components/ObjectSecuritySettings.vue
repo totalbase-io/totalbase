@@ -102,5 +102,6 @@ async function save(next: string[]) {
       :disabled="saving"
       @update:model-value="save"
     />
+    <slot />
   </SettingsSection>
 </template>

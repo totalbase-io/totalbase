@@ -38,6 +38,7 @@ import { registerAppDataViewSaveRoutes } from "./routes/app-dataviews-save.js";
 import { registerAppDataViewBulkRoutes } from "./routes/app-dataviews-bulk.js";
 import { registerAppTemplatesRoutes } from "./routes/app-templates.js";
 import { registerAppUsersRoutes } from "./routes/app-users.js";
+import { registerAppRolesRoutes } from "./routes/app-roles.js";
 import { registerAppMeRoutes } from "./routes/app-me.js";
 import { registerAppDataViewsRoutes } from "./routes/app-dataviews.js";
 import { registerAdminAuditRoutes } from "./routes/admin-audit.js";
@@ -116,7 +117,7 @@ export async function buildServer(
 
   // Lets the MCP endpoint's in-process calls past the per-IP limit (it limits its own callers per token); made here, never stored or sent.
   const internalKey = randomBytes(32).toString("hex");
-  registerHardeningHooks(app, context.settings, { internalKey });
+  registerHardeningHooks(app, context.settings, { internalKey, publicUrl: () => context.auth.mailer.publicUrl() });
   registerViewAsGuard(app);
   registerAccessAudit(app, context);
 
@@ -233,6 +234,7 @@ export async function buildServer(
   registerAppDataViewBulkRoutes(app, context);
   registerAppTemplatesRoutes(app, context);
   registerAppUsersRoutes(app, context);
+  registerAppRolesRoutes(app, context);
   registerAppMeRoutes(app, context);
   registerAdminAuditRoutes(app, context);
   registerAdminAuthProvidersRoutes(app, context);

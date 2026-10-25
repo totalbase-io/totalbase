@@ -37,11 +37,14 @@ describe("/admin/api/system-emails", () => {
     await app.close();
   });
 
-  it("lists the six system emails with their variables", async () => {
+  it("lists the eight system emails with their variables", async () => {
     const res = await inject("GET", "/admin/api/system-emails");
     expect(res.statusCode).toBe(200);
     const slots = res.json().data.map((e: { slot: string }) => e.slot);
-    expect(slots).toEqual(["user_invitation", "password_reset", "email_verification", "password_changed", "email_changed", "user_welcome"]);
+    expect(slots).toEqual(["user_invitation", "password_reset", "email_verification", "password_changed", "email_changed", "mfa_disabled", "token_created", "user_welcome"]);
+    const token = res.json().data.find((e: { slot: string }) => e.slot === "token_created");
+    expect(token).toMatchObject({ hasAction: false, enabled: true, enabledSetting: "auth.token_created_email_enabled" });
+    expect(token.variables).toEqual(expect.arrayContaining(["token.name", "token.plane"]));
     const welcome = res.json().data.find((e: { slot: string }) => e.slot === "user_welcome");
     expect(welcome).toMatchObject({ hasAction: false, enabled: false, enabledSetting: "auth.welcome_email_enabled" });
     const changed = res.json().data.find((e: { slot: string }) => e.slot === "email_changed");

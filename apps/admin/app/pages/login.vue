@@ -10,8 +10,8 @@ import { useApiErrorMessage } from '~/utils/api-error-message'
 
 definePageMeta({ layout: false })
 
+/** The portal signs in with `mode: 'session'`: the session is an HttpOnly cookie, never in the body (Security.md §2.18). */
 interface LoginResponse {
-  token: string
   admin: AdminAccount
 }
 
@@ -82,7 +82,6 @@ async function resendVerification() {
 }
 
 async function signedIn(data: LoginResponse) {
-  session.setToken(data.token)
   session.admin.value = data.admin
   // The full profile (display preferences included) - best-effort, the
   // sign-in already succeeded.
@@ -102,7 +101,8 @@ async function submit() {
   try {
     const { data } = await api.post<LoginResponse>('/auth/login', {
       email: email.value,
-      password: password.value
+      password: password.value,
+      mode: 'session'
     })
     await signedIn(data)
   } catch (error) {

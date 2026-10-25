@@ -1,5 +1,5 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test'
-import { login, watchApiFailures } from './helpers.js'
+import { login, sessionToken, watchApiFailures } from './helpers.js'
 import { BASE_URL } from './helpers'
 
 /**
@@ -539,7 +539,7 @@ test.describe('my account', () => {
       await me.getByLabel('Password', { exact: true }).fill(password)
       await me.getByRole('button', { name: 'Sign in' }).click()
       await me.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
-      const token = (await me.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
+      const token = await sessionToken(me)
       const failures = watchApiFailures(me)
       const account = () => api<{ name: string, avatarUrl: string | null }>(me, token, 'GET', '/app/api/me')
 

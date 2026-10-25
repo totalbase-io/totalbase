@@ -5,6 +5,7 @@ import qs from "qs";
 import { TotalBaseError } from "@totalbase/errors";
 import type { SettingsService } from "@totalbase/settings";
 import { isServerPath } from "./admin-ui.js";
+import { assertSameOrigin, readSessionCookie } from "./session-cookie.js";
 
 /**
  * Where the hardening hooks read their settings from - the settings
@@ -154,7 +155,30 @@ function isInternalRequest(header: string | string[] | undefined, key: string): 
   return timingSafeEqual(Buffer.from(header), Buffer.from(key));
 }
 
-export function registerHardeningHooks(app: FastifyInstance, settings: HardeningSettingsSource, options: { internalKey?: string } = {}): void {
+/** Methods that change nothing - never held to the same origin. */
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * The headers every answer carries (Foundations.md §4.7): no MIME sniffing,
+ * no full URL leaving in a Referer (links carry `?token=`), HSTS once the
+ * public URL is https; an API answer in JSON - a session, a record, personal
+ * data - kept out of every cache unless its route set its own policy.
+ */
+function securityHeaders(request: FastifyRequest, reply: FastifyReply, publicUrl: string): void {
+  reply.header("x-content-type-options", "nosniff");
+  reply.header("referrer-policy", "strict-origin-when-cross-origin");
+  if (publicUrl.startsWith("https://")) reply.header("strict-transport-security", "max-age=31536000");
+  if (isServerPath(request.url) && !reply.hasHeader("cache-control") && String(reply.getHeader("content-type") ?? "").startsWith("application/json")) {
+    reply.header("cache-control", "no-store");
+  }
+}
+
+export function registerHardeningHooks(
+  app: FastifyInstance,
+  settings: HardeningSettingsSource,
+  options: { internalKey?: string; publicUrl?: () => Promise<string> } = {},
+): void {
+  const publicUrl = options.publicUrl ?? (async () => "");
   const rateLimiter = new RateLimiter();
   const signInFailures = new RateLimiter();
   const sweepInterval = setInterval(() => {
@@ -202,6 +226,18 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       return;
     }
 
+    // --- CSRF (Security.md §2.18) ---
+    // The browser sends the session cookie by itself, so a write it
+    // authenticates - no Authorization header - must come from this
+    // instance's own pages. A bearer token is never sent by itself: no check.
+    // A public route (a sign-in, a password reset) isn't authenticated by the
+    // cookie at all: nothing to hold - a cookie sign-in checks its own origin.
+    const config = request.routeOptions.config as { public?: boolean; openapi?: { access?: string } } | undefined;
+    const publicRoute = config?.public === true || config?.openapi?.access === "public";
+    if (!SAFE_METHODS.has(request.method) && !publicRoute && request.headers.authorization === undefined && readSessionCookie(request)) {
+      assertSameOrigin(request, await publicUrl());
+    }
+
     // --- QUERY_STRING_TOO_LARGE / QUERY_PARAMETER_LIMIT_EXCEEDED (Data_API.md §12) ---
     // Node's maxHeaderSize is set at startup above the setting's value
     // (maxHeaderSizeFor, server.ts), so a query string past the limit
@@ -235,6 +271,11 @@ export function registerHardeningHooks(app: FastifyInstance, settings: Hardening
       reply.header("retry-after", String(signInFailures.retryAfterSeconds(request.ip)));
       throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many failed sign-in attempts from this address. Please wait a minute.");
     }
+  });
+
+  app.addHook("onSend", async (request, reply, payload) => {
+    securityHeaders(request, reply, await publicUrl());
+    return payload;
   });
 
   // A failed attempt on a credential route counts once it's answered (SIGN_IN_PATHS).

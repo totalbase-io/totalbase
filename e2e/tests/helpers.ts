@@ -6,19 +6,30 @@ export const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3030'
 export const ADMIN_EMAIL = process.env.TOTALBASE_ADMIN_EMAIL ?? 'admin@totalbase.local'
 export const ADMIN_PASSWORD = process.env.TOTALBASE_ADMIN_PASSWORD ?? '1234567'
 
+/**
+ * The portal's session token, read from its HttpOnly cookie (Security.md §2.18) -
+ * no page script can, the browser context can. Waits for the sign-in to set it.
+ */
+export async function sessionToken(page: Page, timeout = 30_000): Promise<string> {
+  const deadline = Date.now() + timeout
+  for (;;) {
+    const cookie = (await page.context().cookies()).find(c => c.name === 'tb_session' || c.name === '__Host-tb_session')
+    if (cookie?.value) return decodeURIComponent(cookie.value)
+    if (Date.now() > deadline) throw new Error('Sign-in did not set the session cookie')
+    await page.waitForTimeout(100)
+  }
+}
+
 export async function login(page: Page) {
   await page.goto('/login')
   await page.getByLabel('Email').fill(ADMIN_EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  // The token, not the page's `load` event: a busy dev server can hold
+  // The cookie, not the page's `load` event: a busy dev server can hold
   // `load` (every module of the home page) long after the sign-in worked.
   // An administrator lands on Status (/status), an App user on /app.
   await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
-  const handle = await page.waitForFunction(() => localStorage.getItem('totalbase_admin_token'), undefined, { timeout: 30_000 })
-  const token = await handle.jsonValue()
-  if (!token) throw new Error('Login did not produce a bearer token')
-  return token
+  return sessionToken(page)
 }
 
 export async function apiRequest<T>(

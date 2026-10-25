@@ -147,7 +147,7 @@ export { AUTH_PROVIDER_TYPE };
 
 const SYSTEM_EMAIL_SLOT: JsonSchema = {
   type: "string",
-  enum: ["user_invitation", "password_reset", "email_verification", "password_changed", "email_changed", "user_welcome"],
+  enum: ["user_invitation", "password_reset", "email_verification", "password_changed", "email_changed", "mfa_disabled", "token_created", "user_welcome"],
 };
 
 const SYSTEM_EMAIL_FIELDS: Record<string, JsonSchema> = {

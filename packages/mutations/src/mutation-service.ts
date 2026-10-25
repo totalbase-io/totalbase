@@ -517,7 +517,7 @@ export async function executeCreate(
           // The DO UPDATE branch passes the guardrails a plain UPDATE's data does - every column it sets,
           // whether a literal or `$INSERT.<field>` (a reference to a column the item leaves out still writes its default).
           const conflictValues = conflictValuesFor(onConflict.data ?? {}, item);
-          assertGuardedColumnsWriteAllowed(deps.root, conflictValues, caller);
+          assertGuardedColumnsWriteAllowed(deps.root, conflictValues, caller, "UPDATE");
           await assertUserRoleAssignmentAllowed(client, deps.root, conflictValues, caller);
         }
         assertGuardedColumnsWriteAllowed(deps.root, item, caller);
@@ -535,7 +535,7 @@ export async function executeCreate(
           const action = compiled.insertedColumn && row[compiled.insertedColumn] === false ? "UPDATE" : "CREATE";
           await assertAuthorizedRow(row, action);
           assertValidRow(row, compiled.payloadCheckColumns);
-          if (action === "UPDATE") assertRoleOwnership(deps.root, row, caller);
+          if (action === "UPDATE") await assertRoleOwnership(client, deps.root, row, caller);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           const oldRow = action === "UPDATE" ? oldRowOf(row, compiled, passwordColumns) : undefined;
           await queueAuditAndOutbox(deps, client, action, startedAt, oldRow, clean, batch);
@@ -607,7 +607,7 @@ export async function executeUpdate(
       const results: Record<string, unknown>[] = [];
       const batch = newWriteBatch();
       for (const op of operations) {
-        assertGuardedColumnsWriteAllowed(deps.root, op.data, caller);
+        assertGuardedColumnsWriteAllowed(deps.root, op.data, caller, "UPDATE");
         await assertUserRoleAssignmentAllowed(client, deps.root, op.data, caller);
         const hashedData = await hashPasswordFields(deps.context, passwordColumns, op.data);
         const compiled = await compileUpdate(mutationContext, hashedData, op.where, oldValueFields, op.version);
@@ -620,7 +620,7 @@ export async function executeUpdate(
           if (typeof row[ROW_VERSION_COLUMN] === "string") versions?.push(row[ROW_VERSION_COLUMN] as string);
           await assertAuthorizedRow(row, "UPDATE");
           assertValidRow(row, compiled.payloadCheckColumns);
-          assertRoleOwnership(deps.root, row, caller);
+          await assertRoleOwnership(client, deps.root, row, caller);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           const oldRow = oldRowOf(row, compiled, passwordColumns);
           await queueAuditAndOutbox(deps, client, "UPDATE", startedAt, oldRow, clean, batch);
@@ -688,7 +688,7 @@ export async function executeDelete(
         // deletion - the entry's `payload` (Security.md §11.4).
         for (const row of rows as Record<string, unknown>[]) {
           assertRolesDeleteAllowed(deps.root, row);
-          assertRoleOwnership(deps.root, row, caller);
+          await assertRoleOwnership(client, deps.root, row, caller);
           await assertAssignmentDeleteAllowed(client, deps.root, row, caller);
           const clean = stripPasswordFields(row, passwordColumns);
           await queueAuditAndOutbox(deps, client, "DELETE", startedAt, clean, undefined, batch);

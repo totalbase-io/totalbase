@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { templateColumns } from "@totalbase/tb-catalog";
 import { whereParams, type AdminClient } from "./admin-client.js";
-import { DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, RESOURCES, result, roleId, schemaName, type ResourceRow } from "./tool-helpers.js";
+import { ADDITIVE, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, RESOURCES, result, roleId, schemaName, type ResourceRow } from "./tool-helpers.js";
 
 /**
  * Permissions (Security.md §5-§7, Administration.md
@@ -18,7 +18,7 @@ type Effect = "ALLOW" | "DENY";
 
 interface PermissionRow { id: string; effect: Effect; where_clause: unknown; field_overrides: { field: string; effect: Effect }[]; payload_checks: unknown[] }
 interface Permission { effect: Effect; whereClause: unknown; fields: { field: string; effect: Effect }[]; payloadChecks: { rule: unknown; label: string | null }[] }
-interface ActionDecision { decision: Effect | "UNDEFINED"; roles: string[]; fields: string[] | null; rowFilters: { role: string; where: unknown }[] | null; payloadChecks: { role: string; label: string | null; rule: unknown }[] | null }
+interface ActionDecision { decision: Effect | "UNDEFINED"; roles: string[]; ceiling?: string[]; fields: string[] | null; rowFilters: { role: string; where: unknown }[] | null; payloadChecks: { role: string; label: string | null; rule: unknown }[] | null }
 interface EffectivePermissions { resource: string; actions: Partial<Record<Action, ActionDecision>> }
 
 
@@ -423,6 +423,8 @@ export function registerPermissionTools(server: McpServer, client: AdminClient):
                 ...(d!.rowFilters?.length && { rowFilters: d!.rowFilters }),
                 ...(d!.payloadChecks?.length && { payloadChecks: d!.payloadChecks }),
                 ...(user_id && { roles: d!.roles }),
+                // The ancestors whose grants bound it (a role's parent, and up) - a grant past them has no effect.
+                ...(d!.ceiling?.length && { limitedBy: d!.ceiling }),
               },
             ]),
         );
@@ -449,10 +451,10 @@ export function registerPermissionTools(server: McpServer, client: AdminClient):
     {
       title: "Set capability",
       description:
-        "Turn a role's capability on or off: TRANSACTIONS (may submit multi-step Data API transactions, POST /api/transactions - each step still checked per resource) or SEND_EMAIL (may run a workflow's Send email step). Like grants: ALLOW, DENY (wins over other roles' ALLOW) or off (no row: undefined). Administrators hold both.",
+        "Turn a role's capability on or off: TRANSACTIONS (may submit multi-step Data API transactions, POST /api/transactions - each step still checked per resource), SEND_EMAIL (may run a workflow's Send email step) or MANAGE_ROLES (its members create roles under it - a role's parent column - grant them permissions within what this role has, share what they open and assign them: delegated administration of a branch). Like grants: ALLOW, DENY (wins over other roles' ALLOW) or off (no row: undefined). Administrators hold all of them.",
       inputSchema: {
         role_id: roleId(),
-        capability: z.enum(["TRANSACTIONS", "SEND_EMAIL"]),
+        capability: z.enum(["TRANSACTIONS", "SEND_EMAIL", "MANAGE_ROLES"]),
         effect: z.enum(["ALLOW", "DENY", "OFF"]),
       },
       annotations: IDEMPOTENT,
@@ -469,6 +471,24 @@ export function registerPermissionTools(server: McpServer, client: AdminClient):
         await client.data("POST", path, { body: { data: { role: role_id, capability, effect } } });
       }
       return result({ role: role_id, capability, effect });
+    },
+  );
+
+  server.registerTool(
+    "duplicate_role",
+    {
+      title: "Duplicate role",
+      description:
+        "A copy of a role under a new name - the same role for another site or team: its description, look, access flags, App home, parent (its ceiling), grants, object access, capabilities and managers. Never its members. A reserved role isn't copied.",
+      inputSchema: {
+        role_id: roleId(),
+        name: z.string().describe("The copy's name, unique, at most 64 characters"),
+      },
+      annotations: ADDITIVE,
+    },
+    async ({ role_id, name }) => {
+      const copy = await client.post<{ id: string; name: string; parent: string | null }>(`/roles/${role_id}/duplicate`, { data: { name } });
+      return result({ id: copy.id, name: copy.name, parent: copy.parent });
     },
   );
 }

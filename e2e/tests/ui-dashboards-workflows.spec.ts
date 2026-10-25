@@ -1,5 +1,5 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test'
-import { apiRequest as sharedApiRequest, login as loginAsAdmin, watchApiFailures } from './helpers.js'
+import { apiRequest as sharedApiRequest, login as loginAsAdmin, sessionToken, watchApiFailures } from './helpers.js'
 import { BASE_URL } from './helpers'
 
 /**
@@ -60,9 +60,7 @@ async function login(page: Page) {
   ])
   if (!response.ok()) throw new Error(`Sign in failed: ${response.status()} ${await response.text()}`)
   await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit' })
-  const token = await page.evaluate(() => localStorage.getItem('totalbase_admin_token'))
-  if (!token) throw new Error('Login did not produce a bearer token')
-  return token
+  return sessionToken(page)
 }
 
 

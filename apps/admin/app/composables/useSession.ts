@@ -1,8 +1,6 @@
 import type { DelegatedModule, PortalAccess } from '~/utils/role-access'
 import { isAppPath, viewAsState } from '~/utils/view-as'
 
-const TOKEN_STORAGE_KEY = 'totalbase_admin_token'
-
 /**
  * The caller's effective date/time display settings - their My account
  * preferences over Settings > General (GET /admin/api/auth/me's
@@ -31,19 +29,23 @@ export interface AdminAccount {
   moduleActions?: Partial<Record<DelegatedModule | 'folders' | 'assignments', Array<'READ' | 'CREATE' | 'UPDATE' | 'DELETE'>>>
   /** A non-administrator's roles they may assign or remove - created by them, or managed by one of their roles. */
   assignableRoles?: string[] | null
+  /** The roles below a role of theirs with MANAGE_ROLES (Security.md §9.5) - whose grants and objects they edit; null = none, or an administrator. */
+  managedRoles?: string[] | null
+  /** Where a role they create may go: their managing roles and the roles below them; null = none, or an administrator. */
+  placeableRoles?: string[] | null
   /** Present once GET /auth/me has answered (the login response doesn't carry it). */
   display?: DisplayPreferences
   [key: string]: unknown
 }
 
 /**
- * Session state: the bearer token (persisted to localStorage so a page
- * reload doesn't log the admin out) and the current admin profile
- * (populated from GET /admin/api/auth/me, not decoded from the token —
- * the UI never inspects the token's contents, per Admin_UI.md §1.2).
+ * Session state: the signed-in user's profile, from GET
+ * /admin/api/auth/me. The session itself is an HttpOnly cookie the
+ * browser sends with every same-origin request (Security.md §2.18) - no
+ * script here ever holds its token, so a page reload asks the server
+ * whether a session is open (plugins/session.client.ts).
  */
 export function useSession() {
-  const token = useState<string | null>('admin-session-token', () => null)
   const admin = useState<AdminAccount | null>('admin-session-account', () => null)
   // The current route's path, for See as - a plugin with no router yet reads none.
   const router = (() => {
@@ -55,37 +57,20 @@ export function useSession() {
   })()
   const currentPath = () => router?.currentRoute.value.path ?? ''
 
-  function restore() {
-    if (token.value !== null) return
-    if (import.meta.server) return
-    token.value = localStorage.getItem(TOKEN_STORAGE_KEY)
-  }
-
-  function setToken(next: string | null) {
-    token.value = next
-    if (import.meta.client) {
-      if (next) localStorage.setItem(TOKEN_STORAGE_KEY, next)
-      else localStorage.removeItem(TOKEN_STORAGE_KEY)
-    }
-  }
-
+  /** Forgets the signed-in user - after sign-out, or once the server says the session ended. */
   function clear() {
-    setToken(null)
     admin.value = null
   }
 
   /** Re-reads the profile from GET /admin/api/auth/me - after sign-in, and after My account changes it (name, avatar, preferences). */
   async function refreshProfile() {
-    const { data } = await $fetch<{ data: AdminAccount }>('/admin/api/auth/me', {
-      headers: token.value ? { Authorization: `Bearer ${token.value}` } : undefined
-    })
+    const { data } = await $fetch<{ data: AdminAccount }>('/admin/api/auth/me')
     admin.value = data
   }
 
   return {
-    token,
     admin,
-    isAuthenticated: computed(() => token.value !== null),
+    isAuthenticated: computed(() => admin.value !== null),
     // Previewing the App as someone (view-as.ts): its pages behave as for them - no administrator's controls.
     access: computed(() => admin.value?.access === 'ADMIN' && viewAsState.value && isAppPath(currentPath()) ? 'APP' : admin.value?.access),
     modules: computed(() => admin.value?.modules ?? []),
@@ -94,8 +79,6 @@ export function useSession() {
     /** Whether the user may give (CREATE) or take away (DELETE) role `roleId` - the assignments grant and the role guardrail. */
     canAssign: (roleId: string, action: 'CREATE' | 'DELETE') => admin.value?.access === 'ADMIN'
       || ((admin.value?.moduleActions?.assignments ?? []).includes(action) && (admin.value?.assignableRoles ?? []).includes(roleId)),
-    restore,
-    setToken,
     clear,
     refreshProfile
   }

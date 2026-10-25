@@ -20,7 +20,6 @@ export interface FolderNode {
  */
 export function useFilesApi() {
   const dataApi = useDataApi()
-  const session = useSession()
   const filesPath = dataApi.resourcePath('totalbase', 'files')
   const foldersPath = dataApi.resourcePath('totalbase', 'folders')
   const folderFromRow = (row: Record<string, unknown>): FolderNode => ({
@@ -79,8 +78,7 @@ export function useFilesApi() {
     download: async (id: string): Promise<{ blob: Blob, filename: string }> => {
       const response = await $fetch.raw(`/api${filesPath}/${id}`, {
         baseURL: '',
-        responseType: 'blob',
-        headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+        responseType: 'blob'
       })
       const disposition = response.headers.get('content-disposition') ?? ''
       const encoded = /filename="([^"]*)"/.exec(disposition)?.[1]

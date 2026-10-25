@@ -27,7 +27,7 @@ export function remapDashboardUniqueViolation(error: unknown): never {
   );
 }
 
-export const DASHBOARD_COLUMNS = "id, name, slug, description, menu_label, icon, color, scope, refresh_interval_seconds, embedding_enabled, variables, tabs, created_at, updated_at";
+export const DASHBOARD_COLUMNS = "id, name, slug, description, menu_label, icon, color, scope, refresh_interval_seconds, embedding_enabled, delegable, variables, tabs, created_at, updated_at";
 
 /** Every dashboard with its versioning status - the admin's Dashboards list marks drafts and unpublished changes. */
 export async function listDashboards(ctx: DashboardsContext): Promise<AdminDashboard[]> {
@@ -152,6 +152,7 @@ export async function updateDashboard(ctx: DashboardsContext, id: string, patch:
     ["scope", patch.scope],
     ["refresh_interval_seconds", refreshIntervalSeconds],
     ["embedding_enabled", typeof patch.embeddingEnabled === "boolean" ? patch.embeddingEnabled : undefined],
+    ["delegable", typeof patch.delegable === "boolean" ? patch.delegable : undefined],
   ] as const) {
     if (value === undefined) continue;
     values.push(value);

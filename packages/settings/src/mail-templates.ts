@@ -31,6 +31,8 @@ export const SYSTEM_EMAIL_SLOTS = [
   "email_verification",
   "password_changed",
   "email_changed",
+  "mfa_disabled",
+  "token_created",
   "user_welcome",
 ] as const;
 
@@ -78,6 +80,18 @@ export const SYSTEM_EMAIL_DEFINITIONS: Record<SystemEmailSlot, SystemEmailDefini
     hasAction: false,
     // user.email is the recipient - the previous address; new_email is the one it changed to.
     variables: [...COMMON_VARIABLES, "new_email"],
+  },
+  mfa_disabled: {
+    label: "Two-factor authentication turned off",
+    description: "A security notice sent when an account's two-factor authentication is turned off, or reset by an admin.",
+    hasAction: false,
+    variables: [...COMMON_VARIABLES],
+  },
+  token_created: {
+    label: "New API token",
+    description: "A security notice sent when an API token is created or regenerated for an account - a new key that can act as the person.",
+    hasAction: false,
+    variables: [...COMMON_VARIABLES, "token.name", "token.plane"],
   },
   user_welcome: {
     label: "Welcome",
@@ -157,6 +171,28 @@ If this wasn't you, reset your password right away and contact your administrato
 The email address of your account was changed from {{user.email}} to {{new_email}}. From now on, sign in and receive account emails with the new address.
 
 If you didn't expect this, contact your administrator right away.`,
+  },
+  mfa_disabled: {
+    subject: "Two-factor authentication was turned off on {{instance.name}}",
+    html: `<p>Hi {{user.name}},</p>
+<p>Two-factor authentication was just turned off for <strong>{{user.email}}</strong>. Signing in now asks only for your password.</p>
+<p>If this wasn't you, change your password right away and contact your administrator.</p>`,
+    text: `Hi {{user.name}},
+
+Two-factor authentication was just turned off for {{user.email}}. Signing in now asks only for your password.
+
+If this wasn't you, change your password right away and contact your administrator.`,
+  },
+  token_created: {
+    subject: "A new API token for your {{instance.name}} account",
+    html: `<p>Hi {{user.name}},</p>
+<p>A new key was just issued for the API token <strong>{{token.name}}</strong> ({{token.plane}}) of <strong>{{user.email}}</strong>. Whoever holds it can act as you.</p>
+<p>If you didn't expect this, revoke the token and contact your administrator.</p>`,
+    text: `Hi {{user.name}},
+
+A new key was just issued for the API token {{token.name}} ({{token.plane}}) of {{user.email}}. Whoever holds it can act as you.
+
+If you didn't expect this, revoke the token and contact your administrator.`,
   },
   user_welcome: {
     subject: "Welcome to {{instance.name}}",

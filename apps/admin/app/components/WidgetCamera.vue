@@ -46,7 +46,6 @@ const props = withDefaults(defineProps<{
 const { t } = useI18n()
 const isCompact = useCompactUi()
 const dataApi = useDataApi()
-const session = useSession()
 const notifyError = useErrorToast()
 
 // --- The stored photo ----------------------------------------------------------
@@ -58,8 +57,7 @@ async function loadPreview(id: string) {
   try {
     const response = await $fetch.raw(`/api/totalbase/table/files/${id}?width=320&fit=cover`, {
       baseURL: '',
-      responseType: 'blob',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'blob'
     })
     setPreview(URL.createObjectURL(response._data as Blob))
   } catch {

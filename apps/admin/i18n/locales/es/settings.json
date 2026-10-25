@@ -722,6 +722,10 @@
           "label": "Duración de la sesión",
           "description": "Cuánto tiempo sigue siendo válida una sesión iniciada antes de tener que iniciar sesión de nuevo."
         },
+        "auth__session_idle_minutes": {
+          "label": "Cerrar sesión por inactividad",
+          "description": "Una sesión sin uso durante este tiempo termina, y su usuario vuelve a iniciar sesión: para computadoras compartidas o desatendidas. 0 mantiene la sesión hasta que termine su duración."
+        },
         "auth__password_reset_ttl_minutes": {
           "label": "Duración del enlace de restablecimiento de contraseña",
           "description": "Cuánto tiempo sigue siendo válido un enlace de \"restablece tu contraseña\" después de enviarse."
@@ -745,6 +749,14 @@
         "auth__lockout_max_attempts": {
           "label": "Bloquear tras inicios de sesión fallidos",
           "description": "Contraseñas incorrectas consecutivas que bloquean la cuenta durante un tiempo. La persona ve el habitual \"correo electrónico o contraseña no válidos\" en cualquier caso; un administrador puede desbloquearla antes. 0 desactiva el bloqueo."
+        },
+        "auth__dormant_account_days": {
+          "label": "Desactivar cuentas sin uso",
+          "description": "Una cuenta sin inicio de sesión, sin sesión y sin token usado durante esta cantidad de días se desactiva: alguien que se fue, una cuenta que nadie recordaba. El propietario nunca. 0 lo desactiva."
+        },
+        "auth__reauthentication_minutes": {
+          "label": "Confirmar identidad para acciones sensibles",
+          "description": "Cuánto tiempo después de iniciar sesión, o de volver a confirmar su contraseña, un administrador puede emitir un token de administrador, asignar Administrators o cambiar el correo, la contraseña o la verificación en dos pasos de otra cuenta. Pasado ese tiempo, primero se le pide su contraseña (o un código)."
         },
         "auth__lockout_duration_minutes": {
           "label": "Duración del bloqueo",
@@ -778,6 +790,14 @@
         "auth__email_changed_email_enabled": {
           "label": "Aviso de correo cambiado",
           "description": "Envía un correo a la dirección anterior cada vez que un administrador cambia el correo electrónico de un usuario: un aviso de seguridad."
+        },
+        "auth__mfa_disabled_email_enabled": {
+          "label": "Aviso de verificación en dos pasos desactivada",
+          "description": "Enviar un correo al titular de la cuenta cada vez que se desactiva su verificación en dos pasos, o un administrador la restablece: un aviso de seguridad."
+        },
+        "auth__token_created_email_enabled": {
+          "label": "Aviso de nuevo token de API",
+          "description": "Enviar un correo al titular de la cuenta cada vez que se crea o regenera un token de API a su nombre: un aviso de seguridad."
         },
         "auth__welcome_email_enabled": {
           "label": "Correo de bienvenida",

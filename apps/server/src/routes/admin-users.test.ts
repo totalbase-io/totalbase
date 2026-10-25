@@ -454,35 +454,32 @@ describe("admin users - guards and validation", () => {
   });
 
   it("an admin's own password needs the current one and keeps their session; they can't delete or deactivate themselves", async () => {
-    const env = loadServerEnv();
-    const me = (await inject("GET", "/admin/api/auth/me")).json().data as { id?: string; user?: { id: string } };
-    const myId = me.id ?? me.user!.id;
-
-    const missing = await inject("PUT", `/admin/api/users/${myId}/password`, { data: { password: env.adminPassword! } });
-    expect([missing.statusCode, missing.json().errors[0].code]).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
-    const wrong = await inject("PUT", `/admin/api/users/${myId}/password`, { data: { password: env.adminPassword!, currentPassword: "not-it-at-all" } });
-    expect([wrong.statusCode, wrong.json().errors[0].code]).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
-    // Same password again: exercises the path without changing the test
-    // admin's credentials - which may be shorter than the policy, so the
-    // minimum is relaxed to its lowest allowed value (8) for this call and
-    // restored exactly as it was.
-    const minKey = "auth.password_min_length" as const;
-    const hadOverride = await context.settings.isOverridden(minKey);
-    const previousMin = await context.settings.get(minKey);
-    await context.settings.set(minKey, 8);
+    // An administrator of the test's own, so the instance admin's credentials are never touched (and may not
+    // meet today's password rules).
+    const email = `${EMAIL_PREFIX}-own-admin@example.com`;
+    const password = "own-admin-password-1";
+    const administrators = await context.roles.getAdministratorsRoleId();
+    const created = await inject("POST", "/admin/api/users", { data: { email, name: "Own admin", password, roleIds: [administrators] } });
+    expect(created.statusCode, created.body).toBe(201);
+    const myId = created.json().data.id as string;
+    const myToken = (await context.auth.login({ email, password })).token;
+    const asMe = (method: "GET" | "PUT" | "PATCH" | "DELETE", url: string, payload?: Record<string, unknown>) =>
+      app.inject({ method, url, headers: { authorization: `Bearer ${myToken}` }, ...(payload !== undefined && { payload }) });
     try {
-      // signOut: false - this is the dev database's real admin; signing
-      // them out everywhere would end the developer's own browser session.
-      const ok = await inject("PUT", `/admin/api/users/${myId}/password`, { data: { password: env.adminPassword!, currentPassword: env.adminPassword!, signOut: false } });
+      const missing = await asMe("PUT", `/admin/api/users/${myId}/password`, { data: { password: "own-admin-password-2" } });
+      expect([missing.statusCode, missing.json().errors[0].code]).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
+      const wrong = await asMe("PUT", `/admin/api/users/${myId}/password`, { data: { password: "own-admin-password-2", currentPassword: "not-it-at-all" } });
+      expect([wrong.statusCode, wrong.json().errors[0].code]).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
+      const ok = await asMe("PUT", `/admin/api/users/${myId}/password`, { data: { password: "own-admin-password-2", currentPassword: password } });
       expect(ok.statusCode, ok.body).toBe(204);
-    } finally {
-      if (hadOverride) await context.settings.set(minKey, previousMin);
-      else await context.settings.reset(minKey);
-    }
-    expect((await inject("GET", "/admin/api/auth/me")).statusCode).toBe(200);
+      // Their own session is kept.
+      expect((await asMe("GET", "/admin/api/auth/me")).statusCode).toBe(200);
 
-    expect((await app.inject({ method: "DELETE", url: `/admin/api/users/${myId}`, headers: { authorization: `Bearer ${adminToken}` } })).statusCode).toBe(403);
-    expect((await inject("PATCH", `/api/totalbase/table/users/${myId}`, { data: { active: false } })).statusCode).toBe(403);
+      expect((await asMe("DELETE", `/admin/api/users/${myId}`)).statusCode).toBe(403);
+      expect((await asMe("PATCH", `/api/totalbase/table/users/${myId}`, { data: { active: false } })).statusCode).toBe(403);
+    } finally {
+      await database.query(`DELETE FROM totalbase.users WHERE id = $1`, [myId]);
+    }
   });
 
   it("pages sessions in PostgreSQL: status filter and counts, search, the caller's own session marked", async () => {

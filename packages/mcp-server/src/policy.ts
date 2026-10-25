@@ -67,6 +67,7 @@ export const TOOL_GROUP: Record<string, McpToolGroup | null> = {
   get_permissions: "access",
   apply_default_permissions: "access",
   set_capability: "access",
+  duplicate_role: "access",
 
   list_users: "users",
   create_user: "users",

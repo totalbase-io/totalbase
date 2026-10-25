@@ -40,9 +40,9 @@ The database role should not be a superuser: TotalBase can do exactly what its r
 | Tag | |
 |---|---|
 | `beta` | the latest beta |
-| `0.1.0-beta.5` | this version - pin one in production |
+| `0.1.0-beta.6` | this version - pin one in production |
 
-Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release.
+Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release. Earlier betas keep their tags; they get no more fixes - upgrade to the latest. From `0.1.0-beta.5` the default port is `3030` (it was `3050`).
 
 ## Configuration
 
@@ -67,7 +67,7 @@ Every variable: [Environment](https://docs.totalbase.io/reference/environment).
 
 ## Upgrading
 
-Back up the database and the data volume, then pull the new tag and restart: migrations run on start, each in its own transaction. See [Upgrading](https://docs.totalbase.io/operations/upgrading).
+Back up the database and the data volume, then pull the new tag and restart: migrations run on start, each in its own transaction. What each version asks of you - signing in again, a new default port - is in the [version notes](https://docs.totalbase.io/operations/upgrading#version-notes).
 
 ## Security
 

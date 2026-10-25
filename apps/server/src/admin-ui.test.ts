@@ -44,7 +44,7 @@ describe("routing: the server's paths and the SPA's", () => {
     }
     const asset = await spa.inject({ method: "GET", url: "/_nuxt/entry.js" });
     expect(asset.body).toBe("export {}");
-    expect((await spa.inject({ method: "GET", url: "/status" })).headers["content-security-policy"]).toBe("frame-ancestors 'self'");
+    expect((await spa.inject({ method: "GET", url: "/status" })).headers["content-security-policy"]).toContain("frame-ancestors 'self'");
   });
 
   it("never logs a public embed's key, its path - the embed API's paths are no key", () => {

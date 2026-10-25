@@ -75,6 +75,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /admin/api/auth/login": "auth.portal_login",
   "POST /admin/api/auth/logout": "auth.portal_logout",
   "POST /admin/api/auth/mfa/verify": "auth.portal_mfa_verify",
+  "POST /admin/api/auth/reauthenticate": "auth.reauthenticate",
   // Users
   "POST /admin/api/users": "user.create",
   "PUT /admin/api/users/:id/email": "user.email_change",
@@ -95,7 +96,17 @@ export const ACCESS_EVENTS: Record<string, string> = {
   // Roles and permissions
   "PUT /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.set",
   "PUT /admin/api/roles/:role/permissions": "permission.set",
+  "PUT /admin/api/resources/:resource/permissions/:action": "permission.set",
+  "PUT /app/api/resources/:resource/permissions/:action": "permission.set",
   "DELETE /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.clear",
+  "PUT /app/api/roles/:role/resources/:resource/permissions/:action": "permission.set",
+  "DELETE /app/api/roles/:role/resources/:resource/permissions/:action": "permission.clear",
+  "PUT /app/api/roles/:role/objects/:kind/:id": "role.object_grant",
+  "POST /app/api/roles/:role/duplicate": "role.duplicate",
+  "POST /admin/api/roles/:id/duplicate": "role.duplicate",
+  "PUT /admin/api/roles/:id/incompatible": "role.incompatible_set",
+  "PUT /admin/api/users/:id/roles/:role/expiry": "assignment.expiry_set",
+  "DELETE /app/api/roles/:role/objects/:kind/:id": "role.object_revoke",
   // Object access (Security.md §7): who may open a published DataView or Dashboard, invoke a Workflow
   "PUT /admin/api/dataviews/:id/roles": "dataview.roles_set",
   "PUT /admin/api/dashboards/:id/roles": "dashboard.roles_set",

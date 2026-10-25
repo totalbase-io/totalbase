@@ -33,7 +33,6 @@ const props = withDefaults(defineProps<{
 })
 const emit = defineEmits<{ click: [event: MouseEvent | KeyboardEvent] }>()
 
-const session = useSession()
 /** Clicked is wired: a button, reachable from the keyboard. */
 const clickable = !!getCurrentInstance()?.vnode.props?.onClick
 
@@ -60,8 +59,7 @@ watch(() => props.src, async (src) => {
   try {
     const response = await $fetch.raw(path, {
       baseURL: '',
-      responseType: 'blob',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'blob'
     })
     objectUrl = URL.createObjectURL(response._data as Blob)
     url.value = objectUrl

@@ -139,6 +139,20 @@ function onVariablesSaved(saved: Dashboard) {
   toast.add({ title: t('dashboards.editor.variablesSaved'), color: 'success' })
 }
 
+// Whether managers may open it to the roles below theirs (Security.md §9.7) - applies at once, never versioned.
+const savingDelegable = ref(false)
+async function setDelegable(delegable: boolean) {
+  savingDelegable.value = true
+  try {
+    await api.patch(`/dashboards/${dashboardId}`, { data: { delegable } })
+    await refreshDashboard()
+  } catch (err) {
+    notifyError(err, t('dashboards.settings.delegableError'))
+  } finally {
+    savingDelegable.value = false
+  }
+}
+
 async function onRestored() {
   await Promise.all([refreshDashboard(), refreshVersions()])
 }
@@ -294,7 +308,16 @@ async function backToDesign() {
           kind="dashboard"
           :object-id="dashboard.id"
           :source-resource="null"
-        />
+        >
+          <!-- Security.md §9.7: its SQL bypasses the resolver, so a manager shares it only on an administrator's word. -->
+          <USwitch
+            :model-value="dashboard.delegable === true"
+            :loading="savingDelegable"
+            :label="t('dashboards.settings.delegable')"
+            :description="t('dashboards.settings.delegableHelp')"
+            @update:model-value="(v: boolean) => setDelegable(v)"
+          />
+        </ObjectSecuritySettings>
 
         <!-- Versions (Foundations.md §13.7): a version opens on the canvas, read-only. -->
         <VersionsTimeline

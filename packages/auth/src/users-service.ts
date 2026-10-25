@@ -335,6 +335,27 @@ export class UsersService {
     return rows[0]?.locked ?? false;
   }
 
+  /**
+   * Deactivates the accounts unused for `days` (auth.dormant_account_days, Security.md §1.11): no sign-in, no
+   * session seen and no token used since - or since their creation. Never the owner, nor a system account.
+   * Deactivation revokes their sessions (a trigger). Returns their ids; 0 days does nothing.
+   */
+  async deactivateDormant(days: number): Promise<string[]> {
+    if (days <= 0) return [];
+    const { rows } = await this.database.query<{ id: string }>(
+      `UPDATE totalbase.users u SET active = false
+       WHERE u.active AND u.can_login AND NOT u.owner
+         AND greatest(
+           coalesce(u.last_login_at, u.created_at),
+           coalesce((SELECT max(s.last_seen_at) FROM totalbase.sessions s WHERE s."user" = u.id), u.created_at),
+           coalesce((SELECT max(t.last_used_at) FROM totalbase.tokens t WHERE t."user" = u.id), u.created_at)
+         ) < now() - make_interval(days => $1::int)
+       RETURNING u.id`,
+      [days],
+    );
+    return rows.map((row) => row.id);
+  }
+
   /** Ends a lockout and forgets past failures (an admin's unlock, a password reset). */
   async unlock(userId: string, client: Queryable = this.database): Promise<void> {
     await client.query(

@@ -1,5 +1,5 @@
 import { adminSession, api, expect, test } from './fixtures.js'
-import { BASE_URL } from '../helpers'
+import { BASE_URL, sessionToken } from '../helpers'
 
 /**
  * The UI's language (Admin_UI.md §14): a user picks Español in
@@ -34,7 +34,7 @@ test('a user switches to Spanish in My account - at once, and after a reload', a
   await page.getByLabel('Email').fill(EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForFunction(() => localStorage.getItem('totalbase_admin_token'))
+  await sessionToken(page)
 
   await page.goto('/account?tab=preferences')
   const main = page.locator('main')

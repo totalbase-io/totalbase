@@ -85,6 +85,7 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
     scope: DASHBOARD_SCOPE,
     refreshIntervalSeconds: DASHBOARD_REFRESH_INTERVAL,
     embeddingEnabled: { type: "boolean", description: "A signed embed token may show its published version outside TotalBase. Off by default." },
+    delegable: { type: "boolean", description: "A manager may open it to the roles below theirs (Security.md §9.7). Off by default." },
     variables: { ...arrayOf(ref("DashboardVariable")), description: "The draft's variable definitions." },
     tabs: DASHBOARD_TABS,
     createdAt: DATE_TIME,

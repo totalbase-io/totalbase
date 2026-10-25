@@ -1,6 +1,7 @@
 import { TotalBaseError } from "@totalbase/errors";
 import { registerAdminIcons } from "./admin-icons.js";
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import fastifyHttpProxy from "@fastify/http-proxy";
@@ -23,6 +24,51 @@ export function isServerPath(url: string): boolean {
   const path = url.split("?")[0] ?? "";
   const under = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
   return API_PREFIXES.some(under) || under("/health") || path === "/mcp";
+}
+
+/**
+ * The `'sha256-...'` source of every inline script in the built pages
+ * (the color mode's and Nuxt's own config, its import map): the only
+ * inline scripts the UI's Content-Security-Policy lets run. A JSON data
+ * block (`type="application/json"`) never runs, so needs none.
+ */
+export function inlineScriptHashes(dir: string): string[] {
+  const hashes = new Set<string>();
+  for (const file of readdirSync(dir).filter((name) => name.endsWith(".html"))) {
+    const html = readFileSync(join(dir, file), "utf8");
+    for (const match of html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)) {
+      if (/type\s*=\s*["']?application\/json/i.test(match[1] ?? "")) continue;
+      hashes.add(`'sha256-${createHash("sha256").update(match[2] ?? "").digest("base64")}'`);
+    }
+  }
+  return [...hashes];
+}
+
+/**
+ * The UI pages' Content-Security-Policy (Foundations.md §4.7). Scripts:
+ * the UI's own files and its known inline scripts - an injected
+ * `<script>` or `onerror=` never runs; `'unsafe-eval'` because a
+ * DataView's custom code is the administrator's JavaScript, run with
+ * `new Function` (DataViews.md). Images, media, frames, fonts and
+ * connections stay open: DataViews and dashboards show images and pages
+ * from anywhere, maps load tiles, a DataView's code may call an API.
+ */
+export function uiContentSecurityPolicy(scriptSources: string, frameAncestors: string): string {
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSources}`,
+    "worker-src 'self' blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src * data: blob:",
+    "media-src * data: blob:",
+    "font-src * data:",
+    "connect-src *",
+    "frame-src * data: blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    `frame-ancestors ${frameAncestors}`,
+  ].join("; ");
 }
 
 /** An unknown path under a reserved prefix: an API 404, never the SPA's page. */
@@ -58,8 +104,17 @@ export async function registerAdminUi(
     return;
   }
 
-  // Who may frame the UI (Content-Security-Policy frame-ancestors): an
-  // embed page the sites its embed allows, within
+  const dir = dirOverride ?? DEFAULT_ADMIN_UI_DIR;
+  const built = !devProxyTarget && existsSync(join(dir, "index.html"));
+  // The scripts the UI may run: the static build's own files and inline
+  // scripts by hash; `nuxt dev`'s, which change on every edit and inject
+  // their own, inline ones too.
+  const scriptSources = built
+    ? ["'self'", "'unsafe-eval'", ...inlineScriptHashes(dir)].join(" ")
+    : "'self' 'unsafe-inline' 'unsafe-eval'";
+
+  // The UI's Content-Security-Policy. Who may frame it (frame-ancestors):
+  // an embed page the sites its embed allows, within
   // dashboards.embed_allowed_origins, and TotalBase itself (the drawer's
   // preview) - Dashboards.md §9.5; every other page only
   // TotalBase itself (its previews), never another site (clickjacking).
@@ -68,11 +123,8 @@ export async function registerAdminUi(
   app.addHook("onSend", async (request, reply, payload) => {
     if (isServerPath(request.url)) return payload;
     const path = request.url.split("?")[0] ?? "";
-    if (path.startsWith("/embed/")) {
-      reply.header("Content-Security-Policy", `frame-ancestors ${await embedFrameAncestors(path)}`);
-    } else {
-      reply.header("Content-Security-Policy", "frame-ancestors 'self'");
-    }
+    const frameAncestors = path.startsWith("/embed/") ? await embedFrameAncestors(path) : "'self'";
+    reply.header("Content-Security-Policy", uiContentSecurityPolicy(scriptSources, frameAncestors));
     return payload;
   });
 
@@ -101,8 +153,7 @@ export async function registerAdminUi(
     return;
   }
 
-  const dir = dirOverride ?? DEFAULT_ADMIN_UI_DIR;
-  if (!existsSync(join(dir, "index.html"))) {
+  if (!built) {
     app.log.info({ dir }, "admin UI build not found - skipping static mount (run `pnpm --filter @totalbase/admin run generate` to enable)");
     return;
   }

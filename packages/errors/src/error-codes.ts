@@ -167,6 +167,16 @@ export const TOTALBASE_ERROR_CODES = [
   "INVALID_CURRENT_PASSWORD",
   // A new password shorter than auth.password_min_length (Security.md §2).
   "PASSWORD_TOO_SHORT",
+  // Longer than 128 characters, or one of the most common passwords (Security.md §2.3).
+  "PASSWORD_TOO_LONG",
+  "PASSWORD_TOO_COMMON",
+  // A write authenticated by the session cookie, or a cookie sign-in, from a page not this instance's own (CSRF, Security.md §2.18).
+  "CROSS_SITE_REQUEST_REFUSED",
+  // A sensitive operation needs the session to confirm its user's identity again; the confirmation failed (Security.md §2.19).
+  "REAUTHENTICATION_REQUIRED",
+  "REAUTHENTICATION_FAILED",
+  // A delegated grant beyond what the role's parent allows - an action or a field (Security.md §9.6).
+  "PERMISSION_EXCEEDS_CEILING",
   // The password was right but auth.email_verification_required is on and
   // the account's email isn't verified - distinct from the generic 401 so a
   // sign-in page can offer "Resend verification" (Security.md §2.7).
@@ -495,6 +505,12 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
   INVALID_TOKEN_EXPIRY: 400,
   INVALID_CURRENT_PASSWORD: 400,
   PASSWORD_TOO_SHORT: 400,
+  PASSWORD_TOO_LONG: 400,
+  PASSWORD_TOO_COMMON: 400,
+  CROSS_SITE_REQUEST_REFUSED: 403,
+  REAUTHENTICATION_REQUIRED: 403,
+  REAUTHENTICATION_FAILED: 400,
+  PERMISSION_EXCEEDS_CEILING: 403,
   EMAIL_NOT_VERIFIED: 403,
   MFA_REQUIRED: 403,
   MFA_ENROLLMENT_REQUIRED: 403,

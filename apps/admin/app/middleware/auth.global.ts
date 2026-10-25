@@ -12,7 +12,6 @@ export default defineNuxtRouteMiddleware((to) => {
   if (PUBLIC_PREFIXES.some(prefix => to.path.startsWith(prefix)) || PUBLIC_PAGES.includes(to.path)) return
 
   const session = useSession()
-  session.restore()
 
   const isLoginPage = to.path === '/login'
 

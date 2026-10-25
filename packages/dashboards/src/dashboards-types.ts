@@ -30,6 +30,8 @@ export interface AdminDashboard {
   refreshIntervalSeconds: DashboardRefreshInterval | null;
   /** Whether a signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). Not versioned; off by default, and a copy starts off. */
   embeddingEnabled: boolean;
+  /** Whether a manager may open it to the roles below theirs (Security.md §9.7) - an administrator's word that its SQL is written with $USER.*. Not versioned; off by default. */
+  delegable: boolean;
   /** Draft variable definitions ($VAR.*) - see variables.ts. */
   variables: DashboardVariable[];
   /** Its tabs (D7) - none: one grid. Versioned with its widgets. */
@@ -174,6 +176,7 @@ export interface UpdateDashboardInput {
   scope?: DashboardScope | undefined;
   refreshIntervalSeconds?: number | null | undefined;
   embeddingEnabled?: boolean | undefined;
+  delegable?: boolean | undefined;
   /** Replaces the whole definition list - validated by validateVariables(). */
   variables?: unknown;
   /** Replaces its tabs (D7) - a tab that holds widgets can't go (DASHBOARD_TAB_NOT_EMPTY); [] joins them in one grid. */
@@ -219,6 +222,7 @@ export interface DashboardRow {
   scope: DashboardScope;
   refresh_interval_seconds: DashboardRefreshInterval | null;
   embedding_enabled: boolean;
+  delegable: boolean;
   variables: DashboardVariable[];
   tabs: DashboardTab[];
   created_at: string;
@@ -237,6 +241,7 @@ export function toAdminDashboard(row: DashboardRow): AdminDashboard {
     scope: row.scope,
     refreshIntervalSeconds: row.refresh_interval_seconds,
     embeddingEnabled: row.embedding_enabled,
+    delegable: row.delegable,
     variables: row.variables,
     tabs: row.tabs ?? [],
     createdAt: row.created_at,

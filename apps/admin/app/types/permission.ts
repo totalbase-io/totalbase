@@ -32,6 +32,10 @@ export interface Role {
   homeDashboard?: string | null
   /** Who created it - null for a role an administrator created through the Admin API. Data API only. */
   createdBy?: string | null
+  /** The role above it - its ceiling and its managers' scope (Security.md §9.5); null = a root. */
+  parent?: string | null
+  /** Its access is reviewed periodically, with a reminder (Security.md §1.8) - Administrators' always is. */
+  reviewRequired?: boolean
 }
 
 // Mirrors packages/permissions/src/roles-service.ts's ROLE_ICON_OPTIONS

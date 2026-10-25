@@ -18,7 +18,10 @@ const SETTING_KEYS = [
   "auth.email_verification_required",
   "auth.registration_default_role",
   "auth.max_sessions_per_user",
+  "auth.session_idle_minutes",
   "auth.password_changed_email_enabled",
+  "auth.mfa_disabled_email_enabled",
+  "auth.token_created_email_enabled",
   "auth.links.invitation",
   "system.public_url",
   "system.instance_name",
@@ -366,6 +369,43 @@ describe("AuthService (integration)", () => {
     expect((await auth.me(third.token)).id).toBe(user.id);
   });
 
+  it("ends a session unused for auth.session_idle_minutes, everywhere its status is read", async () => {
+    const user = await createUser({
+      email: emailOf("idle"),
+      passwordHash: await hashPassword("idle-session-pw"),
+      emailVerified: true,
+    });
+    const login = await auth.login({ email: user.email!, password: "idle-session-pw" });
+    const { session } = (await auth.sessions.validate(login.token))!;
+    // Last used 40 minutes ago.
+    await database.query(`UPDATE totalbase.sessions SET last_seen_at = now() - interval '40 minutes' WHERE id = $1`, [session.id]);
+    const status = async () => {
+      const page = await auth.sessions.search({ user: user.id, status: "ALL", offset: 0 });
+      return { counts: page.counts, expiresAt: page.sessions[0]!.expiresAt };
+    };
+
+    // Off (0): only the lifetime counts.
+    await settings.set("auth.session_idle_minutes", 0);
+    expect((await status()).counts).toMatchObject({ ACTIVE: 1, EXPIRED: 0 });
+    // 60 minutes: still within it, and it ends 60 minutes after its last use.
+    await settings.set("auth.session_idle_minutes", 60);
+    const within = await status();
+    expect(within.counts).toMatchObject({ ACTIVE: 1, EXPIRED: 0 });
+    expect(within.expiresAt.getTime() - Date.now()).toBeGreaterThan(19 * 60_000);
+    expect(within.expiresAt.getTime() - Date.now()).toBeLessThan(21 * 60_000);
+    // 30 minutes: idle too long - refused, listed as expired, not counted as signed in.
+    await settings.set("auth.session_idle_minutes", 30);
+    const activeBefore = await auth.sessions.countActive();
+    expect(await auth.sessions.validate(login.token)).toBeNull();
+    await expect(auth.me(login.token)).rejects.toMatchObject({ code: "SESSION_EXPIRED" });
+    expect((await status()).counts).toMatchObject({ ACTIVE: 0, EXPIRED: 1 });
+    await settings.set("auth.session_idle_minutes", 0);
+    expect(await auth.sessions.countActive()).toBeGreaterThanOrEqual(activeBefore + 1);
+    // A refused request never revives it: back on, still refused.
+    await settings.set("auth.session_idle_minutes", 30);
+    expect(await auth.sessions.validate(login.token)).toBeNull();
+  });
+
   describe("system emails", () => {
     async function invitee(suffix: string) {
       const user = await createUser({ email: emailOf(`mail-${suffix}`), name: "Mail Test" });
@@ -469,6 +509,26 @@ describe("AuthService (integration)", () => {
       const count = emailSender.sent.length;
       await auth.emailsSettled();
       await auth.resetPassword(emailSender.lastToken(), "after-reset-password-2");
+      await auth.emailsSettled();
+      expect(emailSender.sent.length).toBe(count);
+    });
+
+    it("sends the two-factor turned off and new API token notices to the account, unless turned off", async () => {
+      const user = await createUser({ email: emailOf("mail-security"), name: "Notice Person", emailVerified: true });
+      await auth.notifyMfaDisabled(user.id);
+      await auth.emailsSettled();
+      expect(emailSender.sent.at(-1)).toMatchObject({ to: user.email, subject: expect.stringContaining("Two-factor authentication was turned off") });
+
+      await auth.notifyTokenCreated(user.id, { name: "deploy-bot", plane: "ADMIN" });
+      await auth.emailsSettled();
+      expect(emailSender.sent.at(-1)!.to).toBe(user.email);
+      expect(emailSender.sent.at(-1)!.body).toContain("deploy-bot (ADMIN)");
+
+      await settings.set("auth.mfa_disabled_email_enabled", false);
+      await settings.set("auth.token_created_email_enabled", false);
+      const count = emailSender.sent.length;
+      await auth.notifyMfaDisabled(user.id);
+      await auth.notifyTokenCreated(user.id, { name: "deploy-bot", plane: "API" });
       await auth.emailsSettled();
       expect(emailSender.sent.length).toBe(count);
     });

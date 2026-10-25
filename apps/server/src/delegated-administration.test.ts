@@ -163,9 +163,9 @@ describe("Delegated administration", () => {
     const admin = (await context.auth.login({ email: env.adminEmail!, password: env.adminPassword! })).token;
     const put = await call("PUT", `/admin/api/roles/${foreignRoleId}/managers`, { data: { roleIds: [managerRoleId, foreignRoleId] } }, admin);
     expect(put.statusCode, put.body).toBe(200);
-    expect(put.json().data).toEqual([managerRoleId]); // a role never manages itself
+    expect([...put.json().data].sort()).toEqual([managerRoleId, foreignRoleId].sort()); // a role may manage itself
     const read = await call("GET", `/api/totalbase/table/roles_managers?where[role][_eq]=${foreignRoleId}&fields=manager`, undefined, admin);
-    expect(read.json().data).toEqual([{ manager: managerRoleId }]);
+    expect(read.json().data).toHaveLength(2);
     // Not through the portal for a non-administrator.
     expect((await call("PUT", `/admin/api/roles/${foreignRoleId}/managers`, { data: { roleIds: [] } })).statusCode).toBe(403);
 
@@ -176,6 +176,42 @@ describe("Delegated administration", () => {
     expect((await call("PUT", `/admin/api/roles/${foreignRoleId}/managers`, { data: { roleIds: [] } }, admin)).json().data).toEqual([]);
     const administrators = await context.roles.getAdministratorsRoleId();
     expect((await call("PUT", `/admin/api/roles/${administrators}/managers`, { data: { roleIds: [managerRoleId] } }, admin)).statusCode).toBe(403);
+  });
+
+  it("lets a self-managed role's members add one another, and never leaves it without members", async () => {
+    const env = loadServerEnv();
+    const admin = (await context.auth.login({ email: env.adminEmail!, password: env.adminPassword! })).token;
+    const siteRoleId = (await context.roles.create(`${P}-site-managers`, { appAccess: true })).id;
+    expect((await call("PUT", `/admin/api/roles/${siteRoleId}/managers`, { data: { roleIds: [siteRoleId] } }, admin)).json().data).toEqual([siteRoleId]);
+    await context.permissions.set(siteRoleId, resources.users_roles!, "READ", { effect: "ALLOW", fields: fields("id", "user", "role") });
+    await context.permissions.set(siteRoleId, resources.users_roles!, "CREATE", { effect: "ALLOW", fields: fields("user", "role") });
+    await context.permissions.set(siteRoleId, resources.users_roles!, "DELETE", { effect: "ALLOW" });
+    const member = async (name: string) => {
+      const user = await context.auth.users.create({ email: `${P}-${name}@example.com`, name, passwordHash: await hashPassword(PASSWORD), emailVerified: true });
+      return user.id;
+    };
+    const first = await member("site-first");
+    await context.roleAssignments.assignRoleToUser(first, siteRoleId);
+    const firstToken = (await context.auth.login({ email: `${P}-site-first@example.com`, password: PASSWORD })).token;
+    const second = await member("site-second");
+    const removeSite = (user: string, token: string) =>
+      call("DELETE", `/api/totalbase/table/users_roles?where[role][_eq]=${siteRoleId}&where[user][_eq]=${user}`, undefined, token);
+
+    // A site manager adds another site manager: the role manages itself.
+    const assign = await call("POST", "/api/totalbase/table/users_roles", { data: { user: second, role: siteRoleId } }, firstToken);
+    expect(assign.statusCode, assign.body).toBe(201);
+    const secondToken = (await context.auth.login({ email: `${P}-site-second@example.com`, password: PASSWORD })).token;
+
+    // One leaves while another stays; the last one can't leave the role without members.
+    expect((await removeSite(first, firstToken)).statusCode).toBeLessThan(300);
+    const last = await removeSite(second, secondToken);
+    expect(last.statusCode).toBe(403);
+    expect(last.json().errors[0].message).toContain("would be left without members");
+    const { rows } = await database.query(`SELECT 1 FROM totalbase.users_roles WHERE role = $1`, [siteRoleId]);
+    expect(rows).toHaveLength(1);
+
+    // An administrator may.
+    expect((await call("PUT", `/admin/api/users/${second}/roles`, { data: { roleIds: [] } }, admin)).statusCode).toBe(204);
   });
 
   it("never lets log SQL out of the Data API, and a row filter keeps a user to their own entries", async () => {

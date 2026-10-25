@@ -16,12 +16,12 @@ const props = defineProps<{
   purpose: 'VERIFY' | 'ENROLL'
 }>()
 const emit = defineEmits<{
-  done: [{ token: string, admin: AdminAccount }]
+  done: [{ admin: AdminAccount }]
   cancel: []
 }>()
 
+/** With `mode: 'session'` the session is the cookie: no token in the body (Security.md §2.18). */
 interface VerifyResponse {
-  token: string
   admin: AdminAccount
   recoveryCodes: string[] | null
 }
@@ -62,10 +62,11 @@ async function submit() {
   try {
     const { data } = await api.post<VerifyResponse>('/auth/mfa/verify', {
       challenge: props.challenge,
+      mode: 'session',
       ...(useRecovery.value ? { recoveryCode: recoveryCode.value.trim() } : { code: code.value.replace(/\s/g, '') })
     })
     if (data.recoveryCodes) finished.value = data
-    else emit('done', { token: data.token, admin: data.admin })
+    else emit('done', { admin: data.admin })
   } catch (error) {
     if (error instanceof AdminApiError && error.code === 'INVALID_MFA_CHALLENGE') expired.value = true
     errorMessage.value = error instanceof AdminApiError && error.code === 'INVALID_MFA_CODE'
@@ -85,7 +86,7 @@ async function submit() {
       <UButton
         block
         :label="t('auth.mfa.continue')"
-        @click="emit('done', { token: finished.token, admin: finished.admin })"
+        @click="emit('done', { admin: finished.admin })"
       />
     </template>
 

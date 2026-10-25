@@ -4,6 +4,8 @@ import type { PermissionAction, PermissionEffect } from '~/types/permission'
 export interface BulkActionDecision {
   decision: PermissionEffect | 'UNDEFINED'
   roles: string[]
+  /** The ancestors whose grants bound it (Security.md §6.11) - a role's parent and up; empty for a role without one. */
+  ceiling?: string[]
   /** Effectively granted columns, sorted - only present when decision === 'ALLOW'. Informational only (see effective-permission-service.ts's doc comment) - not what actually gates a Data API request. */
   fields?: string[]
   /** ALLOW limited to some rows: each ALLOW grant's row filter, OR-combined. Absent = every row. */

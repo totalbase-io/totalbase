@@ -197,7 +197,8 @@ describe("Workflow webhooks", () => {
     expect(statuses[60]).toBe(429);
     // Another IP is unaffected.
     expect((await hit("POST", `${PREFIX}-public`, { payload: {} })).statusCode).toBe(200);
-  });
+    // 62 admissions one after another, each a run: past the default 5 s under the full suite's load.
+  }, 20_000);
 
   it("never runs the workflow for a refused admission", async () => {
     const before = (await database.query<{ count: number }>(

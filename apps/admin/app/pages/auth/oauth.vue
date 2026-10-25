@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Where a provider sign-in from the sign-in page comes back (/api/auth/oauth/{slug}/callback redirects
-// here): the session token, or why there is none, in the fragment - never in the query string, so it
+// here): `session=cookie` once the session's cookie is set (the token never reaches this page,
+// Security.md §2.18), or why there is none, in the fragment - never in the query string, so it
 // reaches no server log. Signed in, it goes where the sign-in page was asked to, inside what the
 // account's access opens, like a password sign-in (pages/login.vue). An account with a second factor
 // comes back with a challenge instead (Security.md §2.17), finished here like the sign-in page does.
@@ -31,7 +32,7 @@ function takeRedirect(): string | null {
 
 onMounted(async () => {
   const fragment = new URLSearchParams(window.location.hash.slice(1))
-  // The token leaves the address bar at once - nothing keeps it in history.
+  // The fragment leaves the address bar at once - nothing keeps it in history.
   history.replaceState(null, '', window.location.pathname)
   redirectTo = takeRedirect()
   const challenge = fragment.get('mfa_challenge')
@@ -39,17 +40,15 @@ onMounted(async () => {
     mfa.value = { challenge, purpose: fragment.get('mfa_purpose') === 'ENROLL' ? 'ENROLL' : 'VERIFY' }
     return
   }
-  const token = fragment.get('token')
-  if (!token) {
+  if (fragment.get('session') !== 'cookie') {
     const error = fragment.get('error') ?? ''
     failure.value = t(MESSAGES[error] ?? 'auth.genericError')
     return
   }
-  await signIn(token)
+  await signIn()
 })
 
-async function signIn(token: string) {
-  session.setToken(token)
+async function signIn() {
   try {
     await session.refreshProfile()
   } catch {
@@ -70,7 +69,7 @@ async function signIn(token: string) {
       v-if="mfa"
       :challenge="mfa.challenge"
       :purpose="mfa.purpose"
-      @done="({ token }) => { mfa = null; signIn(token) }"
+      @done="() => { mfa = null; signIn() }"
       @cancel="navigateTo('/login')"
     />
     <div

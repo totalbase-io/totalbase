@@ -9,9 +9,10 @@ const rolesApi = useRolesApi()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 const { data: allRoles } = useRoleOptions()
-// A role with admin access already assigns everything; a role never manages itself.
+// A role with admin access already assigns everything. The role itself is offered: its members then add one
+// another - "Site managers" adding another site manager.
 const roleOptions = computed(() => (allRoles.value ?? [])
-  .filter(r => !r.adminAccess && r.id !== props.roleId)
+  .filter(r => !r.adminAccess)
   .map(r => ({ label: r.name, value: r.id })))
 
 const managerIds = ref<string[]>([])

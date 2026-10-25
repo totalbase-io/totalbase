@@ -4,9 +4,20 @@ import type { Admin } from "@totalbase/auth";
 import { portalAccessOf, type PortalAccess } from "@totalbase/permissions";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "./context.js";
+import { readSessionCookie } from "./session-cookie.js";
 
+/**
+ * The request's credential: `Authorization: Bearer <token>`, else the
+ * session cookie (Security.md §2.18) - a header always wins, so a token
+ * never mixes with the browser's session. Writes on the cookie alone are
+ * held to the same origin by hardening.ts.
+ */
 export function extractBearerToken(request: FastifyRequest): string {
   const header = request.headers.authorization;
+  if (header === undefined) {
+    const cookie = readSessionCookie(request);
+    if (cookie) return cookie;
+  }
   if (!header?.startsWith("Bearer ")) {
     throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Missing bearer token.");
   }
@@ -34,6 +45,23 @@ declare module "fastify" {
     public?: boolean;
     /** OpenAPI documentation for a fixed `/api/*` route (auth, tokens, files, ...) - docs only, never validation. */
     openapi?: RouteDoc;
+  }
+}
+
+/**
+ * Re-authentication (Security.md §2.19), for the operations that could hand
+ * over the instance from a session left open: the session must have signed
+ * in, or confirmed its user's password or second factor, within
+ * auth.reauthentication_minutes - else REAUTHENTICATION_REQUIRED (403), and
+ * the portal asks for it and retries. A plane="ADMIN" token is itself the
+ * credential, as for a second factor (§2.17): never asked.
+ */
+export async function assertRecentAuthentication(context: AppContext, request: FastifyRequest): Promise<void> {
+  if (request.adminToken) return;
+  const sessionId = request.adminSession ?? (await context.auth.sessions.validate(extractBearerToken(request)))?.session.id;
+  if (!sessionId) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid session or token.");
+  if (!(await context.auth.recentlyAuthenticated(sessionId))) {
+    throw new TotalBaseError("REAUTHENTICATION_REQUIRED", "Confirm your password, or a code from your authenticator app, to continue.");
   }
 }
 

@@ -68,7 +68,7 @@ describe("EffectivePermissionService.resolveBulk (integration)", () => {
   it("returns UNDEFINED with no contributing roles for a resource with no grants", async () => {
     const result = await effectivePermissions.resolveBulk([roleAId], [resourceOneId]);
     const entry = result.get(resourceOneId)!;
-    expect(entry.READ).toEqual({ decision: "UNDEFINED", roles: [], fields: undefined });
+    expect(entry.READ).toEqual({ decision: "UNDEFINED", roles: [], ceiling: [], fields: undefined });
     expect(entry.CREATE.decision).toBe("UNDEFINED");
   });
 
@@ -76,7 +76,7 @@ describe("EffectivePermissionService.resolveBulk (integration)", () => {
     await permissions.set(roleAId, resourceOneId, "READ", { effect: "ALLOW" });
 
     const result = await effectivePermissions.resolveBulk([roleAId], [resourceOneId]);
-    expect(result.get(resourceOneId)!.READ).toEqual({ decision: "ALLOW", roles: [roleAId], fields: [] });
+    expect(result.get(resourceOneId)!.READ).toEqual({ decision: "ALLOW", roles: [roleAId], ceiling: [], fields: [] });
   });
 
   it("DENY from one role wins over ALLOW from another, and both roles are reported", async () => {
@@ -94,7 +94,7 @@ describe("EffectivePermissionService.resolveBulk (integration)", () => {
 
     const result = await effectivePermissions.resolveBulk([roleAId, roleBId], [resourceOneId, resourceTwoId]);
     expect(result.get(resourceOneId)!.READ.decision).toBe("ALLOW");
-    expect(result.get(resourceTwoId)!.EXECUTE).toEqual({ decision: "ALLOW", roles: [roleAId], fields: [] });
+    expect(result.get(resourceTwoId)!.EXECUTE).toEqual({ decision: "ALLOW", roles: [roleAId], ceiling: [], fields: [] });
     expect(result.get(resourceTwoId)!.READ.decision).toBe("UNDEFINED");
   });
 
@@ -237,5 +237,102 @@ describe("EffectivePermissionService admin-access bypass", () => {
   it("does not bypass for a role without admin access", async () => {
     const result = await effectivePermissions.resolve([plainRoleId], resourceId, "READ");
     expect(result.action).toBe("UNDEFINED");
+  });
+});
+
+/** Security.md §6.11, §9.5: a role's parent is its ceiling - resolved live, per role, before roles combine. */
+describe("EffectivePermissionService - the role ceiling (integration)", () => {
+  let database: Database;
+  let permissions: PermissionsService;
+  let effectivePermissions: EffectivePermissionService;
+  let siteId: string;
+  let operatorId: string;
+  let otherId: string;
+  let resourceId: string;
+  const allow = (...names: string[]) => names.map((field) => ({ field, effect: "ALLOW" as const }));
+  const SITE = { site: { _eq: "$USER.site" } };
+  const NIGHT = { night: { _eq: true } };
+
+  beforeAll(async () => {
+    database = new Database(loadDatabaseConfigFromEnv());
+    await runMigrations(database, { migrationsDir: MIGRATIONS_DIR, totalbaseVersion: "0.0.0-test" });
+    permissions = new PermissionsService(database);
+    effectivePermissions = new EffectivePermissionService(database);
+    await database.query(`DELETE FROM totalbase.roles WHERE name LIKE 'ceiling-test-%' AND parent IS NOT NULL`);
+    await database.query(`DELETE FROM totalbase.roles WHERE name LIKE 'ceiling-test-%'`);
+    siteId = (await database.query<{ id: string }>(`INSERT INTO totalbase.roles (name) VALUES ('ceiling-test-site') RETURNING id`)).rows[0]!.id;
+    operatorId = (await database.query<{ id: string }>(`INSERT INTO totalbase.roles (name, parent) VALUES ('ceiling-test-operator', $1) RETURNING id`, [siteId])).rows[0]!.id;
+    otherId = (await database.query<{ id: string }>(`INSERT INTO totalbase.roles (name) VALUES ('ceiling-test-other') RETURNING id`)).rows[0]!.id;
+    await database.query(`DELETE FROM totalbase.resources WHERE postgres_oid = 900301`);
+    resourceId = (await database.query<{ id: string }>(
+      `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status) VALUES (900301, 'public', 'ceiling_test_controls', 'TABLE', 'ACTIVE') RETURNING id`,
+    )).rows[0]!.id;
+  });
+
+  afterAll(async () => {
+    await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [operatorId]);
+    await database.query(`DELETE FROM totalbase.roles WHERE id IN ($1, $2)`, [siteId, otherId]);
+    await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [resourceId]);
+    await database.close();
+  });
+
+  it("bounds a child by its parent: the action, the fields, the row filter (AND) and the payload checks", async () => {
+    await permissions.set(siteId, resourceId, "READ", { effect: "ALLOW", where: SITE, fields: allow("id", "site", "name"), payloadChecks: [{ rule: { name: { _nnull: true } }, label: "site rule" }] });
+    await permissions.set(operatorId, resourceId, "READ", { effect: "ALLOW", where: NIGHT, fields: allow("id", "name", "notes"), payloadChecks: [{ rule: { id: { _nnull: true } }, label: "own rule" }] });
+    const read = await effectivePermissions.resolve([operatorId], resourceId, "READ");
+    expect(read.action).toBe("ALLOW");
+    expect(read.fieldDecision("name")).toBe("ALLOW");
+    expect(read.fieldDecision("notes")).toBe("UNDEFINED"); // the parent doesn't allow it
+    expect(read.rowFilterSources).toEqual([{ effect: "ALLOW", whereClause: { _and: [NIGHT, SITE] } }]);
+    expect(read.payloadCheckSources!.map((c) => c.label).sort()).toEqual(["own rule", "site rule"]);
+
+    const bulk = (await effectivePermissions.resolveBulk([operatorId], [resourceId])).get(resourceId)!.READ;
+    expect(bulk).toMatchObject({ decision: "ALLOW", roles: [operatorId], ceiling: [siteId], fields: ["id", "name"] });
+    expect(bulk.rowFilters).toEqual([{ role: operatorId, where: { _and: [NIGHT, SITE] } }]);
+  });
+
+  it("allows nothing the parent doesn't: an action it lacks, then one revoked - live", async () => {
+    await permissions.set(operatorId, resourceId, "UPDATE", { effect: "ALLOW", fields: allow("name") });
+    expect((await effectivePermissions.resolve([operatorId], resourceId, "UPDATE")).action).toBe("UNDEFINED");
+    await permissions.set(siteId, resourceId, "UPDATE", { effect: "ALLOW", fields: allow("name") });
+    expect((await effectivePermissions.resolve([operatorId], resourceId, "UPDATE")).action).toBe("ALLOW");
+    await permissions.delete(siteId, resourceId, "UPDATE");
+    expect((await effectivePermissions.resolve([operatorId], resourceId, "UPDATE")).action).toBe("UNDEFINED");
+  });
+
+  it("an inactive parent grants its children nothing", async () => {
+    await database.query(`UPDATE totalbase.roles SET active = false WHERE id = $1`, [siteId]);
+    try {
+      expect((await effectivePermissions.resolve([operatorId], resourceId, "READ")).action).toBe("UNDEFINED");
+    } finally {
+      await database.query(`UPDATE totalbase.roles SET active = true WHERE id = $1`, [siteId]);
+    }
+  });
+
+  it("a parent's DENY bounds its branch only - another role of the caller still allows", async () => {
+    await permissions.set(otherId, resourceId, "DELETE", { effect: "ALLOW" });
+    await permissions.set(operatorId, resourceId, "DELETE", { effect: "ALLOW" });
+    await permissions.set(siteId, resourceId, "DELETE", { effect: "DENY" });
+    expect((await effectivePermissions.resolve([operatorId], resourceId, "DELETE")).action).toBe("UNDEFINED");
+    const both = await effectivePermissions.resolve([operatorId, otherId], resourceId, "DELETE");
+    expect(both.action).toBe("ALLOW");
+    expect(both.rowFilterSources).toEqual([{ effect: "ALLOW", whereClause: null }]);
+  });
+
+  it("keeps the tree's shape: no cycle, at most four levels, no administrative role in it", async () => {
+    const insert = (name: string, parent: string) =>
+      database.query<{ id: string }>(`INSERT INTO totalbase.roles (name, parent) VALUES ($1, $2) RETURNING id`, [name, parent]);
+    await expect(database.query(`UPDATE totalbase.roles SET parent = $1 WHERE id = $2`, [operatorId, siteId])).rejects.toThrow(/its own descendants/);
+    const third = (await insert("ceiling-test-third", operatorId)).rows[0]!.id;
+    const fourth = (await insert("ceiling-test-fourth", third)).rows[0]!.id;
+    try {
+      await expect(insert("ceiling-test-fifth", fourth)).rejects.toThrow(/four levels/);
+      await expect(database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [third])).rejects.toThrow();
+    } finally {
+      await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [fourth]);
+      await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [third]);
+    }
+    const administrators = (await database.query<{ id: string }>(`SELECT id FROM totalbase.roles WHERE reserved AND admin_access ORDER BY name LIMIT 1`)).rows[0]!.id;
+    await expect(insert("ceiling-test-under-admins", administrators)).rejects.toThrow(/no roles under it/);
   });
 });

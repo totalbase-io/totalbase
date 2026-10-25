@@ -1283,7 +1283,10 @@
         "share": "Compartir",
         "security": "Seguridad",
         "versions": "Versiones"
-      }
+      },
+      "delegable": "Los gestores pueden compartirlo",
+      "delegableHelp": "Los gestores lo abren a los roles que tienen debajo. Actívalo solo si sus consultas filtran por la persona ($USER.*): el SQL de un dashboard no pasa por los permisos.",
+      "delegableError": "No se pudo cambiar si los gestores pueden compartirlo"
     }
   }
 }

@@ -312,6 +312,14 @@
           "label": "Correo electrónico cambiado",
           "description": "Un aviso de seguridad enviado a la dirección anterior cuando un administrador cambia el correo electrónico de un usuario."
         },
+        "mfa_disabled": {
+          "label": "Verificación en dos pasos desactivada",
+          "description": "Un aviso de seguridad que se envía cuando se desactiva la verificación en dos pasos de una cuenta, o un administrador la restablece."
+        },
+        "token_created": {
+          "label": "Nuevo token de API",
+          "description": "Un aviso de seguridad que se envía cuando se crea o regenera un token de API de una cuenta: una clave nueva que puede actuar como esa persona."
+        },
         "user_welcome": {
           "label": "Bienvenida",
           "description": "Se envía cuando una cuenta invitada o registrada está lista para usarse (desactivado por defecto)."

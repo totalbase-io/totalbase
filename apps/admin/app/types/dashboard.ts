@@ -26,6 +26,8 @@ export interface Dashboard {
   refreshIntervalSeconds: number | null
   /** A signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). */
   embeddingEnabled?: boolean
+  /** Whether a manager may open it to the roles below theirs (Security.md §9.7). */
+  delegable?: boolean
   /** Draft variable definitions ($VAR.*) - Dashboards.md §3.3. */
   variables: DashboardVariable[]
   /** Its tabs (D7) - none: one grid. The App reads the published ones. */

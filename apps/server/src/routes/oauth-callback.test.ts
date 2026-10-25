@@ -82,6 +82,8 @@ describe("OAuth/OIDC callback", () => {
   let roleId: string;
 
   /** Runs the whole redirect dance for one identity and returns where the browser ends up. */
+  /** The cookie the last callback set, as the browser sends it back - a portal sign-in's session (Security.md §2.18). */
+  let lastCookie = "";
   async function signIn(claims: Record<string, unknown>, redirect = REDIRECT): Promise<URL> {
     const authorizeUrl = new URL(await context.oauth.start(SLUG, redirect));
     provider.nextClaims = { nonce: authorizeUrl.searchParams.get("nonce"), ...claims };
@@ -90,6 +92,7 @@ describe("OAuth/OIDC callback", () => {
       url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${encodeURIComponent(authorizeUrl.searchParams.get("state")!)}`,
     });
     expect(res.statusCode, res.body).toBe(302);
+    lastCookie = String(res.headers["set-cookie"] ?? "").split(";")[0]!;
     return new URL(res.headers.location as string);
   }
   const fragment = (url: URL) => new URLSearchParams(url.hash.slice(1));
@@ -263,8 +266,11 @@ describe("OAuth/OIDC callback", () => {
         expect(await portalProviders()).toContainEqual({ slug: SLUG, name: PROVIDER_NAME, type: "OIDC", signInUrl: `/api/auth/oauth/${SLUG}?redirect_to=${encodeURIComponent(portal)}` });
         const landing = await signIn({ sub: randomUUID(), email: `${PREFIX}-portal@example.com`, email_verified: true, name: "Portal Person" }, portal);
         expect(landing.origin + landing.pathname).toBe(portal);
-        const token = fragment(landing).get("token");
-        expect((await app.inject({ method: "GET", url: "/app/api/me", headers: { authorization: `Bearer ${token}` } })).statusCode).toBe(200);
+        // The session in its HttpOnly cookie, never in the address: the page only learns it's signed in.
+        expect(fragment(landing).get("session")).toBe("cookie");
+        expect(fragment(landing).get("token")).toBeNull();
+        expect(lastCookie).toMatch(/tb_session=/);
+        expect((await app.inject({ method: "GET", url: "/app/api/me", headers: { cookie: lastCookie } })).statusCode).toBe(200);
 
         // A role with API access only: the portal refuses it, as its password sign-in does.
         await database.query(`UPDATE totalbase.roles SET app_access = false WHERE id = $1`, [roleId]);

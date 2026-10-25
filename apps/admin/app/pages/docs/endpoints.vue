@@ -136,7 +136,7 @@ const exampleDocument = ref<OpenApiDocumentLike | null>(null)
 async function loadExampleDocument(): Promise<OpenApiDocumentLike | null> {
   if (exampleDocument.value || !administratorsRole.value) return exampleDocument.value
   exampleDocument.value = await $fetch<OpenApiDocumentLike>(`/admin/api/openapi/data?role=${encodeURIComponent(administratorsRole.value)}`, {
-    headers: apiHeaders(session.token.value)
+    headers: apiHeaders()
   })
   return exampleDocument.value
 }

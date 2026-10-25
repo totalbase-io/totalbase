@@ -20,7 +20,8 @@ source .env
 set +a
 
 PORT="${TOTALBASE_PORT:?TOTALBASE_PORT must be defined in .env}"
-ADMIN_DEV_PORT="${TOTALBASE_ADMIN_DEV_PORT:?TOTALBASE_ADMIN_DEV_PORT must be defined in .env}"
+# The admin's internal `nuxt dev` port - never opened directly (AGENTS.md 4B).
+ADMIN_DEV_PORT="${TOTALBASE_ADMIN_DEV_PORT:-3031}"
 
 # Development owns these ports. A stale watcher can keep a port bound after
 # its terminal has gone away, leaving the next `pnpm dev` stuck while it

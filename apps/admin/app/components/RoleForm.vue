@@ -35,6 +35,8 @@ const color = ref<RoleColor | undefined>(undefined)
 const DEFAULT_FLAGS: RoleAccessFlags = { adminAccess: false, appAccess: true, apiAccess: false }
 const flags = ref<RoleAccessFlags>({ ...DEFAULT_FLAGS })
 const saving = ref(false)
+// Its access reviewed periodically (Security.md §1.8): a reminder on its Access reviews, as Administrators has.
+const reviewRequired = ref(false)
 // Its App home (Security.md §8.1): one of the menu's objects, `KIND:id`; undefined = the App's own page.
 const home = ref<string | undefined>(undefined)
 const homeOptions = ref<{ value: string, label: string, description: string, icon: string }[]>([])
@@ -58,10 +60,39 @@ async function loadHomeOptions() {
 // The role's capabilities (roles_capabilities, Security.md
 // §5.2) - their own grant rows, not role columns, so a reserved role's
 // switches work too. `grants` are the rows as loaded; null = none.
-const CAPABILITIES: Capability[] = ['TRANSACTIONS', 'SEND_EMAIL']
-const noGrants = (): Record<Capability, 'ALLOW' | 'DENY' | null> => ({ TRANSACTIONS: null, SEND_EMAIL: null })
+const CAPABILITIES: Capability[] = ['TRANSACTIONS', 'SEND_EMAIL', 'MANAGE_ROLES']
+const noGrants = (): Record<Capability, 'ALLOW' | 'DENY' | null> => ({ TRANSACTIONS: null, SEND_EMAIL: null, MANAGE_ROLES: null })
+const notAllowed = (): Record<Capability, boolean> => ({ TRANSACTIONS: false, SEND_EMAIL: false, MANAGE_ROLES: false })
 const grants = ref(noGrants())
-const allowed = ref<Record<Capability, boolean>>({ TRANSACTIONS: false, SEND_EMAIL: false })
+const allowed = ref<Record<Capability, boolean>>(notAllowed())
+
+// The role above it (Security.md §9.5): its ceiling, and its managers' scope. An administrator places any role
+// that isn't reserved under any other but itself and its descendants; a manager, under a role they manage.
+const parent = ref<string | undefined>(undefined)
+const { data: allRoles } = useRoles()
+const parentOptions = computed(() => {
+  const roles = allRoles.value ?? []
+  const editing = props.mode === 'edit' ? props.role?.id : undefined
+  const below = new Set<string>()
+  if (editing) {
+    let grew = true
+    below.add(editing)
+    while (grew) {
+      grew = false
+      for (const role of roles) {
+        if (role.parent && below.has(role.parent) && !below.has(role.id)) {
+          below.add(role.id)
+          grew = true
+        }
+      }
+    }
+  }
+  const placeable = isAdmin.value ? null : new Set(session.admin.value?.placeableRoles ?? [])
+  return roles
+    .filter(role => !role.reserved && !role.adminAccess && !below.has(role.id) && (placeable === null || placeable.has(role.id)))
+    .map(role => ({ value: role.id, label: role.name }))
+})
+const canPlace = computed(() => isAdmin.value || (props.mode === 'create' && (session.admin.value?.placeableRoles?.length ?? 0) > 0))
 const capabilitiesLoading = ref(false)
 
 // Only offered on create - an existing role already has its own "Apply
@@ -98,6 +129,8 @@ function seed() {
     color.value = (props.role.color as RoleColor | null) ?? undefined
     flags.value = { adminAccess: props.role.adminAccess, appAccess: props.role.appAccess, apiAccess: props.role.apiAccess }
     home.value = props.role.homeDataview ? `DATAVIEW:${props.role.homeDataview}` : props.role.homeDashboard ? `DASHBOARD:${props.role.homeDashboard}` : undefined
+    parent.value = props.role.parent ?? undefined
+    reviewRequired.value = props.role.reviewRequired === true
     void loadCapabilities(props.role.id)
   } else {
     name.value = ''
@@ -108,7 +141,10 @@ function seed() {
     home.value = undefined
     applyTotalbaseDefaults.value = true
     grants.value = noGrants()
-    allowed.value = { TRANSACTIONS: false, SEND_EMAIL: false }
+    allowed.value = notAllowed()
+    reviewRequired.value = false
+    // A manager's new role goes under the role they manage from.
+    parent.value = isAdmin.value ? undefined : session.admin.value?.placeableRoles?.[0]
   }
   void loadHomeOptions()
 }
@@ -117,13 +153,13 @@ watch(() => props.role, seed)
 
 async function loadCapabilities(roleId: string) {
   grants.value = noGrants()
-  allowed.value = { TRANSACTIONS: false, SEND_EMAIL: false }
+  allowed.value = notAllowed()
   if (!isAdmin.value) return
   capabilitiesLoading.value = true
   try {
     const loaded = await Promise.all(CAPABILITIES.map(capability => rolesApi.capabilityGrant(roleId, capability)))
-    grants.value = { TRANSACTIONS: loaded[0]!, SEND_EMAIL: loaded[1]! }
-    allowed.value = { TRANSACTIONS: loaded[0] === 'ALLOW', SEND_EMAIL: loaded[1] === 'ALLOW' }
+    grants.value = { TRANSACTIONS: loaded[0]!, SEND_EMAIL: loaded[1]!, MANAGE_ROLES: loaded[2]! }
+    allowed.value = { TRANSACTIONS: loaded[0] === 'ALLOW', SEND_EMAIL: loaded[1] === 'ALLOW', MANAGE_ROLES: loaded[2] === 'ALLOW' }
   } catch (err) {
     notifyError(err, t('users.roleForm.capabilitiesLoadError'))
   } finally {
@@ -137,7 +173,9 @@ async function loadCapabilities(roleId: string) {
  * administrator also sets the access flags; nobody else may.
  */
 async function save(values: RoleWrite): Promise<Role> {
-  const body: RoleWrite = isAdmin.value ? values : { name: values.name, description: values.description, icon: values.icon, color: values.color }
+  const body: RoleWrite = isAdmin.value
+    ? values
+    : { name: values.name, description: values.description, icon: values.icon, color: values.color, ...(props.mode === 'create' && values.parent && { parent: values.parent }) }
   if (props.mode !== 'edit' || !props.role) return rolesApi.create(body)
   const role = props.role
   const changed = Object.fromEntries(Object.entries(body).filter(([key, value]) => role[key as keyof RoleWrite] !== value)) as RoleWrite
@@ -156,7 +194,9 @@ async function submit() {
       appAccess: flags.value.appAccess,
       apiAccess: flags.value.apiAccess,
       homeDataview: home.value?.startsWith('DATAVIEW:') ? home.value.slice('DATAVIEW:'.length) : null,
-      homeDashboard: home.value?.startsWith('DASHBOARD:') ? home.value.slice('DASHBOARD:'.length) : null
+      homeDashboard: home.value?.startsWith('DASHBOARD:') ? home.value.slice('DASHBOARD:'.length) : null,
+      parent: parent.value ?? null,
+      reviewRequired: reviewRequired.value
     }
     const data = await save(body)
     if (isAdmin.value) {
@@ -237,6 +277,21 @@ defineExpose({ submit, seed, saving, reserved })
       {{ isAdmin ? t('users.roleForm.reservedAdmin') : t('users.roleForm.reserved') }}
     </p>
     <UFormField
+      v-if="canPlace && !reserved"
+      :label="t('users.roleForm.parent')"
+      :description="t('users.roleForm.parentHelp')"
+    >
+      <USelectMenu
+        v-model="parent"
+        :items="parentOptions"
+        value-key="value"
+        :aria-label="t('users.roleForm.parent')"
+        :search-input="{ placeholder: t('common.search') }"
+        :clear="isAdmin"
+        class="w-full"
+      />
+    </UFormField>
+    <UFormField
       v-if="isAdmin"
       :label="t('users.roleForm.access')"
       :description="t('users.roleForm.accessHelp')"
@@ -313,8 +368,20 @@ defineExpose({ submit, seed, saving, reserved })
           :description="t('users.roleForm.sendEmailHelp')"
           :disabled="capabilitiesLoading"
         />
+        <USwitch
+          v-model="allowed.MANAGE_ROLES"
+          :label="t('users.roleForm.manageRoles')"
+          :description="t('users.roleForm.manageRolesHelp')"
+          :disabled="capabilitiesLoading || reserved"
+        />
       </div>
     </div>
+    <USwitch
+      v-if="isAdmin && !reserved"
+      v-model="reviewRequired"
+      :label="t('users.roleForm.reviewRequired')"
+      :description="t('users.roleForm.reviewRequiredHelp')"
+    />
     <label
       v-if="isAdmin && mode === 'create'"
       class="flex items-start gap-2 cursor-pointer"

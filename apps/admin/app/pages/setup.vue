@@ -57,8 +57,7 @@ async function submit() {
       body: { data: { code: code.value, name: name.value, email: email.value, password: password.value, publicUrl: publicUrl.value, language: language.value } }
     })
     // Signed in at once, as the administrator just created.
-    const { data } = await api.post<{ token: string, admin: AdminAccount }>('/auth/login', { email: email.value, password: password.value })
-    session.setToken(data.token)
+    const { data } = await api.post<{ admin: AdminAccount }>('/auth/login', { email: email.value, password: password.value, mode: 'session' })
     session.admin.value = data.admin
     await session.refreshProfile().catch(() => undefined)
     await navigateTo('/status')

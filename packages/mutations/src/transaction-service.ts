@@ -308,7 +308,7 @@ export async function executeTransaction(
           const pkField = singlePrimaryKeyField(root);
           const id = resolveReferences(op.id, results);
           const data = resolveReferences(op.data, results) as Record<string, unknown>;
-          assertGuardedColumnsWriteAllowed(root, data, caller);
+          assertGuardedColumnsWriteAllowed(root, data, caller, "UPDATE");
           await assertUserRoleAssignmentAllowed(client, root, data, caller);
           const hashedData = await hashPasswordFields(deps.context, passwordColumns, data);
           const compiled = await compileUpdate(mutationContext, hashedData, pkEqualsFilter(pkField, id), updateOldValueFields(mutationDeps));
@@ -317,7 +317,7 @@ export async function executeTransaction(
           if (!row) throw new TotalBaseError("ROW_NOT_FOUND", `Operation "${op.key}": row not found.`);
           await assertAuthorizedRow(row, "UPDATE");
           assertValidRow(row, compiled.payloadCheckColumns);
-          assertRoleOwnership(root, row, caller);
+          await assertRoleOwnership(client, root, row, caller);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await auditAndEnqueue(mutationDeps, client, "UPDATE", startedAt, oldRowOf(row, compiled, passwordColumns), clean);
           results.set(op.key, project(clean));
@@ -329,7 +329,7 @@ export async function executeTransaction(
           const row = (rows as Record<string, unknown>[])[0];
           if (!row) throw new TotalBaseError("ROW_NOT_FOUND", `Operation "${op.key}": row not found.`);
           assertRolesDeleteAllowed(root, row);
-          assertRoleOwnership(root, row, caller);
+          await assertRoleOwnership(client, root, row, caller);
           await assertAssignmentDeleteAllowed(client, root, row, caller);
           const clean = stripPasswordFields(row, passwordColumns);
           await auditAndEnqueue(mutationDeps, client, "DELETE", startedAt, clean, undefined);

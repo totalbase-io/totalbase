@@ -36,7 +36,7 @@ export const SESSION_SCHEMAS: Record<string, JsonSchema> = {
     type: "object",
     required: ["token", "user"],
     properties: {
-      token: { type: "string", description: "Send as `Authorization: Bearer <token>`." },
+      token: { type: ["string", "null"], description: "Send as `Authorization: Bearer <token>`. Null with `mode: \"session\"`: the session cookie carries it." },
       user: USER_REF,
     },
   },

@@ -32,7 +32,6 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 const dataApi = useDataApi()
-const session = useSession()
 const notifyError = useErrorToast()
 const showOnly = computed(() => props.readonly || props.disabled)
 
@@ -45,8 +44,7 @@ async function loadStored(id: string) {
   try {
     const response = await $fetch.raw(`/api/totalbase/table/files/${id}`, {
       baseURL: '',
-      responseType: 'blob',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'blob'
     })
     setStored(URL.createObjectURL(response._data as Blob))
   } catch {

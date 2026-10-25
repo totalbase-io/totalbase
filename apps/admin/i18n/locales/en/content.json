@@ -312,6 +312,14 @@
           "label": "Email changed",
           "description": "A security notice sent to the previous address when an admin changes a user's email."
         },
+        "mfa_disabled": {
+          "label": "Two-factor authentication turned off",
+          "description": "A security notice sent when an account's two-factor authentication is turned off, or reset by an admin."
+        },
+        "token_created": {
+          "label": "New API token",
+          "description": "A security notice sent when an API token is created or regenerated for an account - a new key that can act as the person."
+        },
         "user_welcome": {
           "label": "Welcome",
           "description": "Sent once an invited or registered account is ready to use (off by default)."

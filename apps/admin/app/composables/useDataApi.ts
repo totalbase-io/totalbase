@@ -12,7 +12,7 @@ export type DataApiResult<T> = ApiResult<T>
  * prefix). Deliberately separate from useAdminApi() (`/admin/api/...`,
  * always admin-gated): a DataView's grid/Edit form reads and writes
  * through THIS path, gated by the viewer's actual resource permission,
- * never through the admin-management surface - same session token
+ * never through the admin-management surface - same session
  * works for both (both resolve through the same
  * context.auth.sessions.validate), just a different route family with a
  * different authorization check.
@@ -22,6 +22,7 @@ const PAGE_SIZE = 500
 
 export function useDataApi() {
   const session = useSession()
+  const { retrying } = useReauthentication()
 
   async function request<T>(
     method: ApiMethod,
@@ -29,16 +30,17 @@ export function useDataApi() {
     options: { body?: unknown, query?: Record<string, unknown>, idempotencyKey?: string, ifMatch?: string } = {}
   ): Promise<DataApiResult<T>> {
     try {
-      return await apiRequest<T>(`/api${path}`, method, {
+      // A sensitive action (an administrator's token) asks to confirm the identity first (Security.md §2.19).
+      return await retrying(() => apiRequest<T>(`/api${path}`, method, {
         body: options.body,
         query: options.query,
         headers: {
-          ...apiHeaders(session.token.value),
+          ...apiHeaders(),
           ...(options.idempotencyKey && { 'Idempotency-Key': options.idempotencyKey }),
           // The row's version the caller read - a write fails 409 if it changed since (Data_API.md §5.3).
           ...(options.ifMatch && { 'If-Match': `"${options.ifMatch}"` })
         }
-      })
+      }))
     } catch (error) {
       const apiError = error as AdminApiError
       if (apiError.status === 401 && session.isAuthenticated.value) {

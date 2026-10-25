@@ -145,7 +145,13 @@
       "homeHelp": "Dónde llegan sus miembros al abrir la App: un DataView o Dashboard que ven en el menú. Vacío: la página propia de la App. Con varios roles, el primero por nombre que tenga uno.",
       "homeDataview": "DataView",
       "homeDashboard": "Dashboard",
-      "homeLoadError": "No se pudo cargar el menú de la App"
+      "homeLoadError": "No se pudo cargar el menú de la App",
+      "parent": "Rol padre",
+      "parentHelp": "El rol que está por encima de este. Puede hacer como máximo lo que puede su padre, y quien gestiona al padre lo gestiona a él. Vacío: un rol de primer nivel.",
+      "manageRoles": "Puede gestionar los roles que tiene debajo",
+      "manageRolesHelp": "Sus miembros crean roles debajo de este, les otorgan permisos dentro de lo que tiene este rol y los asignan.",
+      "reviewRequired": "Revisar su acceso periódicamente",
+      "reviewRequiredHelp": "Su pestaña Revisiones de acceso avisa cuando toca una revisión, como para Administrators."
     },
     "permissionEditor": {
       "tabs": {
@@ -228,7 +234,13 @@
       "addAnotherRole": "Añadir otro rol",
       "moveDescription": "{n} seleccionados - al rol que elijas, fuera de {role}.",
       "addDescription": "{n} seleccionados - conservan {role}.",
-      "move": "Mover"
+      "move": "Mover",
+      "expires": "Vence {date}",
+      "setExpiry": "Cuándo vence el rol de {user}",
+      "expiryLabel": "Vence el",
+      "expiryHelp": "Al terminar este día el rol deja de otorgar nada, y se quita.",
+      "expiryClear": "Nunca",
+      "expiryError": "No se pudo cambiar cuándo vence el rol"
     },
     "common": {
       "never": "Nunca",
@@ -598,7 +610,8 @@
       "onlyRowsAny": "Solo las filas que cumplen alguno de:",
       "payloadChecks": "Validaciones de datos - todas deben cumplirse",
       "unnamedCheck": "Validación sin nombre",
-      "noneGrantedFields": "(ninguno otorgado)"
+      "noneGrantedFields": "(ninguno otorgado)",
+      "limitedBy": "Limitado por {roles}, por encima"
     },
     "usersList": {
       "titleByStatus": {
@@ -764,6 +777,61 @@
         "update": "Editar",
         "delete": "Borrar"
       }
+    },
+    "duplicateRole": {
+      "action": "Duplicar…",
+      "title": "Duplicar rol",
+      "description": "Una copia con sus permisos, acceso, inicio en la App, capacidades y gestores. Los miembros no se copian.",
+      "descriptionDelegated": "Una copia con sus permisos y lo que abre. Los miembros no se copian.",
+      "defaultName": "{name} (copia)",
+      "confirm": "Duplicar",
+      "done": "Rol duplicado",
+      "error": "No se pudo duplicar el rol"
+    },
+    "roleCeiling": {
+      "title": "Permisos",
+      "description": "Lo que puede hacer este rol, dentro de lo que puede su rol padre. Elige una acción para otorgarla, sus columnas y, si quieres, un filtro de filas.",
+      "resource": "Recurso",
+      "actions": "Acciones",
+      "action": {
+        "READ": "Leer",
+        "CREATE": "Crear",
+        "UPDATE": "Modificar",
+        "DELETE": "Eliminar",
+        "EXECUTE": "Ejecutar"
+      },
+      "empty": "El rol padre no tiene permisos para transmitir.",
+      "loadError": "No se pudieron cargar los permisos",
+      "editTitle": "{action} en {resource}",
+      "editDescription": "Solo se ofrecen las columnas que tiene el rol padre. Su propio filtro de filas también se aplica siempre.",
+      "fields": "Columnas",
+      "fieldsHelp": "Las columnas que este rol puede usar para esta acción.",
+      "where": "Filtro de filas",
+      "whereHelp": "Opcional. Un filtro en la gramática de la API de datos, como en los filtros de filas de un rol. Usa $USER.<columna> para los datos de la propia persona.",
+      "whereInvalid": "El filtro de filas no es JSON válido.",
+      "saved": "Permiso guardado",
+      "removed": "Permiso quitado",
+      "remove": "Quitar",
+      "saveError": "No se pudo guardar el permiso"
+    },
+    "roleObjects": {
+      "title": "Abre en la App",
+      "description": "Los DataViews, dashboards y workflows que abre este rol, entre los que puedes compartir. Abrir uno nunca otorga datos: el rol sigue necesitando sus permisos.",
+      "loadError": "No se pudo cargar lo que abre este rol",
+      "empty": "No hay nada que puedas compartir con este rol.",
+      "kind": {
+        "dataviews": "DataViews",
+        "dashboards": "Dashboards",
+        "workflows": "Workflows"
+      },
+      "toggleLabel": "Abrir {name} a este rol",
+      "saveError": "No se pudo cambiar lo que abre este rol"
+    },
+    "roleIncompatible": {
+      "label": "No compatible con",
+      "description": "Roles que nadie puede tener junto con este: quien opera no audita. Se rechaza mientras alguien tenga ambos.",
+      "loadError": "No se pudieron cargar los roles incompatibles",
+      "saveError": "No se pudieron guardar los roles incompatibles"
     }
   }
 }

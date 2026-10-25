@@ -10,6 +10,9 @@
  *
  * `locked`: the system-only Workflows role - its one member is seeded,
  * nobody can be added or removed here (the server refuses it anyway).
+ *
+ * Each member's assignment may end (Security.md §1.10): shown beside them,
+ * set from the calendar button - never on a reserved role.
  */
 import type { AdminUser, AdminUserListItem } from '~/types/security'
 import { useApiErrorMessage } from '~/utils/api-error-message'
@@ -57,6 +60,10 @@ async function loadMembers(reset: boolean) {
     if (!load.isCurrent()) return
     members.value = reset ? data : [...members.value, ...data]
     total.value = meta?.total ?? members.value.length
+    if (!props.adminRole && !props.locked) {
+      const loaded = await rolesApi.expiries(props.roleId, data.map(user => user.id))
+      expiries.value = new Map([...(reset ? [] : expiries.value), ...loaded])
+    }
   } catch (err) {
     if (load.isCurrent()) loadError.value = errorMessage(err, t('users.roleDelegated.loadMembersError'))
   } finally {
@@ -65,6 +72,36 @@ async function loadMembers(reset: boolean) {
 }
 watch(debouncedSearch, () => loadMembers(true))
 onMounted(() => loadMembers(true))
+
+// --- When a member's assignment ends (Security.md §1.10): a small popover per member. ---
+const expiries = ref(new Map<string, string>())
+const expiryUser = ref<string | null>(null)
+const expiryDate = ref('')
+const savingExpiry = ref(false)
+function openExpiry(userId: string) {
+  const current = expiries.value.get(userId)
+  expiryDate.value = current ? current.slice(0, 10) : ''
+  expiryUser.value = userId
+}
+async function saveExpiry(clear: boolean) {
+  const userId = expiryUser.value
+  if (!userId) return
+  savingExpiry.value = true
+  try {
+    // The end of the chosen day, in the viewer's zone.
+    const expiresAt = clear || !expiryDate.value ? null : new Date(`${expiryDate.value}T23:59:59`).toISOString()
+    await api.put(`/users/${userId}/roles/${props.roleId}/expiry`, { data: { expiresAt } })
+    const next = new Map(expiries.value)
+    if (expiresAt) next.set(userId, expiresAt)
+    else next.delete(userId)
+    expiries.value = next
+    expiryUser.value = null
+  } catch (err) {
+    notifyError(err, t('users.roleMembers.expiryError'))
+  } finally {
+    savingExpiry.value = false
+  }
+}
 
 async function afterChange() {
   await Promise.all([loadMembers(true), refreshUsersData(), loadHistory()])
@@ -373,6 +410,52 @@ async function onCreated(_user: AdminUser) {
           class="min-w-0"
         />
         <span class="ms-auto shrink-0 text-xs text-muted">{{ t('users.roleMembers.lastSignIn', { date: formatDate(user.lastLoginAt) }) }}</span>
+        <UPopover
+          v-if="!adminRole && !locked"
+          :open="expiryUser === user.id"
+          @update:open="(open: boolean) => open ? openExpiry(user.id) : (expiryUser = null)"
+        >
+          <UButton
+            icon="i-lucide-calendar-clock"
+            :label="expiries.get(user.id) ? t('users.roleMembers.expires', { date: formatDate(expiries.get(user.id)!) }) : undefined"
+            :color="expiries.get(user.id) ? 'warning' : 'neutral'"
+            variant="ghost"
+            size="sm"
+            :aria-label="t('users.roleMembers.setExpiry', { user: user.name || user.email })"
+          />
+          <template #content>
+            <div class="flex w-64 flex-col gap-3 p-3">
+              <UFormField
+                :label="t('users.roleMembers.expiryLabel')"
+                :description="t('users.roleMembers.expiryHelp')"
+              >
+                <UInput
+                  v-model="expiryDate"
+                  type="date"
+                  class="w-full"
+                />
+              </UFormField>
+              <div class="flex justify-end gap-2">
+                <UButton
+                  v-if="expiries.get(user.id)"
+                  :label="t('users.roleMembers.expiryClear')"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="savingExpiry"
+                  @click="saveExpiry(true)"
+                />
+                <UButton
+                  :label="t('common.save')"
+                  size="sm"
+                  :loading="savingExpiry"
+                  :disabled="!expiryDate"
+                  @click="saveExpiry(false)"
+                />
+              </div>
+            </div>
+          </template>
+        </UPopover>
         <UTooltip
           :text="removeLocked(user) ? (locked ? t('users.roleMembers.systemRole') : t('users.roleMembers.ownerKeeps')) : t('users.roleMembers.removeFrom', { role: roleName })"
         >

@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
-import { portalAccessOf } from "@totalbase/permissions";
+import { managedRoleIds, portalAccessOf } from "@totalbase/permissions";
 import type { AppContext } from "../context.js";
 import { assignableRoleIds } from "@totalbase/mutations";
 import { COMPANIONS, delegatedModuleActions } from "../delegated-modules.js";
 import { ADMIN_SCHEMAS, adminDoc, object, ok, ref } from "../openapi-admin-docs.js";
-import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
+import { extractBearerToken, requireAdmin, requireAppAccess } from "../auth-guards.js";
+import { SESSION_MODE, SESSION_TOKEN, clearSessionCookie, deliverSession, requestedSessionMode } from "../session-cookie.js";
 import { effectiveDisplayPreferences } from "../display-preferences.js";
 import { auditMfaChallenge, recordSecondStep, recordSignInFailure } from "./api-auth.js";
 import type { SignInAdmission, User } from "@totalbase/auth";
@@ -36,7 +37,7 @@ async function adminProfile(context: AppContext, user: User) {
  * access server-side.
  */
 export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContext): void {
-  app.post<{ Body: { email: string; password: string } }>(
+  app.post<{ Body: { email: string; password: string; mode?: string } }>(
     "/admin/api/auth/login",
     {
       config: {
@@ -45,14 +46,15 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
           summary: "Sign in to the admin",
           tags: ["auth"],
           access: "public",
-          requestBody: { schema: object({ email: { type: "string", format: "email" }, password: { type: "string" } }, ["email", "password"]) },
-          response: ok(object({ token: { type: "string" }, admin: ref("AdminProfile") })),
+          requestBody: { schema: object({ email: { type: "string", format: "email" }, password: { type: "string" }, mode: SESSION_MODE }, ["email", "password"]) },
+          response: ok(object({ token: SESSION_TOKEN, admin: ref("AdminProfile") })),
           schemas: ADMIN_SCHEMAS,
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
       request.auditMetadata = { email: request.body?.email };
+      const mode = await requestedSessionMode(context, request);
       const { token, user } = await context.auth.login({
         email: request.body.email,
         password: request.body.password,
@@ -62,13 +64,13 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         admit: portalAdmission(context),
       }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: user.id };
-      return { data: { token, admin: await adminProfile(context, user) } };
+      return { data: { token: await deliverSession(context, reply, mode, token), admin: await adminProfile(context, user) } };
     },
   );
 
   // The portal's second step (Security.md §2.17) - the same as /api/auth/mfa/verify, answered like the
   // portal's sign-in; an enrollment challenge is started with /api/auth/mfa/enroll.
-  app.post<{ Body: { challenge?: unknown; code?: unknown; recoveryCode?: unknown } }>(
+  app.post<{ Body: { challenge?: unknown; code?: unknown; recoveryCode?: unknown; mode?: unknown } }>(
     "/admin/api/auth/mfa/verify",
     {
       config: {
@@ -82,14 +84,15 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
           tags: ["auth"],
           access: "public",
           requestBody: {
-            schema: object({ challenge: { type: "string" }, code: { type: "string" }, recoveryCode: { type: "string" } }, ["challenge"]),
+            schema: object({ challenge: { type: "string" }, code: { type: "string" }, recoveryCode: { type: "string" }, mode: SESSION_MODE }, ["challenge"]),
           },
-          response: ok(object({ token: { type: "string" }, admin: ref("AdminProfile"), recoveryCodes: { type: ["array", "null"], items: { type: "string" } } })),
+          response: ok(object({ token: SESSION_TOKEN, admin: ref("AdminProfile"), recoveryCodes: { type: ["array", "null"], items: { type: "string" } } })),
           schemas: ADMIN_SCHEMAS,
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      const mode = await requestedSessionMode(context, request);
       const result = await context.auth.completeMfaSignIn({
         challenge: request.body?.challenge,
         code: request.body?.code,
@@ -102,7 +105,41 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
       request.auditPrincipal = { type: "USER", id: result.user.id };
       if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
       if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
-      return { data: { token: result.token, admin: await adminProfile(context, result.user), recoveryCodes: result.recoveryCodes } };
+      const token = await deliverSession(context, reply, mode, result.token);
+      return { data: { token, admin: await adminProfile(context, result.user), recoveryCodes: result.recoveryCodes } };
+    },
+  );
+
+  // Re-authentication (Security.md §2.19): the signed-in user confirms their identity again, and their session
+  // may do what asks for it for auth.reauthentication_minutes. A session's, not a token's.
+  app.post<{ Body: { password?: unknown; code?: unknown; recoveryCode?: unknown } | undefined }>(
+    "/admin/api/auth/reauthenticate",
+    {
+      preHandler: requireAdmin(context),
+      ...adminDoc("auth", {
+        summary: "Confirm your identity again",
+        description:
+          "Before an operation answered `403 REAUTHENTICATION_REQUIRED` (issuing an administrator token, assigning " +
+          "Administrators, another account's email, password or two-factor authentication): `password`, or `code` " +
+          "(or `recoveryCode`) from your authenticator app. Then retry it, within auth.reauthentication_minutes. A wrong " +
+          "one is 400 REAUTHENTICATION_FAILED and counts toward the account's lockout. A session only - a token is " +
+          "never asked.",
+        requestBody: {
+          schema: object({ password: { type: "string" }, code: { type: "string" }, recoveryCode: { type: "string" } }),
+        },
+        response: { status: "204" },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.adminSession) throw new TotalBaseError("PERMISSION_DENIED", "Only a signed-in session confirms its identity - a token is never asked to.");
+      await context.auth.reauthenticate({
+        userId: request.admin!.id,
+        sessionId: request.adminSession,
+        password: request.body?.password,
+        code: request.body?.code,
+        recoveryCode: request.body?.recoveryCode,
+      });
+      return reply.code(204).send();
     },
   );
 
@@ -112,6 +149,7 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
   }), async (request, reply) => {
     const token = extractBearerToken(request);
     await context.auth.logout(token);
+    clearSessionCookie(reply, await context.auth.mailer.publicUrl());
     return reply.code(204).send();
   });
 
@@ -139,6 +177,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
               additionalProperties: { type: "array", items: { type: "string", enum: ["READ", "CREATE", "UPDATE", "DELETE"] } },
             },
             assignableRoles: { type: ["array", "null"], items: { type: "string", format: "uuid" }, description: "For a non-administrator who may assign roles: the roles they may assign (created by them, or managed by one of their roles). Null otherwise - an administrator assigns every role." },
+            managedRoles: { type: ["array", "null"], items: { type: "string", format: "uuid" }, description: "For a non-administrator with MANAGE_ROLES: the roles below theirs, whose grants and objects they edit (Security.md §9.5). Null otherwise." },
+            placeableRoles: { type: ["array", "null"], items: { type: "string", format: "uuid" }, description: "For a non-administrator with MANAGE_ROLES: where a role they create may go - their managing roles and the roles below them. Null otherwise." },
           })],
         }),
         schemas: ADMIN_SCHEMAS,
@@ -169,7 +209,18 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
           const assignableRoles = request.access !== "ADMIN" && moduleActions.assignments
             ? await assignableRoleIds(context.database, { actorUserId: request.admin!.id, roleIds })
             : null;
-          return { modules: Object.keys(moduleActions).filter((key) => !(COMPANIONS as string[]).includes(key)), moduleActions, assignableRoles };
+          // managedRoles: the roles below theirs with MANAGE_ROLES (Security.md §9.5) - whose grants and objects they
+          // edit; placeableRoles: where a role they create may go (those, and their managing roles). Null for an
+          // administrator, who manages everything, and for whoever manages nothing.
+          const managing = request.access !== "ADMIN" ? await managedRoleIds(context.database, roleIds, { withManagers: true }) : [];
+          const managedRoles = managing.length > 0 ? await managedRoleIds(context.database, roleIds) : null;
+          return {
+            modules: Object.keys(moduleActions).filter((key) => !(COMPANIONS as string[]).includes(key)),
+            moduleActions,
+            assignableRoles,
+            managedRoles,
+            placeableRoles: managing.length > 0 ? managing : null,
+          };
         })()),
       },
     }),

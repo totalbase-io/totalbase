@@ -785,6 +785,15 @@
       "codesDescription": "Si pierdes el teléfono, cada uno de estos códigos te deja iniciar sesión una vez. No se volverán a mostrar: cópialos o descárgalos y guárdalos en un lugar seguro.",
       "codesFileTitle": "{name} - códigos de recuperación de la verificación en dos pasos",
       "download": "Descargar"
+    },
+    "reauthenticate": {
+      "title": "Confirma que eres tú",
+      "description": "Esta acción puede entregar la instancia o una cuenta. Confirma tu identidad para continuar.",
+      "password": "Tu contraseña",
+      "useCode": "Usar un código de la app de autenticación",
+      "usePassword": "Usar tu contraseña",
+      "confirm": "Confirmar",
+      "error": "No se pudo confirmar tu identidad."
     }
   },
   "audit": {

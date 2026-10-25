@@ -49,6 +49,7 @@ interface UpdateDashboardBody {
   scope?: DashboardScope;
   refreshIntervalSeconds?: number | null;
   embeddingEnabled?: boolean;
+  delegable?: boolean;
   variables?: unknown;
   tabs?: unknown;
 }
@@ -345,6 +346,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
           ...IDENTITY,
           menuLabel: { type: ["string", "null"], maxLength: 32, description: "What the App menu shows - empty or null: its name. Applies at once, never versioned." },
           embeddingEnabled: { type: "boolean", description: "Whether a signed embed token may show its published version outside TotalBase (Dashboards.md §9.5)." },
+          delegable: { type: "boolean", description: "Whether a manager may open it to the roles below theirs (Security.md §9.7): its SQL is written with $USER.*." },
           variables: arrayOf(ref("DashboardVariable")),
           tabs: DASHBOARD_TABS,
         })),
@@ -365,6 +367,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
         scope: body.scope,
         refreshIntervalSeconds: body.refreshIntervalSeconds,
         embeddingEnabled: body.embeddingEnabled,
+        delegable: body.delegable,
         variables: body.variables,
         tabs: body.tabs,
       });

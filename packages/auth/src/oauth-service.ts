@@ -200,7 +200,7 @@ export class OAuthService {
 
     const ttlHours = await this.settings.get("auth.session_ttl_hours");
     const maxSessions = await this.settings.get("auth.max_sessions_per_user");
-    const sessions = new SessionsService(this.database);
+    const sessions = new SessionsService(this.database, this.settings);
     const { token } = await sessions.create({ user: user.id, ttlHours, maxSessionsPerUser: maxSessions });
 
     await users.touchLastLogin(user.id);

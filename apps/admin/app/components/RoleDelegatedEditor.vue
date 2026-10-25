@@ -4,7 +4,9 @@
  * its details and members, all through the Data API. They may
  * rename or delete a role they created, and assign it when they created it
  * or one of their roles manages it - the server's guardrails decide, this
- * only hides what their grants rule out. Never its permissions.
+ * only hides what their grants rule out. A role below one of theirs with
+ * MANAGE_ROLES (Security.md §9.5) is theirs to manage too: its grants within
+ * its ceiling, what it opens, and copies of it.
  */
 import { roleIcon } from '~/types/permission'
 import type { RoleMember } from '~/composables/useRolesApi'
@@ -24,9 +26,11 @@ const notifyError = useErrorToast()
 const { data: role, pending, error, refresh } = await useAsyncData(`role-data-${props.roleId}`, () => rolesApi.get(props.roleId))
 
 // created_by is absent when the caller may not read it - the server then decides.
-const owned = computed(() => role.value?.createdBy === undefined || role.value.createdBy === session.admin.value?.id)
+const managed = computed(() => session.admin.value?.managedRoles?.includes(props.roleId) === true)
+const owned = computed(() => managed.value || role.value?.createdBy === undefined || role.value.createdBy === session.admin.value?.id)
 const canEdit = computed(() => owned.value && session.can('roles', 'UPDATE'))
 const canDelete = computed(() => owned.value && session.can('roles', 'DELETE'))
+const duplicateOpen = ref(false)
 const canSeeMembers = computed(() => session.can('assignments', 'READ'))
 const canAdd = computed(() => session.canAssign(props.roleId, 'CREATE'))
 const canRemove = computed(() => session.canAssign(props.roleId, 'DELETE'))
@@ -60,6 +64,7 @@ async function deleteRole() {
 
 const menuItems = computed(() => [
   ...(canEdit.value ? [[{ label: t('users.roleEditor.detailsEllipsis'), icon: 'i-lucide-pencil', onSelect: () => { detailsOpen.value = true } }]] : []),
+  ...(managed.value ? [[{ label: t('users.duplicateRole.action'), icon: 'i-lucide-copy', onSelect: () => { duplicateOpen.value = true } }]] : []),
   ...(canDelete.value ? [[{ label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => { deleteOpen.value = true } }]] : [])
 ])
 
@@ -291,6 +296,22 @@ async function addMember(item: { label: string, value: string } | undefined) {
         />
       </div>
     </div>
+
+    <div
+      v-if="role && managed"
+      class="mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8"
+    >
+      <RoleCeilingPermissions :role-id="role.id" />
+      <RoleDelegatedObjects :role-id="role.id" />
+    </div>
+
+    <DuplicateRoleModal
+      v-if="role && managed"
+      v-model:open="duplicateOpen"
+      :role-id="role.id"
+      :role-name="role.name"
+      :delegated="true"
+    />
 
     <RoleFormModal
       v-model:open="detailsOpen"

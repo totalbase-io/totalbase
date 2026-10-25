@@ -11,14 +11,14 @@ import { ADMIN_SCHEMAS, adminDoc, arrayOf, FILTER, NO_CONTENT, object, ok, ref, 
 
 const VALID_ACTIONS: ReadonlySet<string> = new Set(["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"]);
 
-function requireValidAction(action: string): ResourceAction {
+export function requireValidAction(action: string): ResourceAction {
   if (!VALID_ACTIONS.has(action)) {
     throw new TotalBaseError("INVALID_QUERY", `Unknown permission action: ${action}`);
   }
   return action as ResourceAction;
 }
 
-interface PermissionBody {
+export interface PermissionBody {
   effect: "ALLOW" | "DENY";
   where?: unknown;
   fields?: { field: string; effect: "ALLOW" | "DENY" }[];
@@ -27,7 +27,7 @@ interface PermissionBody {
 }
 
 /** The documented shape of one grant's body - the single PUT's `data`, and each entry of the bulk PUT's `permissions`. */
-const GRANT_PROPERTIES: Record<string, JsonSchema> = {
+export const GRANT_PROPERTIES: Record<string, JsonSchema> = {
   effect: { type: "string", enum: ["ALLOW", "DENY"] },
   where: { ...FILTER, type: ["object", "null"], description: "Row filter; null clears it." },
   fields: arrayOf(object({ field: { type: "string" }, effect: { type: "string", enum: ["ALLOW", "DENY"] } }, ["field", "effect"])),
@@ -46,7 +46,7 @@ const GRANT_PROPERTIES: Record<string, JsonSchema> = {
  * Payload checks share the exact same grammar and get the exact
  * same treatment - each check is its own filter, checked the same way.
  */
-async function parseGrant(context: AppContext, body: unknown): Promise<SetPermissionInput> {
+export async function parseGrant(context: AppContext, body: unknown): Promise<SetPermissionInput> {
   if (!body || typeof body !== "object") throw new TotalBaseError("INVALID_QUERY", "The grant goes in data.");
   const grant = body as PermissionBody;
   const needsLimits = (grant.where !== undefined && grant.where !== null) || (grant.payloadChecks !== undefined && grant.payloadChecks.length > 0);
@@ -64,6 +64,14 @@ async function parseGrant(context: AppContext, body: unknown): Promise<SetPermis
     fields: grant.fields,
     payloadChecks: grant.payloadChecks?.map((v) => ({ rule: v.rule, label: v.label ?? null })),
   };
+}
+
+/** A non-empty list of distinct role ids. */
+export function parseRoleIdList(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string" && UUID_PATTERN.test(id))) {
+    throw new TotalBaseError("INVALID_QUERY", "roleIds must be a non-empty list of role ids.");
+  }
+  return [...new Set(value as string[])];
 }
 
 /**
@@ -94,7 +102,7 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
     },
     async (request) => {
       const action = requireValidAction(request.params.action);
-      const permission = await context.permissions.set(request.params.role, request.params.resource, action, await parseGrant(context, request.body?.data));
+      const permission = await context.permissions.set(request.params.role, request.params.resource, action, await parseGrant(context, request.body?.data), { actorUserId: request.admin!.id });
       return { data: permission };
     },
   );
@@ -133,7 +141,31 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
         const action = requireValidAction(String(entry.action));
         grants.push({ resourceId: entry.resource, action, input: await parseGrant(context, entry) });
       }
-      return { data: await context.permissions.setMany(request.params.role, grants) };
+      return { data: await context.permissions.setMany(request.params.role, grants, { actorUserId: request.admin!.id }) };
+    },
+  );
+
+  // One grant for several roles at once (Security.md §5.3) - the same role kept per site, granted alike.
+  app.put<{ Params: { resource: string; action: string }; Body: { data?: PermissionBody & { roleIds?: unknown } } }>(
+    "/admin/api/resources/:resource/permissions/:action",
+    {
+      preHandler,
+      ...adminDoc("permissions", {
+        summary: "Grant the same action on a resource to several roles",
+        description:
+          "Upserts the grant for each role in `roleIds`, in one transaction - all of them, or none. The body is the single " +
+          "grant's plus `roleIds`. Answers the grants in the order given.",
+        pathParameters: { resource: UUID_PARAM, action: { schema: { type: "string", enum: ["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"] } } },
+        requestBody: { schema: dataEnvelope(object({ roleIds: arrayOf(UUID), ...GRANT_PROPERTIES }, ["roleIds", "effect"])) },
+        response: ok(arrayOf(ref("Permission"))),
+        schemas: ADMIN_SCHEMAS,
+      }),
+    },
+    async (request) => {
+      const action = requireValidAction(request.params.action);
+      const roleIds = parseRoleIdList(request.body?.data?.roleIds);
+      const grant = await parseGrant(context, request.body?.data);
+      return { data: await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: request.admin!.id }) };
     },
   );
 

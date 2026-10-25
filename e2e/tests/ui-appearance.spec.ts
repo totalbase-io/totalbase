@@ -72,7 +72,9 @@ test('appearance: color, sign-in layout and custom CSS saved from the page reach
     expect(await sheet.text()).toContain('--totalbase-e2e: on')
 
     // Seen on the sign-in page, with no session.
-    await page.evaluate(() => localStorage.removeItem('totalbase_admin_token'))
+    // Signed out, as the sign-out button leaves it: no session cookie, no signed-in hint.
+    await page.context().clearCookies()
+    await page.evaluate(() => localStorage.removeItem('totalbase_signed_in'))
     await page.goto('/login')
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('data-surface', 'auth')

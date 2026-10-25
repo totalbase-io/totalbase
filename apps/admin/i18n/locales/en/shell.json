@@ -785,6 +785,15 @@
       "codesDescription": "If you lose your phone, each of these codes signs you in once. They won't be shown again - copy or download them and keep them somewhere safe.",
       "codesFileTitle": "{name} - two-factor authentication recovery codes",
       "download": "Download"
+    },
+    "reauthenticate": {
+      "title": "Confirm it's you",
+      "description": "This action can hand over the instance or an account. Confirm your identity to continue.",
+      "password": "Your password",
+      "useCode": "Use a code from the authenticator app",
+      "usePassword": "Use your password",
+      "confirm": "Confirm",
+      "error": "Could not confirm your identity."
     }
   },
   "audit": {

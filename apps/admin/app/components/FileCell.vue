@@ -9,7 +9,6 @@ const props = defineProps<{ fileId: string }>()
 
 const { t } = useI18n()
 const isCompact = useCompactUi()
-const session = useSession()
 const toast = useToast()
 const { fileInfo } = useFileInfo()
 const { fileObjectUrl } = useFileObjectUrl()
@@ -54,8 +53,7 @@ async function download() {
   try {
     const response = await $fetch.raw(`/api/totalbase/table/files/${props.fileId}`, {
       baseURL: '',
-      responseType: 'blob',
-      headers: session.token.value ? { Authorization: `Bearer ${session.token.value}` } : undefined
+      responseType: 'blob'
     })
     const url = URL.createObjectURL(response._data as Blob)
     const a = document.createElement('a')

@@ -145,7 +145,13 @@
       "homeHelp": "Where its members land when they open the App - a DataView or Dashboard they see in the menu. Empty: the App's own page. With several roles, the first by name that has one.",
       "homeDataview": "DataView",
       "homeDashboard": "Dashboard",
-      "homeLoadError": "Could not load the App menu"
+      "homeLoadError": "Could not load the App menu",
+      "parent": "Parent role",
+      "parentHelp": "The role above this one. It can do at most what its parent can, and whoever manages the parent manages it. Empty: a top-level role.",
+      "manageRoles": "Can manage the roles below it",
+      "manageRolesHelp": "Members create roles under this one, grant them permissions within what this role has, and assign them.",
+      "reviewRequired": "Review its access periodically",
+      "reviewRequiredHelp": "Its Access reviews tab reminds when a review is due, as for Administrators."
     },
     "permissionEditor": {
       "tabs": {
@@ -228,7 +234,13 @@
       "addAnotherRole": "Add another role",
       "moveDescription": "{n} selected - into the role you pick, out of {role}.",
       "addDescription": "{n} selected - they keep {role}.",
-      "move": "Move"
+      "move": "Move",
+      "expires": "Ends {date}",
+      "setExpiry": "When {user}'s role ends",
+      "expiryLabel": "Ends on",
+      "expiryHelp": "At the end of this day the role stops granting anything, and it's removed.",
+      "expiryClear": "Never",
+      "expiryError": "Could not change when the role ends"
     },
     "common": {
       "never": "Never",
@@ -598,7 +610,8 @@
       "onlyRowsAny": "Only rows matching any of:",
       "payloadChecks": "Payload checks - every one must pass",
       "unnamedCheck": "Unnamed check",
-      "noneGrantedFields": "(none granted)"
+      "noneGrantedFields": "(none granted)",
+      "limitedBy": "Limited by {roles}, above it"
     },
     "usersList": {
       "titleByStatus": {
@@ -764,6 +777,61 @@
         "update": "Edit",
         "delete": "Delete"
       }
+    },
+    "duplicateRole": {
+      "action": "Duplicate…",
+      "title": "Duplicate role",
+      "description": "A copy with its permissions, access, App home, capabilities and managers. Members are not copied.",
+      "descriptionDelegated": "A copy with its permissions and what it opens. Members are not copied.",
+      "defaultName": "{name} (copy)",
+      "confirm": "Duplicate",
+      "done": "Role duplicated",
+      "error": "Could not duplicate the role"
+    },
+    "roleCeiling": {
+      "title": "Permissions",
+      "description": "What this role may do, within what its parent role can. Pick an action to grant it, choose its columns and, optionally, a row filter.",
+      "resource": "Resource",
+      "actions": "Actions",
+      "action": {
+        "READ": "Read",
+        "CREATE": "Create",
+        "UPDATE": "Update",
+        "DELETE": "Delete",
+        "EXECUTE": "Execute"
+      },
+      "empty": "The parent role has no permissions to pass on.",
+      "loadError": "Could not load the permissions",
+      "editTitle": "{action} on {resource}",
+      "editDescription": "Only the columns the parent role has are offered. Its own row filter always applies too.",
+      "fields": "Columns",
+      "fieldsHelp": "The columns this role may use for this action.",
+      "where": "Row filter",
+      "whereHelp": "Optional. A filter in the Data API's grammar, as in a role's row filters. Use $USER.<column> for the person's own data.",
+      "whereInvalid": "The row filter isn't valid JSON.",
+      "saved": "Permission saved",
+      "removed": "Permission removed",
+      "remove": "Remove",
+      "saveError": "Could not save the permission"
+    },
+    "roleObjects": {
+      "title": "Opens in the App",
+      "description": "The DataViews, dashboards and workflows this role opens, among those you may share. Opening one never grants data: the role still needs its permissions.",
+      "loadError": "Could not load what this role opens",
+      "empty": "There's nothing you can share with this role.",
+      "kind": {
+        "dataviews": "DataViews",
+        "dashboards": "Dashboards",
+        "workflows": "Workflows"
+      },
+      "toggleLabel": "Open {name} to this role",
+      "saveError": "Could not change what this role opens"
+    },
+    "roleIncompatible": {
+      "label": "Can't be held with",
+      "description": "Roles nobody may hold together with this one - whoever operates doesn't audit. Refused while someone holds both.",
+      "loadError": "Could not load the incompatible roles",
+      "saveError": "Could not save the incompatible roles"
     }
   }
 }

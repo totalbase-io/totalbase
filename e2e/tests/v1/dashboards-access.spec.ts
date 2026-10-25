@@ -1,6 +1,6 @@
 import type { Browser, Page } from '@playwright/test'
 import { addDashboardWidget, adminSession, api, createDashboard, deleteDashboardsNamed, expect, publishDashboard, resetSchema, sql, test, type DashboardRef } from './fixtures.js'
-import { BASE_URL } from '../helpers'
+import { BASE_URL, sessionToken } from '../helpers'
 
 /**
  * Who sees a dashboard, and what reaches them (Dashboards.md §2.4, §2.6;
@@ -66,7 +66,7 @@ async function asManager(browser: Browser) {
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/app/)
-  const token = (await page.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
+  const token = await sessionToken(page)
   const call = (method: string, path: string, data?: unknown) => page.request.fetch(`${BASE_URL}${path}`, { method, data, headers: { Authorization: `Bearer ${token}` } })
   return { context, page, call }
 }

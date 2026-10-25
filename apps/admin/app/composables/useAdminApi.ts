@@ -15,10 +15,12 @@ export type AdminApiResult<T> = ApiResult<T>
  */
 export function createSessionApi(prefix: string, onForbidden?: (session: ReturnType<typeof useSession>) => void) {
   const session = useSession()
+  const { retrying } = useReauthentication()
 
   async function request<T>(method: ApiMethod, path: string, options: { body?: unknown, query?: Record<string, unknown> } = {}): Promise<ApiResult<T>> {
     try {
-      return await apiRequest<T>(`${prefix}${path}`, method, { ...options, headers: apiHeaders(session.token.value) })
+      // A sensitive action asks to confirm the identity first, then goes again (Security.md §2.19).
+      return await retrying(() => apiRequest<T>(`${prefix}${path}`, method, { ...options, headers: apiHeaders() }))
     } catch (error) {
       throw await afterError(error as AdminApiError)
     }
@@ -26,7 +28,7 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
 
   async function postBlob(path: string, body?: unknown): Promise<Blob> {
     try {
-      return await apiRequestBlob(`${prefix}${path}`, body, apiHeaders(session.token.value))
+      return await apiRequestBlob(`${prefix}${path}`, body, apiHeaders())
     } catch (error) {
       throw await afterError(error as AdminApiError)
     }
@@ -37,7 +39,8 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
       session.clear()
       await navigateTo('/login')
     }
-    if (error.status === 403 && session.isAuthenticated.value) onForbidden?.(session)
+    // A re-authentication the user declined is no change of access.
+    if (error.status === 403 && error.code !== 'REAUTHENTICATION_REQUIRED' && session.isAuthenticated.value) onForbidden?.(session)
     return error
   }
 
@@ -61,9 +64,7 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
 async function recheckAccess(session: ReturnType<typeof useSession>) {
   const before = session.access.value
   try {
-    const { data } = await $fetch<{ data: AdminAccount }>('/admin/api/auth/me', {
-      headers: { Authorization: `Bearer ${session.token.value}` }
-    })
+    const { data } = await $fetch<{ data: AdminAccount }>('/admin/api/auth/me')
     session.admin.value = data
     if (data.access !== before) navigateTo(portalHomeFor(data.access))
   } catch (error) {

@@ -165,6 +165,16 @@ export class MfaService {
     });
   }
 
+  /**
+   * Confirms the account's identity with a current code or an unused recovery code (re-authentication,
+   * Security.md §2.19). `MFA_NOT_ENABLED` without a confirmed factor, `INVALID_MFA_CODE` for a wrong proof.
+   */
+  async confirm(userId: string, proof: { code?: unknown; recoveryCode?: unknown }): Promise<void> {
+    await this.database.transaction(async (client) => {
+      await this.acceptProof(client, await this.lockedConfirmedFactor(client, userId), proof);
+    });
+  }
+
   /** New recovery codes, the old ones dropped - with a current code. */
   async regenerateRecoveryCodes(userId: string, code: unknown): Promise<string[]> {
     return this.database.transaction(async (client) => {

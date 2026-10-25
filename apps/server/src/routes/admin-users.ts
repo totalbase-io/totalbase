@@ -9,7 +9,7 @@ import {
   type UserStatus,
 } from "@totalbase/auth";
 import type { AppContext } from "../context.js";
-import { requireAdmin } from "../auth-guards.js";
+import { assertRecentAuthentication, requireAdmin } from "../auth-guards.js";
 import { isUuid } from "./user-filter.js";
 import { removeDeletedUserAvatar, removeUserAvatar, uploadUserAvatar, useProviderAvatar } from "../user-avatars.js";
 import { dataEnvelope } from "@totalbase/openapi";
@@ -124,6 +124,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       const body = request.body?.data;
       if (!body) throw new TotalBaseError("INVALID_QUERY", "A request body { data } is required.");
       const roles = body.roleIds === undefined ? [] : parseRoleIds(body.roleIds);
+      // A new administrator (Security.md §2.19).
+      if (roles.includes(await context.roles.getAdministratorsRoleId())) await assertRecentAuthentication(context, request);
       // A password provisions a complete, ready-to-log-in account (the
       // "New user" flow) - distinct from the passwordless account created
       // by leaving it out, which only becomes usable once "Send invite"
@@ -206,6 +208,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       if (body?.signOut !== undefined && typeof body.signOut !== "boolean") {
         throw new TotalBaseError("INVALID_QUERY", "signOut must be true or false.");
       }
+      // Another account's password (Security.md §2.19); one's own asks for the current password instead.
+      if (!self) await assertRecentAuthentication(context, request);
       await context.auth.adminSetPassword({
         userId: request.params.id,
         password: body?.password as string,
@@ -257,6 +261,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         throw new TotalBaseError("INVALID_QUERY", 'verification must be "SEND" or "VERIFIED".');
       }
       if (typeof body?.email !== "string") throw new TotalBaseError("INVALID_QUERY", "email is required.");
+      // The sign-in identity (Security.md §2.19): a new address then a reset is the account.
+      await assertRecentAuthentication(context, request);
       const { user, previousEmail, changed } = await context.auth.users.changeEmail(request.params.id, body.email, {
         verified: verification === "VERIFIED",
       });
@@ -319,9 +325,12 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
     },
     async (request, reply) => {
       if (!(await context.auth.users.findById(request.params.id))) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
+      // The account's second factor (Security.md §2.19).
+      await assertRecentAuthentication(context, request);
       if (!(await context.auth.mfa.reset(request.params.id))) {
         throw new TotalBaseError("MFA_NOT_ENABLED", "Two-factor authentication isn't on for this user.");
       }
+      await context.auth.notifyMfaDisabled(request.params.id);
       request.auditMetadata = { user_id: request.params.id };
       reply.code(204);
     },
@@ -405,6 +414,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       if (!user.email) {
         throw new TotalBaseError("INVALID_QUERY", "User has no email to invite.");
       }
+      // Holding the link is holding the account (Security.md §2.19).
+      if (delivery === "link") await assertRecentAuthentication(context, request);
       const actionUrl = await context.auth.createInvitation({ id: user.id, email: user.email, name: user.name }, delivery);
       return { data: delivery === "link" ? { delivered: false, actionUrl } : { delivered: true } };
     },
@@ -429,8 +440,37 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       const delivery = parseDelivery(request.body?.data?.delivery);
       const user = await context.auth.users.findById(request.params.id);
       if (!user?.email) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
+      // Holding the link is holding the account (Security.md §2.19).
+      if (delivery === "link") await assertRecentAuthentication(context, request);
       const actionUrl = await context.auth.sendPasswordReset({ id: user.id, email: user.email, name: user.name }, delivery);
       return { data: delivery === "link" ? { delivered: false, actionUrl } : { delivered: true } };
+    },
+  );
+
+  // When an assignment ends (Security.md §1.10): past it the role grants nothing, and the hourly job removes it.
+  app.put<{ Params: { id: string; role: string }; Body: { data?: { expiresAt?: unknown } } | undefined }>(
+    "/admin/api/users/:id/roles/:role/expiry",
+    {
+      preHandler,
+      ...adminDoc("users", {
+        summary: "Set when a user's role ends",
+        description:
+          "`expiresAt` (an ISO date-time) ends the assignment then; null keeps it until removed. A reserved role's " +
+          "assignment never expires (422). 404 when the user doesn't hold the role.",
+        pathParameters: { id: UUID_PARAM, role: UUID_PARAM },
+        requestBody: { schema: dataEnvelope(object({ expiresAt: { type: ["string", "null"], format: "date-time" } }, ["expiresAt"])) },
+        response: NO_CONTENT,
+      }),
+    },
+    async (request, reply) => {
+      const raw = request.body?.data?.expiresAt;
+      const expiresAt = raw === null ? null : typeof raw === "string" && !Number.isNaN(Date.parse(raw)) ? new Date(raw) : undefined;
+      if (expiresAt === undefined) throw new TotalBaseError("INVALID_QUERY", "expiresAt must be a date-time, or null.");
+      if (!(await context.roleAssignments.setExpiry(request.params.id, request.params.role, expiresAt))) {
+        throw new TotalBaseError("RESOURCE_NOT_FOUND", "The user doesn't hold this role.");
+      }
+      request.auditMetadata = { user_id: request.params.id, role: request.params.role, expires_at: raw };
+      reply.code(204);
     },
   );
 
@@ -477,6 +517,9 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         }
       }
       const before = await context.roleAssignments.listRolesForUser(request.params.id);
+      // Making someone an administrator (Security.md §2.19); keeping or removing it isn't.
+      const administratorsRoleId = await context.roles.getAdministratorsRoleId();
+      if (roles.includes(administratorsRoleId) && !before.includes(administratorsRoleId)) await assertRecentAuthentication(context, request);
       await context.roleAssignments.setRolesForUser(request.params.id, roles);
       // The access review reads these (GET /audit/logs?role_change=<role>).
       request.auditMetadata = {

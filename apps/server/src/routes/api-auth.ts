@@ -6,6 +6,7 @@ import type { LoginFailureReason, SignInAdmission } from "@totalbase/auth";
 import type { FastifyRequest } from "fastify";
 import { dataEnvelope, type JsonSchema, type RouteDoc } from "@totalbase/openapi";
 import { extractBearerToken, requireUser } from "../auth-guards.js";
+import { SESSION_MODE, clearSessionCookie, deliverSession, readSessionCookie, requestedSessionMode, setSessionCookie } from "../session-cookie.js";
 import { SESSION_REF, SESSION_SCHEMAS, USER_REF, USER_SCHEMA } from "../openapi-docs.js";
 
 const TAG = ["auth"];
@@ -68,7 +69,7 @@ export function auditMfaChallenge(request: FastifyRequest, error: unknown): neve
 }
 
 /** The body of a sign-in's second step - an authentication route's own fields, not the `data` envelope. */
-interface MfaVerifyBody { challenge?: unknown; code?: unknown; recoveryCode?: unknown }
+interface MfaVerifyBody { challenge?: unknown; code?: unknown; recoveryCode?: unknown; mode?: unknown }
 
 const MFA_VERIFY_BODY: JsonSchema = {
   type: "object",
@@ -77,6 +78,7 @@ const MFA_VERIFY_BODY: JsonSchema = {
     challenge: { type: "string", description: "The `meta.challenge` of the sign-in's MFA_REQUIRED or MFA_ENROLLMENT_REQUIRED error." },
     code: { type: "string", description: "The six digits the authenticator app shows now." },
     recoveryCode: { type: "string", description: "Instead of `code`: one of the account's unused recovery codes (VERIFY only)." },
+    mode: SESSION_MODE,
   },
 };
 
@@ -85,7 +87,7 @@ const MFA_VERIFY_BODY: JsonSchema = {
  * See Security.md §2.5.
  */
 export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext): void {
-  app.post<{ Body: { email: string; password: string } }>(
+  app.post<{ Body: { email: string; password: string; mode?: string } }>(
     "/api/auth/login",
     doc({
       summary: "Sign in with email and password",
@@ -95,12 +97,13 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         "with `POST /api/auth/email/resend`.",
       tags: TAG,
       access: "public",
-      requestBody: { schema: object({ email: { type: "string", format: "email" }, password: STRING }) },
+      requestBody: { schema: object({ email: { type: "string", format: "email" }, password: STRING, mode: SESSION_MODE }) },
       response: { status: "200", schema: dataEnvelope(SESSION_REF) },
       schemas: SESSION_SCHEMAS,
     }),
-    async (request) => {
+    async (request, reply) => {
       request.auditMetadata = { email: request.body?.email };
+      const mode = await requestedSessionMode(context, request);
       // Without API access: the same generic 401 as a wrong password - it doesn't reveal the account exists.
       const result = await context.auth.login({
         email: request.body.email,
@@ -111,7 +114,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         admit: apiAdmission(context),
       }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: result.user.id };
-      return { data: result };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), user: result.user } };
     },
   );
 
@@ -152,7 +155,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       },
       schemas: SESSION_SCHEMAS,
     }),
-    async (request) => {
+    async (request, reply) => {
+      const mode = await requestedSessionMode(context, request);
       const result = await context.auth.completeMfaSignIn({
         challenge: request.body?.challenge,
         code: request.body?.code,
@@ -165,7 +169,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       request.auditPrincipal = { type: "USER", id: result.user.id };
       if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
       if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
-      return { data: { token: result.token, user: result.user, recoveryCodes: result.recoveryCodes } };
+      const token = await deliverSession(context, reply, mode, result.token);
+      return { data: { token, user: result.user, recoveryCodes: result.recoveryCodes } };
     },
   );
 
@@ -177,6 +182,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
   }), async (request, reply) => {
     const token = extractBearerToken(request);
     await context.auth.logout(token);
+    clearSessionCookie(reply, await context.auth.mailer.publicUrl());
     return reply.code(204).send();
   });
 
@@ -297,7 +303,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       response: noContent,
     }),
     async (request, reply) => {
-      const bearer = request.headers.authorization ? extractBearerToken(request) : undefined;
+      const bearer = request.headers.authorization || readSessionCookie(request) ? extractBearerToken(request) : undefined;
       if (bearer) {
         const user = await context.auth.me(bearer);
         request.userId = user.id;
@@ -312,21 +318,22 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     },
   );
 
-  app.post<{ Body: { token: string; password: string } }>(
+  app.post<{ Body: { token: string; password: string; mode?: string } }>(
     "/api/auth/invitations/accept",
     doc({
       summary: "Accept an invitation and set a password",
       description: "Returns a session only when the account has API access; otherwise just the user.",
       tags: TAG,
       access: "public",
-      requestBody: { schema: object({ token: STRING, password: STRING }) },
+      requestBody: { schema: object({ token: STRING, password: STRING, mode: SESSION_MODE }) },
       response: {
         status: "200",
-        schema: dataEnvelope(object({ token: { type: "string", description: "Present only when the account has API access." }, user: USER_REF }, ["user"])),
+        schema: dataEnvelope(object({ token: { type: ["string", "null"], description: "Present only when the account has API access; null with mode session (the cookie carries it)." }, user: USER_REF }, ["user"])),
       },
       schemas: USER_SCHEMA,
     }),
-    async (request) => {
+    async (request, reply) => {
+      const mode = await requestedSessionMode(context, request);
       const result = await context.auth.acceptInvitation(request.body.token, request.body.password);
       request.auditPrincipal = { type: "USER", id: result.user.id };
       // The account is ready either way; only a user with API access also
@@ -337,7 +344,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         await context.auth.sessions.revokeByToken(result.token);
         return { data: { user: result.user } };
       }
-      return { data: result };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), user: result.user } };
     },
   );
 
@@ -354,7 +361,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       description:
         "Redirects to the provider. After sign-in the browser returns to `redirect_to` (which must be on the provider's " +
         "allowlist - or the portal's own `/auth/oauth`, for a provider shown on the sign-in page) with " +
-        "`#token=<session token>`, `#error=access_denied` for an account without API access (portal access for the portal's page), " +
+        "`#token=<session token>` (the portal's page: `#session=cookie`, the session in its HttpOnly cookie), " +
+        "`#error=access_denied` for an account without API access (portal access for the portal's page), " +
         "`#error=email_required` when the provider shared no email for a first sign-in, or `#error=email_not_verified` " +
         "when email verification is required and neither the account nor the provider has verified its address.",
       tags: TAG,
@@ -429,9 +437,16 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         const fragment = `mfa_challenge=${encodeURIComponent(result.mfa.challenge)}&mfa_purpose=${result.mfa.purpose}`;
         return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}${fragment}`, 302);
       }
-      // The token travels in the fragment, not the query string, so it
-      // never reaches the caller's own server logs or a Referer header -
-      // only client-side JS on redirectTo's page ever reads it.
+      // The portal's own sign-in gets the session cookie (Security.md §2.18):
+      // the token never reaches the page. The state, sealed with the master
+      // key, is this request's proof it started on TotalBase's sign-in page.
+      if (result.portal) {
+        setSessionCookie(reply, await context.auth.mailer.publicUrl(), result.token, await context.settings.get("auth.session_ttl_hours"));
+        return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}session=cookie`, 302);
+      }
+      // An application's: the token travels in the fragment, not the query
+      // string, so it never reaches the caller's own server logs or a
+      // Referer header - only client-side JS on redirectTo's page reads it.
       return reply.redirect(`${result.redirectTo}${separatorFor(result.redirectTo)}token=${encodeURIComponent(result.token)}`, 302);
     },
   );

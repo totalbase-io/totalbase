@@ -1,5 +1,5 @@
 import { expect as baseExpect, test, type Browser, type Locator, type Page } from '@playwright/test'
-import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, watchApiFailures } from './helpers.js'
+import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, sessionToken, watchApiFailures } from './helpers.js'
 import { BASE_URL } from './helpers'
 
 /**
@@ -59,8 +59,7 @@ async function login(page: Page, email = ADMIN_EMAIL, password = ADMIN_PASSWORD)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(/\/(status|app)?\/?$/, { waitUntil: 'commit', timeout: 60_000 })
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('totalbase_admin_token')), { timeout: 30_000 }).toBeTruthy()
-  return (await page.evaluate(() => localStorage.getItem('totalbase_admin_token')))!
+  return sessionToken(page)
 }
 
 async function adminSession(browser: Browser) {

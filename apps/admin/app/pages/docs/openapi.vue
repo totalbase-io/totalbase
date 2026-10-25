@@ -6,7 +6,6 @@ import { apiHeaders } from '~/utils/api-headers'
 // directly, since that document has to validate as OpenAPI JSON on its
 // own. useAdminApi() assumes the envelope everywhere else, so this page
 // calls $fetch directly instead of going through it.
-const session = useSession()
 const { t } = useI18n()
 // ?document=data&role=<id>&path=<path> - the Endpoints list's "Open in API
 // docs" lands here on one path of a role's document.
@@ -42,7 +41,7 @@ const { data: spec, pending, error } = await useAsyncData(
     const url = documentKind.value === 'admin'
       ? '/admin/api/openapi'
       : `/admin/api/openapi/data?role=${encodeURIComponent(roleId.value!)}${principal.value === 'api_key' ? '&as=api_key' : ''}`
-    return $fetch<Record<string, unknown>>(url, { headers: apiHeaders(session.token.value) })
+    return $fetch<Record<string, unknown>>(url, { headers: apiHeaders() })
   },
   { watch: [documentKind, roleId, principal] }
 )

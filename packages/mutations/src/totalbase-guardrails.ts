@@ -1,6 +1,6 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import type { PermissionDecision } from "@totalbase/permissions";
+import { rolesManagedBySql, type PermissionDecision } from "@totalbase/permissions";
 import type { ResolvedResource } from "@totalbase/query-engine";
 
 /**
@@ -31,7 +31,7 @@ import type { ResolvedResource } from "@totalbase/query-engine";
  * only.
  */
 // `created_by` too: PostgreSQL records a role's creator itself, never the payload.
-const ROLES_PROTECTED_COLUMNS = ["admin_access", "app_access", "api_access", "reserved", "created_by"];
+const ROLES_PROTECTED_COLUMNS = ["admin_access", "app_access", "api_access", "reserved", "created_by", "review_required"];
 
 /**
  * Columns that must never be readable or writable through the Data API,
@@ -107,6 +107,8 @@ const ADMIN_WRITTEN_TABLES = new Set([
   "workflows_roles",
   "menus",
   "roles_managers",
+  // Which roles no user may hold together - a segregation-of-duties rule (Security.md §1.9).
+  "roles_incompatibilities",
   "resources",
   "settings",
   "providers",
@@ -161,8 +163,8 @@ function isUsersRolesTable(root: ResolvedResource): boolean {
   return root.schema === "totalbase" && root.table === "users_roles";
 }
 
-/** An administrator sets a role's app/API access through the Data API too; admin_access (reserved-only, a CHECK), reserved and created_by stay out of every payload. */
-const ROLES_ADMIN_WRITABLE_COLUMNS = ["app_access", "api_access"];
+/** An administrator sets a role's app/API access and whether it's reviewed through the Data API too; admin_access (reserved-only, a CHECK), reserved and created_by stay out of every payload. */
+const ROLES_ADMIN_WRITABLE_COLUMNS = ["app_access", "api_access", "review_required"];
 
 function isUsersTable(root: ResolvedResource): boolean {
   return root.schema === "totalbase" && root.table === "users";
@@ -181,6 +183,13 @@ function isUsersTable(root: ResolvedResource): boolean {
  * routes (§2.12), accounts are created by invitation (§9.3).
  */
 const USERS_ADMIN_WRITTEN_COLUMNS = ["email", "email_verified_at", "can_login", "locked_until", "failed_login_count", "last_login_at"];
+/**
+ * Set when an account is created, never changed through the Data API - by
+ * anyone: an email change has its own route (§2.12), which retires the
+ * links sent to the old address, notifies it, and asks for re-authentication
+ * (§2.19) - a session left open must not hand over an account by email.
+ */
+const USERS_CREATE_ONLY_COLUMNS = ["email"];
 /** Never written through the Data API, by anyone: the one account that keeps the instance administered (§1.6). */
 const USERS_PROTECTED_COLUMNS = ["owner"];
 
@@ -194,10 +203,29 @@ const USERS_PROTECTED_COLUMNS = ["owner"];
  * - totalbase.roles: the access flags, reserved and created_by;
  *   an administrator may set app_access/api_access.
  * - totalbase.users: owner never; the security-state and
- *   identity columns (USERS_ADMIN_WRITTEN_COLUMNS) by an administrator only.
+ *   identity columns (USERS_ADMIN_WRITTEN_COLUMNS) by an administrator only;
+ *   email on a CREATE only (USERS_CREATE_ONLY_COLUMNS).
+ *
+ * `operation`: UPDATE for a PATCH, a transaction's update and an upsert's
+ * DO UPDATE branch; CREATE otherwise.
  */
-export function assertGuardedColumnsWriteAllowed(root: ResolvedResource, item: Record<string, unknown>, caller?: Pick<WriteCaller, "administrator">): void {
+export function assertGuardedColumnsWriteAllowed(
+  root: ResolvedResource,
+  item: Record<string, unknown>,
+  caller?: Pick<WriteCaller, "administrator">,
+  operation: "CREATE" | "UPDATE" = "CREATE",
+): void {
   if (isUsersTable(root)) {
+    if (operation === "UPDATE") {
+      for (const column of USERS_CREATE_ONLY_COLUMNS) {
+        if (column in item) {
+          throw new TotalBaseError(
+            "PERMISSION_DENIED",
+            `An account's ${column} changes with PUT /admin/api/users/{id}/email, not through the Data API.`,
+          );
+        }
+      }
+    }
     for (const column of [...USERS_PROTECTED_COLUMNS, ...USERS_ADMIN_WRITTEN_COLUMNS]) {
       if (!(column in item)) continue;
       if (caller?.administrator && USERS_ADMIN_WRITTEN_COLUMNS.includes(column)) continue;
@@ -237,10 +265,15 @@ export function guardedColumnsWriteFieldDecision(
   root: ResolvedResource,
   fieldDecision: (field: string) => PermissionDecision,
   caller: Pick<WriteCaller, "administrator">,
+  operation: "CREATE" | "UPDATE" = "CREATE",
 ): (field: string) => PermissionDecision {
   if (isUsersTable(root)) {
     return (field: string) =>
-      USERS_PROTECTED_COLUMNS.includes(field) || (!caller.administrator && USERS_ADMIN_WRITTEN_COLUMNS.includes(field)) ? "DENY" : fieldDecision(field);
+      USERS_PROTECTED_COLUMNS.includes(field) ||
+      (operation === "UPDATE" && USERS_CREATE_ONLY_COLUMNS.includes(field)) ||
+      (!caller.administrator && USERS_ADMIN_WRITTEN_COLUMNS.includes(field))
+        ? "DENY"
+        : fieldDecision(field);
   }
   if (!isRolesTable(root)) return fieldDecision;
   return (field: string) =>
@@ -274,6 +307,8 @@ export async function assertUserRoleAssignmentAllowed(
   item: Record<string, unknown>,
   caller?: WriteCaller,
 ): Promise<void> {
+  // A role row's parent rides on the same call sites - every payload that reaches a row.
+  await assertRoleParentAllowed(database, root, item, caller);
   if (!isUsersRolesTable(root)) return;
   const roleId = item["role"];
   if (typeof roleId !== "string") return;
@@ -293,7 +328,7 @@ export async function assertRolesAssignable(database: Queryable, roleIds: string
   if (caller && !caller.administrator && (await assignableRoleIds(database, caller, roleIds)).length !== new Set(roleIds).size) {
     throw new TotalBaseError(
       "PERMISSION_DENIED",
-      "You can only assign roles you created, or roles one of your roles manages.",
+      "You can only assign roles you created, roles one of your roles manages, or roles below the ones you manage.",
     );
   }
   const { rows } = await database.query(
@@ -347,6 +382,7 @@ export async function assignableRoleIds(
      WHERE ($3::uuid[] IS NULL OR r.id = ANY($3::uuid[])) AND (
        (r.created_by IS NOT NULL AND r.created_by = $1::uuid)
        OR EXISTS (SELECT 1 FROM totalbase.roles_managers m WHERE m.role = r.id AND m.manager = ANY($2::uuid[]))
+       OR r.id IN ${rolesManagedBySql("$2")}
      )`,
     [caller.actorUserId ?? null, caller.roleIds, among ?? null],
   );
@@ -358,7 +394,7 @@ async function assertRoleAssignable(database: Queryable, roleId: string, caller:
   if ((await assignableRoleIds(database, caller, [roleId])).length === 0) {
     throw new TotalBaseError(
       "PERMISSION_DENIED",
-      "You can only assign roles you created, or roles one of your roles manages.",
+      "You can only assign roles you created, roles one of your roles manages, or roles below the ones you manage.",
     );
   }
 }
@@ -375,15 +411,35 @@ export async function assertAssignmentDeleteAllowed(
 }
 
 /**
- * A non-administrator renames or deletes only a role they created -
+ * A non-administrator renames or deletes only a role they created, or one
+ * below the roles they manage (Security.md §9.5) - never one they hold -
  * checked on the row the UPDATE/DELETE returned, inside its transaction,
  * so a refusal rolls it back.
  */
-export function assertRoleOwnership(root: ResolvedResource, row: Record<string, unknown>, caller: WriteCaller): void {
+export async function assertRoleOwnership(database: Queryable, root: ResolvedResource, row: Record<string, unknown>, caller: WriteCaller): Promise<void> {
   if (!isRolesTable(root) || caller.administrator) return;
-  if (!caller.actorUserId || row["created_by"] !== caller.actorUserId) {
-    throw new TotalBaseError("PERMISSION_DENIED", "You can only change or delete roles you created.");
+  if (caller.actorUserId && row["created_by"] === caller.actorUserId) return;
+  if (typeof row["id"] === "string" && !caller.roleIds.includes(row["id"])) {
+    const { rows } = await database.query(`SELECT 1 WHERE $1::uuid IN ${rolesManagedBySql("$2")}`, [row["id"], caller.roleIds]);
+    if (rows.length > 0) return;
   }
+  throw new TotalBaseError("PERMISSION_DENIED", "You can only change or delete roles you created, or roles below the ones you manage.");
+}
+
+/**
+ * Where a non-administrator places a role (Security.md §9.5): its `parent`, on a create or an update, is one of
+ * the roles they manage or a role below them - so the new role, and its ceiling, stay inside their scope. A
+ * root (no parent) is theirs to create as before, granted nothing until an administrator grants it; making an
+ * existing role a root is an administrator's. The tree's shape itself is PostgreSQL's (`roles_parent_valid`).
+ */
+async function assertRoleParentAllowed(database: Queryable, root: ResolvedResource, item: Record<string, unknown>, caller?: WriteCaller): Promise<void> {
+  if (!isRolesTable(root) || !caller || caller.administrator || !("parent" in item)) return;
+  const parent = item["parent"];
+  if (typeof parent === "string") {
+    const { rows } = await database.query(`SELECT 1 WHERE $1::uuid IN ${rolesManagedBySql("$2", { withManagers: true })}`, [parent, caller.roleIds]);
+    if (rows.length > 0) return;
+  }
+  throw new TotalBaseError("PERMISSION_DENIED", "A role goes under one of the roles you manage, or a role below them.");
 }
 
 /**

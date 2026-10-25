@@ -9,11 +9,12 @@ export interface RoleMember {
 const MAX_ROLES = 500
 
 /** What a role write may carry. The access flags only for an administrator - the guardrail refuses them to anyone else. */
-export type RoleWrite = Partial<Pick<Role, 'name' | 'description' | 'icon' | 'color' | 'active' | 'appAccess' | 'apiAccess' | 'homeDataview' | 'homeDashboard'>>
+export type RoleWrite = Partial<Pick<Role, 'name' | 'description' | 'icon' | 'color' | 'active' | 'appAccess' | 'apiAccess' | 'homeDataview' | 'homeDashboard' | 'parent' | 'reviewRequired'>>
 
-function rowOf({ appAccess, apiAccess, homeDataview, homeDashboard, ...rest }: RoleWrite): Record<string, unknown> {
+function rowOf({ appAccess, apiAccess, homeDataview, homeDashboard, reviewRequired, ...rest }: RoleWrite): Record<string, unknown> {
   return {
     ...rest,
+    ...(reviewRequired !== undefined && { review_required: reviewRequired }),
     ...(appAccess !== undefined && { app_access: appAccess }),
     ...(apiAccess !== undefined && { api_access: apiAccess }),
     ...(homeDataview !== undefined && { home_dataview: homeDataview }),
@@ -37,7 +38,9 @@ function roleFromRow(row: Record<string, unknown>): Role {
     homeDataview: (row.home_dataview ?? null) as string | null,
     homeDashboard: (row.home_dashboard ?? null) as string | null,
     createdAt: row.created_at as string,
-    createdBy: (row.created_by ?? null) as string | null
+    createdBy: (row.created_by ?? null) as string | null,
+    parent: (row.parent ?? null) as string | null,
+    reviewRequired: row.review_required === true
   }
 }
 
@@ -51,7 +54,7 @@ function roleFromRow(row: Record<string, unknown>): Role {
  * managers, the reserved roles - stays on the Admin API.
  */
 /** What a role may be granted beyond row operations (roles_capabilities). */
-export type Capability = 'TRANSACTIONS' | 'SEND_EMAIL'
+export type Capability = 'TRANSACTIONS' | 'SEND_EMAIL' | 'MANAGE_ROLES'
 
 /** An attestation that a role's members were reviewed (roles_reviews, Security.md §1.8). */
 export interface AccessReview {
@@ -96,6 +99,17 @@ export function useRolesApi() {
         'count': true
       })
       return { members: data.map(row => ({ assignment: row.id, user: row.user })), total: (meta?.count as number | undefined) ?? data.length }
+    },
+    /** When each of these users' assignment to the role ends (Security.md §1.10) - users without an expiry are absent. */
+    expiries: async (roleId: string, userIds: string[]): Promise<Map<string, string>> => {
+      if (userIds.length === 0) return new Map()
+      const { data } = await dataApi.get<Array<{ user: string, expires_at: string | null }>>(assignmentsPath, {
+        'where[role][_eq]': roleId,
+        'where[user][_in]': userIds.join(','),
+        'fields': 'user,expires_at',
+        'limit': userIds.length
+      })
+      return new Map(data.filter(row => row.expires_at).map(row => [row.user, row.expires_at!]))
     },
     addMember: async (roleId: string, userId: string): Promise<void> => {
       await dataApi.post(assignmentsPath, { data: { role: roleId, user: userId } })

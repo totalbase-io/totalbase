@@ -28,10 +28,18 @@ const TEMPLATE_RULES =
  * System.
  */
 
+/** A preview's values for the variables a slot has beyond the common ones. */
+const PREVIEW_VARIABLES: Partial<Record<SystemEmailSlot, Record<string, string>>> = {
+  email_changed: { new_email: "new-address@example.com" },
+  token_created: { "token.name": "deploy-bot", "token.plane": "API" },
+};
+
 /** Slots that can be switched off, and the setting that does it. */
 const ENABLED_SETTINGS: Partial<Record<SystemEmailSlot, SettingKey>> = {
   password_changed: "auth.password_changed_email_enabled",
   email_changed: "auth.email_changed_email_enabled",
+  mfa_disabled: "auth.mfa_disabled_email_enabled",
+  token_created: "auth.token_created_email_enabled",
   user_welcome: "auth.welcome_email_enabled",
 };
 
@@ -167,7 +175,7 @@ export function registerAdminSystemEmailsRoutes(app: FastifyInstance, context: A
         { email: admin.email ?? "you@example.com", name: admin.name },
         action,
         template,
-        slot === "email_changed" ? { new_email: "new-address@example.com" } : undefined,
+        PREVIEW_VARIABLES[slot],
       );
       return { data: rendered };
     },

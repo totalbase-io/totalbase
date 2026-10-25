@@ -148,6 +148,7 @@ export function registerAppMeRoutes(app: FastifyInstance, context: AppContext): 
       const body = request.body?.data;
       await confirmIdentity(me(request), body?.currentPassword);
       await context.auth.mfa.disable(me(request), { code: body?.code, recoveryCode: body?.recoveryCode });
+      await context.auth.notifyMfaDisabled(me(request));
       reply.code(204);
     },
   );

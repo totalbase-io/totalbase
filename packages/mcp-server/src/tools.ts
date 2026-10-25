@@ -61,7 +61,7 @@ interface Me {
   display?: { timezone?: string; language?: string };
 }
 
-interface RoleRow { id: string; name: string; description: string | null; active: boolean; app_access: boolean; api_access: boolean; admin_access: boolean; reserved: boolean }
+interface RoleRow { id: string; name: string; description: string | null; active: boolean; app_access: boolean; api_access: boolean; admin_access: boolean; reserved: boolean; parent: string | null }
 
 const AGGREGATES = ["sum", "count", "avg", "min", "max"] as const;
 
@@ -280,13 +280,13 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
     {
       title: "List roles",
       description:
-        "Every role: id, name, description, active (an inactive role grants nothing) and its access flags - app_access (people who sign into the App), api_access (personal access tokens), admin_access (administrators: every permission bypassed), reserved (built in, never deleted). Create, change or delete a role with write_records on totalbase / roles (delete takes its grants and assignments with it; reserved roles can't be deleted); its grants with grant_permission / grant_permissions.",
+        "Every role: id, name, description, active (an inactive role grants nothing), parent (the role above it: its ceiling - it can do at most what its parent can, resolved live - and its managers' scope; null = top level) and its access flags - app_access (people who sign into the App), api_access (personal access tokens), admin_access (administrators: every permission bypassed), reserved (built in, never deleted). Create, change or delete a role with write_records on totalbase / roles (delete takes its grants and assignments with it; reserved roles can't be deleted; a role with roles under it can't be deleted until they go or move); its grants with grant_permission / grant_permissions; a copy with duplicate_role.",
       inputSchema: {},
       annotations: READ_ONLY,
     },
     async () => {
       const roles = await client.data<RoleRow[]>("GET", "/totalbase/table/roles", { query: { order_by: "name", limit: "500" } });
-      return result(roles.map((r) => ({ id: r.id, name: r.name, description: r.description, active: r.active, app_access: r.app_access, api_access: r.api_access, admin_access: r.admin_access, reserved: r.reserved })));
+      return result(roles.map((r) => ({ id: r.id, name: r.name, description: r.description, active: r.active, parent: r.parent, app_access: r.app_access, api_access: r.api_access, admin_access: r.admin_access, reserved: r.reserved })));
     },
   );
 

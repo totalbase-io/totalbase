@@ -1283,7 +1283,10 @@
         "share": "Share",
         "security": "Security",
         "versions": "Versions"
-      }
+      },
+      "delegable": "Managers may share it",
+      "delegableHelp": "Managers open it to the roles below theirs. Turn it on only when its queries filter by the person ($USER.*): a dashboard's SQL doesn't go through permissions.",
+      "delegableError": "Could not change whether managers may share it"
     }
   }
 }

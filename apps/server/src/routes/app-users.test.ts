@@ -125,9 +125,13 @@ describe("App users (/app/api/users) and administrator accounts", () => {
   });
 
   it("never lets a delegated user change or delete an administrator's account through the Data API (regression: email then reset)", async () => {
+    // An email is never changed through the Data API, by anyone (Security.md §10.2) - and an administrator's
+    // account, nothing of it, by a non-administrator (the trigger's own refusal).
     const hijack = await call("PATCH", `/api/totalbase/table/users/${adminUserId}`, delegateToken, { data: { email: `${P}-mine@example.com` } });
     expect(hijack.statusCode).toBe(403);
-    expect(hijack.json().errors[0].message).toContain("administrator");
+    const renameAdmin = await call("PATCH", `/api/totalbase/table/users/${adminUserId}`, delegateToken, { data: { name: "Not the admin" } });
+    expect(renameAdmin.statusCode).toBe(403);
+    expect(renameAdmin.json().errors[0].message).toContain("administrator");
     const remove = await call("DELETE", `/api/totalbase/table/users/${adminUserId}`, delegateToken);
     expect(remove.statusCode).toBe(403);
     const { rows } = await database.query<{ email: string }>(`SELECT email FROM totalbase.users WHERE id = $1`, [adminUserId]);

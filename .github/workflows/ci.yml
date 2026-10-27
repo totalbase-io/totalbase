@@ -78,12 +78,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Realtime subscriptions read the WAL through logical replication (Data_API.md §16.1): a service container
       # takes no command line, so wal_level is set with ALTER SYSTEM and the container restarted. The image's
-      # role is a superuser, REPLICATION included.
+      # role is a superuser, REPLICATION included. The restart maps the container to a new free host port: it's read
+      # back here, not from job.services (the port it had when the job started).
       - name: Logical replication
         run: |
           docker exec ${{ job.services.postgres.id }} psql -U totalbase -d totalbase_test -c "ALTER SYSTEM SET wal_level = logical"
           docker restart ${{ job.services.postgres.id }}
           for i in $(seq 1 60); do docker exec ${{ job.services.postgres.id }} pg_isready -U totalbase && break; sleep 1; done
+          echo "POSTGRES_PORT=$(docker port ${{ job.services.postgres.id }} 5432/tcp | head -1 | sed 's/.*://')" >> "$GITHUB_ENV"
       # PostgreSQL 18's client tools, as the image carries them - the built-in backups' tests run pg_dump and pg_restore.
       - name: PostgreSQL 18 client tools
         # A self-hosted runner brings its own, or the backups' tests are skipped (TOTALBASE_TEST_PG_BIN below).
@@ -100,7 +102,6 @@ jobs:
         run: |
           cat > .env <<'ENV'
           POSTGRES_HOST=localhost
-          POSTGRES_PORT=${{ job.services.postgres.ports['5432'] }}
           POSTGRES_DB=totalbase_test
           POSTGRES_USER=totalbase
           POSTGRES_PASSWORD=totalbase
@@ -113,6 +114,7 @@ jobs:
           NODE_ENV=test
           LOG_LEVEL=warn
           ENV
+          echo "POSTGRES_PORT=$POSTGRES_PORT" >> .env
           # The backups' tests need pg_dump 18; without it they're skipped.
           if [ -x /usr/lib/postgresql/18/bin/pg_dump ]; then echo "TOTALBASE_TEST_PG_BIN=/usr/lib/postgresql/18/bin" >> .env; fi
       - run: bash scripts/test-integration.sh

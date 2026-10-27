@@ -474,6 +474,10 @@
         "backups": {
           "label": "Backups",
           "description": "Scheduled backups of the database and the stored files, kept on the local disk or in S3 storage. The master key is never in them - keep it apart."
+        },
+        "realtime": {
+          "label": "Realtime",
+          "description": "Realtime subscriptions: clients follow the changes of the tables exposing Realtime over one WebSocket, /api/realtime, receiving only what their READ permission allows."
         }
       },
       "sections": {
@@ -531,7 +535,8 @@
         "events": "events",
         "bars": "bars",
         "failures": "failures",
-        "workflows": "workflows"
+        "workflows": "workflows",
+        "subscriptions": "subscriptions"
       },
       "keys": {
         "api__default_limit": {
@@ -1439,6 +1444,18 @@
         "backups__include_files": {
           "label": "Include stored files",
           "description": "The files Files keeps on the local disk go into each backup. Files kept in S3 storage never do - back the bucket up with the service's own versioning or replication."
+        },
+        "realtime__enabled": {
+          "label": "Enable Realtime",
+          "description": "Serves /api/realtime. Needs PostgreSQL's logical replication: wal_level = logical and the REPLICATION attribute on TotalBase's role. Off = the endpoint doesn't answer; the tables keep their Realtime exposure."
+        },
+        "realtime__max_subscriptions": {
+          "label": "Subscriptions per connection",
+          "description": "The most subscriptions one WebSocket holds at once."
+        },
+        "realtime__heartbeat_seconds": {
+          "label": "Heartbeat",
+          "description": "How often the server pings each connection; one that doesn't answer before the next ping is closed."
         }
       }
     },
@@ -1569,6 +1586,21 @@
           "rollback": "Point TotalBase back at the previous database and put its files back:"
         }
       }
+    },
+    "realtime": {
+      "requirements": "Requirements",
+      "off": "Off",
+      "ready": "Ready",
+      "notReady": "Not ready",
+      "walLevel": "Logical replication",
+      "walLevelDetail": "wal_level is {value} - it must be logical (changing it restarts PostgreSQL).",
+      "replication": "REPLICATION on TotalBase's role",
+      "replicationDetail": "The role in POSTGRES_USER needs it to open a replication slot (ALTER ROLE ... REPLICATION, by a superuser).",
+      "createOnDatabase": "CREATE on the database",
+      "createOnDatabaseDetail": "Creates the totalbase_realtime publication when the first table exposes Realtime.",
+      "slots": "A free replication slot",
+      "slotsDetail": "{used} of {max} in use (max_replication_slots) - each server process with subscribers takes one.",
+      "tables": "No table exposes Realtime yet - turn it on in a table's Endpoints. | One table exposes Realtime. | {count} tables expose Realtime."
     }
   }
 }

@@ -76,8 +76,7 @@ const nameDirty = computed(() => !!user.value && draftName.value.trim() !== (use
 const rolesDirty = computed(() => !!user.value && !sameSet(draftRoles.value, user.value.roles))
 // --- Additional data: the columns the project added to users (AGENTS.md §11) - read and saved through
 // the Data API with the header's Save, one write each so PostgreSQL's refusal shows under its column. ---
-const { load: loadExtraColumns } = useUserExtraColumns()
-const { data: extraColumns } = await useAsyncData(`user-extra-columns`, () => loadExtraColumns(), { default: () => [] })
+const { data: extraColumns } = await useUserExtraColumnsData()
 const savedExtra = ref<Record<string, unknown>>({})
 const draftExtra = ref<Record<string, unknown>>({})
 const extraErrors = ref<Record<string, string>>({})
@@ -101,9 +100,73 @@ function roleLocked(role: Role): string | null {
   if (role.reserved && user.value?.owner) return t('users.userEditor.roleLocked.owner')
   return null
 }
+// A switch per role, the ones the user holds on top. The order is taken from the saved roles (on load and
+// after Save), never from the draft - a row doesn't move under the pointer while switches change.
+const heldRoles = computed(() => new Set(user.value?.roles ?? []))
 const sortedRoles = computed(() => [...(roles.value ?? [])]
-  .filter(r => !isWorkflowsRole(r) || user.value?.roles.includes(r.id))
-  .sort((a, b) => Number(b.reserved) - Number(a.reserved) || a.name.localeCompare(b.name)))
+  .filter(r => !isWorkflowsRole(r) || heldRoles.value.has(r.id))
+  .sort((a, b) => Number(heldRoles.value.has(b.id)) - Number(heldRoles.value.has(a.id))
+    || Number(b.reserved) - Number(a.reserved) || a.name.localeCompare(b.name)))
+const roleSearch = ref('')
+const visibleRoles = computed(() => {
+  const query = roleSearch.value.trim().toLowerCase()
+  if (!query) return sortedRoles.value
+  return sortedRoles.value.filter(r => r.name.toLowerCase().includes(query) || (r.description ?? '').toLowerCase().includes(query))
+})
+
+// Incompatible roles (Security.md §1.9): PostgreSQL refuses the pair on Save; here a role that can't be held
+// with one turned on is off and says why, before Save.
+const { data: incompatibilities } = useRoleIncompatibilities()
+function roleBlocked(role: Role): string | null {
+  const locked = roleLocked(role)
+  if (locked || draftRoles.value.includes(role.id)) return locked
+  const clashes = incompatibleWith(incompatibilities.value, role.id, draftRoles.value)
+  if (clashes.length === 0) return null
+  const names = clashes.map(id => roles.value?.find(r => r.id === id)?.name ?? id)
+  return t('users.userEditor.roleIncompatible', { roles: names.join(', ') })
+}
+
+// When an assignment ends (Security.md §1.10) - set from a role's "⋮", applied at once like on the role's
+// Members tab; only for a saved assignment of a role that isn't reserved (a reserved one never ends).
+const rolesApi = useRolesApi()
+const { data: expiries, refresh: refreshExpiries } = useAsyncData(
+  `user-${userId}-role-expiries`,
+  () => rolesApi.userExpiries(userId),
+  { default: (): Record<string, string> => ({}) }
+)
+const expiryRole = ref<Role | null>(null)
+const expiryDate = ref('')
+const savingExpiry = ref(false)
+const canSetExpiry = (role: Role) => !systemUser.value && !role.reserved && heldRoles.value.has(role.id) && draftRoles.value.includes(role.id)
+function openExpiry(role: Role) {
+  const current = expiries.value[role.id]
+  expiryDate.value = current ? current.slice(0, 10) : ''
+  expiryRole.value = role
+}
+async function saveExpiry(clear: boolean) {
+  const role = expiryRole.value
+  if (!role) return
+  savingExpiry.value = true
+  try {
+    // The end of the chosen day, in the viewer's zone.
+    const expiresAt = clear || !expiryDate.value ? null : new Date(`${expiryDate.value}T23:59:59`).toISOString()
+    await api.put(`/users/${userId}/roles/${role.id}/expiry`, { data: { expiresAt } })
+    await refreshExpiries()
+    expiryRole.value = null
+  } catch (err) {
+    notifyError(err, t('users.roleMembers.expiryError'))
+  } finally {
+    savingExpiry.value = false
+  }
+}
+function roleMenu(role: Role) {
+  return [[
+    { label: t('users.userEditor.openRole'), icon: 'i-lucide-arrow-up-right', to: `/roles/${role.id}` },
+    ...(canSetExpiry(role)
+      ? [{ label: t('users.userEditor.setRoleEnd'), icon: 'i-lucide-calendar-clock', onSelect: () => openExpiry(role) }]
+      : [])
+  ]]
+}
 
 // The access flags the checked (active) roles add up to - OR across roles,
 // the same rule the server applies (RolesService.effectiveAccess).
@@ -219,7 +282,7 @@ async function save() {
       }
     }
     extraErrors.value = refused
-    await Promise.all([refresh(), refreshUsersData()])
+    await Promise.all([refresh(), refreshUsersData(), refreshExpiries()])
     if (Object.keys(refused).length > 0) {
       toast.add({ title: t('users.userEditor.extra.saveError'), color: 'error' })
       return
@@ -722,7 +785,7 @@ function formatDate(value: string | null) {
         <p class="text-sm text-muted">
           {{ t('users.userEditor.rolesIntro') }}
         </p>
-        <!-- What the checked roles add up to, live as boxes are ticked -
+        <!-- What the roles turned on add up to, live as switches change -
         which portals the user can sign in to (inactive roles grant
         nothing, as on the server). -->
         <div
@@ -748,21 +811,24 @@ function formatDate(value: string | null) {
             <span>{{ t('users.userEditor.noAccess') }}</span>
           </template>
         </div>
-        <div class="flex flex-col divide-y divide-default rounded-lg border border-default">
-          <label
-            v-for="role in sortedRoles"
+        <ListCard>
+          <div class="p-3">
+            <UInput
+              v-model="roleSearch"
+              icon="i-lucide-search"
+              :placeholder="t('users.userEditor.searchRoles')"
+              :aria-label="t('users.userEditor.searchRoles')"
+              class="w-full"
+            />
+          </div>
+          <div
+            v-for="role in visibleRoles"
             :key="role.id"
             class="flex items-center gap-3 px-3 py-2.5"
-            :class="roleLocked(role) ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-elevated/50'"
           >
-            <UCheckbox
-              :model-value="draftRoles.includes(role.id)"
-              :disabled="!!roleLocked(role)"
-              @update:model-value="(v: boolean | 'indeterminate') => toggleRole(role.id, v === true)"
-            />
             <RoleBadge :role="role" />
             <div class="flex min-w-0 flex-1 flex-col">
-              <span class="flex items-center gap-2 text-sm font-medium">
+              <span class="flex flex-wrap items-center gap-2 text-sm font-medium">
                 {{ role.name }}
                 <UBadge
                   v-if="!role.active"
@@ -771,21 +837,40 @@ function formatDate(value: string | null) {
                   variant="subtle"
                   size="sm"
                 />
+                <UBadge
+                  v-if="expiries[role.id]"
+                  :label="t('users.roleMembers.expires', { date: formatDate(expiries[role.id]!) })"
+                  color="warning"
+                  variant="subtle"
+                  size="sm"
+                />
               </span>
-              <span class="truncate text-xs text-muted">{{ roleLocked(role) ?? role.description ?? '' }}</span>
+              <span class="truncate text-xs text-muted">{{ roleBlocked(role) ?? role.description ?? '' }}</span>
             </div>
             <RoleAccessBadges :role="role" />
-            <UButton
-              icon="i-lucide-arrow-up-right"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              :to="`/roles/${role.id}`"
-              :aria-label="t('users.userEditor.openRole')"
-              @click.stop
+            <USwitch
+              :model-value="draftRoles.includes(role.id)"
+              :disabled="!!roleBlocked(role)"
+              :aria-label="role.name"
+              @update:model-value="(on: boolean) => toggleRole(role.id, on)"
             />
-          </label>
-        </div>
+            <UDropdownMenu :items="roleMenu(role)">
+              <UButton
+                icon="i-lucide-ellipsis-vertical"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                :aria-label="t('users.userEditor.roleActions', { role: role.name })"
+              />
+            </UDropdownMenu>
+          </div>
+          <UEmpty
+            v-if="visibleRoles.length === 0"
+            icon="i-lucide-search"
+            :title="t('users.userEditor.noRolesMatch')"
+            variant="naked"
+          />
+        </ListCard>
       </div>
     </PageShell>
     <UserEffectivePermissions
@@ -804,6 +889,50 @@ function formatDate(value: string | null) {
       v-else
       :user-id="userId"
     />
+
+    <UModal
+      :open="!!expiryRole"
+      :title="t('users.userEditor.roleEndTitle', { role: expiryRole?.name ?? '' })"
+      @update:open="(open: boolean) => { if (!open) expiryRole = null }"
+    >
+      <template #body>
+        <UFormField
+          :label="t('users.roleMembers.expiryLabel')"
+          :description="t('users.roleMembers.expiryHelp')"
+        >
+          <UInput
+            v-model="expiryDate"
+            type="date"
+            class="w-full"
+          />
+        </UFormField>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            v-if="expiryRole && expiries[expiryRole.id]"
+            :label="t('users.roleMembers.expiryClear')"
+            color="neutral"
+            variant="ghost"
+            :disabled="savingExpiry"
+            @click="saveExpiry(true)"
+          />
+          <UButton
+            :label="t('common.cancel')"
+            color="neutral"
+            variant="ghost"
+            :disabled="savingExpiry"
+            @click="expiryRole = null"
+          />
+          <UButton
+            :label="t('common.save')"
+            :loading="savingExpiry"
+            :disabled="!expiryDate"
+            @click="saveExpiry(false)"
+          />
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="mfaResetOpen"

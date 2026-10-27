@@ -464,7 +464,7 @@
       "renameHint": "Aquí no se puede renombrar una tabla - usa la Consola SQL.",
       "browseData": "Ver datos",
       "browseDataNeedsGet": "Activa GET en Endpoints para ver los datos: el visor los lee a través del Data API.",
-      "endpointsIntro": "Qué métodos HTTP están disponibles para {name} en la Data API de TotalBase — un límite estricto por debajo de los permisos de los roles: un método desactivado nunca existe aquí, lo pida quien lo pida.",
+      "endpointsIntro": "Qué ofrece la Data API de TotalBase para {name} — sus métodos HTTP y las suscripciones Realtime; un límite estricto por debajo de los permisos de los roles: lo que está desactivado nunca existe aquí, lo pida quien lo pida.",
       "endpointUpdateError": "No se pudo actualizar el endpoint",
       "deleteTitle": "Eliminar esta tabla",
       "deleteButton": "Eliminar tabla",

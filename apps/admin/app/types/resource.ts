@@ -9,11 +9,11 @@ import type { RowPresentation } from '@totalbase/tb-catalog'
 export type ResourceType = 'TABLE' | 'VIEW' | 'FUNCTION'
 export type ResourceStatus = 'ACTIVE' | 'MISSING'
 export type FunctionClass = 'UNCLASSIFIED' | 'QUERY' | 'ACTION'
-export type DataApiMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+export type DataApiMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'REALTIME'
 
-/** Verbs the Data API generates per resource type — the ceiling `exposedMethods` can select from (packages/resources' APPLICABLE_METHODS, mirrored here since the admin UI has no server-side import). */
+/** What the Data API offers per resource type — the HTTP verbs and a table's realtime subscriptions (REALTIME); the ceiling `exposedMethods` can select from (packages/resources' APPLICABLE_METHODS, mirrored here since the admin UI has no server-side import). */
 export const APPLICABLE_METHODS: Record<ResourceType, DataApiMethod[]> = {
-  TABLE: ['GET', 'POST', 'PATCH', 'DELETE'],
+  TABLE: ['GET', 'POST', 'PATCH', 'DELETE', 'REALTIME'],
   VIEW: ['GET'],
   FUNCTION: ['POST']
 }

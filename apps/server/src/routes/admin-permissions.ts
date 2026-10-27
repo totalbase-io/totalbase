@@ -6,6 +6,7 @@ import { parseFilter } from "@totalbase/query-engine";
 import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { applyTotalbaseDefaultGrants } from "../totalbase-default-grants.js";
+import { copyRolePermissions } from "../copy-role-permissions.js";
 import { dataEnvelope, type JsonSchema } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, FILTER, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 
@@ -213,6 +214,39 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
     async (request) => {
       if (!(await context.roles.findById(request.params.role))) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Role not found.");
       return { data: await applyTotalbaseDefaultGrants(context, request.params.role) };
+    },
+  );
+
+  // Copy another role's grants (Security.md §5.4): added or replacing, within the target's ceiling.
+  app.post<{ Params: { role: string }; Body: { data?: { from?: unknown; replace?: unknown } } | undefined }>(
+    "/admin/api/roles/:role/permissions/copy",
+    {
+      preHandler,
+      ...adminDoc("permissions", {
+        summary: "Copy another role's permissions",
+        description:
+          "Writes the `from` role's grants - each whole: action, effect, row filter, fields, payload checks - on this role, " +
+          "in one transaction. Added by default: a grant this role already has for the same resource and action is kept " +
+          "(`kept`); `replace: true` removes this role's grants first. A grant beyond this role's ceiling (its parent can't " +
+          "take the action or use a field) isn't copied (`beyondCeiling`). Nothing else of the role is copied. Neither role " +
+          "may be Administrators or Workflows (403); `from` the role itself, or no role, is 400.",
+        pathParameters: { role: UUID_PARAM },
+        requestBody: { schema: dataEnvelope(object({ from: UUID, replace: { type: "boolean", default: false } }, ["from"])) },
+        response: ok(object({
+          copied: arrayOf(object({ resource: { type: "string" }, action: { type: "string" } }, ["resource", "action"])),
+          kept: arrayOf(object({ resource: { type: "string" }, action: { type: "string" } }, ["resource", "action"])),
+          beyondCeiling: arrayOf(object({ resource: { type: "string" }, action: { type: "string" } }, ["resource", "action"])),
+        }, ["copied", "kept", "beyondCeiling"])),
+      }),
+    },
+    async (request) => {
+      const from = request.body?.data?.from;
+      const replace = request.body?.data?.replace ?? false;
+      if (typeof from !== "string" || !UUID_PATTERN.test(from)) throw new TotalBaseError("INVALID_QUERY", "from must be a role id.");
+      if (typeof replace !== "boolean") throw new TotalBaseError("INVALID_QUERY", "replace must be true or false.");
+      const result = await copyRolePermissions(context, request.params.role, from, { replace, actorUserId: request.admin!.id });
+      request.auditMetadata = { from, replace, copied: result.copied.length, kept: result.kept.length, beyond_ceiling: result.beyondCeiling.length };
+      return { data: result };
     },
   );
 

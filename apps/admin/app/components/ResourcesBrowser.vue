@@ -278,7 +278,8 @@ function exposureFixed(resource: Resource): boolean {
 
 function openExpose(resource: Resource) {
   exposeTarget.value = resource
-  exposeMethodsDraft.value = resource.exposedMethods.length > 0 ? [...resource.exposedMethods] : [...APPLICABLE_METHODS[resource.type]]
+  // Realtime is never preselected: it needs a single-column primary key, and it's a choice of its own.
+  exposeMethodsDraft.value = resource.exposedMethods.length > 0 ? [...resource.exposedMethods] : APPLICABLE_METHODS[resource.type].filter(m => m !== 'REALTIME')
 }
 
 async function saveEndpoints() {
@@ -473,7 +474,7 @@ function typeColor(type: Resource['type']) {
 }
 
 function methodColor(method: DataApiMethod) {
-  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error' }[method] as 'info' | 'success' | 'warning' | 'error'
+  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error', REALTIME: 'neutral' }[method] as 'info' | 'success' | 'warning' | 'error' | 'neutral'
 }
 
 function actionColor(action: string) {

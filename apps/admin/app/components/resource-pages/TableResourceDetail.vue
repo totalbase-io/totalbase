@@ -63,11 +63,12 @@ const endpointsSaving = ref<DataApiMethod | null>(null)
 
 function endpointPath(method: DataApiMethod): string {
   const base = `/api/${resource.value!.schema}/${resource.value!.type.toLowerCase()}/${resource.value!.name}`
+  if (method === 'REALTIME') return '/api/realtime'
   return method === 'GET' || method === 'POST' ? base : `${base}/{pk}`
 }
 
 function methodColor(method: DataApiMethod) {
-  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error' }[method] as 'info' | 'success' | 'warning' | 'error'
+  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error', REALTIME: 'neutral' }[method] as 'info' | 'success' | 'warning' | 'error' | 'neutral'
 }
 
 async function toggleEndpoint(method: DataApiMethod, enabled: boolean) {

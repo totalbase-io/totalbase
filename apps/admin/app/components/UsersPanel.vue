@@ -13,24 +13,12 @@
  */
 import { USER_STATUS_META, type AdminUser, type UserStatus } from '~/types/security'
 
-const api = useAdminApi()
 const route = useRoute()
 const { t } = useI18n()
 const { data: roleOptions } = useRoleOptions()
 
-interface UsersSummary {
-  total: number
-  byStatus: Record<UserStatus, number>
-  byRole: Record<string, number>
-  /** Tokens that still authenticate, sessions still signed in. */
-  credentials: { tokens: number, sessions: number }
-}
-
 // Counts only - the list itself lives on the page, paged by the server.
-const { data: summary } = useAsyncData(
-  'users-summary',
-  () => api.get<UsersSummary>('/users/summary').then(r => r.data)
-)
+const { data: summary } = useUsersSummary()
 
 const STATUSES: UserStatus[] = ['ACTIVE', 'INVITED', 'INACTIVE']
 

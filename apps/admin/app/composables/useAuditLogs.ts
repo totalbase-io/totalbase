@@ -6,9 +6,10 @@ import { flattenQueryObject } from '~/utils/flatten-query-object'
  * (useLogsFilters().apiParams() builds them): `since`/`until` (ISO),
  * `status`, `principal_type`, `principal`, `action` and `event` (comma
  * lists; an event ending in ".*" is a prefix), `request_id`,
- * `workflow_run`, `resource`. An undefined value is no filter.
+ * `workflow_run`, `resource`, `role_change` (a role id: the entries that added
+ * or removed it - administrators only, a role's Activity). An undefined value is no filter.
  */
-export type AuditLogQuery = Partial<Record<'since' | 'until' | 'status' | 'principal_type' | 'principal' | 'action' | 'event' | 'request_id' | 'workflow_run' | 'resource', string>>
+export type AuditLogQuery = Partial<Record<'since' | 'until' | 'status' | 'principal_type' | 'principal' | 'action' | 'event' | 'request_id' | 'workflow_run' | 'resource' | 'role_change', string>>
 
 /**
  * One page of the audit log, newest first - the one loader behind

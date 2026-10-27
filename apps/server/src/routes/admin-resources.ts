@@ -303,11 +303,11 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
     preHandler,
     ...adminDoc("resources", {
       summary: "Update a resource's exposure and metadata",
-      description: "`exposedMethods` is the HTTP ceiling below role permissions: a method not listed answers 404 for everyone.",
+      description: "`exposedMethods` is the ceiling below role permissions: a method not listed answers 404 for everyone. `REALTIME` (a table's realtime subscriptions) needs `GET` and a single-column primary key.",
       pathParameters: { id: UUID_PARAM },
       requestBody: {
         schema: dataEnvelope(object({
-          exposedMethods: arrayOf({ type: "string", enum: ["GET", "POST", "PATCH", "DELETE"] }),
+          exposedMethods: arrayOf({ type: "string", enum: ["GET", "POST", "PATCH", "DELETE", "REALTIME"] }),
           description: { type: ["string", "null"] },
           functionClass: { type: "string", enum: ["UNCLASSIFIED", "QUERY", "ACTION"] },
           auditRead: { type: "boolean" },

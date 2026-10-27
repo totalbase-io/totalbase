@@ -3,11 +3,9 @@
  * The Roles rail group's own nav panel (layouts/default.vue's aside,
  * `activeGroupKey === 'roles'`) - same "New button, search, list, leaf
  * click jumps straight to its own editor page" pattern TemplatesTree.vue
- * uses. The roles' own tree (Security.md §9.5): each role under its
- * parent, alphabetical at every level, a role whose parent this user
- * can't read shown at the top level; not grouped by access level. The
- * reserved Administrators role is pinned first. A search lists the matches
- * flat.
+ * uses. Flat, alphabetical, the reserved roles pinned first; the roles'
+ * tree (Security.md §9.5) is the Hierarchy page's (pages/roles/hierarchy.vue),
+ * opened from the button beside New role.
  *
  * Creation lives in RoleFormModal.vue, opened from here; on success the
  * new role opens in its editor. No per-row actions - activate/deactivate
@@ -24,25 +22,9 @@ const { data: roles, refresh, error } = await useRoles()
 
 const search = ref('')
 const byName = (a: Role, b: Role) => Number(b.reserved) - Number(a.reserved) || a.name.localeCompare(b.name)
-const filtered = computed<{ role: Role, depth: number }[]>(() => {
-  const all = roles.value ?? []
+const filtered = computed<Role[]>(() => {
   const query = search.value.trim().toLocaleLowerCase()
-  if (query) return all.filter(r => r.name.toLocaleLowerCase().includes(query)).sort(byName).map(role => ({ role, depth: 0 }))
-  const ids = new Set(all.map(r => r.id))
-  const children = new Map<string | null, Role[]>()
-  for (const role of all) {
-    const parent = role.parent && ids.has(role.parent) ? role.parent : null
-    children.set(parent, [...(children.get(parent) ?? []), role])
-  }
-  const rows: { role: Role, depth: number }[] = []
-  const walk = (parent: string | null, depth: number) => {
-    for (const role of (children.get(parent) ?? []).sort(byName)) {
-      rows.push({ role, depth })
-      walk(role.id, depth + 1)
-    }
-  }
-  walk(null, 0)
-  return rows
+  return (roles.value ?? []).filter(r => !query || r.name.toLocaleLowerCase().includes(query)).sort(byName)
 })
 
 const selectedId = computed(() => route.params.id as string | undefined)
@@ -58,13 +40,29 @@ async function onSaved(role: Role) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <UButton
-      v-if="session.can('roles', 'CREATE')"
-      icon="i-lucide-plus"
-      :label="t('users.roleForm.newTitle')"
-      block
-      @click="open = true"
-    />
+    <div class="flex gap-2">
+      <UButton
+        v-if="session.can('roles', 'CREATE')"
+        icon="i-lucide-plus"
+        :label="t('users.roleForm.newTitle')"
+        block
+        class="flex-1"
+        @click="open = true"
+      />
+      <UTooltip
+        v-if="session.access.value === 'ADMIN'"
+        :text="t('users.roleHierarchy.title')"
+      >
+        <UButton
+          icon="i-lucide-network"
+          color="neutral"
+          variant="outline"
+          square
+          to="/roles/hierarchy"
+          :aria-label="t('users.roleHierarchy.title')"
+        />
+      </UTooltip>
+    </div>
     <UInput
       v-model="search"
       icon="i-lucide-search"
@@ -86,19 +84,13 @@ async function onSaved(role: Role) {
       </div>
       <div class="flex flex-col">
         <button
-          v-for="{ role, depth } in filtered"
+          v-for="role in filtered"
           :key="role.id"
           type="button"
           class="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-elevated hover:text-highlighted"
           :class="role.id === selectedId ? 'bg-elevated text-highlighted' : 'text-default'"
-          :style="depth > 0 ? { paddingInlineStart: `${0.5 + depth * 1}rem` } : undefined"
           @click="navigateTo(`/roles/${role.id}`)"
         >
-          <UIcon
-            v-if="depth > 0"
-            name="i-lucide-corner-down-right"
-            class="size-3.5 shrink-0 text-dimmed"
-          />
           <RoleBadge :role="role" />
           <span
             class="truncate"

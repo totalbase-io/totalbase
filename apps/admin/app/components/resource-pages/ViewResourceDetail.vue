@@ -74,7 +74,7 @@ function endpointPath(method: DataApiMethod): string {
   return method === 'GET' || method === 'POST' ? base : `${base}/{pk}`
 }
 function methodColor(method: DataApiMethod) {
-  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error' }[method] as 'info' | 'success' | 'warning' | 'error'
+  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error', REALTIME: 'neutral' }[method] as 'info' | 'success' | 'warning' | 'error' | 'neutral'
 }
 
 async function toggleEndpoint(method: DataApiMethod, enabled: boolean) {

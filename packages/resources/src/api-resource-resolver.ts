@@ -105,3 +105,22 @@ export async function resolveFunctionCandidates(
   );
   return rows.map((row) => toResolved(row, schema, name));
 }
+
+/**
+ * A TABLE resource by its id, as it is now - ACTIVE, `method` mounted - under its current name: what a
+ * realtime subscription checks before each delivery (Data_API.md §16.4), a rename included.
+ */
+export async function resolveTableResourceById(
+  context: { database: Queryable },
+  id: string,
+  method: DataApiMethod,
+): Promise<ResolvedApiResource> {
+  const { rows } = await context.database.query<ResolvedRow & { schema: string; name: string }>(
+    `SELECT id, postgres_oid, "schema", name, audit_read, require_idempotency_key, default_sort FROM totalbase.resources
+     WHERE id = $1 AND type = 'TABLE' AND status = 'ACTIVE' AND $2 = ANY(exposed_methods)`,
+    [id, method],
+  );
+  const row = rows[0];
+  if (!row) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${id}`);
+  return toResolved(row, row.schema, row.name);
+}

@@ -24,8 +24,8 @@ export function allEndpointsForResource(resource: Resource): EndpointRow[] {
   const base = `/api/${resource.schema}/${resource.type.toLowerCase()}/${resource.name}`
   const byPk = `${base}/{pk}`
   const paths: Record<DataApiMethod, string[]> = resource.type === 'TABLE'
-    ? { GET: [base, byPk], POST: [base], PATCH: [base, byPk], DELETE: [base, byPk] }
-    : { GET: [base], POST: [base], PATCH: [], DELETE: [] }
+    ? { GET: [base, byPk], POST: [base], PATCH: [base, byPk], DELETE: [base, byPk], REALTIME: ['/api/realtime'] }
+    : { GET: [base], POST: [base], PATCH: [], DELETE: [], REALTIME: [] }
   return APPLICABLE_METHODS[resource.type].flatMap(method =>
     paths[method].map(path => ({ method, path, enabled: resource.exposedMethods.includes(method) }))
   )

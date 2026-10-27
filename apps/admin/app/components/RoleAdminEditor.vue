@@ -135,14 +135,15 @@ watch(schemaOptions, (options) => {
 }, { immediate: true })
 // --- Sections, each its own URL (?section=), in the format of a DataView's and a Dashboard's settings ---
 const route = useRoute()
-type SectionKey = 'general' | 'permissions' | 'users' | 'reviews'
+type SectionKey = 'general' | 'users' | 'permissions' | 'activity' | 'reviews'
 const SECTIONS: { key: SectionKey, icon: string }[] = [
   { key: 'general', icon: 'i-lucide-settings-2' },
-  { key: 'permissions', icon: 'i-lucide-list-checks' },
   { key: 'users', icon: 'i-lucide-users' },
+  { key: 'permissions', icon: 'i-lucide-list-checks' },
+  { key: 'activity', icon: 'i-lucide-history' },
   { key: 'reviews', icon: 'i-lucide-clipboard-check' }
 ]
-const LABEL_KEY: Record<SectionKey, string> = { general: 'general', permissions: 'permissions', users: 'members', reviews: 'reviews' }
+const LABEL_KEY: Record<SectionKey, string> = { general: 'general', users: 'members', permissions: 'permissions', activity: 'activity', reviews: 'reviews' }
 const section = computed<SectionKey>(() => {
   const asked = route.query.section as SectionKey
   return SECTIONS.some(s => s.key === asked) ? asked : 'general'
@@ -154,6 +155,78 @@ const sectionItems = computed(() => SECTIONS.map(s => ({
   active: section.value === s.key
 })))
 const settingsForm = ref<InstanceType<typeof RoleForm> | null>(null)
+
+// --- General's draft, saved from the header as on a user's page: the role's fields (RoleForm) and its
+// membership rules - who may assign it (Security.md §9.4), which roles it can't be held with (§1.9). ---
+const savedManagers = ref<string[]>([])
+const draftManagers = ref<string[]>([])
+const savedIncompatible = ref<string[]>([])
+const draftIncompatible = ref<string[]>([])
+async function loadRules() {
+  if (role.value?.adminAccess) return
+  try {
+    const [managers, incompatible] = await Promise.all([
+      rolesApi.managers(roleId),
+      api.get<string[]>(`/roles/${roleId}/incompatible`).then(r => r.data)
+    ])
+    savedManagers.value = managers
+    draftManagers.value = [...managers]
+    savedIncompatible.value = incompatible
+    draftIncompatible.value = [...incompatible]
+  } catch (err) {
+    notifyError(err, t('users.roleManagers.loadError'))
+  }
+}
+void loadRules()
+const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(id => b.includes(id))
+const managersDirty = computed(() => !sameSet(draftManagers.value, savedManagers.value))
+const incompatibleDirty = computed(() => !sameSet(draftIncompatible.value, savedIncompatible.value))
+const dirty = computed(() => (settingsForm.value?.dirty ?? false) || managersDirty.value || incompatibleDirty.value)
+
+const saving = ref(false)
+async function save() {
+  if (!dirty.value || role.value?.reserved) return
+  saving.value = true
+  try {
+    const formDirty = settingsForm.value?.dirty ?? false
+    // RoleForm toasts its own result; a refusal stops here, the draft kept.
+    if (formDirty && !(await settingsForm.value?.submit())) return
+    if (!managersDirty.value && !incompatibleDirty.value) return
+    try {
+      if (managersDirty.value) {
+        savedManagers.value = (await api.put<string[]>(`/roles/${roleId}/managers`, { data: { roleIds: draftManagers.value } })).data
+        draftManagers.value = [...savedManagers.value]
+      }
+      if (incompatibleDirty.value) {
+        savedIncompatible.value = (await api.put<string[]>(`/roles/${roleId}/incompatible`, { data: { roleIds: draftIncompatible.value } })).data
+        draftIncompatible.value = [...savedIncompatible.value]
+      }
+      if (!formDirty) toast.add({ title: t('users.roleForm.updated'), color: 'success' })
+    } catch (err) {
+      notifyError(err, t('users.roleEditor.updateError'))
+    }
+  } finally {
+    saving.value = false
+  }
+}
+useRecordFormShortcuts(computed(() => true), { onSave: () => void save() })
+
+// Unsaved changes, on leaving the role's page (another section is the same page and keeps them).
+const leaveOpen = ref(false)
+let pendingLeave: string | null = null
+onBeforeRouteLeave((to) => {
+  if (!dirty.value || to.path === route.path) return true
+  pendingLeave = to.fullPath
+  leaveOpen.value = true
+  return false
+})
+async function discardAndLeave() {
+  settingsForm.value?.seed()
+  draftManagers.value = [...savedManagers.value]
+  draftIncompatible.value = [...savedIncompatible.value]
+  leaveOpen.value = false
+  if (pendingLeave) await navigateTo(pendingLeave)
+}
 const search = ref('')
 const visibleResources = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -180,6 +253,8 @@ async function refreshMatrix() {
 // "Apply Default Permissions" (totalbase schema only) - the grants are
 // the server's (POST /roles/{id}/totalbase-defaults); it never touches a
 // grant on a table outside its list.
+// Copy from role… (Security.md §5.4): another role's grants, added or replacing - CopyRolePermissionsModal.vue.
+const copyOpen = ref(false)
 const isApplyDefaultsPopoverOpen = ref(false)
 const applyingDefaults = ref(false)
 async function applyDefaults() {
@@ -291,7 +366,10 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
 </script>
 
 <template>
-  <PageShell>
+  <PageShell
+    flush
+    :scroll="false"
+  >
     <template #header>
       <PageHeader
         :title="role?.name ?? t('common.role')"
@@ -327,6 +405,20 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
             size="header"
             class="max-md:hidden"
           />
+          <UBadge
+            v-if="dirty"
+            :label="t('users.userEditor.unsaved')"
+            color="warning"
+            variant="subtle"
+            class="page-header__tall px-2.5"
+          />
+          <UButton
+            icon="i-lucide-save"
+            :label="t('common.save')"
+            :disabled="!dirty || role.reserved"
+            :loading="saving"
+            @click="save"
+          />
         </div>
       </PageHeader>
     </template>
@@ -346,245 +438,258 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
 
     <UAlert
       v-if="roleError"
+      class="m-4 w-auto sm:m-6"
       color="error"
       variant="subtle"
       :title="roleError.message"
     />
 
+    <!-- Members and Activity are paged lists, each its own PageShell with the pager at its foot; Permissions and
+    Access reviews share one; General is its own, kept mounted. -->
     <template v-if="role">
-      <!-- An admin-access role (Administrators, the Workflows system
+      <RoleUsersPanel
+        v-if="section === 'users'"
+        :role-id="roleId"
+        :role-name="role.name"
+        :admin-role="role.reserved && role.adminAccess && !isWorkflowsRole(role)"
+        :locked="isWorkflowsRole(role)"
+      />
+      <RoleActivity
+        v-else-if="section === 'activity'"
+        :role-id="roleId"
+      />
+      <PageShell v-else-if="section !== 'general'">
+        <!-- An admin-access role (Administrators, the Workflows system
           role) bypasses permissions entirely - a matrix of "—"
           would suggest it has no access, and its grants would never apply. -->
-      <div
-        v-if="section === 'permissions' && role.adminAccess"
-        class="pt-4"
-      >
-        <UAlert
-          icon="i-lucide-shield-check"
-          color="neutral"
-          variant="subtle"
-          :title="t('users.roleEditor.bypassTitle', { name: role.name })"
-          :description="t('users.roleEditor.bypassDescription')"
-        />
-      </div>
-      <div
-        v-else-if="section === 'permissions'"
-        class="flex flex-col gap-3 pt-4"
-      >
-        <div class="flex items-center gap-3">
-          <div class="flex-1" />
-          <UPopover
-            v-if="schema === 'totalbase'"
-            v-model:open="isApplyDefaultsPopoverOpen"
-          >
-            <UButton
-              :label="t('users.roleEditor.applyDefaults')"
-              icon="i-lucide-shield-check"
-              color="neutral"
-              variant="outline"
-              :loading="applyingDefaults"
-            />
-            <template #content>
-              <div class="flex flex-col gap-2 p-3 w-72">
-                <p class="text-sm">
-                  {{ t('users.roleEditor.applyDefaultsHelp') }}
-                </p>
-                <UButton
-                  :label="t('common.apply')"
-                  color="primary"
-                  size="sm"
-                  :loading="applyingDefaults"
-                  @click="applyDefaults"
-                />
-              </div>
-            </template>
-          </UPopover>
-          <USelect
-            v-model="schema"
-            :items="schemaOptions"
-            value-key="value"
-            :icon="schema === 'totalbase' ? 'i-lucide-shield-alert' : 'i-lucide-folder'"
-            :aria-label="t('users.roleEditor.schema')"
-            class="w-44"
+        <div
+          v-if="section === 'permissions' && role.adminAccess"
+          class="pt-4"
+        >
+          <UAlert
+            icon="i-lucide-shield-check"
+            color="neutral"
+            variant="subtle"
+            :title="t('users.roleEditor.bypassTitle', { name: role.name })"
+            :description="t('users.roleEditor.bypassDescription')"
           />
-          <UInput
-            v-model="search"
-            :aria-label="t('users.roleEditor.filterResources')"
-            icon="i-lucide-search"
-            :placeholder="t('users.roleEditor.filterResources')"
-            class="w-full sm:w-64"
-          />
-          <UTooltip :text="t('common.refresh')">
-            <UButton
-              :aria-label="t('common.refresh')"
-              icon="i-lucide-refresh-cw"
-              color="neutral"
-              variant="outline"
-              square
-              :loading="refreshingMatrix"
-              @click="refreshMatrix"
-            />
-          </UTooltip>
         </div>
-
-        <p
-          v-if="visibleResources.length === 0"
-          class="text-sm text-muted py-8 text-center"
+        <div
+          v-else-if="section === 'permissions'"
+          class="flex flex-col gap-3 pt-4"
         >
-          {{ search ? t('users.roleEditor.noMatch', { search }) : t('users.roleEditor.noResources') }}
-        </p>
-        <UTable
-          v-else
-          sticky
-          :data="visibleResources"
-          :columns="MATRIX_COLUMNS"
-        >
-          <template #resource-cell="{ row: { original: resource } }">
-            <div class="flex items-center gap-2">
-              <ResourceTypeIcon :type="resource.type" />
-              <div class="flex flex-col">
-                <span class="font-medium text-highlighted">{{ resource.name }}</span>
-                <span class="text-xs text-muted">{{ resource.schema }}</span>
-              </div>
-            </div>
-          </template>
-          <template
-            v-for="action in ALL_ACTIONS"
-            :key="action"
-            #[`${action}-cell`]="{ row: { original: resource } }"
-          >
-            <button
-              v-if="isApplicable(resource.type, action)"
-              type="button"
-              class="inline-flex items-center justify-center"
-              :aria-label="t('users.roleEditor.cellLabel', { action, name: resource.name })"
-              @click="openCell(resource, action)"
-            >
-              <UBadge
-                v-if="grantFor(resource.id, action)"
-                :color="grantFor(resource.id, action)!.effect === 'ALLOW' ? 'success' : 'error'"
-                variant="subtle"
-                size="sm"
-                class="cursor-pointer"
-                :trailing-icon="grantFor(resource.id, action)!.whereClause ? 'i-lucide-filter' : undefined"
-              >
-                {{ grantFor(resource.id, action)!.effect }}
-              </UBadge>
-              <span
-                v-else
-                class="text-muted cursor-pointer"
-              >—</span>
-            </button>
-            <span
-              v-else
-              class="text-dimmed"
-            >·</span>
-          </template>
-          <template #actions-cell="{ row: { original: resource } }">
+          <div class="flex items-center gap-3">
+            <div class="flex-1" />
+            <UButton
+              :label="t('users.copyPermissions.action')"
+              icon="i-lucide-copy"
+              color="neutral"
+              variant="outline"
+              @click="copyOpen = true"
+            />
             <UPopover
-              :open="rowActionsOpenFor === resource.id"
-              :content="{ align: 'end' }"
-              @update:open="(open: boolean) => setRowActionsOpen(resource.id, open)"
+              v-if="schema === 'totalbase'"
+              v-model:open="isApplyDefaultsPopoverOpen"
             >
               <UButton
-                icon="i-lucide-ellipsis-vertical"
+                :label="t('users.roleEditor.applyDefaults')"
+                icon="i-lucide-shield-check"
                 color="neutral"
-                variant="ghost"
-                size="xs"
-                :aria-label="t('users.roleEditor.rowActions', { name: resource.name })"
-                :loading="runningRowActionFor === resource.id"
+                variant="outline"
+                :loading="applyingDefaults"
               />
               <template #content>
-                <div
-                  v-if="!pendingRowAction"
-                  class="flex w-52 flex-col p-1"
-                >
-                  <UButton
-                    v-for="rowAction in rowActionItems(resource)"
-                    :key="rowAction.kind"
-                    :icon="rowAction.icon"
-                    :label="rowAction.label"
-                    :color="rowAction.kind === 'clearAll' ? 'error' : 'neutral'"
-                    variant="ghost"
-                    size="sm"
-                    class="justify-start"
-                    :disabled="rowAction.disabled"
-                    @click="pendingRowAction = rowAction.kind"
-                  />
-                </div>
-                <div
-                  v-else
-                  class="flex w-72 flex-col gap-3 p-3"
-                >
+                <div class="flex flex-col gap-2 p-3 w-72">
                   <p class="text-sm">
-                    {{ rowActionDescription(resource, pendingRowAction) }}
+                    {{ t('users.roleEditor.applyDefaultsHelp') }}
                   </p>
-                  <div class="flex justify-end gap-2">
-                    <UButton
-                      :label="t('common.back')"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      :disabled="runningRowActionFor === resource.id"
-                      @click="pendingRowAction = null"
-                    />
-                    <UButton
-                      :label="t('common.confirm')"
-                      :color="pendingRowAction === 'clearAll' ? 'error' : 'primary'"
-                      size="sm"
-                      :loading="runningRowActionFor === resource.id"
-                      @click="runRowAction(resource, pendingRowAction)"
-                    />
-                  </div>
+                  <UButton
+                    :label="t('common.apply')"
+                    color="primary"
+                    size="sm"
+                    :loading="applyingDefaults"
+                    @click="applyDefaults"
+                  />
                 </div>
               </template>
             </UPopover>
-          </template>
-        </UTable>
-      </div>
-
-      <RoleAccessReviews
-        v-else-if="section === 'reviews'"
-        :role-id="roleId"
-        :reminder="(role.reserved && role.adminAccess && !isWorkflowsRole(role)) || role.reviewRequired === true"
-      />
-      <!-- General: the role's own fields (RoleForm.vue), Save at the end as on a settings page. -->
-      <div
-        v-else-if="section === 'general'"
-        class="mx-auto flex w-full max-w-3xl flex-col gap-8"
-      >
-        <SettingsSection :title="t('users.roleEditor.tabs.general')">
-          <RoleForm
-            ref="settingsForm"
-            mode="edit"
-            :role="role"
-            @saved="onRoleSaved"
-          />
-          <div class="flex justify-end">
-            <UButton
-              :label="t('common.save')"
-              :loading="settingsForm?.saving"
-              :disabled="role.reserved"
-              @click="settingsForm?.submit()"
+            <USelect
+              v-model="schema"
+              :items="schemaOptions"
+              value-key="value"
+              :icon="schema === 'totalbase' ? 'i-lucide-shield-alert' : 'i-lucide-folder'"
+              :aria-label="t('users.roleEditor.schema')"
+              class="w-44"
             />
+            <UInput
+              v-model="search"
+              :aria-label="t('users.roleEditor.filterResources')"
+              icon="i-lucide-search"
+              :placeholder="t('users.roleEditor.filterResources')"
+              class="w-full sm:w-64"
+            />
+            <UTooltip :text="t('common.refresh')">
+              <UButton
+                :aria-label="t('common.refresh')"
+                icon="i-lucide-refresh-cw"
+                color="neutral"
+                variant="outline"
+                square
+                :loading="refreshingMatrix"
+                @click="refreshMatrix"
+              />
+            </UTooltip>
           </div>
-        </SettingsSection>
-      </div>
-      <template v-else>
-        <div
-          v-if="!role.adminAccess"
-          class="mx-auto w-full max-w-3xl"
-        >
-          <RoleManagersField :role-id="roleId" />
-          <RoleIncompatibleField :role-id="roleId" />
+
+          <p
+            v-if="visibleResources.length === 0"
+            class="text-sm text-muted py-8 text-center"
+          >
+            {{ search ? t('users.roleEditor.noMatch', { search }) : t('users.roleEditor.noResources') }}
+          </p>
+          <UTable
+            v-else
+            sticky
+            :data="visibleResources"
+            :columns="MATRIX_COLUMNS"
+          >
+            <template #resource-cell="{ row: { original: resource } }">
+              <div class="flex items-center gap-2">
+                <ResourceTypeIcon :type="resource.type" />
+                <div class="flex flex-col">
+                  <span class="font-medium text-highlighted">{{ resource.name }}</span>
+                  <span class="text-xs text-muted">{{ resource.schema }}</span>
+                </div>
+              </div>
+            </template>
+            <template
+              v-for="action in ALL_ACTIONS"
+              :key="action"
+              #[`${action}-cell`]="{ row: { original: resource } }"
+            >
+              <button
+                v-if="isApplicable(resource.type, action)"
+                type="button"
+                class="inline-flex items-center justify-center"
+                :aria-label="t('users.roleEditor.cellLabel', { action, name: resource.name })"
+                @click="openCell(resource, action)"
+              >
+                <UBadge
+                  v-if="grantFor(resource.id, action)"
+                  :color="grantFor(resource.id, action)!.effect === 'ALLOW' ? 'success' : 'error'"
+                  variant="subtle"
+                  size="sm"
+                  class="cursor-pointer"
+                  :trailing-icon="grantFor(resource.id, action)!.whereClause ? 'i-lucide-filter' : undefined"
+                >
+                  {{ grantFor(resource.id, action)!.effect }}
+                </UBadge>
+                <span
+                  v-else
+                  class="text-muted cursor-pointer"
+                >—</span>
+              </button>
+              <span
+                v-else
+                class="text-dimmed"
+              >·</span>
+            </template>
+            <template #actions-cell="{ row: { original: resource } }">
+              <UPopover
+                :open="rowActionsOpenFor === resource.id"
+                :content="{ align: 'end' }"
+                @update:open="(open: boolean) => setRowActionsOpen(resource.id, open)"
+              >
+                <UButton
+                  icon="i-lucide-ellipsis-vertical"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :aria-label="t('users.roleEditor.rowActions', { name: resource.name })"
+                  :loading="runningRowActionFor === resource.id"
+                />
+                <template #content>
+                  <div
+                    v-if="!pendingRowAction"
+                    class="flex w-52 flex-col p-1"
+                  >
+                    <UButton
+                      v-for="rowAction in rowActionItems(resource)"
+                      :key="rowAction.kind"
+                      :icon="rowAction.icon"
+                      :label="rowAction.label"
+                      :color="rowAction.kind === 'clearAll' ? 'error' : 'neutral'"
+                      variant="ghost"
+                      size="sm"
+                      class="justify-start"
+                      :disabled="rowAction.disabled"
+                      @click="pendingRowAction = rowAction.kind"
+                    />
+                  </div>
+                  <div
+                    v-else
+                    class="flex w-72 flex-col gap-3 p-3"
+                  >
+                    <p class="text-sm">
+                      {{ rowActionDescription(resource, pendingRowAction) }}
+                    </p>
+                    <div class="flex justify-end gap-2">
+                      <UButton
+                        :label="t('common.back')"
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        :disabled="runningRowActionFor === resource.id"
+                        @click="pendingRowAction = null"
+                      />
+                      <UButton
+                        :label="t('common.confirm')"
+                        :color="pendingRowAction === 'clearAll' ? 'error' : 'primary'"
+                        size="sm"
+                        :loading="runningRowActionFor === resource.id"
+                        @click="runRowAction(resource, pendingRowAction)"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </UPopover>
+            </template>
+          </UTable>
         </div>
-        <RoleUsersPanel
+
+        <RoleAccessReviews
+          v-else-if="section === 'reviews'"
           :role-id="roleId"
-          :role-name="role.name"
-          :admin-role="role.reserved && role.adminAccess && !isWorkflowsRole(role)"
-          :locked="isWorkflowsRole(role)"
+          :reminder="(role.reserved && role.adminAccess && !isWorkflowsRole(role)) || role.reviewRequired === true"
         />
-      </template>
+      </PageShell>
+      <!-- General: the role's own fields (RoleForm.vue) and its membership rules, saved from the header. Kept
+      mounted while another section shows, so an edit survives a look at Members. -->
+      <!-- v-show on an element: PageShell's root isn't one. -->
+      <div
+        v-show="section === 'general'"
+        class="flex min-h-0 flex-1 flex-col"
+      >
+        <PageShell>
+          <div class="mx-auto w-full max-w-3xl">
+            <RoleForm
+              ref="settingsForm"
+              mode="edit"
+              :role="role"
+              sectioned
+              @saved="onRoleSaved"
+            >
+              <template #relations>
+                <RoleManagersField v-model="draftManagers" />
+                <RoleIncompatibleField
+                  v-model="draftIncompatible"
+                  :role-id="roleId"
+                />
+              </template>
+            </RoleForm>
+          </div>
+        </PageShell>
+      </div>
     </template>
     <UEmpty
       v-else-if="rolePending"
@@ -593,6 +698,13 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
       size="sm"
     />
 
+    <CopyRolePermissionsModal
+      v-if="role && !role.adminAccess"
+      v-model:open="copyOpen"
+      :role-id="roleId"
+      :own-count="grants.length"
+      @copied="refreshGrants"
+    />
     <RolePermissionEditor
       ref="editor"
       :role-id="roleId"
@@ -633,6 +745,27 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
               @click="deleteRole"
             />
           </div>
+        </div>
+      </template>
+    </UModal>
+    <UModal
+      v-model:open="leaveOpen"
+      :title="t('users.userEditor.leave.title')"
+      :description="t('users.userEditor.leave.description')"
+    >
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            :label="t('users.userEditor.leave.keep')"
+            color="neutral"
+            variant="ghost"
+            @click="leaveOpen = false"
+          />
+          <UButton
+            :label="t('users.userEditor.leave.discard')"
+            color="error"
+            @click="discardAndLeave"
+          />
         </div>
       </template>
     </UModal>

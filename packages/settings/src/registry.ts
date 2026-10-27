@@ -214,6 +214,11 @@ export interface SettingsRegistry {
   "mcp.rate_limit_per_minute": number;
   "mcp.allowed_hosts": string[];
 
+  // Realtime subscriptions (Data_API.md §16): the /api/realtime WebSocket.
+  "realtime.enabled": boolean;
+  "realtime.max_subscriptions": number;
+  "realtime.heartbeat_seconds": number;
+
   "sql_console.enabled": boolean;
   // Raw SQL through a personal access token (the MCP server's agent, a
   // script) - off by default, changed from a signed-in session only.
@@ -545,6 +550,10 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "mcp.rate_limit_per_minute": 600,
   "mcp.allowed_hosts": [],
 
+  "realtime.enabled": false,
+  "realtime.max_subscriptions": 50,
+  "realtime.heartbeat_seconds": 30,
+
   "sql_console.enabled": true,
   "sql_console.token_access": false,
   "sql_console.max_rows": 1_000,
@@ -635,6 +644,8 @@ export interface SettingBounds {
 export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api.default_limit": { min: 1 },
   "api.max_limit": { min: 1 },
+  "realtime.max_subscriptions": { min: 1, max: 1_000 },
+  "realtime.heartbeat_seconds": { min: 5, max: 3_600 },
   "api.max_relation_depth": { min: 1 },
   "api.max_filter_depth": { min: 1 },
   "api.bulk_max_items": { min: 1 },

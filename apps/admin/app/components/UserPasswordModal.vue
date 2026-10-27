@@ -31,13 +31,8 @@ const toast = useToast()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 
-const { data: authSettings } = useAsyncData(
-  'users-auth-settings',
-  () => props.account
-    ? Promise.resolve<Record<string, unknown>>({})
-    : api.get<Record<string, unknown>>('/settings/auth').then(r => r.data),
-  { default: (): Record<string, unknown> => ({}) }
-)
+// My account takes the minimum as a prop (an app user can't read /admin/api/settings).
+const authSettings = props.account ? ref<Record<string, unknown>>({}) : useAuthSettings().data
 const minLength = computed(() => {
   if (props.minLength !== undefined) return props.minLength
   const value = authSettings.value?.['auth.password_min_length']

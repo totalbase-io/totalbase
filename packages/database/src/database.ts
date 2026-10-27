@@ -4,6 +4,7 @@ import type { DatabaseConfig } from "./config.js";
 import type { DatabaseTransactionContext } from "./transaction-context.js";
 import type { PostgresNotice } from "./notices.js";
 import { listen, type ListenHandlers, type Subscription } from "./listener.js";
+import { replicate, type ReplicationHandlers, type ReplicationOptions } from "./replication.js";
 
 const { Pool } = pg;
 
@@ -254,6 +255,19 @@ export class Database implements Queryable {
   /** `LISTEN` on `channel` over a connection of its own (listener.ts); ended by `close()` too. */
   async listen(channel: string, handlers: ListenHandlers): Promise<Subscription> {
     const subscription = await listen(this.config, channel, handlers);
+    const tracked: Subscription = {
+      close: async () => {
+        this.subscriptions.delete(tracked);
+        await subscription.close();
+      },
+    };
+    this.subscriptions.add(tracked);
+    return tracked;
+  }
+
+  /** Logical replication of `options.publication` on a temporary slot of its own (replication.ts); ended by `close()` too. */
+  async replicate(options: ReplicationOptions, handlers: ReplicationHandlers): Promise<Subscription> {
+    const subscription = await replicate(this.config, options, handlers);
     const tracked: Subscription = {
       close: async () => {
         this.subscriptions.delete(tracked);

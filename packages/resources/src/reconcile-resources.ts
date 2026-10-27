@@ -1,6 +1,7 @@
 import { relationDetailCache, resourceFunctionSql, resourceRelationSql, type CatalogObject } from "@totalbase/pg-catalog";
 import { isExposureFixed } from "@totalbase/shared";
 import type { Database, Queryable } from "@totalbase/database";
+import { syncRealtimePublication } from "./realtime-publication.js";
 
 export interface ReconcileResourcesResult {
   discovered: number;
@@ -122,6 +123,16 @@ export async function reconcileResources(
 
     const missing = await markMissing(client, oids);
     const purged = await purgeMissing(client);
+
+    // REALTIME off a table that lost what it needs (dropped, its primary key gone), and the publication in
+    // step (Data_API.md §16.2). A failure here never fails the reconcile: the next one tries again.
+    await client.query("SAVEPOINT realtime_publication");
+    try {
+      await syncRealtimePublication(client);
+      await client.query("RELEASE SAVEPOINT realtime_publication");
+    } catch {
+      await client.query("ROLLBACK TO SAVEPOINT realtime_publication");
+    }
 
     // A reconcile is how DDL reaches TotalBase - the schema editor's own,
     // the catalog watch's and the scheduled sync's: what was introspected

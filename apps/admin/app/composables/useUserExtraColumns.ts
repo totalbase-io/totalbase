@@ -137,6 +137,15 @@ export function useUserExtraColumns() {
   return { load, loadInvitable, write }
 }
 
+/**
+ * The project's columns on users, loaded once under one key for every Users screen that shows them
+ * (the list, a user's page, Create) - one handler, so Nuxt shares the result instead of warning.
+ */
+export function useUserExtraColumnsData() {
+  const { load } = useUserExtraColumns()
+  return useAsyncData('user-extra-columns', () => load(), { default: (): UserExtraColumn[] => [] })
+}
+
 function kindOf(dataType: string): UserExtraColumn['kind'] {
   if (dataType === 'boolean') return 'boolean'
   if (/^(smallint|integer|bigint|numeric|real|double precision)/.test(dataType)) return 'number'

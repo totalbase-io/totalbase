@@ -56,6 +56,19 @@ export function registerAdminRolesRoutes(app: FastifyInstance, context: AppConte
   );
 
   // Incompatible roles (Security.md §1.9): pairs no user may hold together - whoever operates doesn't audit.
+  app.get(
+    "/admin/api/roles/incompatibilities",
+    {
+      preHandler,
+      ...adminDoc("roles", {
+        summary: "Every pair of incompatible roles",
+        description: "Each pair once, in either order - what a user's Roles tab checks before Save.",
+        response: ok(arrayOf(object({ role: { type: "string", format: "uuid" }, other: { type: "string", format: "uuid" } }, ["role", "other"]))),
+      }),
+    },
+    async () => ({ data: await context.roles.listIncompatibilities() }),
+  );
+
   app.get<{ Params: { id: string } }>(
     "/admin/api/roles/:id/incompatible",
     {

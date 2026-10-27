@@ -116,9 +116,9 @@ Either way the result is the same: ordinary PostgreSQL tables and objects you op
 
 ## Status
 
-**Beta** (`0.1.0-beta.6`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
+**Beta** (`0.1.0-beta.7`). TotalBase runs and is tested on PostgreSQL 15 to 18, and its data model is final from this release on: a beta database upgrades in place. APIs may still change before 1.0, and every change is in the [release notes](https://github.com/totalbase-io/totalbase/releases).
 
-The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.6` pins this version.
+The image is `totalbase/totalbase` on [Docker Hub](https://hub.docker.com/r/totalbase/totalbase), for amd64 and arm64: `:beta` follows the beta, `:0.1.0-beta.7` pins this version.
 
 ## Requirements
 

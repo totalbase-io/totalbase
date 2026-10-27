@@ -42,7 +42,7 @@ export const QUERY_STRING_PAIR_LIMIT = 1000;
 export const QUERY_STRING_DEPTH_LIMIT = 64;
 
 /**
- * The query string parser (server.ts's `querystringParser`): PHP-style bracket nesting for the
+ * The query string parser (server.ts's `routerOptions.querystringParser`): PHP-style bracket nesting for the
  * query language (`where[price][_gt]=100`). qs's own defaults reshape a query instead of refusing
  * it - a 21st array item turns the array into an object keyed "0".."20", a sixth bracket level
  * becomes a literal key - so a valid-looking `where[_or]` failed as unknown field names. Here its
@@ -222,8 +222,7 @@ export function registerHardeningHooks(
     if (request.method === "OPTIONS") {
       reply.header("access-control-allow-methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS");
       reply.header("access-control-allow-headers", CORS_ALLOWED_HEADERS);
-      reply.code(204).send();
-      return;
+      return reply.code(204).send();
     }
 
     // --- CSRF (Security.md §2.18) ---
@@ -298,6 +297,8 @@ export function registerHardeningHooks(
   // Administration.md).
   app.addHook("preParsing", async (request, _reply, payload) => {
     if (request.headers["content-type"]?.toLowerCase().startsWith("multipart/")) return payload;
+    // A WebSocket upgrade (/api/realtime) has no body: @fastify/websocket hands no stream to count.
+    if (typeof (payload as { pipe?: unknown } | undefined)?.pipe !== "function") return payload;
     const limit = await settings.get("api.max_body_bytes");
     const declared = Number(request.headers["content-length"]);
     if (Number.isFinite(declared) && declared > limit) throw bodyTooLarge();

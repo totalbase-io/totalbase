@@ -60,7 +60,7 @@ export function toColumnDefinition(column: z.infer<typeof columnSchema>) {
   };
 }
 
-export const EXPOSE_METHODS = ["GET", "POST", "PATCH", "DELETE"] as const;
+export const EXPOSE_METHODS = ["GET", "POST", "PATCH", "DELETE", "REALTIME"] as const;
 
 /**
  * MCP tool annotations - what a client reads to decide which calls it may

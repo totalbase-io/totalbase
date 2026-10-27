@@ -1,5 +1,6 @@
 import { parseFilter } from "@totalbase/query-engine";
 import { fixedExposure } from "./reconcile-resources.js";
+import { SINGLE_COLUMN_KEY_SQL, syncRealtimePublication } from "./realtime-publication.js";
 import type { Database } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { getRelationDetail } from "@totalbase/pg-catalog";
@@ -41,11 +42,14 @@ export function validateDefaultSort(input: unknown, columns: readonly string[]):
   });
 }
 
-export type DataApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type DataApiMethod = "GET" | "POST" | "PATCH" | "DELETE" | "REALTIME";
 
-/** Verbs the Data API generates per resource type (Foundations.md §5, §12) - the ceiling `exposed_methods` can select from. */
+/**
+ * What the Data API offers per resource type (Foundations.md §11.5) - the ceiling `exposed_methods` can select
+ * from: the HTTP verbs, and a table's realtime subscriptions (`REALTIME`, Data_API.md §16).
+ */
 export const APPLICABLE_METHODS: Record<"TABLE" | "VIEW" | "FUNCTION", DataApiMethod[]> = {
-  TABLE: ["GET", "POST", "PATCH", "DELETE"],
+  TABLE: ["GET", "POST", "PATCH", "DELETE", "REALTIME"],
   VIEW: ["GET"],
   FUNCTION: ["POST"],
 };
@@ -551,31 +555,47 @@ export class ResourcesAdminService {
       }
     }
 
+    const realtimeChanges = exposedMethods !== undefined && exposedMethods.includes("REALTIME") !== existing.exposedMethods.includes("REALTIME");
+    // Subscribing is reading, and a change names its rows by a single-column primary key (Data_API.md §16.2).
+    if (exposedMethods?.includes("REALTIME") && !exposedMethods.includes("GET")) {
+      throw new TotalBaseError("INVALID_QUERY", "REALTIME needs GET: subscribing to a table is reading it.");
+    }
+    if (exposedMethods?.includes("REALTIME") && realtimeChanges) {
+      if (existing.status !== "ACTIVE") throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource is missing from PostgreSQL: ${existing.schema}.${existing.name}`);
+      const { rows } = await this.database.query<{ keyed: boolean }>(`SELECT ${SINGLE_COLUMN_KEY_SQL("$1::oid")} AS keyed`, [existing.postgresOid]);
+      if (!rows[0]?.keyed) throw new TotalBaseError("INVALID_QUERY", "REALTIME needs a single-column primary key: a change names its rows by it.");
+    }
+
     if (input.requireIdempotencyKey === true && existing.type === "VIEW") {
       throw new TotalBaseError("INVALID_QUERY", "requireIdempotencyKey only applies to TABLE and FUNCTION resources - a view has no write.");
     }
 
     const descriptionProvided = input.description !== undefined;
 
-    await this.database.query(
-      `UPDATE totalbase.resources
-       SET exposed_methods = coalesce($2, exposed_methods),
-           function_class = coalesce($3, function_class),
-           audit_read = coalesce($4, audit_read),
-           description = CASE WHEN $5 THEN $6 ELSE description END,
-           require_idempotency_key = coalesce($7, require_idempotency_key),
-           updated_at = now()
-       WHERE id = $1`,
-      [
-        id,
-        exposedMethods ?? null,
-        input.functionClass ?? null,
-        input.auditRead ?? null,
-        descriptionProvided,
-        input.description ?? null,
-        input.requireIdempotencyKey ?? null,
-      ],
-    );
+    await this.database.transaction(async (client) => {
+      await client.query(
+        `UPDATE totalbase.resources
+         SET exposed_methods = coalesce($2, exposed_methods),
+             function_class = coalesce($3, function_class),
+             audit_read = coalesce($4, audit_read),
+             description = CASE WHEN $5 THEN $6 ELSE description END,
+             require_idempotency_key = coalesce($7, require_idempotency_key),
+             updated_at = now()
+         WHERE id = $1`,
+        [
+          id,
+          exposedMethods ?? null,
+          input.functionClass ?? null,
+          input.auditRead ?? null,
+          descriptionProvided,
+          input.description ?? null,
+          input.requireIdempotencyKey ?? null,
+        ],
+      );
+      // The publication follows REALTIME in the same transaction: PostgreSQL refusing the table (the role
+      // doesn't own it) leaves the exposure as it was.
+      if (realtimeChanges) await syncRealtimePublication(client);
+    });
 
     return this.get(id);
   }

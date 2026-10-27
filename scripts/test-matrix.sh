@@ -11,7 +11,8 @@
 # POSTGRES_HOST (or TOTALBASE_TEST_PG_HOST). A server without the test database (TOTALBASE_TEST_DB) gets it,
 # owned by POSTGRES_USER, created as POSTGRES_SUPERUSER (default postgres) with POSTGRES_SUPERUSER_PASSWORD.
 # POSTGRES_USER needs CREATEDB and CREATEROLE (never superuser): the schema-ownership and object-ownership
-# tests create databases and roles. CI's role is the image's superuser, so this matrix is the stricter of the two.
+# tests create databases and roles - and REPLICATION, with each server started with wal_level=logical: the realtime
+# tests replicate (Data_API.md §16.1). CI's role is the image's superuser, so this matrix is the stricter of the two.
 # Each major's output goes to $TMPDIR/totalbase-test-matrix/pg<major>.log; the summary is printed at the end.
 set -euo pipefail
 cd "$(dirname "$0")/.."

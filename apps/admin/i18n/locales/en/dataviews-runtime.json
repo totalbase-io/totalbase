@@ -459,10 +459,6 @@
       "addChild": "Add under {name}",
       "actions": "Actions for {name}",
       "moveError": "Could not move the row",
-      "zoomOut": "Zoom out",
-      "zoomIn": "Zoom in",
-      "zoomReset": "Actual size",
-      "fitWidth": "Fit to width",
       "cantMoveUnder": "“{name}” can't go under “{target}” - it is below “{name}”."
     },
     "appHome": {

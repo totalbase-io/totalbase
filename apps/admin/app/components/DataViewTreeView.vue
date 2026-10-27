@@ -8,18 +8,14 @@
  */
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreeMove, TreeNode } from './TreeView.vue'
+import type { OrgChartItem } from './OrgChartNode.vue'
 import type { DataViewField, TreeDisplay, TreeLayoutConfig } from '~/types/dataview'
 import { isValidColorValue, roleColorShade } from '~/types/permission'
 import { cappedNotice } from '~/utils/dataview-columns'
 
-export interface TreeItem {
+/** A row as a node - its title, description, icon, color and image from the view's formulas (null image: no image formula). */
+export interface TreeItem extends OrgChartItem {
   row: Record<string, unknown>
-  title: string
-  description: string
-  icon: string | null
-  color: string | null
-  /** null: no image formula; '' while it loads or when the row has none - the avatar shows its initials. */
-  image: string | null
   /** Its children's count - also shown collapsed. */
   count: number
 }
@@ -359,13 +355,14 @@ const capped = computed(() => cappedNotice(props.total, props.limit, t('dataview
         </UDropdownMenu>
       </template>
     </TreeView>
-    <DataViewTreeOrgChart
+    <OrgChart
       v-else
       v-model:collapsed="collapsed"
       :nodes="nodes"
-      :can-create="canCreate"
+      :label="t('dataviews.treeView.label')"
+      :add-label="canCreate ? (node: TreeNode<TreeItem>) => t('dataviews.treeView.addChild', { name: node.data.title }) : undefined"
       :swatch="swatch"
-      @edit="emit('edit', $event)"
+      @open="(node: TreeNode<TreeItem>) => emit('edit', node.data.row)"
       @add-child="addChild"
     />
   </div>

@@ -88,7 +88,7 @@ watch(total, (count) => {
 })
 
 // --- The columns the project added to users: a column each, and a Filter by those with options. ---
-const { data: extraColumns } = useAsyncData('user-extra-columns', () => useUserExtraColumns().load(), { default: () => [] })
+const { data: extraColumns } = useUserExtraColumnsData()
 const filterColumns = computed(() => extraColumns.value.filter(c => c.kind === 'options' && (c.options?.length ?? 0) > 0))
 const extraKey = (column: string) => `extra[${column}]`
 /** An option's label - a foreign key's row by its presentation, a CHECK value's label; '' is no value. */

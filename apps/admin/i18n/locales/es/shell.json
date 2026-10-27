@@ -79,7 +79,13 @@
     "replace": "Reemplazar",
     "helpFor": "Ayuda: {label}",
     "publishAs": "¿Publicar como v{version}?",
-    "direction": "Dirección"
+    "direction": "Dirección",
+    "orgChart": {
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "zoomReset": "Tamaño real",
+      "fitWidth": "Ajustar al ancho"
+    }
   },
   "errors": {
     "unknown": "Algo salió mal.",
@@ -362,6 +368,7 @@
         "endpoints": "Endpoints",
         "openapi": "OpenAPI",
         "mcp": "MCP",
+        "realtime": "Realtime",
         "general": "General",
         "connector": "Conector",
         "maintenance": "Mantenimiento",

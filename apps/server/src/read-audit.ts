@@ -33,25 +33,36 @@ export interface ReadAuditDetail {
   pk?: string | undefined;
 }
 
+/** Where a read comes from, for its audit row - an HTTP request's, or whatever reads without one. */
+export interface ReadOrigin {
+  requestId: string;
+  ip?: string | undefined;
+  userAgent?: string | undefined;
+}
+
+export function readOrigin(request: FastifyRequest): ReadOrigin {
+  return { requestId: request.id, ip: request.ip, userAgent: request.headers["user-agent"] };
+}
+
 export class ReadAudit {
   private readonly startedAt = new Date();
 
   constructor(
     private readonly context: AppContext,
-    private readonly request: FastifyRequest,
+    private readonly origin: ReadOrigin,
     private readonly resource: ResolvedApiResource,
     private readonly dataPrincipal: DataPrincipal,
   ) {}
 
   private base(detail: ReadAuditDetail) {
     return {
-      requestId: this.request.id,
+      requestId: this.origin.requestId,
       principal: this.dataPrincipal.principal,
       resourceId: this.resource.id,
       action: "READ" as const,
       source: "api",
-      ip: this.request.ip,
-      userAgent: this.request.headers["user-agent"],
+      ip: this.origin.ip,
+      userAgent: this.origin.userAgent,
       fields: detail.fields?.map((field) => field.path.join(".")),
       whereClause: detail.where,
       startedAt: this.startedAt,

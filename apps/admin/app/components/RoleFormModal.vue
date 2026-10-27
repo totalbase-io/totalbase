@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// New role (RolesTree.vue) and, for a delegated manager, Details… (RoleDelegatedEditor.vue): RoleForm.vue in a
+// New role (RolesTree.vue, a role's Hierarchy "+") and, for a delegated manager, Details… (RoleDelegatedEditor.vue): RoleForm.vue in a
 // modal. An administrator edits a role in its Settings tab instead (RoleAdminEditor.vue).
 import type { Role } from '~/types/permission'
 import type RoleForm from '~/components/RoleForm.vue'
@@ -7,6 +7,8 @@ import type RoleForm from '~/components/RoleForm.vue'
 const props = defineProps<{
   mode: 'create' | 'edit'
   role?: Role | null
+  /** Create: the parent it starts under. */
+  initialParent?: string
 }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [Role] }>()
@@ -35,6 +37,7 @@ function onSaved(role: Role) {
         ref="form"
         :mode="mode"
         :role="props.role"
+        :initial-parent="props.initialParent"
         @saved="onSaved"
       />
     </template>

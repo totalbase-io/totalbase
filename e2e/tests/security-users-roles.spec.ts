@@ -148,7 +148,7 @@ test.describe('a site manager runs their own branch of roles', () => {
     const form = page.getByRole('dialog', { name: 'New role' })
     await form.getByLabel('Name').fill(`${P}-night-operators-a`)
     // A manager's new role goes under the role they manage from.
-    await expect(form.getByText(`${P}-site-a-managers`)).toBeVisible()
+    await expect(form.getByRole('button', { name: 'Parent role' })).toContainText(`${P}-site-a-managers`)
     await form.getByRole('button', { name: /create|save/i }).click()
     await page.waitForURL(/\/roles\/[0-9a-f-]{36}$/)
     const operatorRole = page.url().split('/').pop()!
@@ -197,11 +197,12 @@ test.describe('a site manager runs their own branch of roles', () => {
     await api('PUT', `/admin/api/users/${operatorId}/roles`, { data: { roleIds: [clerk] } })
     await expect(api('PUT', `/admin/api/users/${operatorId}/roles`, { data: { roleIds: [clerk, auditor] } })).rejects.toThrow(/can't be held together/)
 
-    // In the admin: the clerks' Members tab shows the pair, and the operator's role ending tomorrow.
+    // In the admin: the clerks' General shows the pair, their Members the operator's role ending tomorrow.
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString()
     await api('PUT', `/admin/api/users/${operatorId}/roles/${clerk}/expiry`, { data: { expiresAt: tomorrow } })
-    await adminPage.goto(`/roles/${clerk}?section=users`)
+    await adminPage.goto(`/roles/${clerk}`)
     await expect(adminPage.getByRole('button', { name: 'Can\'t be held with' })).toContainText(`${P}-auditors`)
-    await expect(adminPage.getByRole('button', { name: 'When operator-a\'s role ends' })).toContainText('Ends')
+    await adminPage.goto(`/roles/${clerk}?section=users`)
+    await expect(adminPage.getByText(/^Ends /)).toBeVisible()
   })
 })

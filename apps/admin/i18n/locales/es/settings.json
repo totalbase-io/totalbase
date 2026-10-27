@@ -474,6 +474,10 @@
         "backups": {
           "label": "Backups",
           "description": "Backups programados de la base de datos y de los archivos guardados, en el disco local o en el almacenamiento S3. Nunca contienen la clave maestra - guárdala aparte."
+        },
+        "realtime": {
+          "label": "Realtime",
+          "description": "Suscripciones en tiempo real: los clientes siguen los cambios de las tablas que exponen Realtime por un único WebSocket, /api/realtime, y reciben solo lo que su permiso READ permite."
         }
       },
       "sections": {
@@ -531,7 +535,8 @@
         "events": "eventos",
         "bars": "barras",
         "failures": "fallos",
-        "workflows": "workflows"
+        "workflows": "workflows",
+        "subscriptions": "suscripciones"
       },
       "keys": {
         "api__default_limit": {
@@ -1439,6 +1444,18 @@
         "backups__include_files": {
           "label": "Incluir los archivos guardados",
           "description": "Los archivos que Files guarda en el disco local entran en cada backup. Los guardados en el almacenamiento S3 nunca - respalda el bucket con el versionado o la replicación del propio servicio."
+        },
+        "realtime__enabled": {
+          "label": "Habilitar Realtime",
+          "description": "Sirve /api/realtime. Necesita la replicación lógica de PostgreSQL: wal_level = logical y el atributo REPLICATION en el rol de TotalBase. Apagado: el endpoint no responde; las tablas conservan su exposición Realtime."
+        },
+        "realtime__max_subscriptions": {
+          "label": "Suscripciones por conexión",
+          "description": "La mayor cantidad de suscripciones que mantiene un WebSocket a la vez."
+        },
+        "realtime__heartbeat_seconds": {
+          "label": "Heartbeat",
+          "description": "Cada cuánto el servidor hace ping a cada conexión; la que no responde antes del siguiente ping se cierra."
         }
       }
     },
@@ -1569,6 +1586,21 @@
           "rollback": "Vuelve a apuntar TotalBase a la base anterior y devuelve sus archivos:"
         }
       }
+    },
+    "realtime": {
+      "requirements": "Requisitos",
+      "off": "Apagado",
+      "ready": "Listo",
+      "notReady": "No está listo",
+      "walLevel": "Replicación lógica",
+      "walLevelDetail": "wal_level es {value} - tiene que ser logical (cambiarlo reinicia PostgreSQL).",
+      "replication": "REPLICATION en el rol de TotalBase",
+      "replicationDetail": "El rol de POSTGRES_USER lo necesita para abrir un slot de replicación (ALTER ROLE ... REPLICATION, como superusuario).",
+      "createOnDatabase": "CREATE sobre la base",
+      "createOnDatabaseDetail": "Crea la publication totalbase_realtime cuando la primera tabla expone Realtime.",
+      "slots": "Un slot de replicación libre",
+      "slotsDetail": "{used} de {max} en uso (max_replication_slots) - cada proceso del servidor con suscriptores ocupa uno.",
+      "tables": "Ninguna tabla expone Realtime todavía - se activa en los Endpoints de cada tabla. | Una tabla expone Realtime. | {count} tablas exponen Realtime."
     }
   }
 }

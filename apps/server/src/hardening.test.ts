@@ -53,7 +53,7 @@ function sourceOf(values: HardeningSettings): HardeningSettingsSource {
 }
 
 async function buildTestApp(settings: HardeningSettings) {
-  const app = Fastify({ bodyLimit: FASTIFY_BODY_LIMIT_CEILING, querystringParser: parseQueryString });
+  const app = Fastify({ bodyLimit: FASTIFY_BODY_LIMIT_CEILING, routerOptions: { querystringParser: parseQueryString } });
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof TotalBaseError) {
       reply.code(error.httpStatus).send({ errors: [error.toPublicJSON()] });

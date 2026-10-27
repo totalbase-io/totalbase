@@ -111,6 +111,16 @@ export function useRolesApi() {
       })
       return new Map(data.filter(row => row.expires_at).map(row => [row.user, row.expires_at!]))
     },
+    /** When each of a user's assignments ends, by role id (Security.md §1.10) - roles without an expiry are absent. */
+    userExpiries: async (userId: string): Promise<Record<string, string>> => {
+      const { data } = await dataApi.get<Array<{ role: string, expires_at: string | null }>>(assignmentsPath, {
+        'where[user][_eq]': userId,
+        'where[expires_at][_nnull]': true,
+        'fields': 'role,expires_at',
+        'limit': MAX_ROLES
+      })
+      return Object.fromEntries(data.map(row => [row.role, row.expires_at!]))
+    },
     addMember: async (roleId: string, userId: string): Promise<void> => {
       await dataApi.post(assignmentsPath, { data: { role: roleId, user: userId } })
     },

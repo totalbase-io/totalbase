@@ -13,9 +13,9 @@
 #   3. start the server on it, on TOTALBASE_PORT, with a throwaway data directory;
 #   4. raise the two limits a whole suite exceeds from one IP and one admin: security.rate_limit_per_minute (3000)
 #      and auth.max_sessions_per_user (20) - on this instance only, the product's defaults stay;
-#   5. run Playwright (e2e/playwright.config.ts: the v1 files one at a time, the rest in parallel);
+#   5. run Playwright (e2e/playwright.config.ts: the v1 files one at a time, the rest in parallel, then ui-dataviews alone);
 #   6. stop the server, whatever happened. The database stays, to look into a failure; the next run drops it.
-# TOTALBASE_E2E_SKIP_BUILD=1 skips step 1. Playwright's report: e2e/test-results/.
+# TOTALBASE_E2E_SKIP_BUILD=1 skips step 1; TOTALBASE_E2E_PORT runs the instance on another port than TOTALBASE_PORT. Playwright's report: e2e/test-results/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -25,7 +25,9 @@ set +a
 
 DB="${TOTALBASE_E2E_DB:-totalbase_e2e}"
 PG_PORT="${TOTALBASE_E2E_PG_PORT:-5415}"
-PORT="${TOTALBASE_PORT:-3030}"
+# TOTALBASE_E2E_PORT: another port, to run beside a development server on TOTALBASE_PORT.
+PORT="${TOTALBASE_E2E_PORT:-${TOTALBASE_PORT:-3030}}"
+export TOTALBASE_PORT="$PORT"
 BASE_URL="http://localhost:$PORT"
 
 if curl -s -o /dev/null "$BASE_URL/"; then
@@ -77,4 +79,11 @@ BASE_URL="$BASE_URL" node -e '
 '
 
 echo "=== Playwright against $BASE_URL (server log: $LOG)"
+# The whole suite in two passes: the dataviews project alone, after the rest (e2e/playwright.config.ts).
+if [ $# -eq 0 ]; then
+  status=0
+  (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project parallel --project v1) || status=$?
+  (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project dataviews) || status=$?
+  exit "$status"
+fi
 (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test "$@")

@@ -9,10 +9,15 @@ import type { Capability, RoleWrite } from '~/composables/useRolesApi'
 import { ROLE_ACCESS_FLAGS, type RoleAccessFlag, type RoleAccessFlags } from '~/utils/role-access'
 import { useApiErrorMessage } from '~/utils/api-error-message'
 import type { AppMenu, MenuNode, MenuObject } from '~/types/app-menu'
+import SettingsSection from '~/components/SettingsSection.vue'
 
 const props = defineProps<{
   mode: 'create' | 'edit'
   role?: Role | null
+  /** Create: the parent it starts under (a role's Hierarchy "+"). */
+  initialParent?: string
+  /** A role's page (General): its fields, then "Relations with other roles" - each a SettingsSection. */
+  sectioned?: boolean
 }>()
 const emit = defineEmits<{ saved: [Role] }>()
 
@@ -92,16 +97,23 @@ const parentOptions = computed(() => {
     .filter(role => !role.reserved && !role.adminAccess && !below.has(role.id) && (placeable === null || placeable.has(role.id)))
     .map(role => ({ value: role.id, label: role.name }))
 })
+// Creating under a parent: what comes next - it starts empty (nothing is inherited, Security.md §9.5).
+const parentNext = computed(() => {
+  if (props.mode !== 'create' || !parent.value) return undefined
+  const name = (allRoles.value ?? []).find(role => role.id === parent.value)?.name
+  return name ? t('users.roleForm.parentNext', { parent: name }) : undefined
+})
 const canPlace = computed(() => isAdmin.value || (props.mode === 'create' && (session.admin.value?.placeableRoles?.length ?? 0) > 0))
 const capabilitiesLoading = ref(false)
 
-// Only offered on create - an existing role already has its own "Apply
-// Default Permissions" button on the totalbase tab (roles/[id].vue), no
-// need to duplicate the choice here once the role exists. Defaults to on:
-// the common case (any fresh install
-// needs its own end-user-facing app to see assets/mailings/etc. from day
-// one) should be the one less clicking, not the exception.
-const applyTotalbaseDefaults = ref(true)
+// New role asks only what to call it, how it looks and where it sits (its parent: its ceiling, and who manages
+// it); the rest starts at its defaults - App access, no App home, no capabilities - and is set on the role's
+// General, where the page opens next. An administrator's new role also gets the default `totalbase`
+// permissions (its App sees its files, templates...): the common case, removable on its Permissions.
+const full = computed(() => props.mode === 'edit')
+// Relations with other roles: a parent to choose, or (an administrator's edit) Can manage the roles below it and
+// the page's rules. Never for an admin-access role (Administrators, Workflows): it's in no tree, assigns everything.
+const hasRelations = computed(() => props.role?.adminAccess !== true && (canPlace.value || (isAdmin.value && full.value)))
 
 // Reserved role (the Administrators role): the server
 // rejects any update to it outright (RolesService.update()'s
@@ -139,14 +151,13 @@ function seed() {
     color.value = undefined
     flags.value = { ...DEFAULT_FLAGS }
     home.value = undefined
-    applyTotalbaseDefaults.value = true
     grants.value = noGrants()
     allowed.value = notAllowed()
     reviewRequired.value = false
-    // A manager's new role goes under the role they manage from.
-    parent.value = isAdmin.value ? undefined : session.admin.value?.placeableRoles?.[0]
+    // Under the role asked for; else a manager's new role goes under the role they manage from.
+    parent.value = props.initialParent ?? (isAdmin.value ? undefined : session.admin.value?.placeableRoles?.[0])
   }
-  void loadHomeOptions()
+  if (full.value) void loadHomeOptions()
 }
 seed()
 watch(() => props.role, seed)
@@ -182,23 +193,36 @@ async function save(values: RoleWrite): Promise<Role> {
   return Object.keys(changed).length > 0 ? rolesApi.update(role.id, changed) : role
 }
 
-async function submit() {
+/** The draft as the role write's columns. */
+function draftBody() {
+  return {
+    name: name.value.trim(),
+    description: description.value.trim() || null,
+    icon: icon.value ?? null,
+    color: color.value ?? null,
+    // adminAccess is never sent - the server rejects it on any request.
+    appAccess: flags.value.appAccess,
+    apiAccess: flags.value.apiAccess,
+    homeDataview: home.value?.startsWith('DATAVIEW:') ? home.value.slice('DATAVIEW:'.length) : null,
+    homeDashboard: home.value?.startsWith('DASHBOARD:') ? home.value.slice('DASHBOARD:'.length) : null,
+    parent: parent.value ?? null,
+    reviewRequired: reviewRequired.value
+  }
+}
+/** Edit: the draft differs from the role (or a capability from its grant) - the page header's "Unsaved". */
+const dirty = computed(() => {
+  const role = props.role
+  if (props.mode !== 'edit' || !role) return false
+  const body = draftBody()
+  const saved = { ...body, name: role.name, description: role.description ?? null, icon: role.icon ?? null, color: role.color ?? null, appAccess: role.appAccess, apiAccess: role.apiAccess, homeDataview: role.homeDataview ?? null, homeDashboard: role.homeDashboard ?? null, parent: role.parent ?? null, reviewRequired: role.reviewRequired === true }
+  return JSON.stringify(body) !== JSON.stringify(saved) || CAPABILITIES.some(c => allowed.value[c] !== (grants.value[c] === 'ALLOW'))
+})
+
+/** Saves the draft - true when it was saved (a refusal is toasted here). */
+async function submit(): Promise<boolean> {
   saving.value = true
   try {
-    const body = {
-      name: name.value.trim(),
-      description: description.value.trim() || null,
-      icon: icon.value ?? null,
-      color: color.value ?? null,
-      // adminAccess is never sent - the server rejects it on any request.
-      appAccess: flags.value.appAccess,
-      apiAccess: flags.value.apiAccess,
-      homeDataview: home.value?.startsWith('DATAVIEW:') ? home.value.slice('DATAVIEW:'.length) : null,
-      homeDashboard: home.value?.startsWith('DASHBOARD:') ? home.value.slice('DASHBOARD:'.length) : null,
-      parent: parent.value ?? null,
-      reviewRequired: reviewRequired.value
-    }
-    const data = await save(body)
+    const data = await save(draftBody())
     if (isAdmin.value) {
       for (const capability of CAPABILITIES) {
         if (allowed.value[capability] !== (grants.value[capability] === 'ALLOW')) {
@@ -208,7 +232,7 @@ async function submit() {
     }
     emit('saved', data)
 
-    if (isAdmin.value && props.mode === 'create' && applyTotalbaseDefaults.value) {
+    if (isAdmin.value && props.mode === 'create') {
       try {
         await applyTotalbaseDefaultPermissions(api, data.id)
       } catch (err) {
@@ -225,172 +249,194 @@ async function submit() {
       }
     }
     toast.add({ title: props.mode === 'edit' ? t('users.roleForm.updated') : t('users.roleForm.created'), color: 'success' })
+    return true
   } catch (err) {
     notifyError(err, props.mode === 'edit' ? t('users.roleEditor.updateError') : t('users.roleForm.createError'))
+    return false
   } finally {
     saving.value = false
   }
 }
 
-defineExpose({ submit, seed, saving, reserved })
+defineExpose({ submit, seed, saving, reserved, dirty })
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <UFormField
-      :label="t('common.name')"
-      required
+  <div
+    class="flex flex-col"
+    :class="sectioned ? 'gap-8' : 'gap-4'"
+  >
+    <component
+      :is="sectioned ? SettingsSection : 'div'"
+      v-bind="sectioned ? { title: t('users.roleEditor.tabs.general') } : {}"
+      class="flex flex-col gap-4"
     >
-      <UInput
-        v-model="name"
-        class="w-full"
-        :disabled="reserved"
-        @keyup.enter="submit"
-      />
-    </UFormField>
-    <UFormField
-      :label="t('common.description')"
-      :description="t('users.roleForm.descriptionHelp')"
-    >
-      <UInput
-        v-model="description"
-        class="w-full"
-        :disabled="reserved"
-      />
-    </UFormField>
-    <div class="flex gap-3">
-      <IconPickerField
-        v-model="icon"
-        :label="t('common.icon')"
-        :disabled="reserved"
-      />
-      <ColorPickerField
-        v-model="color"
-        :label="t('common.color')"
-        :disabled="reserved"
-      />
-    </div>
-    <p
-      v-if="reserved"
-      class="text-xs text-muted"
-    >
-      {{ isAdmin ? t('users.roleForm.reservedAdmin') : t('users.roleForm.reserved') }}
-    </p>
-    <UFormField
-      v-if="canPlace && !reserved"
-      :label="t('users.roleForm.parent')"
-      :description="t('users.roleForm.parentHelp')"
-    >
-      <USelectMenu
-        v-model="parent"
-        :items="parentOptions"
-        value-key="value"
-        :aria-label="t('users.roleForm.parent')"
-        :search-input="{ placeholder: t('common.search') }"
-        :clear="isAdmin"
-        class="w-full"
-      />
-    </UFormField>
-    <UFormField
-      v-if="isAdmin"
-      :label="t('users.roleForm.access')"
-      :description="t('users.roleForm.accessHelp')"
-    >
-      <div class="mt-1 flex flex-col gap-3">
-        <label
-          v-for="flag in ROLE_ACCESS_FLAGS"
-          :key="flag"
-          class="flex items-start gap-2"
-          :class="flagLocked(flag) ? 'cursor-not-allowed' : 'cursor-pointer'"
-        >
-          <UCheckbox
-            :model-value="flags[flag]"
-            :disabled="flagLocked(flag)"
-            @update:model-value="(v: boolean | 'indeterminate') => setFlag(flag, v === true)"
-          />
-          <span class="flex flex-col">
-            <span class="flex items-center gap-1.5 text-sm">
-              <UIcon
-                :name="ROLE_ACCESS_META[flag].icon"
-                class="size-3.5 text-muted"
-              />
-              {{ t(ROLE_ACCESS_META[flag].labelKey) }}
-            </span>
-            <span class="text-xs text-muted">{{ t(ROLE_ACCESS_META[flag].descriptionKey) }}</span>
-            <span
-              v-if="flag === 'adminAccess' && !reserved"
-              class="text-xs text-muted"
-            >{{ t('users.roleForm.adminReserved') }}</span>
-          </span>
-        </label>
-        <p
-          v-if="!flags.adminAccess && !flags.appAccess && !flags.apiAccess"
-          class="text-xs text-warning"
-        >
-          {{ t('users.roleForm.noAccessWarning') }}
-        </p>
+      <UFormField
+        :label="t('common.name')"
+        required
+      >
+        <UInput
+          v-model="name"
+          class="w-full"
+          :disabled="reserved"
+          @keyup.enter="submit"
+        />
+      </UFormField>
+      <UFormField
+        :label="t('common.description')"
+        :description="t('users.roleForm.descriptionHelp')"
+      >
+        <UInput
+          v-model="description"
+          class="w-full"
+          :disabled="reserved"
+        />
+      </UFormField>
+      <div class="flex gap-3">
+        <IconPickerField
+          v-model="icon"
+          :label="t('common.icon')"
+          :disabled="reserved"
+        />
+        <ColorPickerField
+          v-model="color"
+          :label="t('common.color')"
+          :disabled="reserved"
+        />
       </div>
-    </UFormField>
-    <UFormField
-      v-if="isAdmin && flags.appAccess"
-      :label="t('users.roleForm.home')"
-      :description="t('users.roleForm.homeHelp')"
-    >
-      <USelectMenu
-        v-model="home"
-        :items="homeOptions"
-        value-key="value"
-        :aria-label="t('users.roleForm.home')"
-        :search-input="{ placeholder: t('common.search') }"
-        clear
-        class="w-full"
-        :disabled="reserved"
-      />
-    </UFormField>
-    <!-- Not a UFormField: it would give both switches its one id and label. -->
-    <div
-      v-if="isAdmin"
-      class="flex flex-col gap-3"
-    >
-      <p class="text-sm font-medium text-default">
-        {{ t('users.roleForm.capabilities') }}
+      <p
+        v-if="reserved"
+        class="text-xs text-muted"
+      >
+        {{ isAdmin ? t('users.roleForm.reservedAdmin') : t('users.roleForm.reserved') }}
       </p>
-      <div class="flex flex-col gap-3">
-        <USwitch
-          v-model="allowed.TRANSACTIONS"
-          :label="t('users.roleForm.transactions')"
-          :description="t('users.roleForm.transactionsHelp')"
-          :disabled="capabilitiesLoading"
+      <UFormField
+        v-if="isAdmin && full"
+        :label="t('users.roleForm.access')"
+        :description="t('users.roleForm.accessHelp')"
+      >
+        <div class="mt-1 flex flex-col gap-3">
+          <label
+            v-for="flag in ROLE_ACCESS_FLAGS"
+            :key="flag"
+            class="flex items-start gap-2"
+            :class="flagLocked(flag) ? 'cursor-not-allowed' : 'cursor-pointer'"
+          >
+            <UCheckbox
+              :model-value="flags[flag]"
+              :disabled="flagLocked(flag)"
+              @update:model-value="(v: boolean | 'indeterminate') => setFlag(flag, v === true)"
+            />
+            <span class="flex flex-col">
+              <span class="flex items-center gap-1.5 text-sm">
+                <UIcon
+                  :name="ROLE_ACCESS_META[flag].icon"
+                  class="size-3.5 text-muted"
+                />
+                {{ t(ROLE_ACCESS_META[flag].labelKey) }}
+              </span>
+              <span class="text-xs text-muted">{{ t(ROLE_ACCESS_META[flag].descriptionKey) }}</span>
+              <span
+                v-if="flag === 'adminAccess' && !reserved"
+                class="text-xs text-muted"
+              >{{ t('users.roleForm.adminReserved') }}</span>
+            </span>
+          </label>
+          <p
+            v-if="!flags.adminAccess && !flags.appAccess && !flags.apiAccess"
+            class="text-xs text-warning"
+          >
+            {{ t('users.roleForm.noAccessWarning') }}
+          </p>
+        </div>
+      </UFormField>
+      <UFormField
+        v-if="isAdmin && full && flags.appAccess"
+        :label="t('users.roleForm.home')"
+        :description="t('users.roleForm.homeHelp')"
+      >
+        <USelectMenu
+          v-model="home"
+          :items="homeOptions"
+          value-key="value"
+          :aria-label="t('users.roleForm.home')"
+          :search-input="{ placeholder: t('common.search') }"
+          clear
+          class="w-full"
+          :disabled="reserved"
         />
-        <USwitch
-          v-model="allowed.SEND_EMAIL"
-          :label="t('users.roleForm.sendEmail')"
-          :description="t('users.roleForm.sendEmailHelp')"
-          :disabled="capabilitiesLoading"
-        />
-        <USwitch
-          v-model="allowed.MANAGE_ROLES"
-          :label="t('users.roleForm.manageRoles')"
-          :description="t('users.roleForm.manageRolesHelp')"
-          :disabled="capabilitiesLoading || reserved"
-        />
+      </UFormField>
+      <!-- Not a UFormField: it would give both switches its one id and label. -->
+      <div
+        v-if="isAdmin && full"
+        class="flex flex-col gap-3"
+      >
+        <p class="text-sm font-medium text-default">
+          {{ t('users.roleForm.capabilities') }}
+        </p>
+        <div class="flex flex-col gap-3">
+          <USwitch
+            v-model="allowed.TRANSACTIONS"
+            :label="t('users.roleForm.transactions')"
+            :description="t('users.roleForm.transactionsHelp')"
+            :disabled="capabilitiesLoading"
+          />
+          <USwitch
+            v-model="allowed.SEND_EMAIL"
+            :label="t('users.roleForm.sendEmail')"
+            :description="t('users.roleForm.sendEmailHelp')"
+            :disabled="capabilitiesLoading"
+          />
+        </div>
       </div>
-    </div>
-    <USwitch
-      v-if="isAdmin && !reserved"
-      v-model="reviewRequired"
-      :label="t('users.roleForm.reviewRequired')"
-      :description="t('users.roleForm.reviewRequiredHelp')"
-    />
-    <label
-      v-if="isAdmin && mode === 'create'"
-      class="flex items-start gap-2 cursor-pointer"
+      <USwitch
+        v-if="isAdmin && full && !reserved"
+        v-model="reviewRequired"
+        :label="t('users.roleForm.reviewRequired')"
+        :description="t('users.roleForm.reviewRequiredHelp')"
+      />
+    </component>
+    <!-- Relations with other roles: where it sits (its parent - a ceiling, never a source of permissions), what its
+  members may do below it, and - from the page, through the slot - who assigns it and what it can't be held with. -->
+    <component
+      :is="sectioned ? SettingsSection : 'div'"
+      v-if="hasRelations"
+      v-bind="sectioned ? { title: t('users.roleForm.relations'), description: t('users.roleForm.relationsHelp') } : {}"
+      class="flex flex-col gap-4"
     >
-      <UCheckbox v-model="applyTotalbaseDefaults" />
-      <span class="flex flex-col">
-        <span class="text-sm">{{ t('users.roleForm.applyDefaults') }}</span>
-        <span class="text-xs text-muted">{{ t('users.roleForm.applyDefaultsHelp') }}</span>
-      </span>
-    </label>
+      <UFormField
+        v-if="canPlace && !reserved"
+        :label="t('users.roleForm.parent')"
+        :description="t('users.roleForm.parentHelp')"
+        :help="parentNext"
+      >
+        <USelectMenu
+          v-model="parent"
+          :items="parentOptions"
+          value-key="value"
+          :aria-label="t('users.roleForm.parent')"
+          :search-input="{ placeholder: t('common.search') }"
+          :clear="isAdmin"
+          class="w-full"
+        />
+      </UFormField>
+      <!-- The one thing a parent is easily taken for (Security.md §9.5) - said where it's chosen, creating or editing. -->
+      <UAlert
+        v-if="canPlace && !reserved"
+        icon="i-lucide-info"
+        color="info"
+        variant="subtle"
+        :title="t('users.roleForm.noInheritTitle')"
+        :description="t('users.roleForm.noInheritDescription')"
+      />
+      <USwitch
+        v-if="isAdmin && full"
+        v-model="allowed.MANAGE_ROLES"
+        :label="t('users.roleForm.manageRoles')"
+        :description="t('users.roleForm.manageRolesHelp')"
+        :disabled="capabilitiesLoading || reserved"
+      />
+      <slot name="relations" />
+    </component>
   </div>
 </template>

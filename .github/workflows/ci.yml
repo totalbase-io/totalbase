@@ -76,6 +76,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Realtime subscriptions read the WAL through logical replication (Data_API.md §16.1): a service container
+      # takes no command line, so wal_level is set with ALTER SYSTEM and the container restarted. The image's
+      # role is a superuser, REPLICATION included.
+      - name: Logical replication
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U totalbase -d totalbase_test -c "ALTER SYSTEM SET wal_level = logical"
+          docker restart ${{ job.services.postgres.id }}
+          for i in $(seq 1 60); do docker exec ${{ job.services.postgres.id }} pg_isready -U totalbase && break; sleep 1; done
       # PostgreSQL 18's client tools, as the image carries them - the built-in backups' tests run pg_dump and pg_restore.
       - name: PostgreSQL 18 client tools
         # A self-hosted runner brings its own, or the backups' tests are skipped (TOTALBASE_TEST_PG_BIN below).

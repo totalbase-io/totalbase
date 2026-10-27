@@ -167,6 +167,32 @@ export class PermissionsService {
     return this.toPermission(permissionRows[0]!);
   }
 
+  /**
+   * Copies grants of one role to another in one transaction - all of them, or none. `grantIds`: which of the
+   * source's (the caller leaves out what it won't copy). Added: a grant the target already has for the same
+   * resource and action is kept (PostgreSQL's ON CONFLICT decides, nothing is read first); `replace`: the
+   * target's grants are removed first. Answers the (resource, action) pairs written.
+   */
+  async copyGrants(
+    targetRoleId: string,
+    sourceRoleId: string,
+    grantIds: string[],
+    options: { replace: boolean, actorUserId?: string | undefined },
+  ): Promise<{ resource: string; action: ResourceAction }[]> {
+    return this.database.transaction(async (client) => {
+      if (options.replace) await client.query(`DELETE FROM totalbase.permissions WHERE role = $1`, [targetRoleId]);
+      const { rows } = await client.query<{ resource: string; action: ResourceAction }>(
+        `INSERT INTO totalbase.permissions (role, resource, action, effect, where_clause, field_overrides, payload_checks)
+         SELECT $1, resource, action, effect, where_clause, field_overrides, payload_checks
+         FROM totalbase.permissions WHERE role = $2 AND id = ANY($3::uuid[])
+         ON CONFLICT (role, resource, action) DO NOTHING
+         RETURNING resource, action`,
+        [targetRoleId, sourceRoleId, grantIds],
+      );
+      return rows;
+    }, { actorUserId: options.actorUserId });
+  }
+
   /** Whether there was such a grant to remove. */
   async delete(roleId: string, resourceId: string, action: ResourceAction): Promise<boolean> {
     const { rowCount } = await this.database.query(

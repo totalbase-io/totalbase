@@ -116,6 +116,10 @@ export interface UserSearchFilter {
   q?: string | undefined;
   status?: UserStatus | undefined;
   role?: string | undefined;
+  /** Only users not holding this role id. */
+  notRole?: string | undefined;
+  /** Holders of this role id first, then the rest, each by name - a role's Members tab. Else newest first. */
+  roleFirst?: string | undefined;
   /** Only these users - a batch lookup of ids to names (the admin's user directory). */
   ids?: string[] | undefined;
   /** true = only active accounts (e.g. an "execute as" picker). */
@@ -154,7 +158,7 @@ export class UsersService {
    * One page of the Admin API's user list, filtered and counted in
    * PostgreSQL: `q` matches name or email (case-insensitive substring),
    * `status` is the Users screen's ACTIVE / INVITED / INACTIVE, `role` a
-   * role id the user holds. Newest first.
+   * role id the user holds (`notRole`: doesn't). Newest first, or `roleFirst`'s holders first.
    */
   async searchForAdmin(filter: UserSearchFilter): Promise<{ users: UserListItem[]; total: number }> {
     const conditions: string[] = [];
@@ -170,9 +174,9 @@ export class UsersService {
     if (filter.status) conditions.push(STATUS_CONDITION[filter.status]);
     if (filter.active) conditions.push("u.active");
     if (filter.ids) conditions.push(`u.id = ANY(${push(filter.ids)}::uuid[])`);
-    if (filter.role) {
-      conditions.push(`EXISTS (SELECT 1 FROM totalbase.users_roles a WHERE a."user" = u.id AND a.role = ${push(filter.role)})`);
-    }
+    const holds = (role: string) => `EXISTS (SELECT 1 FROM totalbase.users_roles a WHERE a."user" = u.id AND a.role = ${push(role)})`;
+    if (filter.role) conditions.push(holds(filter.role));
+    if (filter.notRole) conditions.push(`NOT ${holds(filter.notRole)}`);
     for (const { column, value } of filter.extra ?? []) {
       conditions.push(value === null ? `u.${quoteIdentifier(column)} IS NULL` : `u.${quoteIdentifier(column)}::text = ${push(value)}`);
     }
@@ -181,8 +185,12 @@ export class UsersService {
       `SELECT count(*) AS total FROM totalbase.users u ${where}`,
       params,
     );
+    // The id last: a stable order, so a page boundary never repeats or skips a user.
+    const order = filter.roleFirst
+      ? `ORDER BY ${holds(filter.roleFirst)} DESC, lower(coalesce(u.name, u.email)), u.id`
+      : "ORDER BY u.created_at DESC";
     const users = await this.queryForAdmin(
-      `${where} ORDER BY u.created_at DESC LIMIT ${push(filter.limit)} OFFSET ${push(filter.offset)}`,
+      `${where} ${order} LIMIT ${push(filter.limit)} OFFSET ${push(filter.offset)}`,
       params,
     );
     return { users, total: Number(countRows[0]?.total ?? 0) };

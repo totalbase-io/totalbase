@@ -12,7 +12,7 @@
       "loadError": "Could not load managers",
       "saveError": "Could not save managers",
       "label": "Managed by",
-      "description": "Members of these roles may assign this role to users and remove it - never change what it grants. Applies at once."
+      "description": "Members of these roles may assign this role to users and remove it - never change what it grants."
     },
     "roleAccess": {
       "noAccess": "No access",
@@ -87,7 +87,8 @@
         "permissions": "Permissions",
         "members": "Members",
         "reviews": "Access reviews",
-        "general": "General"
+        "general": "General",
+        "activity": "Activity"
       },
       "bypassTitle": "{name} bypasses every permission",
       "bypassDescription": "Members of a role with admin access can do everything in TotalBase - there's nothing to grant here. To give someone limited access, assign them an ordinary role instead.",
@@ -139,19 +140,22 @@
       "transactionsHelp": "Members may submit several Data API writes as one PostgreSQL transaction (POST /api/transactions). Each operation still needs its own permissions.",
       "sendEmail": "Can send email",
       "sendEmailHelp": "A workflow executed as a member may run its Send email steps. Each attachment still needs READ on its file.",
-      "applyDefaults": "Apply default totalbase permissions",
-      "applyDefaultsHelp": "What an ordinary App user needs on TotalBase's own tables - files and folders, templates, roles, their own account, sessions and activity: the same \"Apply Default Permissions\" as the role's page, right after it's created.",
       "home": "App home",
       "homeHelp": "Where its members land when they open the App - a DataView or Dashboard they see in the menu. Empty: the App's own page. With several roles, the first by name that has one.",
       "homeDataview": "DataView",
       "homeDashboard": "Dashboard",
       "homeLoadError": "Could not load the App menu",
       "parent": "Parent role",
-      "parentHelp": "The role above this one. It can do at most what its parent can, and whoever manages the parent manages it. Empty: a top-level role.",
+      "parentHelp": "The role above this one. Empty: a top-level role.",
+      "parentNext": "Next, on its Permissions, grant it what it needs - up to what {parent} can do.",
+      "noInheritTitle": "Roles don't inherit permissions",
+      "noInheritDescription": "The parent organizes the roles - where each one sits and who manages it - and is a ceiling: a role under it has only what is granted to it, gets nothing from its parent, and can never do more than it.",
       "manageRoles": "Can manage the roles below it",
       "manageRolesHelp": "Members create roles under this one, grant them permissions within what this role has, and assign them.",
       "reviewRequired": "Review its access periodically",
-      "reviewRequiredHelp": "Its Access reviews tab reminds when a review is due, as for Administrators."
+      "reviewRequiredHelp": "Its Access reviews tab reminds when a review is due, as for Administrators.",
+      "relations": "Relations with other roles",
+      "relationsHelp": "Where it sits among the roles, what its members may do below it, who assigns it and what it can't be held with."
     },
     "permissionEditor": {
       "tabs": {
@@ -205,42 +209,38 @@
       "protectedField": "Never exposed through the Data API, regardless of grants - it holds a credential or internal storage detail that must never be readable or writable."
     },
     "roleMembers": {
-      "history": {
-        "added": "{actor} added {user}",
-        "removed": "{actor} removed {user}",
-        "triedAdd": "{actor} tried to add {user}",
-        "triedRemove": "{actor} tried to remove {user}"
-      },
       "bulkDone": {
-        "move": "{n} members moved | {n} member moved | {n} members moved",
-        "add": "{n} members given the role | {n} member given the role | {n} members given the role",
-        "remove": "{n} members removed from {role} | {n} member removed from {role} | {n} members removed from {role}"
+        "move": "{n} members moved | {n} member moved | {n} members moved"
       },
       "bulkError": "Could not change the members",
       "newUser": "New user",
       "invitePeople": "Invite people",
       "systemRole": "System role",
       "systemRoleDescription": "This role belongs to TotalBase's own system account - members can't be added or removed.",
-      "addUserLabel": "Add an existing user",
       "moveToRoleEllipsis": "Move to role…",
-      "addAnotherRoleEllipsis": "Add another role…",
-      "removeFrom": "Remove from {role}",
       "lastSignIn": "Last sign-in: {date}",
       "ownerKeeps": "The instance owner always keeps this role",
-      "accessHistory": "Access history",
-      "noHistory": "No changes recorded for this role yet",
-      "olderChanges": "Older changes",
+      "memberActions": "Actions for {user}",
+      "openUser": "Open user",
+      "setExpiryItem": "Set end date…",
       "moveToRole": "Move to role",
-      "addAnotherRole": "Add another role",
-      "moveDescription": "{n} selected - into the role you pick, out of {role}.",
-      "addDescription": "{n} selected - they keep {role}.",
+      "moveDescription": "{user} - into the role you pick, out of {role}.",
       "move": "Move",
       "expires": "Ends {date}",
       "setExpiry": "When {user}'s role ends",
       "expiryLabel": "Ends on",
       "expiryHelp": "At the end of this day the role stops granting anything, and it's removed.",
       "expiryClear": "Never",
-      "expiryError": "Could not change when the role ends"
+      "expiryError": "Could not change when the role ends",
+      "searchUsers": "Search users",
+      "noUsers": "No users yet",
+      "holds": "{user} holds {role}",
+      "filter": {
+        "label": "Show",
+        "all": "All users",
+        "members": "Members",
+        "notMembers": "Not members"
+      }
     },
     "common": {
       "never": "Never",
@@ -507,10 +507,16 @@
         "deleteTitle": "Delete user",
         "deleteHelp": "Permanently deletes the account with its sessions, API tokens, role assignments and avatar. Audit log entries stay. Can't be undone."
       },
-      "rolesIntro": "A user gets the union of every role checked here. Save from the header to apply.",
+      "rolesIntro": "A user gets the union of every role turned on here. Save from the header to apply.",
       "accessFromRoles": "Access from these roles:",
       "noAccess": "No access - with these roles this user can't sign in or call the API.",
       "openRole": "Open role",
+      "roleActions": "Actions for {role}",
+      "searchRoles": "Search roles",
+      "noRolesMatch": "No roles match",
+      "roleIncompatible": "Can't be held with {roles}.",
+      "setRoleEnd": "Set end date…",
+      "roleEndTitle": "When {role} ends",
       "deleteTitle": "Delete this user?",
       "deleteDescription": "This permanently deletes the account with its sessions, API tokens, role assignments and avatar. Audit log entries stay. This can't be undone.",
       "leave": {
@@ -832,6 +838,45 @@
       "description": "Roles nobody may hold together with this one - whoever operates doesn't audit. Refused while someone holds both.",
       "loadError": "Could not load the incompatible roles",
       "saveError": "Could not save the incompatible roles"
+    },
+    "roleActivity": {
+      "intro": "Who was added to or removed from this role, by whom and when.",
+      "empty": "No membership changes yet"
+    },
+    "roleHierarchy": {
+      "title": "Role hierarchy",
+      "description": "Every role, each under its parent. Drag a role onto another to put it under it.",
+      "members": "No members | {n} member | {n} members",
+      "addUnder": "New role under {name}",
+      "empty": "No roles yet",
+      "topLevel": "Drop here to make it a top-level role",
+      "moveTitle": "Move the role?",
+      "moveUnder": "{role} goes under {parent}, which becomes its ceiling: whatever it is granted beyond what {parent} can do stops applying on the next request. | {role} goes under {parent}, which becomes its ceiling and that of the role below it: whatever they are granted beyond what {parent} can do stops applying on the next request. | {role} goes under {parent}, which becomes its ceiling and that of the {n} roles below it: whatever they are granted beyond what {parent} can do stops applying on the next request.",
+      "moveTop": "{role} becomes a top-level role, with no ceiling: its own grants apply in full on the next request. | {role} becomes a top-level role, with no ceiling: its own grants, and those of the role below it, apply in full on the next request. | {role} becomes a top-level role, with no ceiling: its own grants, and those of the {n} roles below it, apply in full on the next request.",
+      "move": "Move",
+      "moved": "{role} moved",
+      "moveError": "Could not move the role"
+    },
+    "copyPermissions": {
+      "action": "Copy from role…",
+      "title": "Copy permissions from a role",
+      "description": "Another role's permissions - each whole: action, row filter, columns, payload checks - written on this one. Nothing else of the role is copied.",
+      "from": "From",
+      "mode": "How",
+      "none": "This role has no permissions to copy.",
+      "grants": "No permissions | {n} permission | {n} permissions",
+      "resources": "on {n} resources | on {n} resource | on {n} resources",
+      "filtered": "{n} with a row filter | {n} with a row filter | {n} with a row filter",
+      "add": "Add to this role's permissions",
+      "addHelp": "Where this role already has a permission for the same resource and action, its own is kept.",
+      "replace": "Replace this role's permissions",
+      "replaceHelp": "It has no permissions now. | Its 1 permission is removed first. | Its {n} permissions are removed first.",
+      "copy": "Copy",
+      "done": "No permissions copied | 1 permission copied | {n} permissions copied",
+      "kept": "Kept its own: {grants}.",
+      "beyondCeiling": "Beyond what its parent can do, not copied: {grants}.",
+      "loadError": "Could not load the role's permissions",
+      "error": "Could not copy the permissions"
     }
   }
 }

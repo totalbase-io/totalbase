@@ -53,6 +53,10 @@ describe("access governance", () => {
     await context.roleAssignments.setRolesForUser(both, [operator]);
     expect((await call("PUT", `/admin/api/roles/${operator}/incompatible`, { data: { roleIds: [auditor] } })).json().data).toEqual([auditor]);
     expect((await call("GET", `/admin/api/roles/${auditor}/incompatible`)).json().data).toEqual([operator]);
+    const pairs = (await call("GET", "/admin/api/roles/incompatibilities")).json().data as { role: string; other: string }[];
+    expect(pairs.filter((p) => [p.role, p.other].includes(operator))).toEqual([
+      { role: [operator, auditor].sort()[0], other: [operator, auditor].sort()[1] },
+    ]);
 
     const viaAdmin = await call("PUT", `/admin/api/users/${both}/roles`, { data: { roleIds: [operator, auditor] } });
     expect(viaAdmin.statusCode).toBeGreaterThanOrEqual(400);

@@ -12,7 +12,7 @@
       "loadError": "No se pudieron cargar los gestores",
       "saveError": "No se pudieron guardar los gestores",
       "label": "Gestionado por",
-      "description": "Los miembros de estos roles pueden asignar este rol a usuarios y quitarlo - nunca cambiar lo que otorga. Se aplica al instante."
+      "description": "Los miembros de estos roles pueden asignar este rol a usuarios y quitarlo - nunca cambiar lo que otorga."
     },
     "roleAccess": {
       "noAccess": "Sin acceso",
@@ -87,7 +87,8 @@
         "permissions": "Permisos",
         "members": "Miembros",
         "reviews": "Revisiones de acceso",
-        "general": "General"
+        "general": "General",
+        "activity": "Actividad"
       },
       "bypassTitle": "{name} omite todos los permisos",
       "bypassDescription": "Los miembros de un rol con acceso de administración pueden hacer todo en TotalBase - aquí no hay nada que otorgar. Para dar un acceso limitado, asigna un rol ordinario.",
@@ -139,19 +140,22 @@
       "transactionsHelp": "Los miembros pueden enviar varias escrituras de la Data API como una sola transacción de PostgreSQL (POST /api/transactions). Cada operación sigue necesitando sus propios permisos.",
       "sendEmail": "Puede enviar correos",
       "sendEmailHelp": "Un workflow ejecutado como un miembro puede ejecutar sus pasos Enviar correo. Cada adjunto sigue necesitando READ sobre su archivo.",
-      "applyDefaults": "Aplicar los permisos predeterminados de totalbase",
-      "applyDefaultsHelp": "Lo que necesita un usuario común de la App en las tablas propias de TotalBase - archivos y carpetas, plantillas, roles, su propia cuenta, sesiones y actividad: el mismo \"Aplicar permisos predeterminados\" de la página del rol, justo después de crearlo.",
       "home": "Inicio en la App",
       "homeHelp": "Dónde llegan sus miembros al abrir la App: un DataView o Dashboard que ven en el menú. Vacío: la página propia de la App. Con varios roles, el primero por nombre que tenga uno.",
       "homeDataview": "DataView",
       "homeDashboard": "Dashboard",
       "homeLoadError": "No se pudo cargar el menú de la App",
       "parent": "Rol padre",
-      "parentHelp": "El rol que está por encima de este. Puede hacer como máximo lo que puede su padre, y quien gestiona al padre lo gestiona a él. Vacío: un rol de primer nivel.",
+      "parentHelp": "El rol por encima de este. Vacío: un rol de primer nivel.",
+      "parentNext": "Después, en sus Permisos, concédele lo que necesita, hasta lo que puede {parent}.",
+      "noInheritTitle": "Los roles no heredan permisos",
+      "noInheritDescription": "El padre organiza los roles - dónde está cada uno y quién lo gestiona - y es un techo: un rol bajo él tiene solo lo que se le concede, no recibe nada de su padre y nunca puede hacer más que él.",
       "manageRoles": "Puede gestionar los roles que tiene debajo",
       "manageRolesHelp": "Sus miembros crean roles debajo de este, les otorgan permisos dentro de lo que tiene este rol y los asignan.",
       "reviewRequired": "Revisar su acceso periódicamente",
-      "reviewRequiredHelp": "Su pestaña Revisiones de acceso avisa cuando toca una revisión, como para Administrators."
+      "reviewRequiredHelp": "Su pestaña Revisiones de acceso avisa cuando toca una revisión, como para Administrators.",
+      "relations": "Relaciones con otros roles",
+      "relationsHelp": "Dónde está entre los roles, qué pueden hacer sus miembros debajo, quién lo asigna y con qué roles no puede tenerse."
     },
     "permissionEditor": {
       "tabs": {
@@ -205,42 +209,38 @@
       "protectedField": "Nunca se expone a través de la Data API, sean cuales sean los permisos - contiene una credencial o un detalle de almacenamiento interno que nunca debe poder leerse ni escribirse."
     },
     "roleMembers": {
-      "history": {
-        "added": "{actor} añadió a {user}",
-        "removed": "{actor} quitó a {user}",
-        "triedAdd": "{actor} intentó añadir a {user}",
-        "triedRemove": "{actor} intentó quitar a {user}"
-      },
       "bulkDone": {
-        "move": "{n} miembros movidos | {n} miembro movido | {n} miembros movidos",
-        "add": "{n} miembros recibieron el rol | {n} miembro recibió el rol | {n} miembros recibieron el rol",
-        "remove": "{n} miembros quitados de {role} | {n} miembro quitado de {role} | {n} miembros quitados de {role}"
+        "move": "{n} miembros movidos | {n} miembro movido | {n} miembros movidos"
       },
       "bulkError": "No se pudieron cambiar los miembros",
       "newUser": "Nuevo usuario",
       "invitePeople": "Invitar personas",
       "systemRole": "Rol del sistema",
       "systemRoleDescription": "Este rol pertenece a la cuenta de sistema de TotalBase - no se pueden añadir ni quitar miembros.",
-      "addUserLabel": "Añadir un usuario existente",
       "moveToRoleEllipsis": "Mover a un rol…",
-      "addAnotherRoleEllipsis": "Añadir otro rol…",
-      "removeFrom": "Quitar de {role}",
       "lastSignIn": "Último inicio de sesión: {date}",
       "ownerKeeps": "El propietario de la instancia siempre conserva este rol",
-      "accessHistory": "Historial de acceso",
-      "noHistory": "Aún no hay cambios registrados para este rol",
-      "olderChanges": "Cambios anteriores",
+      "memberActions": "Acciones de {user}",
+      "openUser": "Abrir usuario",
+      "setExpiryItem": "Fijar fecha de fin…",
       "moveToRole": "Mover a un rol",
-      "addAnotherRole": "Añadir otro rol",
-      "moveDescription": "{n} seleccionados - al rol que elijas, fuera de {role}.",
-      "addDescription": "{n} seleccionados - conservan {role}.",
+      "moveDescription": "{user} - al rol que elijas, fuera de {role}.",
       "move": "Mover",
       "expires": "Vence {date}",
       "setExpiry": "Cuándo vence el rol de {user}",
       "expiryLabel": "Vence el",
       "expiryHelp": "Al terminar este día el rol deja de otorgar nada, y se quita.",
       "expiryClear": "Nunca",
-      "expiryError": "No se pudo cambiar cuándo vence el rol"
+      "expiryError": "No se pudo cambiar cuándo vence el rol",
+      "searchUsers": "Buscar usuarios",
+      "noUsers": "Todavía no hay usuarios",
+      "holds": "{user} tiene {role}",
+      "filter": {
+        "label": "Mostrar",
+        "all": "Todos los usuarios",
+        "members": "Miembros",
+        "notMembers": "No miembros"
+      }
     },
     "common": {
       "never": "Nunca",
@@ -507,10 +507,16 @@
         "deleteTitle": "Eliminar usuario",
         "deleteHelp": "Elimina para siempre la cuenta con sus sesiones, tokens de API, asignaciones de roles y avatar. Las entradas del registro de auditoría se conservan. No se puede deshacer."
       },
-      "rolesIntro": "Un usuario obtiene la unión de todos los roles marcados aquí. Guarda desde la cabecera para aplicarlo.",
+      "rolesIntro": "Un usuario obtiene la unión de todos los roles activados aquí. Guarda desde la cabecera para aplicarlo.",
       "accessFromRoles": "Acceso que dan estos roles:",
       "noAccess": "Sin acceso - con estos roles este usuario no puede iniciar sesión ni llamar a la API.",
       "openRole": "Abrir rol",
+      "roleActions": "Acciones de {role}",
+      "searchRoles": "Buscar roles",
+      "noRolesMatch": "Ningún rol coincide",
+      "roleIncompatible": "No puede tenerse junto con {roles}.",
+      "setRoleEnd": "Fijar fecha de fin…",
+      "roleEndTitle": "Cuándo termina {role}",
       "deleteTitle": "¿Eliminar este usuario?",
       "deleteDescription": "Esto elimina para siempre la cuenta con sus sesiones, tokens de API, asignaciones de roles y avatar. Las entradas del registro de auditoría se conservan. No se puede deshacer.",
       "leave": {
@@ -832,6 +838,45 @@
       "description": "Roles que nadie puede tener junto con este: quien opera no audita. Se rechaza mientras alguien tenga ambos.",
       "loadError": "No se pudieron cargar los roles incompatibles",
       "saveError": "No se pudieron guardar los roles incompatibles"
+    },
+    "roleActivity": {
+      "intro": "Quién fue agregado a este rol o quitado de él, por quién y cuándo.",
+      "empty": "Todavía no hay cambios de pertenencia"
+    },
+    "roleHierarchy": {
+      "title": "Jerarquía de roles",
+      "description": "Todos los roles, cada uno bajo su padre. Arrastra un rol sobre otro para ponerlo debajo.",
+      "members": "Sin miembros | {n} miembro | {n} miembros",
+      "addUnder": "Nuevo rol bajo {name}",
+      "empty": "Todavía no hay roles",
+      "topLevel": "Suelta aquí para dejarlo como rol de primer nivel",
+      "moveTitle": "¿Mover el rol?",
+      "moveUnder": "{role} pasa bajo {parent}, que se vuelve su techo: lo que tenga concedido más allá de lo que puede {parent} deja de aplicar en el próximo pedido. | {role} pasa bajo {parent}, que se vuelve su techo y el del rol que tiene debajo: lo que tengan concedido más allá de lo que puede {parent} deja de aplicar en el próximo pedido. | {role} pasa bajo {parent}, que se vuelve su techo y el de los {n} roles que tiene debajo: lo que tengan concedido más allá de lo que puede {parent} deja de aplicar en el próximo pedido.",
+      "moveTop": "{role} pasa a ser un rol de primer nivel, sin techo: sus propios permisos aplican completos en el próximo pedido. | {role} pasa a ser un rol de primer nivel, sin techo: sus propios permisos, y los del rol que tiene debajo, aplican completos en el próximo pedido. | {role} pasa a ser un rol de primer nivel, sin techo: sus propios permisos, y los de los {n} roles que tiene debajo, aplican completos en el próximo pedido.",
+      "move": "Mover",
+      "moved": "{role} movido",
+      "moveError": "No se pudo mover el rol"
+    },
+    "copyPermissions": {
+      "action": "Copiar de un rol…",
+      "title": "Copiar permisos de un rol",
+      "description": "Los permisos de otro rol - cada uno completo: acción, filtro de filas, columnas, validaciones - escritos en este. No se copia nada más del rol.",
+      "from": "Desde",
+      "mode": "Cómo",
+      "none": "Este rol no tiene permisos para copiar.",
+      "grants": "Sin permisos | {n} permiso | {n} permisos",
+      "resources": "en {n} recursos | en {n} recurso | en {n} recursos",
+      "filtered": "{n} con filtro de filas | {n} con filtro de filas | {n} con filtro de filas",
+      "add": "Agregar a los permisos de este rol",
+      "addHelp": "Donde este rol ya tiene un permiso para el mismo recurso y acción, se conserva el suyo.",
+      "replace": "Reemplazar los permisos de este rol",
+      "replaceHelp": "Ahora no tiene permisos. | Primero se quita su permiso. | Primero se quitan sus {n} permisos.",
+      "copy": "Copiar",
+      "done": "No se copió ningún permiso | Se copió 1 permiso | Se copiaron {n} permisos",
+      "kept": "Se conservaron los suyos: {grants}.",
+      "beyondCeiling": "Superan lo que puede su padre, no se copiaron: {grants}.",
+      "loadError": "No se pudieron cargar los permisos del rol",
+      "error": "No se pudieron copiar los permisos"
     }
   }
 }

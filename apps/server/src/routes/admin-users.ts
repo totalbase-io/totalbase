@@ -23,7 +23,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
   const preHandler = requireAdmin(context);
 
   // Without `limit`, every user. With it, one page filtered in PostgreSQL -
-  // ?q= (name/email), ?status=, ?role=, ?ids= (batch lookup), ?active=,
+  // ?q= (name/email), ?status=, ?role=, ?not_role=, ?role_first=, ?ids= (batch lookup), ?active=,
   // ?limit= (1-200), ?offset=. Either way meta.total for the pager.
   app.get<{ Querystring: UserListQuery }>("/admin/api/users", {
     preHandler,
@@ -38,6 +38,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         { name: "q", in: "query", description: "Case-insensitive substring of the name or email.", schema: { type: "string" } },
         { name: "status", in: "query", description: "INVITED = active, can sign in, no password yet; INACTIVE = deactivated; ACTIVE = the rest.", schema: { type: "string", enum: ["ACTIVE", "INVITED", "INACTIVE"] } },
         { name: "role", in: "query", description: "Only users holding this role id.", schema: UUID },
+        { name: "not_role", in: "query", description: "Only users not holding this role id.", schema: UUID },
+        { name: "role_first", in: "query", description: "Holders of this role id first, then the rest, each by name (instead of newest first) - a role's Members tab.", schema: UUID },
         { name: "ids", in: "query", description: "Comma-separated user ids (at most 200) - a batch lookup.", schema: { type: "string" } },
         { name: "active", in: "query", description: "`true` = only active accounts (`false` applies no filter).", schema: { type: "string", enum: ["true", "false"] } },
         { name: "extra[<column>]", in: "query", description: "A column the project added to users equal to this value (its text); empty = no value. Several AND together.", schema: { type: "string" } },
@@ -550,6 +552,8 @@ interface UserListQuery {
   q?: string;
   status?: string;
   role?: string;
+  not_role?: string;
+  role_first?: string;
   /** Comma-separated user ids (at most MAX_PAGE_SIZE). */
   ids?: string;
   active?: string;
@@ -584,7 +588,9 @@ function parseUserListQuery(query: UserListQuery): UserSearchFilter {
   if (query.status !== undefined && !(USER_STATUSES as readonly string[]).includes(query.status)) {
     throw new TotalBaseError("INVALID_QUERY", "status must be ACTIVE, INVITED or INACTIVE.");
   }
-  if (query.role !== undefined && !isUuid(query.role)) throw new TotalBaseError("INVALID_QUERY", "role must be a role id.");
+  for (const key of ["role", "not_role", "role_first"] as const) {
+    if (query[key] !== undefined && !isUuid(query[key])) throw new TotalBaseError("INVALID_QUERY", `${key} must be a role id.`);
+  }
   const ids = query.ids === undefined ? undefined : query.ids.split(",").filter(Boolean);
   if (ids && (ids.length > MAX_PAGE_SIZE || !ids.every(isUuid))) {
     throw new TotalBaseError("INVALID_QUERY", `ids must be at most ${MAX_PAGE_SIZE} comma-separated user ids.`);
@@ -596,6 +602,8 @@ function parseUserListQuery(query: UserListQuery): UserSearchFilter {
     q: query.q,
     status: query.status as UserStatus | undefined,
     role: query.role,
+    notRole: query.not_role,
+    roleFirst: query.role_first,
     ids,
     active: query.active === "true",
     limit,

@@ -55,6 +55,7 @@ import { registerAdminWorkflowsRoutes } from "./routes/admin-workflows.js";
 import { registerWorkflowWebhookRoutes } from "./routes/workflow-webhooks.js";
 import { registerWorkflowRunRoutes } from "./routes/workflow-run.js";
 import { registerDataTableRoutes } from "./routes/data-table.js";
+import { registerAdminRealtimeRoutes, registerRealtimeRoutes } from "./realtime.js";
 import { registerDataTableMutationRoutes } from "./routes/data-table-mutations.js";
 import { registerDataViewRoutes } from "./routes/data-view.js";
 import { registerDataFunctionRoutes } from "./routes/data-function.js";
@@ -106,7 +107,7 @@ export async function buildServer(
     },
     // The Data API's query language relies on PHP-style bracket nesting
     // (where[price][_gt]=100); Fastify's default parser is flat.
-    querystringParser: parseQueryString,
+    routerOptions: { querystringParser: parseQueryString },
     // audit_logs.request_id / outbox_events.request_id are uuid columns;
     // Fastify's default genReqId is a plain incrementing counter.
     genReqId: () => randomUUID(),
@@ -252,6 +253,8 @@ export async function buildServer(
   registerWorkflowRunRoutes(app, context);
   registerDataTableRoutes(app, context);
   registerDataTableMutationRoutes(app, context);
+  await registerRealtimeRoutes(app, context);
+  registerAdminRealtimeRoutes(app, context);
   registerDataViewRoutes(app, context);
   registerDataFunctionRoutes(app, context);
   registerFilesRoutes(app, context);

@@ -1,21 +1,40 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="D extends OrgChartItem">
 /**
- * A TREE DataView's org chart (DataViews.md §5.14): boxes under their parent on a canvas that
- * scrolls both ways and pans by dragging its background, with − / + / Fit to width. It opens whole when it fits,
- * else fitted to the width (never below MIN_ZOOM - past that, it scrolls).
+ * An org chart: boxes under their parent on a canvas that scrolls both ways and pans by dragging its
+ * background, with − / + / Fit to width. It opens whole when it fits, else fitted to the width (never below
+ * MIN_ZOOM - past that, it scrolls). A TREE DataView's (DataViews.md §5.14) and the roles' Hierarchy
+ * (Admin_UI.md §11.2) - each passes its nodes and decides what opening one and its "+" do. With `canDrag`, a
+ * box is dragged onto another (`move` with it as the parent) or, with `rootDropLabel`, onto the strip above
+ * the chart (`move` with null); the host confirms and writes it.
  */
 import type { TreeNode } from './TreeView.vue'
-import type { TreeItem } from './DataViewTreeView.vue'
+import type { OrgChartItem } from './OrgChartNode.vue'
 
 defineProps<{
-  nodes: TreeNode<TreeItem>[]
-  canCreate: boolean
+  nodes: TreeNode<D>[]
+  /** The chart's accessible name. */
+  label: string
+  /** The "+" under a box, with its accessible name - none (or undefined for a box): no "+". */
+  addLabel?: (node: TreeNode<D>) => string | undefined
   swatch: (color: string | null) => string | undefined
+  canDrag?: (node: TreeNode<D>) => boolean
+  canDrop?: (draggedId: string, target: TreeNode<D>) => boolean
+  /** The strip a dragged box is dropped on to have no parent - none: no strip. */
+  rootDropLabel?: string
 }>()
 const emit = defineEmits<{
-  'edit': [row: Record<string, unknown>]
-  'add-child': [node: TreeNode<TreeItem>]
+  'open': [node: TreeNode<D>]
+  'add-child': [node: TreeNode<D>]
+  'move': [id: string, parent: TreeNode<D> | null]
 }>()
+const dragged = ref<string | null>(null)
+const overRoot = ref(false)
+function dropOn(parent: TreeNode<D> | null) {
+  const id = dragged.value
+  dragged.value = null
+  overRoot.value = false
+  if (id) emit('move', id, parent)
+}
 const collapsed = defineModel<string[]>('collapsed', { required: true })
 
 const { t } = useI18n()
@@ -72,7 +91,7 @@ let pan: { x: number, y: number, left: number, top: number, id: number } | null 
 const panning = ref(false)
 function onPointerDown(event: PointerEvent) {
   const el = viewport.value
-  if (!el || event.button !== 0 || (event.target as HTMLElement).closest('button, a, input')) return
+  if (!el || event.button !== 0 || (event.target as HTMLElement).closest('button, a, input, [draggable="true"]')) return
   pan = { x: event.clientX, y: event.clientY, left: el.scrollLeft, top: el.scrollTop, id: event.pointerId }
   el.setPointerCapture(event.pointerId)
   panning.value = true
@@ -98,13 +117,28 @@ function onWheel(event: WheelEvent) {
 </script>
 
 <template>
-  <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+  <div class="relative flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+    <!-- Where a dragged box goes to have no parent - shown while dragging one that has a parent to leave. -->
+    <div
+      v-if="rootDropLabel && dragged"
+      class="flex shrink-0 items-center justify-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm"
+      :class="overRoot ? 'border-primary text-primary' : 'border-accented text-muted'"
+      @dragover.prevent="overRoot = true"
+      @dragleave="overRoot = false"
+      @drop.prevent="dropOn(null)"
+    >
+      <UIcon
+        name="i-lucide-arrow-up-to-line"
+        class="size-4"
+      />
+      {{ rootDropLabel }}
+    </div>
     <div
       ref="viewport"
       class="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border border-default bg-elevated/40 p-2"
       :class="panning ? 'cursor-grabbing select-none' : 'cursor-grab'"
       role="tree"
-      :aria-label="t('dataviews.treeView.label')"
+      :aria-label="label"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
@@ -122,15 +156,21 @@ function onWheel(event: WheelEvent) {
           :style="{ transform: `scale(${zoom})` }"
         >
           <ul class="org-chart">
-            <DataViewTreeOrgNode
+            <OrgChartNode
               v-for="node in nodes"
               :key="node.id"
               v-model:collapsed="collapsed"
               :node="node"
-              :can-create="canCreate"
+              :add-label="addLabel"
               :swatch="swatch"
-              @edit="emit('edit', $event)"
+              :can-drag="canDrag"
+              :can-drop="canDrop"
+              :dragged="dragged"
+              @open="emit('open', $event)"
               @add-child="emit('add-child', $event)"
+              @drag-start="dragged = $event"
+              @drag-end="dragged = null; overRoot = false"
+              @drop="dropOn"
             />
           </ul>
         </div>
@@ -142,7 +182,7 @@ function onWheel(event: WheelEvent) {
         color="neutral"
         variant="outline"
         size="sm"
-        :aria-label="t('dataviews.treeView.zoomOut')"
+        :aria-label="t('common.orgChart.zoomOut')"
         :disabled="zoom <= MIN_ZOOM"
         @click="setZoom(zoom - STEP)"
       />
@@ -152,7 +192,7 @@ function onWheel(event: WheelEvent) {
         variant="outline"
         size="sm"
         class="w-14 justify-center tabular-nums"
-        :aria-label="t('dataviews.treeView.zoomReset')"
+        :aria-label="t('common.orgChart.zoomReset')"
         @click="setZoom(1)"
       />
       <UButton
@@ -160,17 +200,17 @@ function onWheel(event: WheelEvent) {
         color="neutral"
         variant="outline"
         size="sm"
-        :aria-label="t('dataviews.treeView.zoomIn')"
+        :aria-label="t('common.orgChart.zoomIn')"
         :disabled="zoom >= MAX_ZOOM"
         @click="setZoom(zoom + STEP)"
       />
-      <UTooltip :text="t('dataviews.treeView.fitWidth')">
+      <UTooltip :text="t('common.orgChart.fitWidth')">
         <UButton
           icon="i-lucide-move-horizontal"
           color="neutral"
           variant="outline"
           size="sm"
-          :aria-label="t('dataviews.treeView.fitWidth')"
+          :aria-label="t('common.orgChart.fitWidth')"
           @click="fit"
         />
       </UTooltip>

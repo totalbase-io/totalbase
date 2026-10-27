@@ -248,8 +248,8 @@ test('edit a user: name, email, roles and avatar', async ({ page }) => {
 
   // Roles - swap the first role for the second, then Save.
   await page.getByRole('link', { name: 'Roles' }).click()
-  await page.locator('label', { hasText: first.name }).getByRole('checkbox').click()
-  await page.locator('label', { hasText: second.name }).getByRole('checkbox').click()
+  await page.getByRole('switch', { name: first.name, exact: true }).click()
+  await page.getByRole('switch', { name: second.name, exact: true }).click()
   // The roles' own PUT, not the "User saved" toast: the name step's toast
   // can still be on screen and would match before this save even ran.
   const rolesSaved = page.waitForResponse(r => r.url().endsWith(`/admin/api/users/${user.id}/roles`) && r.request().method() === 'PUT')
@@ -414,7 +414,7 @@ test('the users list: bulk Add to role, Remove from role and Deactivate', async 
   expect(failures).toEqual([])
 })
 
-test('a role\'s members: move the checked ones to another role', async ({ page }) => {
+test('a role\'s members: move one to another role from their "⋮"', async ({ page }) => {
   const [from, to] = [await createRole(), await createRole()]
   const member = await createUser({ roles: [from.id] })
   await signIn(page)
@@ -422,8 +422,8 @@ test('a role\'s members: move the checked ones to another role', async ({ page }
 
   await page.goto(`/roles/${from.id}`)
   await page.getByRole('link', { name: /Members/ }).click()
-  await page.getByRole('checkbox', { name: `Select ${member.name}` }).click()
-  await page.getByRole('button', { name: 'Move to role…' }).click()
+  await page.getByRole('button', { name: `Actions for ${member.name}` }).click()
+  await page.getByRole('menuitem', { name: 'Move to role…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Move to role' })
   await dialog.getByLabel('Role', { exact: true }).click()
   await page.getByRole('option', { name: new RegExp(to.name) }).click()
@@ -474,7 +474,7 @@ test('create a role', async ({ page }) => {
   roleIds.add(id)
   await expect(toast(page, 'Role created')).toBeVisible()
   expect(await getRole(id)).toMatchObject({ name, description: 'Created by the UI users spec' })
-  // "Apply default totalbase permissions" is on by default.
+  // An administrator's new role always comes with the default totalbase permissions.
   const grants = await ok<unknown[]>('GET', `/api/totalbase/table/permissions?where[role][_eq]=${id}`)
   expect(grants.length).toBeGreaterThan(0)
   expect(failures).toEqual([])
@@ -553,7 +553,7 @@ test('grant and revoke a role permission with a row filter and a field restricti
   expect(failures).toEqual([])
 })
 
-test('set a role\'s managers, add and remove a member', async ({ page }) => {
+test('set a role\'s managers, turn a member on and off', async ({ page }) => {
   const [role, manager] = [await createRole(), await createRole()]
   const user = await createUser()
   const managers = async () => (await ok<Array<{ manager: string }>>('GET', `/api/totalbase/table/roles_managers?where[role][_eq]=${role.id}&fields=manager`)).map(r => r.manager)
@@ -561,20 +561,24 @@ test('set a role\'s managers, add and remove a member', async ({ page }) => {
   const failures = watchApiFailures(page)
 
   await page.goto(`/roles/${role.id}`)
-  await page.getByRole('link', { name: 'Members' }).click()
+  // Saved with the header's Save, as the rest of General.
+  const save = page.getByRole('button', { name: 'Save', exact: true })
   await pickOptions(page, page.getByRole('button', { name: 'Managed by' }), [manager.name])
+  await expect(page.getByText('Unsaved')).toBeVisible()
+  await save.click()
   await expect.poll(managers).toEqual([manager.id])
   await pickOptions(page, page.getByRole('button', { name: 'Managed by' }), [manager.name])
+  await save.click()
   await expect.poll(managers).toEqual([])
 
-  const add = page.getByRole('button', { name: 'Add an existing user' })
-  await add.click()
-  await page.keyboard.type(user.email)
-  await page.getByRole('option', { name: user.name! }).click()
+  await page.getByRole('link', { name: 'Members' }).click()
+  await page.getByRole('textbox', { name: 'Search users' }).fill(user.email!)
+  const holds = page.getByRole('switch', { name: `${user.name} holds ${role.name}` })
+  await holds.click()
   await expect(toast(page, `${user.name} added to ${role.name}`)).toBeVisible()
   expect((await getUser(user.id)).roles).toEqual([role.id])
 
-  await page.getByRole('button', { name: `Remove ${user.name} from ${role.name}` }).click()
+  await holds.click()
   await expect(toast(page, `Removed from ${role.name}`)).toBeVisible()
   expect((await getUser(user.id)).roles).toEqual([])
   expect(failures).toEqual([])

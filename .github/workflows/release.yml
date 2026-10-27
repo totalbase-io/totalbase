@@ -2,6 +2,9 @@
 # (scripts/publish-public.sh): one image, the server (the MCP server included, at /mcp), for amd64 and arm64, on Docker Hub
 # (totalbase/totalbase) and GitHub's registry. A beta is tagged `0.1.0-beta.N` and `beta`; `latest` waits for the first stable release; any other pre-release
 # (a test of this workflow) only its version.
+#
+# Each architecture builds on its own native runner, in parallel - never emulated (QEMU took most of an hour) - and is
+# pushed by digest; the last job joins both digests under the release's tags.
 name: Release
 
 on:
@@ -12,20 +15,24 @@ permissions:
   contents: read
   packages: write
 
+env:
+  IMAGE: totalbase
+  REGISTRIES: totalbase ghcr.io/totalbase-io
+
 jobs:
-  images:
+  build:
     # Only the public repository publishes; the development repository's tags never do.
     if: github.repository == 'totalbase-io/totalbase'
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          # One image: the server - the Data API, the admin, the App and the MCP server at /mcp.
-          - target: server
-            image: totalbase
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -36,8 +43,55 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: tags
-        name: Tags
+      - id: arch
+        run: echo "name=${PLATFORM#linux/}" >> "$GITHUB_OUTPUT"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+      # The one image: the server - the Data API, the admin, the App and the MCP server at /mcp. Pushed to both
+      # registries by digest only, untagged until the merge.
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: server
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,"name=totalbase/${{ env.IMAGE }},ghcr.io/totalbase-io/${{ env.IMAGE }}",push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.source=https://github.com/totalbase-io/totalbase
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha,scope=${{ env.IMAGE }}-${{ steps.arch.outputs.name }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE }}-${{ steps.arch.outputs.name }}
+      - run: mkdir -p /tmp/digests && touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ steps.arch.outputs.name }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag the multi-platform image
+        working-directory: /tmp/digests
         run: |
           version="${GITHUB_REF_NAME#v}"
           # A channel only for what it names: a beta, a release candidate, a stable version. Any other pre-release
@@ -48,24 +102,9 @@ jobs:
             *-*) channel= ;;
             *) channel=latest ;;
           esac
-          {
-            echo "list<<EOF"
-            for registry in "totalbase" "ghcr.io/totalbase-io"; do
-              echo "$registry/${{ matrix.image }}:$version"
-              [ -n "$channel" ] && echo "$registry/${{ matrix.image }}:$channel"
-            done
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: ${{ matrix.target }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.tags.outputs.list }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/totalbase-io/totalbase
-            org.opencontainers.image.version=${{ github.ref_name }}
-            org.opencontainers.image.licenses=Apache-2.0
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          for registry in $REGISTRIES; do
+            tags=(-t "$registry/$IMAGE:$version")
+            [ -n "$channel" ] && tags+=(-t "$registry/$IMAGE:$channel")
+            docker buildx imagetools create "${tags[@]}" $(printf "$registry/$IMAGE@sha256:%s " *)
+            docker buildx imagetools inspect "$registry/$IMAGE:$version"
+          done

@@ -459,10 +459,6 @@
       "addChild": "Agregar bajo {name}",
       "actions": "Acciones de {name}",
       "moveError": "No se pudo mover la fila",
-      "zoomOut": "Alejar",
-      "zoomIn": "Acercar",
-      "zoomReset": "Tamaño real",
-      "fitWidth": "Ajustar al ancho",
       "cantMoveUnder": "No se puede mover «{name}» debajo de «{target}», que está debajo de «{name}»."
     },
     "appHome": {

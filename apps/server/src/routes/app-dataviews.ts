@@ -2,7 +2,7 @@ import { UUID_PATTERN } from "@totalbase/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { callerRoleIds, callerRoles } from "../caller-roles.js";
 import { settingsWritable, type AdminDataView, type AdminDataViewField } from "@totalbase/dataviews";
-import { ReadAudit } from "../read-audit.js";
+import { ReadAudit, readOrigin } from "../read-audit.js";
 import { TotalBaseError } from "@totalbase/errors";
 import type { CustomAction } from "@totalbase/tb-catalog";
 import type { AppContext } from "../context.js";
@@ -270,7 +270,7 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
     const principal = await resolveDataPrincipal(context, extractBearerToken(request), request.headers["x-totalbase-timezone"], request);
     const { writable, read } = await settingsWritable(context, principal, view);
     // A read of the table's keys under the viewer's grants: its READ audit row, like any Data API read's (audit_read).
-    if (read) await new ReadAudit(context, request, read.resource, principal).executed(context.database, { fields: [{ path: [read.keyColumn] }] }, read.rowCount);
+    if (read) await new ReadAudit(context, readOrigin(request), read.resource, principal).executed(context.database, { fields: [{ path: [read.keyColumn] }] }, read.rowCount);
     return { data: writable };
   });
 

@@ -1,43 +1,16 @@
 <script setup lang="ts">
 // Role managers (Security.md §9.4): the roles whose
 // members may assign this one to users - how a delegated user hands out a
-// role they didn't create. Administrators only; applies at once.
-const props = defineProps<{ roleId: string }>()
+// role they didn't create. Administrators only; saved with the role page's Save.
+const managerIds = defineModel<string[]>({ required: true })
 
-const api = useAdminApi()
-const rolesApi = useRolesApi()
 const { t } = useI18n()
-const notifyError = useErrorToast()
 const { data: allRoles } = useRoleOptions()
 // A role with admin access already assigns everything. The role itself is offered: its members then add one
 // another - "Site managers" adding another site manager.
 const roleOptions = computed(() => (allRoles.value ?? [])
   .filter(r => !r.adminAccess)
   .map(r => ({ label: r.name, value: r.id })))
-
-const managerIds = ref<string[]>([])
-const saving = ref(false)
-watch(() => props.roleId, async (id) => {
-  try {
-    managerIds.value = await rolesApi.managers(id)
-  } catch (error) {
-    notifyError(error, t('users.roleManagers.loadError'))
-  }
-}, { immediate: true })
-
-async function save(next: string[]) {
-  const previous = managerIds.value
-  managerIds.value = next
-  saving.value = true
-  try {
-    managerIds.value = (await api.put<string[]>(`/roles/${props.roleId}/managers`, { data: { roleIds: next } })).data
-  } catch (error) {
-    managerIds.value = previous
-    notifyError(error, t('users.roleManagers.saveError'))
-  } finally {
-    saving.value = false
-  }
-}
 </script>
 
 <template>
@@ -52,9 +25,8 @@ async function save(next: string[]) {
       multiple
       searchable
       :aria-label="t('users.roleManagers.label')"
-      :loading="saving"
       class="w-full"
-      @update:model-value="save"
+      @update:model-value="(next: string[]) => { managerIds = next }"
     />
   </UFormField>
 </template>

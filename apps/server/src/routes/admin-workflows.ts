@@ -194,7 +194,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
   app.delete<{ Params: { id: string } }>("/admin/api/workflows/:id", {
     preHandler,
     ...docs({ summary: "Delete a workflow", description: "With its versions and run history.", pathParameters: ID_PARAMS, response: NO_CONTENT }),
-  }, async (request, reply) => { await context.workflowsAdmin.remove(request.params.id); reply.code(204).send(); });
+  }, async (request, reply) => { await context.workflowsAdmin.remove(request.params.id); return reply.code(204).send(); });
 
   // Publish (Workflows.md §10.2 + Foundations.md §13): validates
   // execution readiness against the registered native handler set, then

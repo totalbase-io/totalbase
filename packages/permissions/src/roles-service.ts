@@ -562,6 +562,14 @@ export class RolesService {
   }
 
   /** The roles no user may hold together with this one (Security.md §1.9). */
+  /** Every pair no user may hold together (Security.md §1.9) - what a user's Roles tab checks before Save. */
+  async listIncompatibilities(): Promise<{ role: string; other: string }[]> {
+    const { rows } = await this.database.query<{ role: string; other: string }>(
+      `SELECT role, other FROM totalbase.roles_incompatibilities ORDER BY created_at`,
+    );
+    return rows;
+  }
+
   async listIncompatible(id: string): Promise<string[]> {
     const { rows } = await this.database.query<{ id: string }>(
       `SELECT CASE WHEN role = $1 THEN other ELSE role END AS id FROM totalbase.roles_incompatibilities

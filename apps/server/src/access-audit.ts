@@ -99,6 +99,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "PUT /admin/api/resources/:resource/permissions/:action": "permission.set",
   "PUT /app/api/resources/:resource/permissions/:action": "permission.set",
   "DELETE /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.clear",
+  "POST /admin/api/roles/:role/permissions/copy": "permission.copy",
   "PUT /app/api/roles/:role/resources/:resource/permissions/:action": "permission.set",
   "DELETE /app/api/roles/:role/resources/:resource/permissions/:action": "permission.clear",
   "PUT /app/api/roles/:role/objects/:kind/:id": "role.object_grant",

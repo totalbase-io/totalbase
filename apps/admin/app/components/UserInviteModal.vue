@@ -13,6 +13,7 @@
  * call: account, roles, email), choosing among the roles they may assign.
  */
 import type { AdminUser } from '~/types/security'
+import type { UserExtraColumn } from '~/composables/useUserExtraColumns'
 import { useApiErrorMessage } from '~/utils/api-error-message'
 
 const props = defineProps<{ roleId?: string }>()
@@ -41,7 +42,9 @@ const roleIds = ref<string[]>([])
 const extraApi = useUserExtraColumns()
 // A delegated user sees the ones their grant lets them set - sent with the invitation, so a row filter on
 // them (branch = $USER.branch) holds on the new account.
-const { data: extraColumns } = useAsyncData('user-extra-columns', () => (isAdmin.value ? extraApi.load() : extraApi.loadInvitable()), { default: () => [] })
+const { data: extraColumns } = isAdmin.value
+  ? useUserExtraColumnsData()
+  : useAsyncData('user-invitable-columns', () => extraApi.loadInvitable(), { default: (): UserExtraColumn[] => [] })
 const extra = ref<Record<string, unknown>>({})
 async function writeExtra(userId: string) {
   const refused = await extraApi.write(userId, extra.value)

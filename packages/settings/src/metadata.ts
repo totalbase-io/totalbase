@@ -115,6 +115,10 @@ export const SETTINGS_GROUP_METADATA: Record<string, { label: string; descriptio
     label: "MCP",
     description: "The MCP server an AI agent builds and operates this instance through - served at this instance's own address, /mcp, with an administrator's token.",
   },
+  realtime: {
+    label: "Realtime",
+    description: "Realtime subscriptions: clients follow the changes of the tables exposing Realtime over one WebSocket, /api/realtime, receiving only what their READ permission allows.",
+  },
   sql_console: {
     label: "SQL Console",
     description: "Whether admins can run raw SQL, how much of a result it shows, and how long its history is kept.",
@@ -978,6 +982,24 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     description: "The Host a request to /mcp may name - refuses a page that tricks a browser into calling it (DNS rebinding). Empty: the public URL's host, and localhost.",
     section: "Agent",
     dependsOn: "mcp.enabled",
+  },
+
+  // --- realtime.* ---
+  "realtime.enabled": {
+    label: "Enable Realtime",
+    description: "Serves /api/realtime. Needs PostgreSQL's logical replication: wal_level = logical and the REPLICATION attribute on TotalBase's role. Off = the endpoint doesn't answer; the tables keep their Realtime exposure.",
+  },
+  "realtime.max_subscriptions": {
+    label: "Subscriptions per connection",
+    description: "The most subscriptions one WebSocket holds at once.",
+    unit: "subscriptions",
+    dependsOn: "realtime.enabled",
+  },
+  "realtime.heartbeat_seconds": {
+    label: "Heartbeat",
+    description: "How often the server pings each connection; one that doesn't answer before the next ping is closed.",
+    unit: "seconds",
+    dependsOn: "realtime.enabled",
   },
 
   // --- sql_console.* ---

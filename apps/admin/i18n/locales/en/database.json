@@ -464,7 +464,7 @@
       "renameHint": "Renaming a table isn't supported here - use SQL Console.",
       "browseData": "Browse Data",
       "browseDataNeedsGet": "Turn on GET under Endpoints to browse the data - the data browser reads through the Data API.",
-      "endpointsIntro": "Which HTTP methods are available for {name} under the TotalBase Data API — a hard ceiling below role permissions, a method turned off never exists here, no matter who's asking.",
+      "endpointsIntro": "What the TotalBase Data API offers for {name} — its HTTP methods and Realtime subscriptions; a hard ceiling below role permissions, one turned off never exists here, no matter who's asking.",
       "endpointUpdateError": "Could not update endpoint",
       "deleteTitle": "Delete this table",
       "deleteButton": "Delete table",

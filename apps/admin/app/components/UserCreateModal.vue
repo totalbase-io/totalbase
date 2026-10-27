@@ -24,11 +24,7 @@ const { data: roleOptions } = useRoleOptions()
 // Read-only, just to show the actual number in the password field's
 // description instead of a vague "long enough" - changing it is Settings'
 // job (Settings → Auth), not this form's.
-const { data: authSettings } = useAsyncData(
-  'users-auth-settings',
-  () => api.get<Record<string, unknown>>('/settings/auth').then(r => r.data),
-  { default: (): Record<string, unknown> => ({}) }
-)
+const { data: authSettings } = useAuthSettings()
 const passwordMinLength = computed(() => authSettings.value?.['auth.password_min_length'])
 const passwordDescription = computed(() =>
   typeof passwordMinLength.value === 'number'
@@ -46,7 +42,7 @@ const creating = ref(false)
 
 // The columns the project added to users (Additional data) - set right after the account exists.
 const extraApi = useUserExtraColumns()
-const { data: extraColumns } = useAsyncData('user-extra-columns', () => extraApi.load(), { default: () => [] })
+const { data: extraColumns } = useUserExtraColumnsData()
 const extra = ref<Record<string, unknown>>({})
 async function writeExtra(userId: string) {
   const refused = await extraApi.write(userId, extra.value)

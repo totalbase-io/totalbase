@@ -202,6 +202,7 @@ export const adminNavGroups: AdminNavGroup[] = [
         { label: 'shell.nav.items.transactions', icon: 'i-lucide-layers', to: '/settings/transactions' },
         { label: 'shell.nav.items.asyncExecutions', icon: 'i-lucide-list-restart', to: '/settings/async-executions' },
         { label: 'shell.nav.items.openapi', icon: 'i-lucide-file-code', to: '/settings/openapi' },
+        { label: 'shell.nav.items.realtime', icon: 'i-lucide-radio', to: '/settings/realtime' },
         { label: 'shell.nav.items.mcp', icon: 'i-lucide-bot', to: '/settings/mcp' }
       ],
       [
@@ -252,6 +253,7 @@ export const SETTINGS_GROUP_ROUTES: Record<string, string> = {
   async_executions: '/settings/async-executions',
   outbox: '/settings/async-executions',
   openapi: '/settings/openapi',
+  realtime: '/settings/realtime',
   dataviews: '/settings/dataviews',
   dashboards: '/settings/dashboards',
   maps: '/settings/maps',

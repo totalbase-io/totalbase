@@ -18,7 +18,6 @@ const props = defineProps<{
   layout?: CalendarLayoutConfig
   primaryKey?: string
   canWrite: boolean
-  timeFormat: string
   /** The viewer's effective time zone (undefined = the browser's) - a timestamptz is placed, moved and created in it. */
   timezone?: string
   pending: boolean
@@ -119,7 +118,6 @@ function onCreateOnDay(day: Date) {
     :events="resolved.events"
     :can-write="canWrite"
     :week-starts-on="layout?.weekStartsOn ?? 0"
-    :time-format="timeFormat"
     :timezone="timezone"
     :pending="pending"
     @edit="emit('edit', $event)"

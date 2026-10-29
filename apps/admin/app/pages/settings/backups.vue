@@ -8,7 +8,7 @@
  * server signs for a minute (an archive may be too large to pass through
  * the page) and is deleted with its archive. Restore… hands the commands that
  * restore it (BackupRestoreWizard.vue) - nothing runs from here. Its switch turns backups off as a
- * whole: the settings below it wait for it (`disable-dependents`), the list
+ * whole: the settings below it wait for it (its `primary` switch), the list
  * never does - what was made stays to download or delete.
  */
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
@@ -130,15 +130,14 @@ const columns = computed<TableColumn<Backup>[]>(() => [
   <SettingsGroupForm
     group="backups"
     :cron-timezone="overview?.timezone"
-    disable-dependents
     @saved="() => refresh()"
   >
-    <template #actions>
+    <template #actions="{ off }">
       <UButton
         icon="i-lucide-archive"
         :label="t('settings.backups.backUpNow')"
         :loading="queuing"
-        :disabled="active || !overview?.enabled"
+        :disabled="active || off || !overview?.enabled"
         @click="backUpNow"
       />
     </template>

@@ -1,4 +1,4 @@
-import type { LoginCardPosition, LoginLayout, McpMode, NeutralColor } from "@totalbase/shared";
+import type { ColorMode, LoginCardPosition, LoginLayout, McpMode, NeutralColor } from "@totalbase/shared";
 import { MAIL_TEMPLATE_DEFAULTS, type MailTemplate } from "./mail-templates.js";
 
 /**
@@ -81,19 +81,13 @@ export interface SettingsRegistry {
   // The UI's language for whoever chose none in My account, and for pages
   // with no user (sign-in, embeds) - Admin_UI.md §14.
   "system.language": string;
-  // How numbers and browser-formatted dates read for everyone (a
-  // REGIONAL_FORMATS tag) - Admin_UI.md §14. Empty = each viewer's browser.
+  // How numbers, dates and times read for whoever chose none in My account
+  // (a REGIONAL_FORMATS tag) - Admin_UI.md §14. Empty = each viewer's browser.
   "system.regional_format": string;
-  // Instance-wide display defaults (apps/admin/app/utils/format-pattern.ts):
-  // the zone a `timestamptz` value is converted into before display, and
-  // the fallback date-fns patterns for a date/time/timestamp column whose
-  // own `config.displayFormat` isn't set - a field's own Format always
-  // wins. Empty = no default: the viewer's browser zone, the raw value.
+  // The zone a `timestamptz` value is shown in, and reports count days in
+  // (Security.md §4.2). Empty = each viewer's browser zone.
   "system.timezone": string;
   "system.timezone_user_choice": boolean;
-  "system.date_format": string;
-  "system.time_format": string;
-  "system.datetime_format": string;
 
   // The operator's branding (Admin_UI.md §4.1.1): served
   // public, before sign-in, by /api/instance and /theme.css.
@@ -102,6 +96,8 @@ export interface SettingsRegistry {
   "appearance.primary_color": string;
   /** The grays (text, borders, backgrounds) - one of Tailwind's five. */
   "appearance.neutral_color": NeutralColor;
+  /** The color mode of a browser whose viewer hasn't picked one. */
+  "appearance.color_mode": ColorMode;
   "appearance.login_layout": LoginLayout;
   "appearance.login_card_position": LoginCardPosition;
   /** Id of a PUBLIC image in Files - the IMAGE layout's background. */
@@ -437,12 +433,10 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "system.regional_format": "",
   "system.timezone": "",
   "system.timezone_user_choice": false,
-  "system.date_format": "",
-  "system.time_format": "",
-  "system.datetime_format": "",
 
   "appearance.primary_color": "",
   "appearance.neutral_color": "slate",
+  "appearance.color_mode": "SYSTEM",
   "appearance.login_layout": "SPLIT",
   "appearance.login_card_position": "RIGHT",
   "appearance.login_background": "",

@@ -151,8 +151,8 @@ export interface MfaStatus {
 /** A user's own display preferences (users.preferences) - a missing key = the instance default. */
 export interface MyPreferences {
   timezone?: string
-  dateFormat?: string
-  timeFormat?: string
+  /** How numbers, dates and times read - one of REGIONAL_FORMATS (Admin_UI.md §14). */
+  regionalFormat?: string
   /** The UI's language (Admin_UI.md §14). */
   language?: string
 }
@@ -160,8 +160,8 @@ export interface MyPreferences {
 /** GET/PATCH /app/api/me/preferences. */
 export interface MyPreferencesState {
   preferences: MyPreferences
-  instance: { timezone: string, dateFormat: string, timeFormat: string, datetimeFormat: string, language: string }
-  effective: { timezone: string, dateFormat: string, timeFormat: string, datetimeFormat: string, language: string }
+  instance: { timezone: string, language: string, regionalFormat: string }
+  effective: { timezone: string, language: string, regionalFormat: string }
   /** The organization sets everyone's timezone (Settings > General) - a user's own is kept, not used. */
   timezoneLocked: boolean
 }

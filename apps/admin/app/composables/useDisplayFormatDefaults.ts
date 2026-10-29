@@ -1,8 +1,9 @@
 /**
  * The display defaults a DataView falls back to when a field's own
  * `config.displayFormat` isn't set - the signed-in user's effective
- * timezone and date/time patterns (their My account preferences, else
- * Settings > General; useDateTimeFormat(), from GET /auth/me) - plus the
+ * timezone (their My account preferences, else Settings > General;
+ * useDateTimeFormat(), from GET /auth/me); with no Format, a value reads in
+ * the regional format (format-pattern.ts) - plus the
  * `dataviews.*` row caps (Settings > DataViews,
  * packages/settings/src/registry.ts). The display defaults are used by
  * both the grid (build-dataview-columns.ts) and the record form
@@ -23,9 +24,6 @@
  */
 export interface DisplayFormatDefaults {
   timezone: string
-  dateFormat: string
-  timeFormat: string
-  datetimeFormat: string
 }
 
 /** Settings > DataViews, as last read - shared by every caller (the admin is an SPA: one module, one copy). */
@@ -46,13 +44,8 @@ export function useDisplayFormatDefaults() {
       .catch(() => { capsRequest = null })
   }
   const data = caps
-  const { timezone, patterns } = useDateTimeFormat()
-  const defaults = computed<DisplayFormatDefaults>(() => ({
-    timezone: timezone.value ?? '',
-    dateFormat: patterns.value.date,
-    timeFormat: patterns.value.time,
-    datetimeFormat: patterns.value.datetime
-  }))
+  const { timezone } = useDateTimeFormat()
+  const defaults = computed<DisplayFormatDefaults>(() => ({ timezone: timezone.value ?? '' }))
   // `?? 10_000`/`?? 1_000` here match SETTINGS_DEFAULTS in
   // packages/settings/src/registry.ts - only used if this fetch hasn't
   // resolved yet (or failed), same fallback-to-default spirit as the

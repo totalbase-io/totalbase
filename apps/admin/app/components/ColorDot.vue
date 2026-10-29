@@ -29,12 +29,12 @@ const props = withDefaults(defineProps<{
   size: 'sm'
 })
 
-const colorMode = useColorMode()
+const surfaceTone = useSurfaceTone()
 const { t } = useI18n()
 /** Neither a real palette name nor a literal hex - `roleColorShade` itself never throws for this (falls back to `'transparent'`), but a plain transparent circle alone would just look like "no color", easy to miss. The dashed ring below is what actually tells a builder "your formula returned something, and it's wrong" apart from "no color was ever set here". */
 const invalid = computed(() => !isValidColorValue(props.color))
 const style = computed(() => ({
-  backgroundColor: roleColorShade(props.color, colorMode.value === 'dark' ? 'dark' : 'light')
+  backgroundColor: roleColorShade(props.color, surfaceTone.value)
 }))
 
 const SIZE_CLASS = { xs: 'size-2.5', sm: 'size-3.5', md: 'size-5' } as const

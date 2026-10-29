@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
+import { localeAreasForRoute } from '~/utils/locale-areas'
 import { PAGE_NAVBARS_KEY, PANEL_FOLDED_KEY } from '~/utils/page-navbar'
 
 const session = useSession()
 const { instance } = useInstance()
 const api = useAdminApi()
 const route = useRoute()
-const colorMode = useColorMode()
 const { t } = useI18n()
 
 // One portal shell for everyone (Security.md §9): an
@@ -62,6 +62,7 @@ const showAside = computed(() => !isCompact.value && !isFullWidthEditor.value &&
 const PANEL_SIZES = { database: 340, other: 224 } as const
 const panelSizeKey = computed(() => (activeGroupKey.value === 'database' ? 'database' : 'other'))
 const nuxtApp = useNuxtApp()
+const localeAreas = nuxtApp.$localeAreas
 // Pages frame themselves in PageShell, whose navbar carries the phone's ☰; the layout's own header is only for
 // a page without one (an empty "Select a ..." placeholder).
 const pageNavbars = ref(0)
@@ -85,11 +86,14 @@ const groupDefaultRoute = computed(() => new Map(navGroups.value.map(g => [g.key
 // A rail click always jumps to the group's default page (Tables for
 // Database, etc.) as well as switching the panel - clicking an icon
 // should land you *in* that group, not just open its list and leave you
-// wherever you already were.
-function selectGroup(key: string) {
+// wherever you already were. The panel shows before the navigation's
+// middleware loads the page's texts, so its own areas load first
+// (utils/locale-areas.ts) - else it paints, once, its keys.
+async function selectGroup(key: string) {
+  const to = groupDefaultRoute.value.get(key)
+  if (to) await localeAreas.ensure(localeAreasForRoute(to)).catch(() => undefined)
   activeGroupKey.value = key
   expandPanel()
-  const to = groupDefaultRoute.value.get(key)
   if (to) navigateTo(to)
 }
 
@@ -148,19 +152,22 @@ const environmentBadgeColor = computed(() => {
 
 // Theme + session in one menu (avatar click) rather than separate controls -
 // everything about "me" lives in one place instead of spread across the
-// navbar. Checkbox items double as a 3-way radio: only one of the three is
-// ever checked, driven by colorMode.preference itself.
-function setTheme(preference: 'light' | 'dark' | 'system') {
-  colorMode.preference = preference
-}
+// navbar. Checkbox items double as a radio: only one is ever checked, the
+// viewer's own pick or Default - the instance's mode (useColorModeChoice).
+const colorModeChoice = useColorModeChoice()
+const themeItem = (choice: ColorModeChoice | null, label: string, icon: string) => ({
+  label, icon, type: 'checkbox' as const, checked: colorModeChoice.choice.value === choice, onSelect: () => colorModeChoice.choose(choice)
+})
 
 const userMenuItems = computed(() => [
   [{ label: session.admin.value?.email, type: 'label' as const }],
   [{ label: t('shell.userMenu.myAccount'), icon: 'i-lucide-circle-user', to: '/account' }],
   [
-    { label: t('shell.userMenu.light'), icon: 'i-lucide-sun', type: 'checkbox' as const, checked: colorMode.preference === 'light', onSelect: () => setTheme('light') },
-    { label: t('shell.userMenu.dark'), icon: 'i-lucide-moon', type: 'checkbox' as const, checked: colorMode.preference === 'dark', onSelect: () => setTheme('dark') },
-    { label: t('shell.userMenu.system'), icon: 'i-lucide-monitor', type: 'checkbox' as const, checked: colorMode.preference === 'system', onSelect: () => setTheme('system') }
+    themeItem(null, t('shell.userMenu.instanceDefault'), 'i-lucide-building-2'),
+    themeItem('light', t('shell.userMenu.light'), 'i-lucide-sun'),
+    themeItem('dark', t('shell.userMenu.dark'), 'i-lucide-moon'),
+    themeItem('midnight', t('shell.userMenu.midnight'), 'i-lucide-moon-star'),
+    themeItem('system', t('shell.userMenu.system'), 'i-lucide-monitor')
   ],
   [{ label: t('shell.userMenu.logOut'), icon: 'i-lucide-log-out', color: 'error' as const, onSelect: logout }]
 ])
@@ -214,129 +221,133 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
     visible height everywhere - a phone's collapsing URL bar, an embedded
     browser such as VS Code's - and the difference showed as a page-wide
     scrollbar with an empty strip under the app. -->
-    <!-- Rail: the groups follow the product navigation order. Only the
+    <!-- The rail and the panel, dark in midnight (ShellSurface.vue); a flex row like the group's, so the panel's
+    width and its resize handle behave as its direct children did. -->
+    <ShellSurface class="flex min-h-0 min-w-0 shrink-0">
+      <!-- Rail: the groups follow the product navigation order. Only the
     account cluster is anchored at the bottom of the rail. -->
-    <!-- data-shell: the anchors the operator's CSS may target (Admin_UI.md §4.1.1) - rail, panel, header, main. -->
-    <nav
-      v-if="!isCompact"
-      data-shell="rail"
-      :aria-label="t('shell.railLabel')"
-      class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-default bg-elevated/50"
-    >
-      <ActionHeader
-        :to="portalHomeFor(session.access.value)"
-        :label="isAdmin ? t('shell.nav.groups.status') : t('shell.nav.groups.app')"
-        class="mb-2"
+      <!-- data-shell: the anchors the operator's CSS may target (Admin_UI.md §4.1.1) - rail, panel, header, main. -->
+      <nav
+        v-if="!isCompact"
+        data-shell="rail"
+        :aria-label="t('shell.railLabel')"
+        class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-default bg-elevated/50"
       >
-        <BrandMark
-          icon-only
-          size="lg"
-          halo
-        />
-      </ActionHeader>
-      <NavRailGroups
-        :groups="navGroups"
-        :active-key="activeGroupKey"
-        :is-admin="isAdmin"
-        @select="selectGroup"
-      />
-
-      <RailAccountCluster
-        :environment="environment"
-        :environment-color="environmentBadgeColor"
-        :items="userMenuItems"
-      />
-    </nav>
-
-    <!-- Second column: the active group's panel (UDashboardSidebar). Dashboard has none. Database's is
-    DatabaseTree.vue rather than the generic sections menu (navigation.ts). -->
-    <!-- On a phone or a tablet its column is hidden and its menu - the rail beside the panel, in a slideover -
-    is the navigation, opened by the ☰ of the page's navbar. -->
-    <UDashboardSidebar
-      v-if="showAside || isCompact"
-      :id="isCompact ? 'compact' : panelSizeKey"
-      :key="isCompact ? 'compact' : panelSizeKey"
-      v-model:open="isMobileNavOpen"
-      v-model:collapsed="panelCollapsed"
-      data-shell="panel"
-      :class="isCompact || panelCollapsed ? 'hidden lg:hidden' : undefined"
-      :auto-close="false"
-      :resizable="!panelCollapsed"
-      collapsible
-      :min-size="180"
-      :max-size="560"
-      :default-size="PANEL_SIZES[panelSizeKey]"
-      :toggle="false"
-    >
-      <template #header>
-        <SidebarHeader
-          :title="activeGroup?.label ?? ''"
-          :icon="activeGroup?.icon"
+        <ActionHeader
+          :to="portalHomeFor(session.access.value)"
+          :label="isAdmin ? t('shell.nav.groups.status') : t('shell.nav.groups.app')"
+          class="mb-2"
         >
-          <UDashboardSidebarCollapse
-            class="ms-auto"
-            color="neutral"
-            variant="ghost"
+          <BrandMark
+            icon-only
+            size="lg"
+            halo
           />
-        </SidebarHeader>
-      </template>
-      <NavGroupPanel
-        v-if="activeGroup"
-        :group="activeGroup"
-        :is-admin="isAdmin"
-      />
-      <template #content>
-        <div class="flex h-full min-h-0">
-          <nav
-            data-shell="rail"
-            :aria-label="t('shell.railLabel')"
-            class="flex w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-default bg-elevated/50 py-3"
+        </ActionHeader>
+        <NavRailGroups
+          :groups="navGroups"
+          :active-key="activeGroupKey"
+          :is-admin="isAdmin"
+          @select="selectGroup"
+        />
+
+        <RailAccountCluster
+          :environment="environment"
+          :environment-color="environmentBadgeColor"
+          :items="userMenuItems"
+        />
+      </nav>
+
+      <!-- Second column: the active group's panel (UDashboardSidebar). Dashboard has none. Database's is
+    DatabaseTree.vue rather than the generic sections menu (navigation.ts). -->
+      <!-- On a phone or a tablet its column is hidden and its menu - the rail beside the panel, in a slideover -
+    is the navigation, opened by the ☰ of the page's navbar. -->
+      <UDashboardSidebar
+        v-if="showAside || isCompact"
+        :id="isCompact ? 'compact' : panelSizeKey"
+        :key="isCompact ? 'compact' : panelSizeKey"
+        v-model:open="isMobileNavOpen"
+        v-model:collapsed="panelCollapsed"
+        data-shell="panel"
+        :class="isCompact || panelCollapsed ? 'hidden lg:hidden' : undefined"
+        :auto-close="false"
+        :resizable="!panelCollapsed"
+        collapsible
+        :min-size="180"
+        :max-size="560"
+        :default-size="PANEL_SIZES[panelSizeKey]"
+        :toggle="false"
+      >
+        <template #header>
+          <SidebarHeader
+            :title="activeGroup?.label ?? ''"
+            :icon="activeGroup?.icon"
           >
-            <NavRailGroups
-              :groups="navGroups"
-              :active-key="activeGroupKey"
-              :is-admin="isAdmin"
-              @select="selectMobileGroup"
+            <UDashboardSidebarCollapse
+              class="ms-auto"
+              color="neutral"
+              variant="ghost"
             />
-            <RailAccountCluster
-              :environment="environment"
-              :environment-color="environmentBadgeColor"
-              :items="userMenuItems"
-            />
-          </nav>
-          <div class="flex min-w-0 flex-1 flex-col">
-            <SidebarHeader
-              :title="activeGroup?.label ?? instance.name"
-              :icon="activeGroup?.icon"
+          </SidebarHeader>
+        </template>
+        <NavGroupPanel
+          v-if="activeGroup"
+          :group="activeGroup"
+          :is-admin="isAdmin"
+        />
+        <template #content>
+          <ShellSurface class="flex h-full min-h-0">
+            <nav
+              data-shell="rail"
+              :aria-label="t('shell.railLabel')"
+              class="flex w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-default bg-elevated/50 py-3"
             >
-              <UButton
-                icon="i-lucide-x"
-                color="neutral"
-                variant="ghost"
-                class="ms-auto"
-                :aria-label="t('shell.mobileNav.close')"
-                @click="isMobileNavOpen = false"
-              />
-            </SidebarHeader>
-            <div class="flex-1 overflow-y-auto p-2">
-              <NavGroupPanel
-                v-if="activeGroup && groupHasPanel(activeGroup.key)"
-                :group="activeGroup"
+              <NavRailGroups
+                :groups="navGroups"
+                :active-key="activeGroupKey"
                 :is-admin="isAdmin"
+                @select="selectMobileGroup"
               />
-              <UEmpty
-                v-else
-                icon="i-lucide-panel-left"
-                :title="t('shell.mobileNav.pickSection')"
-                :description="t('shell.mobileNav.pickSectionDescription')"
-                variant="naked"
-                size="sm"
+              <RailAccountCluster
+                :environment="environment"
+                :environment-color="environmentBadgeColor"
+                :items="userMenuItems"
               />
+            </nav>
+            <div class="flex min-w-0 flex-1 flex-col">
+              <SidebarHeader
+                :title="activeGroup?.label ?? instance.name"
+                :icon="activeGroup?.icon"
+              >
+                <UButton
+                  icon="i-lucide-x"
+                  color="neutral"
+                  variant="ghost"
+                  class="ms-auto"
+                  :aria-label="t('shell.mobileNav.close')"
+                  @click="isMobileNavOpen = false"
+                />
+              </SidebarHeader>
+              <div class="flex-1 overflow-y-auto p-2">
+                <NavGroupPanel
+                  v-if="activeGroup && groupHasPanel(activeGroup.key)"
+                  :group="activeGroup"
+                  :is-admin="isAdmin"
+                />
+                <UEmpty
+                  v-else
+                  icon="i-lucide-panel-left"
+                  :title="t('shell.mobileNav.pickSection')"
+                  :description="t('shell.mobileNav.pickSectionDescription')"
+                  variant="naked"
+                  size="sm"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      </template>
-    </UDashboardSidebar>
+          </ShellSurface>
+        </template>
+      </UDashboardSidebar>
+    </ShellSurface>
 
     <!-- min-h-0 alongside flex-1: without it, this column has no capped
     height of its own (default overflow:visible flex items get an

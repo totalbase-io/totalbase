@@ -1,4 +1,4 @@
-import type { LoginCardPosition, LoginLayout } from '@totalbase/shared'
+import type { ColorMode, LoginCardPosition, LoginLayout } from '@totalbase/shared'
 
 /** What GET /api/instance says about this instance - public, read once at boot (plugins/instance.client.ts). */
 export interface InstanceInfo {
@@ -6,6 +6,8 @@ export interface InstanceInfo {
   name: string
   /** The operator's mark (Admin_UI.md §4.1.1), or null for the built-in one. */
   logoUrl: string | null
+  /** The color mode of a browser whose viewer hasn't picked one (useColorModeChoice). */
+  colorMode: ColorMode
   login: {
     layout: LoginLayout
     cardPosition: LoginCardPosition
@@ -30,6 +32,7 @@ const DEFAULT_INSTANCE: InstanceInfo = {
   language: 'en',
   name: PRODUCT_NAME,
   logoUrl: null,
+  colorMode: 'SYSTEM',
   login: { layout: 'SPLIT', cardPosition: 'RIGHT', backgroundUrl: null, headline: '', intro: '', providers: [] }
 }
 

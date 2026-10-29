@@ -60,8 +60,6 @@ const props = defineProps<{
   canWrite: boolean
   /** `CalendarLayoutConfig.weekStartsOn` (types/dataview.ts's own doc comment) - which day Month's own grid/Week's own columns/`rangeLabel`'s own week-boundary start on. Defaults to `0` (Sunday) only via that resolver, never a bare fallback here - every real caller already resolves the layout first, same as every other prop this component takes. */
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
-  /** Day view's own hour-row labels - `system.time_format` when the instance configured one (12h vs 24h, `useDisplayFormatDefaults.ts`), else the friendly `'h a'` ("2 PM") default every DataView had before this was configurable. Never the empty-string/raw-passthrough fallback `formatCellPlainText`'s own `defaultPatternFor` uses for a data CELL - this is chrome (the grid's own axis), not a value, so an unset global default still needs SOME readable pattern instead of showing nothing. */
-  timeFormat?: string
   /** DataViewGrid.vue's own `pending` (its `useAsyncData` fetch state) - surfaced here as a small spinner next to Prev/Next/Today: paging months/weeks re-fetches a brand new range each time (this DataView's own doc comment on why CALENDAR never loads "everything" up front), and without SOME feedback that refetch can read as the click having done nothing for a moment. */
   pending?: boolean
   /** The viewer's effective time zone (undefined = the browser's): today and "now" are theirs, as the events' dates are. */
@@ -187,7 +185,8 @@ function eventsAtHour(day: Date, hour: number): CalendarEvent[] {
   return props.events.filter(e => isSameDay(e.date, day) && e.date.getHours() === hour)
 }
 function hourLabel(hour: number): string {
-  return fmt(setHours(startOfDay(referenceDate.value), hour), props.timeFormat || 'h a')
+  // The regional format's clock: "14:00" or "2:00 PM".
+  return setHours(startOfDay(referenceDate.value), hour).toLocaleTimeString(ui.intlLocale.value, { hour: 'numeric', minute: '2-digit', ...clockOptions() })
 }
 /** Agenda's own flat list - every event `events` currently holds (already bounded to the fetched range - DataViewGrid.vue's own doc comment on why CALENDAR fetches by visible range, not a flat cap), grouped by day, in date order. */
 const agendaGroups = computed(() => {

@@ -2,19 +2,15 @@ import type { DelegatedModule, PortalAccess } from '~/utils/role-access'
 import { isAppPath, viewAsState } from '~/utils/view-as'
 
 /**
- * The caller's effective date/time display settings - their My account
- * preferences over Settings > General (GET /admin/api/auth/me's
- * `display`). Empty timezone = the browser's zone; empty pattern = the
- * caller's own default. See useDateTimeFormat().
+ * The caller's effective display settings - their My account preferences
+ * over Settings > General (GET /admin/api/auth/me's `display`). Empty
+ * timezone or regional format = the browser's. See useDateTimeFormat().
  */
 export interface DisplayPreferences {
   timezone: string
-  dateFormat: string
-  timeFormat: string
-  datetimeFormat: string
   /** The UI's language - the user's, else the instance's (Admin_UI.md §14). */
   language?: string
-  /** How numbers and browser-formatted dates read - the instance's `system.regional_format`; empty = the browser's (Admin_UI.md §14). */
+  /** How numbers, dates and times read - the user's, else the instance's; empty = the browser's (Admin_UI.md §14). */
   regionalFormat?: string
 }
 

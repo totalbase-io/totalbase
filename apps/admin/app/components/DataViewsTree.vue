@@ -79,7 +79,7 @@ const dataviewsFiltered = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const colorMode = useColorMode()
+const surfaceTone = useSurfaceTone()
 
 function openDataview(id: string) {
   usePagePreferences('dataviews-navigation', { lastId: null as string | null }).lastId = id
@@ -144,7 +144,7 @@ function openDataview(id: string) {
         <UIcon
           :name="dataview.icon || DATAVIEW_TYPE_META[dataview.viewType].icon"
           class="size-4 shrink-0 text-muted"
-          :style="identityIconStyle(dataview.color, colorMode.value)"
+          :style="identityIconStyle(dataview.color, surfaceTone)"
         />
         <span class="truncate">{{ dataview.name }}</span>
         <UTooltip

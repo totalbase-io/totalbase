@@ -91,14 +91,14 @@ describe("effective time zone", () => {
       const refused = await prefs("PATCH", { timezone: "Asia/Tokyo" });
       expect(refused.statusCode).toBe(403);
       expect(refused.json().errors[0].code).toBe("USER_TIMEZONE_LOCKED");
-      // Formats stay each user's own.
-      expect((await prefs("PATCH", { dateFormat: "yyyy-MM-dd" })).statusCode).toBe(200);
+      // The regional format stays each user's own.
+      expect((await prefs("PATCH", { regionalFormat: "en-GB" })).statusCode).toBe(200);
       // With no instance zone there's nothing to lock to: the user's own counts again.
       await context.settings.reset("system.timezone");
       expect(await zoneOf()).toBe("Europe/Madrid");
     } finally {
       await context.settings.reset("system.timezone_user_choice");
-      await context.auth.users.updatePreferences(adminId, { timezone: null, dateFormat: null });
+      await context.auth.users.updatePreferences(adminId, { timezone: null, regionalFormat: null });
     }
   });
 

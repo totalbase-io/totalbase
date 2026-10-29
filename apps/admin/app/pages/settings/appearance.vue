@@ -11,6 +11,7 @@ import { neutralColorCss, primaryColorCss } from '@totalbase/shared'
 
 const { t } = useI18n()
 const { refresh } = useInstance()
+const colorModeChoice = useColorModeChoice()
 
 const PREVIEW_ID = 'totalbase-theme-preview'
 const previewing = ref(false)
@@ -42,11 +43,13 @@ watch(currentDraft, () => {
 }, { deep: true })
 onBeforeUnmount(clearPreview)
 
-// A saved layout or sign-in text shows everywhere through useInstance - read it again.
+// A saved layout or sign-in text shows everywhere through useInstance - read it again; a saved color mode shows
+// here at once, unless this viewer picked their own.
 async function onSaved() {
   previewing.value = false
   clearPreview()
   await refresh().catch(() => undefined)
+  colorModeChoice.apply()
 }
 </script>
 

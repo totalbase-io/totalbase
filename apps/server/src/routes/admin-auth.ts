@@ -165,11 +165,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
             publicUrl: { type: "string", format: "uri" },
             display: object({
               timezone: { type: "string", description: "IANA zone; empty = the browser's." },
-              dateFormat: { type: "string", description: "date-fns pattern; empty = the raw value." },
-              timeFormat: { type: "string" },
-              datetimeFormat: { type: "string" },
               language: { type: "string", description: "The UI's language: the user's, else the instance's (Admin_UI.md §14)." },
-              regionalFormat: { type: "string", description: "BCP 47 tag numbers and browser-formatted dates are formatted in (system.regional_format); empty = the browser's." },
+              regionalFormat: { type: "string", description: "BCP 47 tag numbers, dates and times are formatted in: the user's, else the instance's (Admin_UI.md §14); empty = the browser's." },
             }),
             modules: { type: "array", items: { type: "string", enum: ["users", "roles", "files", "templates", "logs"] }, description: "Delegated modules this user's rail shows." },
             moduleActions: {

@@ -27,6 +27,7 @@ const errorMessage = useApiErrorMessage()
 const { schemaNames: schemas } = useSchemasList()
 
 type PkType = 'uuid' | 'serial' | 'bigserial' | 'integer' | 'varchar'
+// i18n: PostgreSQL's type names.
 const PK_TYPES: { value: PkType, label: string }[] = [
   { value: 'uuid', label: 'UUID' },
   { value: 'serial', label: 'Serial' },

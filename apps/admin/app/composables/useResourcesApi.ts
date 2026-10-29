@@ -42,6 +42,7 @@ export function useResourcesApi() {
       })).map(resourceFromRow),
     get: async (id: string): Promise<Resource> => {
       const row = (await dataApi.get<Array<Record<string, unknown>>>(path, { 'where[id][_eq]': id, 'limit': 1 })).data[0]
+      // i18n: shown by its code (errors.RESOURCE_NOT_FOUND).
       if (!row) throw new AdminApiError(404, [{ source: 'TOTALBASE', code: 'RESOURCE_NOT_FOUND', message: 'Resource not found.' }])
       return resourceFromRow(row)
     },
@@ -50,6 +51,7 @@ export function useResourcesApi() {
       const row = /^\d+$/.test(oid)
         ? (await dataApi.get<Array<Record<string, unknown>>>(path, { 'where[postgres_oid][_eq]': oid, 'limit': 1 })).data[0]
         : undefined
+      // i18n: shown by its code (errors.RESOURCE_NOT_FOUND).
       if (!row) throw new AdminApiError(404, [{ source: 'TOTALBASE', code: 'RESOURCE_NOT_FOUND', message: 'Resource not found.' }])
       return resourceFromRow(row)
     }

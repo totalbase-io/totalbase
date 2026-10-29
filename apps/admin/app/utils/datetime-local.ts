@@ -1,5 +1,7 @@
+import { regionalClockOptions, regionalHourCycle } from '@totalbase/shared'
 import { format as formatDateFns, isValid, parseISO } from 'date-fns'
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
+import { regionalLocale } from '~/utils/regional-locale'
 
 /**
  * A timestamp column in a native `<input type="datetime-local">` (UInput's
@@ -44,23 +46,26 @@ export function wallClockColumnValue(wallClock: Date, column: { displayFormatKin
 
 /**
  * The hour cycle a date/time picker (reka's DateField, UInputDate/UInputTime)
- * shows in `locale`: its own 12-hour clock only when the locale writes the
- * afternoon "PM" - reka reads any other day period ("p. m." in es-AR) as the
- * morning and shows 17:51 as 05:51 AM - else 24 hours.
+ * shows in `locale` - its 12-hour clock only where the afternoon reads "PM"
+ * (regionalHourCycle).
  */
-export function pickerHourCycle(locale: string): 12 | 24 {
-  const format = new Intl.DateTimeFormat(locale, { hour: 'numeric' })
-  if (format.resolvedOptions().hour12 !== true) return 24
-  const period = format.formatToParts(new Date(2000, 0, 1, 17)).find(part => part.type === 'dayPeriod')?.value
-  return period === 'PM' ? 12 : 24
+export function pickerHourCycle(locale: string | undefined): 12 | 24 {
+  return regionalHourCycle(locale)
 }
 
 /**
- * The clock every time TotalBase shows without a pattern uses: the browser
- * locale's own, unless its 12-hour afternoon isn't "PM" - Chrome writes
- * es-AR's 19:13 as "07:13:31" with no "p. m." in a date and time - then 24
- * hours. Spread into toLocaleString/toLocaleTimeString's options.
+ * How a date, a time and a date-time read when the screen asks for no style
+ * of its own: the regional format's short form, at a fixed width -
+ * 30/09/2026, 09/30/2026, 2026/09/30, 30.09.2026; 17:51 or 5:51 PM.
+ */
+export const SHORT_DATE: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' }
+export const SHORT_TIME: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+
+/**
+ * The clock every time TotalBase shows without a pattern uses: the regional
+ * format's own (regionalHourCycle). Spread into toLocaleString /
+ * toLocaleTimeString's options.
  */
 export function clockOptions(): Intl.DateTimeFormatOptions {
-  return pickerHourCycle(new Intl.DateTimeFormat().resolvedOptions().locale) === 24 ? { hourCycle: 'h23' } : {}
+  return regionalClockOptions(regionalLocale())
 }

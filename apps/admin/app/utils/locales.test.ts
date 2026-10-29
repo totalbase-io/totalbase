@@ -47,6 +47,24 @@ describe('locale files', () => {
     expect(broken).toEqual([])
   })
 
+  // A sentence left in English: present, compiled, not translated. A word may read the same in both (General,
+  // Error, Total), and names (Data API, Claude Code) and values (idle · pending) always do - two lowercase
+  // words in one phrase never do. "·" and a plural's "|" end a phrase; a word with a dot is a file or code (.mcp.json).
+  it.each(UI_LANGUAGES.map(l => l.code).filter(code => code !== DEFAULT_UI_LANGUAGE))('%s: no sentence left in English', (language) => {
+    const isSentence = (text: string) => text.split(/[·|]/).some(phrase => (phrase.match(/(?<![\w.])[a-z]{3,}(?![\w.])/g) ?? []).length >= 2)
+    const texts = (messages: Messages, prefix = ''): [string, string][] =>
+      Object.entries(messages).flatMap(([key, value]) => (typeof value === 'string' ? [[`${prefix}${key}`, value] as [string, string]] : texts(value, `${prefix}${key}.`)))
+    const untranslated: string[] = []
+    for (const area of areas) {
+      const translated = new Map(texts(read(language, area)))
+      for (const [key, text] of texts(read(DEFAULT_UI_LANGUAGE, area))) {
+        // Placeholders and markup aside: "{rows} · {ms} ms" is no sentence.
+        if (translated.get(key) === text && isSentence(text.replace(/\{[^}]*\}/g, ' '))) untranslated.push(`${area}: ${key} - ${text}`)
+      }
+    }
+    expect(untranslated).toEqual([])
+  })
+
   it('no two areas share a top-level key', () => {
     const owners = new Map<string, string>()
     for (const area of areas) {

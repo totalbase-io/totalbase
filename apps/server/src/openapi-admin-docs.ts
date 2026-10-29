@@ -122,10 +122,11 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     description: { type: "string" },
     unit: { type: "string" },
     section: { type: "string", description: "Subheading it is listed under on its admin page." },
-    input: { type: "string", enum: ["secret", "timezone", "json", "role", "image", "color", "css", "cards", "textarea"], description: "Widget when the value's type isn't enough: a public image in Files, a hex color, a CSS editor, option cards, plain text on several lines." },
+    input: { type: "string", enum: ["secret", "timezone", "regional", "json", "role", "image", "color", "css", "cards", "textarea", "cron"], description: "Widget when the value's type isn't enough: a public image in Files, a hex color, a CSS editor, option cards, plain text on several lines." },
     options: arrayOf(object({ label: { type: "string" }, value: { type: "string" }, description: { type: "string" } })),
     orientation: { type: "string", enum: ["vertical"], description: "Option cards one under the other - unset: side by side." },
     dependsOn: { type: "string", description: "A boolean key that switches this one off." },
+    primary: { type: "boolean", description: "The switch that turns the page's whole feature on: shown above everything else, which waits for it." },
     links: {
       ...arrayOf({
         oneOf: [

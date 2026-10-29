@@ -37,7 +37,7 @@ function objectIcon(object: MenuObject): string {
   if (object.kind === 'DASHBOARD') return 'i-lucide-layout-dashboard'
   return DATAVIEW_TYPE_META[object.viewType as DataViewType]?.icon ?? 'i-lucide-table'
 }
-const colorMode = useColorMode()
+const surfaceTone = useSurfaceTone()
 /**
  * The object's own color (DataView/Dashboard identity) on its icon -
  * `iconColor`, read by the `#item-leading` slot below. UNavigationMenu's
@@ -46,7 +46,7 @@ const colorMode = useColorMode()
  */
 function objectItem(object: MenuObject): NavigationMenuItem {
   const iconColor = object.color && isValidColorValue(object.color)
-    ? roleColorShade(object.color, colorMode.value === 'dark' ? 'dark' : 'light')
+    ? roleColorShade(object.color, surfaceTone.value)
     : undefined
   // Its menu label, else its name; its description is the item's tooltip.
   return { label: object.menuLabel || object.name, icon: objectIcon(object), to: menuObjectPath(object), iconColor, tooltipText: object.description ?? undefined, fullName: object.menuLabel ? object.name : undefined }

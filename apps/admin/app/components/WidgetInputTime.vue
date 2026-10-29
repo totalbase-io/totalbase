@@ -40,7 +40,8 @@ const timeValue = computed<Time | undefined>({
 const ui = useUiLocale()
 // The picker's words: the UI's language.
 const locale = computed(() => ui.languageTag.value)
-const hourCycle = computed(() => pickerHourCycle(locale.value))
+// 12 or 24 hours: the regional format's (Admin_UI.md §14).
+const hourCycle = computed(() => pickerHourCycle(ui.intlLocale.value))
 const { t } = useI18n()
 
 const pickerOpen = ref(false)

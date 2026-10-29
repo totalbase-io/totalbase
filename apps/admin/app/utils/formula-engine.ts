@@ -282,13 +282,13 @@ function evaluateTextFormatFunction(name: string, args: unknown[]): string {
     try {
       return pattern ? formatDateFns(date, pattern, { locale: uiDateFnsLocale() }) : date.toLocaleDateString(uiIntlLocale())
     } catch {
-      throw new FormulaEvalError(`FORMAT_DATE: "${pattern}" is not a date pattern.`)
+      throw new FormulaEvalError('datePattern', { pattern: pattern ?? '' })
     }
   }
   const n = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(n)) return String(value)
   if (name === 'CURRENCY') {
-    if (typeof args[1] !== 'string' || !/^[A-Za-z]{3}$/.test(args[1])) throw new FormulaEvalError('CURRENCY needs a currency code, e.g. CURRENCY({{total}}, "ARS").')
+    if (typeof args[1] !== 'string' || !/^[A-Za-z]{3}$/.test(args[1])) throw new FormulaEvalError('currencyCode')
     return formatNumberValue(n, `CURRENCY:${args[1].toUpperCase()}`)
   }
   const spec = args[1]
@@ -415,7 +415,7 @@ function evaluateFormatFunction(name: string, args: unknown[]): RichText {
       return new RichText(url ? withFlag(inner, { link: { url, target } }) : inner)
     }
     default:
-      throw new FormulaEvalError(`Unknown format function "${name}".`)
+      throw new FormulaEvalError('unknownFormat', { name })
   }
 }
 
@@ -582,11 +582,32 @@ const SUPPORTED_UNARY = new Set(['-', '!'])
 const SUPPORTED_BINARY = new Set(['+', '-', '*', '/', '%', '==', '!=', '===', '!==', '>', '>=', '<', '<='])
 const SUPPORTED_LOGICAL = new Set(['&&', '||'])
 
-class FormulaEvalError extends Error {}
+/** A formula's own errors - each a key of `dataviews.formulaErrors`, with what it names. */
+export const FORMULA_ERROR_CODES = [
+  'datePattern', 'currencyCode', 'unknownFormat', 'expectedNumber', 'richOperator', 'invalidBetween', 'divisionByZero',
+  'unsupportedOperator', 'unknownField', 'plainFunctionName', 'unknownFunction', 'unsupportedExpression', 'notNumber', 'notDate', 'syntax', 'invalid'
+] as const
+type FormulaErrorCode = (typeof FORMULA_ERROR_CODES)[number]
+
+/** A formula error's text in the UI's language (Admin_UI.md §14) - its key where there is no Nuxt app (a unit test). */
+function formulaErrorText(code: FormulaErrorCode, params: Record<string, string> = {}): string {
+  try {
+    return useNuxtApp().$i18n.t(`dataviews.formulaErrors.${code}`, params)
+  } catch {
+    return `dataviews.formulaErrors.${code}`
+  }
+}
+
+/** TotalBase's own words, translated; a formula function's own result (formulajs' `#DIV/0!`, `#VALUE!`) reads the same in every language and passes as it is. */
+class FormulaEvalError extends Error {
+  constructor(code: FormulaErrorCode | { raw: string }, params?: Record<string, string>) {
+    super(typeof code === 'object' ? code.raw : formulaErrorText(code, params))
+  }
+}
 
 function toNumber(value: unknown, context: string): number {
   const n = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(n)) throw new FormulaEvalError(`Expected a number in ${context}.`)
+  if (!Number.isFinite(n)) throw new FormulaEvalError('expectedNumber', { context })
   return n
 }
 
@@ -609,12 +630,12 @@ function evaluateBinary(operator: string, left: unknown, right: unknown): unknow
   // against a RichText value, so this guard covers all of them, not
   // just `+`.
   if (isRichText(left) || isRichText(right)) {
-    throw new FormulaEvalError(`"${operator}" can't combine formatted text (BOLD/ITALIC/COLOR/NEW_LINE/...) - use CONCATENATE(...) instead.`)
+    throw new FormulaEvalError('richOperator', { operator })
   }
   if (operator === '+' || operator === '-') {
     if (left instanceof Date || right instanceof Date) {
       const result = dateArith(operator, left, right)
-      if (result === null) throw new FormulaEvalError(`"${operator}" isn't valid between these values.`)
+      if (result === null) throw new FormulaEvalError('invalidBetween', { operator })
       return result
     }
     // `+` is a second, older way to join text (this file's own top doc
@@ -637,7 +658,7 @@ function evaluateBinary(operator: string, left: unknown, right: unknown): unknow
   if (operator === '*') return toNumber(left, '"*"') * toNumber(right, '"*"')
   if (operator === '/') {
     const b = toNumber(right, '"/"')
-    if (b === 0) throw new FormulaEvalError('Division by zero.')
+    if (b === 0) throw new FormulaEvalError('divisionByZero')
     return toNumber(left, '"/"') / b
   }
   if (operator === '%') return toNumber(left, '"%"') % toNumber(right, '"%"')
@@ -654,7 +675,7 @@ function evaluateBinary(operator: string, left: unknown, right: unknown): unknow
   if (operator === '>=') return (a as number) >= (b as number)
   if (operator === '<') return (a as number) < (b as number)
   if (operator === '<=') return (a as number) <= (b as number)
-  throw new FormulaEvalError(`Unsupported operator "${operator}".`)
+  throw new FormulaEvalError('unsupportedOperator', { operator })
 }
 
 interface EvalContext {
@@ -670,7 +691,7 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
       return (node as jsep.Literal).value
     case 'Identifier': {
       const name = (node as jsep.Identifier).name
-      if (!(name in ctx.values)) throw new FormulaEvalError(`Unknown field "${name}".`)
+      if (!(name in ctx.values)) throw new FormulaEvalError('unknownField', { name })
       const raw = ctx.values[name]
       const kind = ctx.columnKinds[name]
       if (kind) {
@@ -683,7 +704,7 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
     }
     case 'UnaryExpression': {
       const n = node as jsep.UnaryExpression
-      if (!SUPPORTED_UNARY.has(n.operator)) throw new FormulaEvalError(`Unsupported operator "${n.operator}".`)
+      if (!SUPPORTED_UNARY.has(n.operator)) throw new FormulaEvalError('unsupportedOperator', { operator: n.operator })
       const value = evaluateNode(n.argument, ctx)
       return n.operator === '!' ? !value : -toNumber(asKey(value), '"-"')
     }
@@ -703,7 +724,7 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
         if (n.operator === '&&') return left ? evaluateNode(n.right, ctx) : left
         return left ? left : evaluateNode(n.right, ctx)
       }
-      if (!SUPPORTED_BINARY.has(n.operator)) throw new FormulaEvalError(`Unsupported operator "${n.operator}".`)
+      if (!SUPPORTED_BINARY.has(n.operator)) throw new FormulaEvalError('unsupportedOperator', { operator: n.operator })
       return evaluateBinary(n.operator, evaluateNode(n.left, ctx), evaluateNode(n.right, ctx))
     }
     case 'ConditionalExpression': {
@@ -716,7 +737,7 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
     }
     case 'CallExpression': {
       const n = node as jsep.CallExpression
-      if (n.callee.type !== 'Identifier') throw new FormulaEvalError('Only a plain function name can be called.')
+      if (n.callee.type !== 'Identifier') throw new FormulaEvalError('plainFunctionName')
       const name = (n.callee as jsep.Identifier).name
       // A function gets a foreign key as the text its row shows (UPPER, CONCATENATE, BOLD...).
       const args = n.arguments.map(a => asText(evaluateNode(a, ctx)))
@@ -734,14 +755,14 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
       if (name === 'CONCATENATE' && args.some(isRichText)) {
         return new RichText(args.flatMap(toSegments))
       }
-      if (!ALLOWED_FUNCTION_SET.has(name)) throw new FormulaEvalError(`Unknown function "${name}".`)
+      if (!ALLOWED_FUNCTION_SET.has(name)) throw new FormulaEvalError('unknownFunction', { name })
       const functions = allowedFunctions.value
       if (!functions) {
         void loadFormulaFunctions()
         throw new FormulaPendingError()
       }
       const result = functions[name]!(...args)
-      if (result instanceof Error) throw new FormulaEvalError(String(result.message ?? result))
+      if (result instanceof Error) throw new FormulaEvalError({ raw: String(result.message ?? result) })
       return result
     }
     // `MemberExpression` (`a.b`, `a["b"]`) has NO case - deliberately
@@ -749,7 +770,7 @@ function evaluateNode(node: jsep.Expression, ctx: EvalContext): unknown {
     // comment on why). Falls through to the default below, same as any
     // other node type jsep can parse but this evaluator doesn't know.
     default:
-      throw new FormulaEvalError(`Unsupported expression: ${node.type}.`)
+      throw new FormulaEvalError('unsupportedExpression', { type: node.type })
   }
 }
 
@@ -763,7 +784,7 @@ function coerceResult(value: unknown, returnType: FormulaReturnType | undefined,
   if (returnType === 'string') return value instanceof Date ? unboxTemporal(value, 'datetime', timezone) : String(value)
   if (returnType === 'number') {
     const n = value instanceof Date ? value.getTime() : Number(value)
-    if (!Number.isFinite(n)) throw new FormulaEvalError('Result is not a number.')
+    if (!Number.isFinite(n)) throw new FormulaEvalError('notNumber')
     return n
   }
   if (returnType === 'boolean') return Boolean(value)
@@ -771,7 +792,7 @@ function coerceResult(value: unknown, returnType: FormulaReturnType | undefined,
   // temporal Identifier, dateArith, or a formula.js date function like
   // EDATE/TODAY/NOW, which already return real Dates - confirmed
   // against the installed package directly, not assumed).
-  if (!(value instanceof Date)) throw new FormulaEvalError(`Result isn't a date/time value.`)
+  if (!(value instanceof Date)) throw new FormulaEvalError('notDate')
   return unboxTemporal(value, returnType, timezone)
 }
 
@@ -782,11 +803,20 @@ function coerceResult(value: unknown, returnType: FormulaReturnType | undefined,
  * `{ ok: false, error }`; the caller decides the fallback (the field's
  * own static config value).
  */
+/** The formula's tree - a text jsep can't read is the formula's own `syntax` error, not jsep's English. */
+function parseFormula(source: string): jsep.Expression {
+  try {
+    return jsep(preprocess(source))
+  } catch {
+    throw new FormulaEvalError('syntax')
+  }
+}
+
 export function evaluateFormula(source: string, options: EvaluateFormulaOptions): EvaluateFormulaResult {
   const trimmed = source.trim()
   if (!trimmed) return { ok: true, value: null }
   try {
-    const ast = jsep(preprocess(trimmed))
+    const ast = parseFormula(trimmed)
     const ctx: EvalContext = { values: options.values, foreignKeyText: options.foreignKeyText ?? {}, columnKinds: options.columnKinds ?? {}, timezone: options.timezone }
     const result = evaluateNode(ast, ctx)
     // The result is text unless it must be a number, a boolean or a date: a foreign key shows as its row.
@@ -797,7 +827,7 @@ export function evaluateFormula(source: string, options: EvaluateFormulaOptions)
     return { ok: true, value: coerceResult(raw, options.returnType, options.timezone) }
   } catch (err) {
     if (err instanceof FormulaPendingError) return { ok: true, value: null, pending: true }
-    return { ok: false, error: err instanceof Error ? err.message : 'Invalid formula.' }
+    return { ok: false, error: err instanceof Error ? err.message : formulaErrorText('invalid') }
   }
 }
 

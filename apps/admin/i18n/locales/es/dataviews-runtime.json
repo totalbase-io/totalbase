@@ -393,6 +393,9 @@
           "recordPrint": "Vista para imprimir del registro que se está editando.",
           "recordHistory": "La actividad de un registro - quién lo creó y lo modificó, y qué cambió.",
           "recordSaveCancel": "Los botones Guardar y Cancelar del propio formulario - desactívalos cuando la página guarde con sus propios botones."
+        },
+        "SETTINGS": {
+          "search": "Cuadro de búsqueda sobre los títulos y las descripciones de los ajustes."
         }
       },
       "featureLabels": {
@@ -872,6 +875,24 @@
     },
     "widgetRenderer": {
       "chooseRows": "Elige sus Filas - una variable de Recurso."
+    },
+    "formulaErrors": {
+      "datePattern": "FORMAT_DATE: \"{pattern}\" no es un patrón de fecha.",
+      "currencyCode": "CURRENCY necesita un código de moneda, p. ej. CURRENCY({'{'}{'{'}total{'}'}{'}'}, \"ARS\").",
+      "unknownFormat": "Función de formato desconocida \"{name}\".",
+      "expectedNumber": "Se esperaba un número en {context}.",
+      "richOperator": "\"{operator}\" no puede combinar texto con formato (BOLD/ITALIC/COLOR/NEW_LINE/...) - usa CONCATENATE(...) en su lugar.",
+      "invalidBetween": "\"{operator}\" no es válido entre estos valores.",
+      "divisionByZero": "División por cero.",
+      "unsupportedOperator": "Operador no admitido \"{operator}\".",
+      "unknownField": "Campo desconocido \"{name}\".",
+      "plainFunctionName": "Solo se puede llamar a una función por su nombre.",
+      "unknownFunction": "Función desconocida \"{name}\".",
+      "unsupportedExpression": "Expresión no admitida: {type}.",
+      "notNumber": "El resultado no es un número.",
+      "notDate": "El resultado no es una fecha u hora.",
+      "syntax": "No se puede leer la fórmula - revisa sus paréntesis, comillas y comas.",
+      "invalid": "Fórmula no válida."
     }
   }
 }

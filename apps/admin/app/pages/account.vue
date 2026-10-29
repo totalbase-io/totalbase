@@ -41,9 +41,9 @@ async function reload() {
 const canHoldTokens = computed(() => !!account.value && (account.value.tokens.api || account.value.tokens.admin))
 const tabs = computed(() => [
   { label: t('account.tabs.profile'), value: 'profile', icon: 'i-lucide-user' },
-  { label: t('account.tabs.sessions'), value: 'sessions', icon: 'i-lucide-monitor-smartphone' },
-  ...(canHoldTokens.value ? [{ label: t('account.tabs.tokens'), value: 'tokens', icon: 'i-lucide-key-round' }] : []),
   { label: t('account.tabs.preferences'), value: 'preferences', icon: 'i-lucide-sliders-horizontal' },
+  ...(canHoldTokens.value ? [{ label: t('account.tabs.tokens'), value: 'tokens', icon: 'i-lucide-key-round' }] : []),
+  { label: t('account.tabs.sessions'), value: 'sessions', icon: 'i-lucide-monitor-smartphone' },
   // One's own activity is a grant like any other (the default permissions give it, Security.md §10.5).
   ...(session.can('logs', 'READ') ? [{ label: t('account.tabs.activity'), value: 'activity', icon: 'i-lucide-history' }] : [])
 ])

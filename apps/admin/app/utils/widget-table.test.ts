@@ -3,9 +3,10 @@ import type { VNode } from 'vue'
 import { loadFormulaFunctions } from '~/utils/formula-engine'
 import { evaluateWidgetFormula } from '~/utils/widget-formula'
 import { createPageFormat } from '~/utils/page-format'
+import { setRegionalLocale } from '~/utils/regional-locale'
 import { computedRows, designOptions, designTable, effectiveColumnSettings, formatResourceCell, resourceTableColumns, searchEnterPayload, withRelatedPresentation, type RowFormula } from '~/utils/widget-table'
 
-const format = createPageFormat(() => ({ timezone: 'UTC', date: 'dd/MM/yyyy', time: 'HH:mm', datetime: 'dd/MM/yyyy HH:mm' }))
+const format = createPageFormat(() => ({ timezone: 'UTC' }))
 
 describe('formatResourceCell()', () => {
   it('reads a number by its type: a numeric\'s scale, an integer without decimals', () => {
@@ -13,8 +14,10 @@ describe('formatResourceCell()', () => {
     expect(formatResourceCell(1234, 'integer', {}, format)).toBe(format.number(1234, 0))
     expect(formatResourceCell('2.125', 'numeric', {}, format)).toBe(format.number(2.125, 3))
   })
-  it('formats dates and times in the viewer\'s patterns, and leaves other types as they came', () => {
+  it('formats dates and times in the viewer\'s regional format, and leaves other types as they came', () => {
+    setRegionalLocale('es-AR')
     expect(formatResourceCell('2026-10-01', 'date', {}, format)).toBe('01/10/2026')
+    setRegionalLocale(undefined)
     expect(formatResourceCell('10,5%', 'text', {}, format)).toBe('10,5%')
     expect(formatResourceCell(null, 'numeric(5,2)', {}, format)).toBe('')
     expect(formatResourceCell({ a: 1 }, 'jsonb', {}, format)).toBe('{"a":1}')

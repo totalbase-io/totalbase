@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { searchForApi } from './search-terms'
+import { regionalDatePattern, searchForApi } from './search-terms'
 
 describe('searchForApi', () => {
   it('sends a day typed in the viewer\'s format as ISO, every other word as typed', () => {
@@ -17,5 +17,15 @@ describe('searchForApi', () => {
   it('without a date format (the browser\'s) sends the search as typed', () => {
     expect(searchForApi('13/10/2026', undefined)).toBe('13/10/2026')
     expect(searchForApi('13/10/2026', '')).toBe('13/10/2026')
+  })
+})
+
+describe('regionalDatePattern', () => {
+  it('writes the regional format\'s short date as a date-fns pattern', () => {
+    expect(regionalDatePattern('es-AR')).toBe('dd\'/\'MM\'/\'yyyy')
+    expect(searchForApi('13/10/2026', regionalDatePattern('es-AR'))).toBe('2026-10-13')
+    expect(searchForApi('10/13/2026', regionalDatePattern('en-US'))).toBe('2026-10-13')
+    expect(searchForApi('2026/10/13', regionalDatePattern('ja-JP'))).toBe('2026-10-13')
+    expect(searchForApi('13.10.2026', regionalDatePattern('de-DE'))).toBe('2026-10-13')
   })
 })

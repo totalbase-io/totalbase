@@ -24,14 +24,14 @@ async function testConnection() {
 
 <template>
   <SettingsGroupForm group="s3">
-    <template #actions="{ dirty }">
+    <template #actions="{ dirty, off }">
       <UButton
         icon="i-lucide-plug-zap"
         :label="t('settings.s3.testConnection')"
         color="neutral"
         variant="outline"
         :loading="verifying"
-        :disabled="dirty"
+        :disabled="dirty || off"
         @click="testConnection"
       />
     </template>

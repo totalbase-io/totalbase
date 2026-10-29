@@ -14,8 +14,8 @@ const props = withDefaults(defineProps<{
   size: 'sm'
 })
 
-const colorMode = useColorMode()
-const shade = computed(() => roleColorShade(roleColor(props.role), colorMode.value === 'dark' ? 'dark' : 'light'))
+const surfaceTone = useSurfaceTone()
+const shade = computed(() => roleColorShade(roleColor(props.role), surfaceTone.value))
 const chipStyle = computed(() => ({ backgroundColor: `color-mix(in oklab, ${shade.value} 12%, transparent)` }))
 const iconStyle = computed(() => ({ color: shade.value }))
 

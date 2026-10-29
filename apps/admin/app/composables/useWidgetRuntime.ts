@@ -146,8 +146,8 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
   const router = useRouter()
   const { t } = useI18n()
   const apiErrorText = useApiErrorText()
-  const { timezone, patterns } = useDateTimeFormat()
-  const format = createPageFormat(() => ({ timezone: timezone.value ?? '', ...patterns.value }))
+  const { timezone } = useDateTimeFormat()
+  const format = createPageFormat(() => ({ timezone: timezone.value ?? '' }))
 
   const definitions = (dataview.value.viewConfig.variables ?? []) as VariableDefinition[]
   const resources = dataview.value.variableResources ?? {}

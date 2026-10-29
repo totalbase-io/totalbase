@@ -8,6 +8,7 @@ import { setupTestApp } from "../test-support.js";
 const KEYS = [
   "appearance.primary_color",
   "appearance.neutral_color",
+  "appearance.color_mode",
   "appearance.custom_css",
   "system.logo",
   "appearance.login_layout",
@@ -99,6 +100,7 @@ describe("Appearance: /theme.css, /api/instance and the appearance.* settings", 
     await refused({ custom_css: "a{}".repeat(30_000) }, /64 KB/);
     await refused({ login_layout: "CAROUSEL" }, /SPLIT, SIMPLE, PANEL, IMAGE/);
     await refused({ login_card_position: "TOP" }, /LEFT, CENTER, RIGHT/);
+    await refused({ color_mode: "dark" }, /SYSTEM, LIGHT, DARK, MIDNIGHT/);
     await refused({ login_headline: "x".repeat(121) }, /120/);
     await refused({ login_intro: "x".repeat(301) }, /300/);
   });
@@ -124,14 +126,15 @@ describe("Appearance: /theme.css, /api/instance and the appearance.* settings", 
     }
   });
 
-  it("presents the instance public: name, logo, sign-in layout and texts, with public file URLs", async () => {
+  it("presents the instance public: name, logo, color mode, sign-in layout and texts, with public file URLs", async () => {
     expect((await patch("system", { instance_name: "Acme Portal", logo: publicImageId })).statusCode).toBe(200);
-    expect((await patch("appearance", { login_layout: "IMAGE", login_background: publicImageId, login_headline: "Welcome to Acme" })).statusCode).toBe(200);
+    expect((await patch("appearance", { color_mode: "MIDNIGHT", login_layout: "IMAGE", login_background: publicImageId, login_headline: "Welcome to Acme" })).statusCode).toBe(200);
     const res = await app.inject({ method: "GET", url: "/api/instance" });
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toMatchObject({
       name: "Acme Portal",
       logoUrl: `/api/totalbase/table/files/${publicImageId}`,
+      colorMode: "MIDNIGHT",
       login: { layout: "IMAGE", backgroundUrl: `/api/totalbase/table/files/${publicImageId}`, headline: "Welcome to Acme", intro: "" },
     });
     // The mark loads with no credentials - it is on the sign-in page.
@@ -140,9 +143,11 @@ describe("Appearance: /theme.css, /api/instance and the appearance.* settings", 
     await patch("system", { logo: "" });
     await patch("appearance", { login_layout: "SPLIT", login_background: "", login_headline: "" });
     await context.settings.reset("system.instance_name");
+    await context.settings.reset("appearance.color_mode");
     expect((await app.inject({ method: "GET", url: "/api/instance" })).json().data).toMatchObject({
       name: "TotalBase",
       logoUrl: null,
+      colorMode: "SYSTEM",
       login: { layout: "SPLIT", backgroundUrl: null },
     });
   });

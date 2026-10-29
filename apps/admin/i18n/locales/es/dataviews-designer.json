@@ -1207,9 +1207,21 @@
         "TLeafletMap": {
           "description": "Un punto elegido en un mapa de OpenStreetMap.",
           "emits": {
-            "update:modelValue": "Punto cambiado"
+            "update:modelValue": "Punto cambiado",
+            "located": "Ubicado",
+            "locateFailed": "Falló la ubicación"
           },
-          "label": "Mapa (Leaflet)"
+          "label": "Mapa (Leaflet)",
+          "props": {
+            "locate": {
+              "label": "Mi ubicación",
+              "description": "Un botón sobre el mapa que marca la posición del dispositivo - después se puede arrastrar. El navegador lo permite solo con HTTPS (o en localhost)."
+            },
+            "locateOnOpen": {
+              "label": "Ubicar al abrir",
+              "description": "Marca la posición del dispositivo cuando el campo se abre sin valor."
+            }
+          }
         },
         "TScanner": {
           "description": "Lee un código QR, un PDF417 (un DNI) o un código de barras - con la cámara del equipo o un lector USB en modo teclado - y emite lo que leyó.",
@@ -1546,6 +1558,14 @@
             "range": {
               "description": "Elige una hora de inicio y una de fin.",
               "label": "Rango de horas"
+            },
+            "picker": {
+              "label": "Selector",
+              "description": "Un botón de reloj junto al campo - una columna de horas y una de minutos para elegir. Se puede seguir escribiendo."
+            },
+            "minuteStep": {
+              "label": "Paso de minutos",
+              "description": "Los minutos que ofrece el selector - de 5 en 5 por defecto. Un minuto escrito entre medio se conserva."
             }
           }
         },
@@ -1871,6 +1891,74 @@
             "vibrate": {
               "label": "Vibración",
               "description": "Una vibración con cada resultado, si el equipo puede - más larga para un error."
+            }
+          }
+        },
+        "TUuidInput": {
+          "label": "UUID",
+          "description": "Un campo de texto para un UUID, con un ícono adentro que genera uno nuevo: aleatorio (v4) u ordenado según cuándo se creó (v7).",
+          "props": {
+            "format": {
+              "label": "Formato",
+              "description": "Qué genera el ícono. v4: aleatorio. v7: ordenado según cuándo se creó - lo que hace uuidv7() de PostgreSQL 18; un índice sobre él crece en orden."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          }
+        },
+        "TUlidInput": {
+          "label": "ULID",
+          "description": "Un campo de texto para un ULID - 26 caracteres que, ordenados de forma ascendente, siguen el orden en que se crearon - con un ícono adentro que genera uno nuevo.",
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          }
+        },
+        "TGeolocation": {
+          "label": "Ubicación",
+          "description": "La posición del dispositivo en una columna point, sin mapa - un botón, y las coordenadas una vez capturadas. Automático la toma cuando el campo se abre vacío: dónde se tomó una lectura.",
+          "props": {
+            "auto": {
+              "label": "Automático",
+              "description": "Captura la posición cuando el campo se abre sin valor. El navegador lo permite solo con HTTPS (o en localhost), y le pregunta una vez a quien mira."
+            },
+            "showCoordinates": {
+              "label": "Mostrar coordenadas",
+              "description": "Latitud y longitud junto al botón cuando ya hay un valor."
+            },
+            "highAccuracy": {
+              "label": "Alta precisión",
+              "description": "El GPS en lugar de la estimación de la red - más lento, exacto."
+            },
+            "label": {
+              "description": "El del botón - sin definir: Marcar posición, y después Otra vez."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Posición cambiada",
+            "located": "Ubicado",
+            "locateFailed": "Falló la ubicación"
+          }
+        },
+        "TQrCode": {
+          "label": "Código QR",
+          "description": "Un código QR de un valor - dibujado en el navegador, nunca enviado a ningún lado: el código de vinculación de un dispositivo, un enlace. Vacío, lo dice en lugar de un código ilegible.",
+          "props": {
+            "value": {
+              "label": "Valor",
+              "description": "Lo que contiene el código - una fórmula: {'{'}{'{'}vars.record.data.serial_number{'}'}{'}'}, o un JSON o una URL que lo incluya."
+            },
+            "errorCorrection": {
+              "label": "Corrección de errores",
+              "description": "Cuánto puede perderse y aún leerse - L 7 %, M 15 % (predeterminado), Q 25 %, H 30 %; más lo hace más denso."
+            },
+            "caption": {
+              "label": "Leyenda",
+              "description": "Texto debajo - el código mismo, para escribirlo cuando no se puede escanear."
+            },
+            "download": {
+              "label": "Botón de descarga",
+              "description": "Un botón para guardarlo como SVG, o imprimirlo."
             }
           }
         }

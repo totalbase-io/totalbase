@@ -18,7 +18,7 @@
  * regardless of how large the underlying table is.
  */
 import type { DataViewField } from '~/types/dataview'
-import { searchForApi } from '~/utils/search-terms'
+import { regionalDatePattern, searchForApi } from '~/utils/search-terms'
 
 const props = defineProps<{
   schema: string
@@ -34,7 +34,6 @@ const emit = defineEmits<{ select: [pk: string] }>()
 
 const dataApi = useDataApi()
 const { t } = useI18n()
-const { patterns: datePatterns } = useDateTimeFormat()
 const search = ref('')
 const page = ref(1)
 const PAGE_SIZE = 15
@@ -55,7 +54,7 @@ const { data, pending, error, refresh } = useAsyncData(
       count: true,
       order_by: props.primaryKey,
       fields: fieldNames.value.join(','),
-      ...(search.value ? { search: searchForApi(search.value, datePatterns.value.date) } : {})
+      ...(search.value ? { search: searchForApi(search.value, regionalDatePattern()) } : {})
     }
   ),
   { watch: [open, page], immediate: false }

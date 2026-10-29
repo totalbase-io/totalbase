@@ -1,7 +1,5 @@
 import type { DataViewField } from '~/types/dataview'
 import type { DisplayFormatDefaults } from '~/composables/useDisplayFormatDefaults'
-import { format as formatDateFns } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
 import { formatCellPlainText } from '~/utils/build-dataview-columns'
 import { clockOptions } from '~/utils/datetime-local'
 
@@ -77,12 +75,8 @@ export async function printRecordPdf(options: RecordPrintOptions): Promise<Blob>
     didDrawPage: drawHeader
   })
 
-  // In the viewer's zone and date-time format (My account), like every other date on the page.
-  const now = new Date()
-  const display = options.displayFormatDefaults
-  const printedAt = display?.datetimeFormat
-    ? (display.timezone ? formatInTimeZone(now, display.timezone, display.datetimeFormat) : formatDateFns(now, display.datetimeFormat))
-    : now.toLocaleString(options.labels.locale, { ...clockOptions(), timeZone: display?.timezone || undefined })
+  // In the viewer's zone and regional format (My account), like every other date on the page.
+  const printedAt = new Date().toLocaleString(options.labels.locale, { ...clockOptions(), timeZone: options.displayFormatDefaults?.timezone || undefined })
   // `getNumberOfPages` is real at runtime (jsPDF's own `internal`) but missing from the installed version's own `.d.ts` - narrow cast instead of `any`, keeps the RESULT typed.
   const pageCount = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages()
   doc.setFontSize(8)

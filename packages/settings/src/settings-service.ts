@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { isAbsolute } from "node:path";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { HEX_COLOR, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
+import { COLOR_MODES, HEX_COLOR, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
 import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistry } from "./registry.js";
 import {
   SYSTEM_EMAIL_SLOTS,
@@ -39,6 +39,7 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "system.logo": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a file id, or empty."),
   "appearance.login_background": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a file id, or empty."),
   "appearance.neutral_color": (value) => ((NEUTRAL_COLORS as readonly unknown[]).includes(value) ? null : `Expected one of ${NEUTRAL_COLORS.join(", ")}.`),
+  "appearance.color_mode": (value) => (COLOR_MODES.includes(value as never) ? null : `Expected one of ${COLOR_MODES.join(", ")}.`),
   "appearance.primary_color": (value) => (value === "" || HEX_COLOR.test(value as string) ? null : "Expected a color as #rrggbb, or empty."),
   "appearance.login_layout": (value) => (LOGIN_LAYOUTS.includes(value as never) ? null : `Expected one of ${LOGIN_LAYOUTS.join(", ")}.`),
   "appearance.login_card_position": (value) => (LOGIN_CARD_POSITIONS.includes(value as never) ? null : `Expected one of ${LOGIN_CARD_POSITIONS.join(", ")}.`),

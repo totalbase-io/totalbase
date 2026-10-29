@@ -1,8 +1,9 @@
 /**
  * The instance's public presentation (Admin_UI.md §4.1.1):
  * GET /api/instance once at boot, before the first page - its name, its
- * mark, the sign-in layout and the language of the pages with no user
- * (i18n-language.client.ts reads it from here). Awaited: the sign-in page
+ * mark, the sign-in layout, the language of the pages with no user
+ * (i18n-language.client.ts reads it from here) and the color mode of a
+ * viewer who hasn't picked one (useColorModeChoice). Awaited: the sign-in page
  * would otherwise paint the product's mark and then swap it.
  *
  * Safe mode: `?safe-css` on any URL drops the operator's stylesheet
@@ -26,5 +27,6 @@ export default defineNuxtPlugin({
     } catch {
       // The defaults stand - the product's own look, English.
     }
+    useColorModeChoice().apply()
   }
 })

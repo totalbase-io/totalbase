@@ -24,7 +24,7 @@ export interface BuildDataViewColumnsOpts {
   rowMenu?: (row: Record<string, unknown>) => DropdownMenuItem[][]
   /** `config.copyable` (field-config.ts)'s own clipboard button - the caller does the actual `navigator.clipboard` write + any toast, this just hands back the exact text a cell is showing. */
   onCopy?: (text: string) => void
-  /** Settings > General fallback patterns/timezone - see useDisplayFormatDefaults.ts. Omitted entirely (e.g. in a test) means every field falls back to the raw, unformatted value, same as before this existed. */
+  /** The viewer's zone a `timestamptz` reads in - see useDisplayFormatDefaults.ts. Omitted (e.g. in a test): the browser's. */
   displayFormatDefaults?: DisplayFormatDefaults
   /** A palette color's shade in the viewer's mode - a column's text color (its cell style). */
   shade?: (color: string) => string | undefined
@@ -330,13 +330,6 @@ function isKeyColumn(field: DataViewField): boolean {
   return readOnly && (field.dataType === undefined || /^(smallint|integer|bigint)\b/.test(field.dataType))
 }
 
-function defaultPatternFor(kind: 'number' | 'date' | 'time' | 'datetime', defaults?: DisplayFormatDefaults): string {
-  if (!defaults || kind === 'number') return '' // no global default for numbers - only timezone/date/time/datetime are settings
-  if (kind === 'date') return defaults.dateFormat
-  if (kind === 'time') return defaults.timeFormat
-  return defaults.datetimeFormat
-}
-
 /**
  * The cell's value as PLAIN TEXT, no icons/links/tooltips - the single
  * source of truth both `renderCell` (wraps it in whatever visual
@@ -366,11 +359,10 @@ export function formatCellPlainText(field: DataViewField, raw: unknown, row: Rec
   // EVERY numeric/date/time/timestamp COLUMN field (creation/sync time,
   // display-format.ts), whether or not the field has its own
   // `displayFormat` - so a field with none still resolves a kind here,
-  // and falls back to Settings > General's own default pattern for
-  // that kind (useDisplayFormatDefaults.ts) instead of showing raw.
+  // and reads in the regional format instead of showing raw.
   const config = field.config as { displayFormat?: string, displayFormatKind?: 'number' | 'date' | 'time' | 'datetime', displayFormatTzAware?: boolean }
   if (config.displayFormatKind) {
-    const pattern = config.displayFormat || defaultPatternFor(config.displayFormatKind, displayFormatDefaults)
+    const pattern = config.displayFormat
     if (pattern) {
       if (config.displayFormatKind === 'number') {
         const num = typeof raw === 'number' ? raw : Number(raw)
@@ -380,14 +372,14 @@ export function formatCellPlainText(field: DataViewField, raw: unknown, row: Rec
         return formatTemporalValue(raw, pattern, config.displayFormatKind, timezone || undefined)
       }
     } else if (config.displayFormatKind !== 'number' && typeof raw === 'string') {
-      // No pattern anywhere: the locale's own format, not the raw ISO text.
+      // No Format: the regional format's own, not the raw ISO text.
       const timezone = config.displayFormatTzAware ? displayFormatDefaults?.timezone : undefined
       return formatTemporalLocale(raw, config.displayFormatKind, timezone || undefined)
     } else if (config.displayFormatKind === 'number' && (field.config as CellStyle).mono && /^-?\d+$/.test(String(raw))) {
       // A monospaced whole number is a code - an invoice's 3000, never "3.000" (T63).
       return String(raw)
     } else if (config.displayFormatKind === 'number' && !isKeyColumn(field)) {
-      // No pattern anywhere: the locale's grouping, with the decimals PostgreSQL sent ("2480.00" keeps its two).
+      // No Format: the regional format's grouping, with the decimals PostgreSQL sent ("2480.00" keeps its two).
       const formatted = formatNumberLocale(raw)
       if (formatted !== null) return formatted
     }

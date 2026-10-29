@@ -3,7 +3,7 @@ import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import type { UiLanguage } from '@totalbase/shared'
 import { DATE_FNS_LOCALES } from '~/utils/date-fns-locales'
 import { regionalLocale } from '~/utils/regional-locale'
-import { clockOptions } from '~/utils/datetime-local'
+import { clockOptions, SHORT_DATE, SHORT_TIME } from '~/utils/datetime-local'
 
 /**
  * Excel/JasperReports-style DISPLAY format patterns -
@@ -260,9 +260,9 @@ function parseRawTemporal(raw: string, kind: TemporalKind): Date | null {
  * browser-local time, via plain `date-fns` `format`.
  */
 /**
- * A temporal value with no pattern configured (neither the field's own nor
- * the viewer's My account default): the UI language's locale format, in the
- * given zone - never the raw ISO string. Same fallback as useDateTimeFormat.
+ * A temporal value with no Format of its own: the regional format's short
+ * form, in the given zone - never the raw ISO string. Same as
+ * useDateTimeFormat.
  */
 export function formatTemporalLocale(raw: string, kind: TemporalKind, timezone?: string): string {
   const date = parseRawTemporal(raw, kind)
@@ -270,9 +270,9 @@ export function formatTemporalLocale(raw: string, kind: TemporalKind, timezone?:
   const zone = kind === 'datetime' && timezone ? { timeZone: timezone } : {}
   try {
     const locale = uiIntlLocale()
-    if (kind === 'date') return date.toLocaleDateString(locale)
-    if (kind === 'time') return date.toLocaleTimeString(locale, { ...clockOptions(), hour: '2-digit', minute: '2-digit' })
-    return date.toLocaleString(locale, { ...clockOptions(), dateStyle: 'medium', timeStyle: 'short', ...zone })
+    if (kind === 'date') return date.toLocaleDateString(locale, SHORT_DATE)
+    if (kind === 'time') return date.toLocaleTimeString(locale, { ...clockOptions(), ...SHORT_TIME })
+    return date.toLocaleString(locale, { ...clockOptions(), ...SHORT_DATE, ...SHORT_TIME, ...zone })
   } catch {
     return raw
   }

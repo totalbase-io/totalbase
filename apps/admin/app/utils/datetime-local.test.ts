@@ -23,5 +23,6 @@ describe('datetime-local', () => {
     expect(pickerHourCycle('es-AR')).toBe(24)
     expect(pickerHourCycle('es-ES')).toBe(24)
     expect(pickerHourCycle('de-DE')).toBe(24)
+    expect(pickerHourCycle('en-IN')).toBe(24) // "pm", not "PM"
   })
 })

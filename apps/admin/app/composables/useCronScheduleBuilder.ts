@@ -13,6 +13,7 @@ export interface CronOption {
   value: number
 }
 
+// i18n: the English fallback - CronScheduleFields.vue shows Intl's names in the UI's language.
 export const CRON_WEEKDAYS: CronOption[] = [
   { label: 'Sunday', short: 'S', value: 0 },
   { label: 'Monday', short: 'M', value: 1 },

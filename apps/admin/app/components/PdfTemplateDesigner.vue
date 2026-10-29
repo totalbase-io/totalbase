@@ -100,6 +100,7 @@ const BLANK_TEMPLATE = { basePdf: BLANK_BASE_PDF, schemas: [[]] }
 // below only make sense for the object form, so they're hidden rather
 // than shown against a value they can't actually represent.
 const sizeEditable = ref(true)
+// i18n: a preset's identity - shown through PRESET_KEYS (content.templates.pdfDesigner.presets.*).
 const PRESETS: Array<{ label: string, width: number, height: number, margin: number }> = [
   { label: 'A3', width: 297, height: 420, margin: 10 },
   { label: 'A4', width: 210, height: 297, margin: 10 },

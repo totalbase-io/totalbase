@@ -349,6 +349,7 @@
       "deleteBody": "Si algún proveedor de autenticación u otra referencia todavía apunta a uno de estos secretos, se rechazará su eliminación: elimina o cambia antes esa referencia. Esta acción no se puede deshacer."
     },
     "smtp": {
+      "needsHostAndFrom": "Primero completa el host SMTP y la dirección del remitente, y guarda.",
       "connectionWorks": "La conexión funciona",
       "connectionWorksDescription": "El servidor SMTP aceptó la conexión y las credenciales.",
       "connectionFailed": "Falló la conexión",
@@ -540,7 +541,13 @@
         "bars": "barras",
         "failures": "fallos",
         "workflows": "workflows",
-        "subscriptions": "suscripciones"
+        "subscriptions": "suscripciones",
+        "requests": "solicitudes",
+        "calls": "llamadas",
+        "levels": "niveles",
+        "nodes": "nodos",
+        "writes": "escrituras",
+        "queries": "consultas"
       },
       "keys": {
         "api__default_limit": {
@@ -832,25 +839,13 @@
           "label": "Los usuarios pueden elegir su propia zona horaria",
           "description": "Desactivado: todos trabajan en la Zona horaria de arriba; la elección propia de un usuario se conserva, sin usarse, hasta que esto se vuelva a activar. Necesita una Zona horaria definida: sin ella, decide el navegador de cada persona."
         },
-        "system__date_format": {
-          "label": "Formato de fecha predeterminado",
-          "description": "Patrón de date-fns (p. ej. dd/MM/yyyy) en el que se muestran las fechas, para cada usuario que no eligió el suyo. Vacío = el formato del navegador."
-        },
-        "system__time_format": {
-          "label": "Formato de hora predeterminado",
-          "description": "Patrón de date-fns (p. ej. HH:mm) en el que se muestran las horas, para cada usuario que no eligió el suyo. Vacío = el formato del navegador."
-        },
-        "system__datetime_format": {
-          "label": "Formato de fecha y hora predeterminado",
-          "description": "Patrón de date-fns (p. ej. dd/MM/yyyy HH:mm) en el que se muestran las fechas con hora, para los usuarios que no eligieron ni un formato de fecha ni uno de hora. Vacío = el formato del navegador."
-        },
         "system__language": {
           "label": "Idioma predeterminado",
           "description": "El idioma de la interfaz para los usuarios que no eligieron uno en Mi cuenta, y de las páginas sin un usuario con sesión iniciada: inicio de sesión, restablecimiento de contraseña, dashboards insertados. Los datos y los mensajes de PostgreSQL nunca se traducen."
         },
         "system__regional_format": {
           "label": "Formato regional",
-          "description": "Cómo se leen los números y las fechas para todos - separadores, agrupación, el orden de día y mes - donde ningún patrón diga otra cosa: el Formato propio de un campo y los formatos de fecha de abajo siguen mandando. La región, no el idioma: la interfaz en inglés puede leer 1.234,56. Navegador = la configuración regional de cada persona.",
+          "description": "Cómo se leen los números, las fechas y las horas - separadores, agrupación, el orden de día y mes, 12 o 24 horas - para cada usuario que no eligió el suyo; el Formato propio de un campo sigue mandando. La región, no el idioma: la interfaz en inglés puede leer 1.234,56. Navegador = la configuración regional de cada persona.",
           "options": {
             "empty": "Navegador"
           }
@@ -880,7 +875,7 @@
           "description": "La dirección From (de sobre y de cabecera) con la que se envía el correo saliente."
         },
         "s3__enabled": {
-          "label": "Habilitar almacenamiento S3",
+          "label": "Activar el almacenamiento S3",
           "description": "Activa la conexión. No se puede desactivar mientras Files guarde ahí los archivos nuevos o todavía tenga archivos en ella."
         },
         "s3__endpoint": {
@@ -1233,6 +1228,22 @@
             "stone": "Gris cálido."
           }
         },
+        "appearance__color_mode": {
+          "label": "Modo de color",
+          "description": "Cómo se ven el admin y la App en un navegador cuyo usuario no eligió un modo en el menú de su avatar - su propia elección siempre gana.",
+          "options": {
+            "SYSTEM": "Sistema",
+            "LIGHT": "Claro",
+            "DARK": "Oscuro",
+            "MIDNIGHT": "Medianoche"
+          },
+          "optionDescriptions": {
+            "SYSTEM": "Claro u oscuro, según el dispositivo del usuario.",
+            "LIGHT": "Claro en todo.",
+            "DARK": "Oscuro en todo.",
+            "MIDNIGHT": "La barra lateral y el panel oscuros, el contenido claro."
+          }
+        },
         "appearance__login_layout": {
           "label": "Página de inicio de sesión",
           "description": "Qué rodea a la tarjeta de inicio de sesión. Simple, Panel de la empresa e Imagen muestran tu marca (Configuración › General › General: tu logo y tu nombre) y solo un \"Funciona con TotalBase\" chico al pie; en el celular son la tarjeta bajo tu marca (Imagen conserva su foto de fondo).",
@@ -1243,15 +1254,15 @@
             "IMAGE": "Imagen"
           },
           "optionDescriptions": {
-            "SPLIT": "El panel propio de TotalBase (su titular, introducción y funciones) junto a la tarjeta.",
-            "SIMPLE": "Tu logo y tu nombre grandes y centrados, tu titular debajo y la tarjeta abajo.",
-            "PANEL": "Un panel lateral con tu logo, nombre, titular e introducción, sobre la imagen de fondo si hay o sobre tu color principal, junto a la tarjeta. Nada de TotalBase.",
-            "IMAGE": "Tu imagen a toda página con tu titular e introducción encima, y la tarjeta con tu logo y nombre: a la izquierda, al centro o a la derecha (Posición de la tarjeta)."
+            "SPLIT": "El panel propio de TotalBase (su título, introducción y funciones) junto a la tarjeta.",
+            "SIMPLE": "Tu logo y tu nombre grandes y centrados, tu título debajo y la tarjeta abajo.",
+            "PANEL": "Un panel lateral con tu logo, nombre, título e introducción, sobre la imagen de fondo si hay o sobre tu color principal, junto a la tarjeta. Nada de TotalBase.",
+            "IMAGE": "Tu imagen a toda página con tu título e introducción encima, y la tarjeta con tu logo y nombre: a la izquierda, al centro o a la derecha (Posición de la tarjeta)."
           }
         },
         "appearance__login_card_position": {
           "label": "Posición de la tarjeta",
-          "description": "Dónde va la tarjeta del diseño Imagen en una pantalla ancha; tu titular e introducción ocupan el otro lado.",
+          "description": "Dónde va la tarjeta del diseño Imagen en una pantalla ancha; tu título e introducción ocupan el otro lado.",
           "options": {
             "LEFT": "Izquierda",
             "CENTER": "Centro",
@@ -1259,7 +1270,7 @@
           },
           "optionDescriptions": {
             "LEFT": "La tarjeta a la izquierda, tus textos a la derecha.",
-            "CENTER": "La tarjeta al medio, tu titular arriba.",
+            "CENTER": "La tarjeta al medio, tu título arriba.",
             "RIGHT": "Tus textos a la izquierda, la tarjeta a la derecha."
           }
         },
@@ -1268,19 +1279,19 @@
           "description": "El fondo del diseño Imagen y el del Panel de la empresa: una imagen pública de Archivos, mostrada cubriéndolo. Una foto de 1920 px o más se mantiene nítida en una pantalla grande."
         },
         "appearance__login_headline": {
-          "label": "Titular",
+          "label": "Título",
           "description": "Tus palabras en la página de inicio de sesión: bajo tu nombre (Simple), en el Panel de la empresa y sobre el fondo del diseño Imagen. Hasta 120 caracteres."
         },
         "appearance__login_intro": {
           "label": "Introducción",
-          "description": "Debajo del titular, en el Panel de la empresa y en el diseño Imagen, en una pantalla ancha. Hasta 300 caracteres."
+          "description": "Debajo del título, en el Panel de la empresa y en el diseño Imagen, en una pantalla ancha. Hasta 300 caracteres."
         },
         "appearance__custom_css": {
           "label": "CSS personalizado",
           "description": "CSS plano aplicado al final en todas las páginas: admin, App, inicio de sesión, embeds. Estable para construir encima: los tokens de Nuxt UI (--ui-primary, --ui-color-primary-*, --ui-bg, --ui-text, --ui-border, --ui-radius, --font-sans), .dark y html[data-surface=\"app\"] (admin, app, auth, embed) para apuntar a una superficie, [data-shell=\"rail\"], \"panel\", \"header\" o \"main\" para una parte del shell, y [data-shell=\"list\"] con [data-dataview-type=\"TABLE\"] (CARDS, KANBAN, CALENDAR, GANTT, MAP) para la lista de una DataView. El resto puede cambiar entre versiones. Sin {'@'}import. Si una regla oculta la interfaz, abre cualquier página con ?safe-css para cargarla sin ella."
         },
         "mcp__enabled": {
-          "label": "Habilitar MCP",
+          "label": "Activar MCP",
           "description": "Sirve el servidor MCP en la dirección de esta instancia, /mcp, para un agente con el token de un administrador. Apagado: /mcp no responde y el binario stdio no arranca."
         },
         "mcp__mode": {
@@ -1429,7 +1440,7 @@
           }
         },
         "backups__enabled": {
-          "label": "Backups",
+          "label": "Activar backups",
           "description": "Hace un backup de la instancia según la programación de abajo, y permite Hacer backup ahora. Apagado: no se hace ningún backup nuevo - los hechos siguen en la lista, para descargarlos o eliminarlos."
         },
         "backups__schedule": {
@@ -1457,7 +1468,7 @@
           "description": "Los archivos que Files guarda en el disco local entran en cada backup. Los guardados en el almacenamiento S3 nunca - respalda el bucket con el versionado o la replicación del propio servicio."
         },
         "realtime__enabled": {
-          "label": "Habilitar Realtime",
+          "label": "Activar Realtime",
           "description": "Sirve /api/realtime. Necesita la replicación lógica de PostgreSQL: wal_level = logical y el atributo REPLICATION en el rol de TotalBase. Apagado: el endpoint no responde; las tablas conservan su exposición Realtime."
         },
         "realtime__max_subscriptions": {
@@ -1469,7 +1480,7 @@
           "description": "Cada cuánto el servidor hace ping a cada conexión; la que no responde antes del siguiente ping se cierra."
         },
         "graphql__enabled": {
-          "label": "Habilitar GraphQL",
+          "label": "Activar GraphQL",
           "description": "Sirve POST /api/graphql con un token de la Data API. Cada campo pasa por los mismos permisos, límites y auditoría que la llamada REST que representa. Apagado: 404."
         },
         "graphql__default_schema": {

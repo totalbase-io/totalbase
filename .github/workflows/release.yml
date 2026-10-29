@@ -4,7 +4,10 @@
 # (a test of this workflow) only its version.
 #
 # Each architecture builds on its own native runner, in parallel - never emulated (QEMU took most of an hour) - and is
-# pushed by digest; the last job joins both digests under the release's tags.
+# pushed by digest; `merge` joins both digests under the release's version; `verify` pulls that version from Docker Hub
+# on each architecture and runs scripts/test-image.sh on it; only then `channel` moves the channel tag to it, so whoever
+# pulls `beta` (or `latest`) never gets an image that wasn't checked, and `release` publishes the GitHub release, its notes
+# the version's section of CHANGELOG.md (scripts/release-notes.sh) (Foundations.md §21.5).
 name: Release
 
 on:
@@ -90,8 +93,47 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag the multi-platform image
+      - name: Tag the multi-platform image with its version
         working-directory: /tmp/digests
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for registry in $REGISTRIES; do
+            docker buildx imagetools create -t "$registry/$IMAGE:$version" $(printf "$registry/$IMAGE@sha256:%s " *)
+            docker buildx imagetools inspect "$registry/$IMAGE:$version"
+          done
+  verify:
+    needs: merge
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      # The script's checks are a node script (fetch).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Pulled by its version from Docker Hub, as people install it: each runner gets its own architecture's image.
+      - name: Check the published image
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          docker pull "totalbase/$IMAGE:$version"
+          scripts/test-image.sh "totalbase/$IMAGE:$version" "$version"
+  channel:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Move the channel to the checked image
         run: |
           version="${GITHUB_REF_NAME#v}"
           # A channel only for what it names: a beta, a release candidate, a stable version. Any other pre-release
@@ -99,12 +141,36 @@ jobs:
           case "$version" in
             *-beta.*) channel=beta ;;
             *-rc.*) channel=rc ;;
-            *-*) channel= ;;
+            *-*) echo "No channel for $version."; exit 0 ;;
             *) channel=latest ;;
           esac
           for registry in $REGISTRIES; do
-            tags=(-t "$registry/$IMAGE:$version")
-            [ -n "$channel" ] && tags+=(-t "$registry/$IMAGE:$channel")
-            docker buildx imagetools create "${tags[@]}" $(printf "$registry/$IMAGE@sha256:%s " *)
-            docker buildx imagetools inspect "$registry/$IMAGE:$version"
+            docker buildx imagetools create -t "$registry/$IMAGE:$channel" "$registry/$IMAGE:$version"
+            docker buildx imagetools inspect "$registry/$IMAGE:$channel"
           done
+  # The GitHub release, once the image is checked and announced: its notes are the version's section of CHANGELOG.md,
+  # written in the release commit (scripts/release-notes.sh). A beta, a release candidate or a stable version without
+  # one fails the run, so the docs and website deploys, which wait for it, refuse too; a test of this workflow gets none.
+  release:
+    needs: channel
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "$version" in
+            *-beta.*|*-rc.*) kind=--prerelease ;;
+            *-*) echo "No release for $version."; exit 0 ;;
+            *) kind=--latest ;;
+          esac
+          scripts/release-notes.sh "$version" > /tmp/notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "TotalBase $version" --notes-file /tmp/notes.md --draft=false $kind
+          else
+            gh release create "$GITHUB_REF_NAME" --title "TotalBase $version" --notes-file /tmp/notes.md --verify-tag $kind
+          fi

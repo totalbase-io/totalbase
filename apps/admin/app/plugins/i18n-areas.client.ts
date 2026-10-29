@@ -13,7 +13,8 @@ import { LAZY_LOCALE_AREAS, lazyAreaOfKey, type LazyLocaleArea } from '~/utils/l
  *   language first - and a watch on the locale catches a switch made
  *   some other way;
  * - a missing key of a lazy area (a shared component shown on a route the
- *   map doesn't list) loads that area then - the key shows for one paint.
+ *   map doesn't list) loads that area then - the key shows for one paint,
+ *   then its text (the merge repaints, see `load`).
  *
  * The files are imported as JSON and compiled by vue-i18n on first use
  * (the module bundles the compiler: `bundle.runtimeOnly` is off); each is
@@ -30,6 +31,8 @@ export default defineNuxtPlugin({
     const i18n = nuxtApp.$i18n as {
       locale: Ref<string>
       mergeLocaleMessage: (locale: string, messages: Record<string, unknown>) => void
+      getLocaleMessage: (locale: string) => Record<string, unknown>
+      setLocaleMessage: (locale: string, messages: Record<string, unknown>) => void
       setMissingHandler: (handler: (locale: string, key: string) => void) => void
     }
     /** `<language>/<area>` loaded or loading - one request per pair, however many ask. */
@@ -45,6 +48,9 @@ export default defineNuxtPlugin({
         pending = file
           ? file().then((messages) => {
               i18n.mergeLocaleMessage(language, messages)
+              // A merge alone doesn't repaint a text already drawn as its key (vue-i18n 11 tracks the
+              // language's messages object, not keys added to it): handing it a new object does.
+              i18n.setLocaleMessage(language, { ...i18n.getLocaleMessage(language) })
             })
           : Promise.resolve()
         pending.catch(() => loads.delete(key)) // a failed fetch (offline) is retried on the next ask.

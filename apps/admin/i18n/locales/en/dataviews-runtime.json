@@ -393,6 +393,9 @@
           "recordPrint": "Print-friendly view of the single record being edited.",
           "recordHistory": "A record's Activity - who created and changed it, and what.",
           "recordSaveCancel": "The form's own Save and Cancel buttons - turn off when the page saves through its own buttons."
+        },
+        "SETTINGS": {
+          "search": "Search box over the settings' titles and descriptions."
         }
       },
       "featureLabels": {
@@ -872,6 +875,24 @@
     },
     "widgetRenderer": {
       "chooseRows": "Choose its Rows - a Resource variable."
+    },
+    "formulaErrors": {
+      "datePattern": "FORMAT_DATE: \"{pattern}\" is not a date pattern.",
+      "currencyCode": "CURRENCY needs a currency code, e.g. CURRENCY({'{'}{'{'}total{'}'}{'}'}, \"ARS\").",
+      "unknownFormat": "Unknown format function \"{name}\".",
+      "expectedNumber": "Expected a number in {context}.",
+      "richOperator": "\"{operator}\" can't combine formatted text (BOLD/ITALIC/COLOR/NEW_LINE/...) - use CONCATENATE(...) instead.",
+      "invalidBetween": "\"{operator}\" isn't valid between these values.",
+      "divisionByZero": "Division by zero.",
+      "unsupportedOperator": "Unsupported operator \"{operator}\".",
+      "unknownField": "Unknown field \"{name}\".",
+      "plainFunctionName": "Only a plain function name can be called.",
+      "unknownFunction": "Unknown function \"{name}\".",
+      "unsupportedExpression": "Unsupported expression: {type}.",
+      "notNumber": "Result is not a number.",
+      "notDate": "Result isn't a date/time value.",
+      "syntax": "The formula can't be read - check its parentheses, quotes and commas.",
+      "invalid": "Invalid formula."
     }
   }
 }

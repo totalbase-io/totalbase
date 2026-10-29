@@ -1,30 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { isTimezoneLocked, parsePreferencesPatch, resolveDisplayPreferences, toUserPreferences } from "./user-preferences.js";
 
-const DISPLAY = { timezone: "UTC", dateFormat: "dd-MM-yyyy", timeFormat: "HH:mm:ss", datetimeFormat: "dd-MM-yyyy HH:mm:ss", language: "en", regionalFormat: "es-AR" };
+const DISPLAY = { timezone: "UTC", language: "en", regionalFormat: "es-AR" };
 const INSTANCE = { ...DISPLAY, userTimezone: true };
-const EMPTY = { timezone: "", dateFormat: "", timeFormat: "", datetimeFormat: "", userTimezone: true, language: "en", regionalFormat: "" };
 
 describe("resolveDisplayPreferences", () => {
   it("uses the instance defaults when the user chose nothing", () => {
     expect(resolveDisplayPreferences({}, INSTANCE)).toEqual(DISPLAY);
   });
 
-  it("prefers the user's choices, joining date-time from the effective parts", () => {
-    expect(resolveDisplayPreferences({ timezone: "Europe/Madrid", timeFormat: "h:mm a" }, INSTANCE)).toEqual({
+  it("prefers the user's choices", () => {
+    expect(resolveDisplayPreferences({ timezone: "Europe/Madrid", regionalFormat: "es-ES", language: "es" }, INSTANCE)).toEqual({
       timezone: "Europe/Madrid",
-      dateFormat: "dd-MM-yyyy",
-      timeFormat: "h:mm a",
-      datetimeFormat: "dd-MM-yyyy h:mm a",
-      language: "en",
-      regionalFormat: "es-AR",
+      language: "es",
+      regionalFormat: "es-ES",
     });
   });
 
-  it("takes the regional format from the instance alone - it is not a user preference", () => {
-    expect(resolveDisplayPreferences({ language: "es" }, INSTANCE).regionalFormat).toBe("es-AR");
-    expect(toUserPreferences({ regional_format: "en-US" })).toEqual({});
-    expect(() => parsePreferencesPatch({ regionalFormat: "en-US" })).toThrow();
+  it("takes the user's regional format, else the instance's - else the browser's (empty)", () => {
+    expect(resolveDisplayPreferences({ regionalFormat: "en-IN" }, INSTANCE).regionalFormat).toBe("en-IN");
+    expect(resolveDisplayPreferences({}, { ...INSTANCE, regionalFormat: "" }).regionalFormat).toBe("");
+    expect(resolveDisplayPreferences({}, { ...INSTANCE, regionalFormat: "xx-XX" }).regionalFormat).toBe("");
+    expect(toUserPreferences({ regional_format: "xx-XX" })).toEqual({});
+    expect(parsePreferencesPatch({ regionalFormat: "ja-JP" })).toEqual({ regionalFormat: "ja-JP" });
+    expect(() => parsePreferencesPatch({ regionalFormat: "es" })).toThrow(/regionalFormat must be one of/);
   });
 
   it("takes the user's language, else the instance's - never one the UI doesn't have", () => {
@@ -34,17 +33,6 @@ describe("resolveDisplayPreferences", () => {
     expect(toUserPreferences({ language: "xx" })).toEqual({});
     expect(parsePreferencesPatch({ language: "es" })).toEqual({ language: "es" });
     expect(() => parsePreferencesPatch({ language: "fr" })).toThrow(/language must be one of en, es/);
-  });
-
-  it("falls back to plain patterns for a date-time part the instance leaves empty", () => {
-    expect(resolveDisplayPreferences({ dateFormat: "dd/MM/yyyy" }, EMPTY)).toEqual({
-      timezone: "",
-      dateFormat: "dd/MM/yyyy",
-      timeFormat: "",
-      datetimeFormat: "dd/MM/yyyy HH:mm",
-      language: "en",
-      regionalFormat: "",
-    });
   });
 });
 
@@ -65,15 +53,15 @@ describe("isTimezoneLocked", () => {
 
 describe("parsePreferencesPatch", () => {
   it("accepts known keys, trims values and keeps null as 'clear'", () => {
-    expect(parsePreferencesPatch({ timezone: " Europe/Madrid ", dateFormat: null })).toEqual({ timezone: "Europe/Madrid", dateFormat: null });
+    expect(parsePreferencesPatch({ timezone: " Europe/Madrid ", regionalFormat: null })).toEqual({ timezone: "Europe/Madrid", regionalFormat: null });
   });
 
   it.each([
     [{ language: "fr" }],
     [{ locale: "es" }],
-    [{ dateFormat: "yyyy" }],
-    [{ timeFormat: "HH:mm:ss" }],
-    [{ date_format: "dd/MM/yyyy" }],
+    [{ dateFormat: "dd/MM/yyyy" }],
+    [{ regionalFormat: "es_AR" }],
+    [{ regional_format: "es-AR" }],
     [{ timezone: "" }],
     [{ timezone: 5 }],
     [null],
@@ -85,7 +73,7 @@ describe("parsePreferencesPatch", () => {
 
 describe("toUserPreferences", () => {
   it("keeps only the known keys", () => {
-    expect(toUserPreferences({ timezone: "UTC", extra: 1, time_format: "HH:mm" })).toEqual({ timezone: "UTC", timeFormat: "HH:mm" });
+    expect(toUserPreferences({ timezone: "UTC", extra: 1, time_format: "HH:mm", regional_format: "de-CH" })).toEqual({ timezone: "UTC", regionalFormat: "de-CH" });
     expect(toUserPreferences(null)).toEqual({});
   });
 });

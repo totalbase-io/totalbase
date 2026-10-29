@@ -165,7 +165,7 @@ const frameSrc = computed(() => (dataview.value ? `/app/dataviews/${dataview.val
       <iframe
         :key="`${device}-${renderKey}`"
         :src="frameSrc"
-        :title="t('designer.dataViewPreviewDrawer.frameTitle.' + device, { name: dataview.name })"
+        :title="t(`designer.dataViewPreviewDrawer.frameTitle.${device}`, { name: dataview.name })"
         :style="{ width: `${DEVICE_SIZE[device].width}px`, height: `${DEVICE_SIZE[device].height}px` }"
         class="shrink-0 rounded-2xl border-8 border-neutral-800 bg-default shadow-lg"
       />

@@ -11,6 +11,12 @@ export type LoginLayout = (typeof LOGIN_LAYOUTS)[number];
 /** Where the IMAGE layout's card sits on a wide screen (M29). */
 export const LOGIN_CARD_POSITIONS = ["LEFT", "CENTER", "RIGHT"] as const;
 export type LoginCardPosition = (typeof LOGIN_CARD_POSITIONS)[number];
+/**
+ * The instance's color mode, until a viewer picks one of their own in this browser (Admin_UI.md §4.1):
+ * MIDNIGHT is light content with a dark rail and panel.
+ */
+export const COLOR_MODES = ["SYSTEM", "LIGHT", "DARK", "MIDNIGHT"] as const;
+export type ColorMode = (typeof COLOR_MODES)[number];
 
 export const CUSTOM_CSS_MAX_BYTES = 65_536;
 export const LOGIN_HEADLINE_MAX = 120;

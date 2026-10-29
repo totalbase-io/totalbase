@@ -24,6 +24,11 @@ watch(open, (isOpen) => {
 
 const verifying = ref(false)
 
+/** Both tests need a host and a sender address - the server refuses without them. */
+function configured(settings: Record<string, unknown>): boolean {
+  return !!String(settings['smtp.host'] ?? '').trim() && !!String(settings['smtp.from'] ?? '').trim()
+}
+
 async function testConnection() {
   verifying.value = true
   try {
@@ -53,58 +58,74 @@ async function sendTest() {
 
 <template>
   <SettingsGroupForm group="smtp">
-    <template #actions="{ dirty }">
-      <!-- Both use the saved settings: held while edits are pending. -->
-      <UButton
-        icon="i-lucide-plug-zap"
-        :label="t('settings.smtp.testConnection')"
-        color="neutral"
-        variant="outline"
-        :loading="verifying"
-        :disabled="dirty"
-        @click="testConnection"
-      />
-      <UPopover v-model:open="open">
-        <UButton
-          icon="i-lucide-send"
-          :label="t('settings.smtp.sendTestEmail')"
-          color="neutral"
-          variant="outline"
-          :disabled="dirty"
-        />
-        <template #content>
-          <form
-            class="flex w-80 flex-col gap-3 p-4"
-            @submit.prevent="sendTest"
-          >
-            <UFormField
-              :label="t('settings.smtp.sendTo')"
-              :description="t('settings.smtp.sendToDescription')"
-            >
-              <UInput
-                v-model="to"
-                type="email"
-                autocomplete="email"
-                class="w-full"
-              />
-            </UFormField>
-            <p
-              v-if="failure"
-              class="text-sm text-error"
-            >
-              {{ failure }}
-            </p>
-            <div class="flex justify-end">
-              <UButton
-                type="submit"
-                :label="t('settings.smtp.send')"
-                :loading="sending"
-                :disabled="!to.includes('@')"
-              />
-            </div>
-          </form>
-        </template>
-      </UPopover>
+    <template #actions="{ dirty, draft }">
+      <!-- Both use the saved settings: held while edits are pending, and
+      until a host and a sender address are saved (SMTP_NOT_CONFIGURED).
+      The span carries the tooltip: a disabled button gets no pointer events. -->
+      <UTooltip
+        :text="t('settings.smtp.needsHostAndFrom')"
+        :disabled="configured(draft)"
+      >
+        <span>
+          <UButton
+            icon="i-lucide-plug-zap"
+            :label="t('settings.smtp.testConnection')"
+            color="neutral"
+            variant="outline"
+            :loading="verifying"
+            :disabled="dirty || !configured(draft)"
+            @click="testConnection"
+          />
+        </span>
+      </UTooltip>
+      <UTooltip
+        :text="t('settings.smtp.needsHostAndFrom')"
+        :disabled="configured(draft)"
+      >
+        <span>
+          <UPopover v-model:open="open">
+            <UButton
+              icon="i-lucide-send"
+              :label="t('settings.smtp.sendTestEmail')"
+              color="neutral"
+              variant="outline"
+              :disabled="dirty || !configured(draft)"
+            />
+            <template #content>
+              <form
+                class="flex w-80 flex-col gap-3 p-4"
+                @submit.prevent="sendTest"
+              >
+                <UFormField
+                  :label="t('settings.smtp.sendTo')"
+                  :description="t('settings.smtp.sendToDescription')"
+                >
+                  <UInput
+                    v-model="to"
+                    type="email"
+                    autocomplete="email"
+                    class="w-full"
+                  />
+                </UFormField>
+                <p
+                  v-if="failure"
+                  class="text-sm text-error"
+                >
+                  {{ failure }}
+                </p>
+                <div class="flex justify-end">
+                  <UButton
+                    type="submit"
+                    :label="t('settings.smtp.send')"
+                    :loading="sending"
+                    :disabled="!to.includes('@')"
+                  />
+                </div>
+              </form>
+            </template>
+          </UPopover>
+        </span>
+      </UTooltip>
     </template>
   </SettingsGroupForm>
 </template>

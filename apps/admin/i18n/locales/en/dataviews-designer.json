@@ -1207,9 +1207,21 @@
         "TLeafletMap": {
           "description": "A point picked on an OpenStreetMap map.",
           "emits": {
-            "update:modelValue": "Point changed"
+            "update:modelValue": "Point changed",
+            "located": "Located",
+            "locateFailed": "Location failed"
           },
-          "label": "Map (Leaflet)"
+          "label": "Map (Leaflet)",
+          "props": {
+            "locate": {
+              "label": "My location",
+              "description": "A button over the map that pins the device's position - still draggable after. The browser allows it only over HTTPS (or on localhost)."
+            },
+            "locateOnOpen": {
+              "label": "Locate on open",
+              "description": "Pins the device's position when the field opens with no value."
+            }
+          }
         },
         "TScanner": {
           "description": "Reads a QR code, a PDF417 (a DNI) or a barcode - with the device's camera or a USB reader in keyboard mode - and emits what it read.",
@@ -1546,6 +1558,14 @@
             "range": {
               "description": "Picks a start and an end time.",
               "label": "Time range"
+            },
+            "picker": {
+              "label": "Picker",
+              "description": "A clock button beside the field - an hour column and a minute column to pick from. Typing stays."
+            },
+            "minuteStep": {
+              "label": "Minute step",
+              "description": "The minutes the picker offers - every 5 by default. A minute typed in between is kept."
             }
           }
         },
@@ -1871,6 +1891,74 @@
             "vibrate": {
               "label": "Vibrate",
               "description": "A vibration with each result, where the device can - longer for an error."
+            }
+          }
+        },
+        "TUuidInput": {
+          "label": "UUID",
+          "description": "A text field for a UUID, with an icon inside that generates a new one: random (v4) or ordered by when it was made (v7).",
+          "props": {
+            "format": {
+              "label": "Format",
+              "description": "What the icon generates. v4: random. v7: ordered by when it was made - what PostgreSQL 18's uuidv7() makes, an index on it grows in order."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Value changed"
+          }
+        },
+        "TUlidInput": {
+          "label": "ULID",
+          "description": "A text field for a ULID - 26 characters that, sorted ascending, follow the order they were made in - with an icon inside that generates a new one.",
+          "emits": {
+            "update:modelValue": "Value changed"
+          }
+        },
+        "TGeolocation": {
+          "label": "Location",
+          "description": "The device's position into a point column, no map - a button, the coordinates once captured. Auto takes it when the field opens empty: where a reading was taken.",
+          "props": {
+            "auto": {
+              "label": "Automatic",
+              "description": "Captures the position when the field opens with no value. The browser allows it only over HTTPS (or on localhost), and asks the viewer once."
+            },
+            "showCoordinates": {
+              "label": "Show coordinates",
+              "description": "Latitude and longitude beside the button once there's a value."
+            },
+            "highAccuracy": {
+              "label": "High accuracy",
+              "description": "GPS over the network's guess - slower, exact."
+            },
+            "label": {
+              "description": "The button's - unset: Mark position, then Again."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Position changed",
+            "located": "Located",
+            "locateFailed": "Location failed"
+          }
+        },
+        "TQrCode": {
+          "label": "QR code",
+          "description": "A QR code of a value - drawn in the browser, never sent anywhere: a device's pairing code, a link. Empty, it says so instead of an unreadable code.",
+          "props": {
+            "value": {
+              "label": "Value",
+              "description": "What the code holds - a formula: {'{'}{'{'}vars.record.data.serial_number{'}'}{'}'}, or a JSON or a URL with it."
+            },
+            "errorCorrection": {
+              "label": "Error correction",
+              "description": "How much of it may be lost and still read - L 7 %, M 15 % (default), Q 25 %, H 30 %; more makes it denser."
+            },
+            "caption": {
+              "label": "Caption",
+              "description": "Text under it - the code itself, to type it when it can't be scanned."
+            },
+            "download": {
+              "label": "Download button",
+              "description": "A button to save it as an SVG, or print it."
             }
           }
         }

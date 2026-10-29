@@ -349,6 +349,7 @@
       "deleteBody": "If any Auth Provider or other reference still points at one of these secrets, its deletion will be rejected - remove or repoint that reference first. This cannot be undone."
     },
     "smtp": {
+      "needsHostAndFrom": "Set the SMTP host and the sender address, and save, first.",
       "connectionWorks": "Connection works",
       "connectionWorksDescription": "The SMTP server accepted the connection and the credentials.",
       "connectionFailed": "Connection failed",
@@ -540,7 +541,13 @@
         "bars": "bars",
         "failures": "failures",
         "workflows": "workflows",
-        "subscriptions": "subscriptions"
+        "subscriptions": "subscriptions",
+        "requests": "requests",
+        "calls": "calls",
+        "levels": "levels",
+        "nodes": "nodes",
+        "writes": "writes",
+        "queries": "queries"
       },
       "keys": {
         "api__default_limit": {
@@ -832,25 +839,13 @@
           "label": "Users can choose their own timezone",
           "description": "Off: everyone works in the Timezone above - a user's own choice is kept, not used, until this is on again. Needs a Timezone set: with none, each viewer's browser decides."
         },
-        "system__date_format": {
-          "label": "Default date format",
-          "description": "date-fns pattern (e.g. dd/MM/yyyy) dates are shown in, for every user who didn't choose their own. Empty = the browser's format."
-        },
-        "system__time_format": {
-          "label": "Default time format",
-          "description": "date-fns pattern (e.g. HH:mm) times are shown in, for every user who didn't choose their own. Empty = the browser's format."
-        },
-        "system__datetime_format": {
-          "label": "Default date/time format",
-          "description": "date-fns pattern (e.g. dd/MM/yyyy HH:mm) dates with a time are shown in, for users who chose neither a date nor a time format. Empty = the browser's format."
-        },
         "system__language": {
           "label": "Default language",
           "description": "The language of the interface for users who didn't choose one in My account, and of pages with no signed-in user - sign-in, password reset, embedded dashboards. Data and PostgreSQL's messages are never translated."
         },
         "system__regional_format": {
           "label": "Regional format",
-          "description": "How numbers and dates read for everyone - separators, grouping, the order of day and month - wherever no pattern says otherwise: a field's own Format and the date formats below still win. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
+          "description": "How numbers, dates and times read - separators, grouping, the order of day and month, 12 or 24 hours - for every user who didn't choose their own; a field's own Format still wins. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
           "options": {
             "empty": "Browser"
           }
@@ -1233,6 +1228,22 @@
             "stone": "Warm gray."
           }
         },
+        "appearance__color_mode": {
+          "label": "Color mode",
+          "description": "How the admin and the App look in a browser whose viewer hasn't picked a mode in their avatar menu - their own choice always wins.",
+          "options": {
+            "SYSTEM": "System",
+            "LIGHT": "Light",
+            "DARK": "Dark",
+            "MIDNIGHT": "Midnight"
+          },
+          "optionDescriptions": {
+            "SYSTEM": "Light or dark, following the viewer's device.",
+            "LIGHT": "Light everywhere.",
+            "DARK": "Dark everywhere.",
+            "MIDNIGHT": "The rail and the panel dark, the content light."
+          }
+        },
         "appearance__login_layout": {
           "label": "Sign-in page",
           "description": "What surrounds the sign-in card. Simple, Company panel and Image show your mark (Settings › General › General: your logo and name) and only a small \"Powered by TotalBase\" at the foot; on a phone they're the card under your mark (Image keeps its picture behind).",
@@ -1429,7 +1440,7 @@
           }
         },
         "backups__enabled": {
-          "label": "Backups",
+          "label": "Enable backups",
           "description": "Backs the instance up on the schedule below, and lets an administrator Back up now. Off: no new backup - those made stay listed, to download or delete."
         },
         "backups__schedule": {

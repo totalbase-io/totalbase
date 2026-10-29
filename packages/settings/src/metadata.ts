@@ -1,4 +1,4 @@
-import { REGIONAL_FORMATS, regionalFormatExample, UI_LANGUAGES } from "@totalbase/shared";
+import { REGIONAL_FORMATS, regionalFormatLabel, UI_LANGUAGES } from "@totalbase/shared";
 import type { SettingKey } from "./registry.js";
 
 /**
@@ -39,13 +39,18 @@ export interface SettingMetadata {
    * occurrences (in the instance's timezone). Omitted = inferred from the value (switch,
    * number, tags, text).
    */
-  input?: "secret" | "timezone" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea" | "cron";
+  input?: "secret" | "timezone" | "regional" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea" | "cron";
   /** Fixed choices for a text setting - rendered as a select, or as option cards (`input: "cards"`) when each has a description. */
   options?: Array<{ label: string; value: string; description?: string }>;
   /** Option cards one under the other - for choices whose descriptions need the width. Unset: side by side. */
   orientation?: "vertical";
-  /** A boolean setting that switches this one off - the admin dims it while that one is false. */
+  /** A boolean setting that switches this one off - the admin locks it while that one is off (Admin_UI.md §11). */
   dependsOn?: SettingKey;
+  /**
+   * The switch that turns its page's whole feature on (MCP, Files, GraphQL...): shown on its own above
+   * everything else on the page, which waits for it. One per page, only where the switch turns the feature off.
+   */
+  primary?: boolean;
   /** Shown under the description as links. */
   links?: SettingLink[];
 }
@@ -288,7 +293,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "files.enabled": {
     label: "Enable Files",
     description: "Turns the Files explorer upload and storage feature on or off.",
-    section: "Uploads",
+    primary: true,
   },
   "files.max_file_size_bytes": {
     label: "Maximum file size",
@@ -384,6 +389,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "audit.enabled": {
     label: "Enable audit logging",
     description: "Turns audit logging on or off for the whole system.",
+    primary: true,
   },
   "audit.retention_days": {
     label: "Retention period",
@@ -393,6 +399,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "audit.store_sql": {
     label: "Store SQL statements",
     description: "Whether the audit log keeps the actual SQL statement executed for each write.",
+    dependsOn: "audit.enabled",
   },
   "audit.store_sql_params": {
     label: "Store SQL parameters",
@@ -570,8 +577,9 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "system.regional_format": {
     label: "Regional format",
-    description: "How numbers and dates read for everyone - separators, grouping, the order of day and month - wherever no pattern says otherwise: a field's own Format and the date formats below still win. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
-    options: [{ label: "Browser", value: "" }, ...REGIONAL_FORMATS.map((format) => ({ label: `${format} - ${regionalFormatExample(format)}`, value: format }))],
+    description: "How numbers, dates and times read - separators, grouping, the order of day and month, 12 or 24 hours - for every user who didn't choose their own; a field's own Format still wins. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
+    input: "regional",
+    options: [{ label: "Browser", value: "" }, ...REGIONAL_FORMATS.map((format) => ({ label: regionalFormatLabel(format, "en"), value: format }))],
     section: "Language",
   },
   "system.timezone": {
@@ -585,21 +593,6 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     description: "Off: everyone works in the Timezone above - a user's own choice is kept, not used, until this is on again. Needs a Timezone set: with none, each viewer's browser decides.",
     section: "Date & time",
     links: [{ setting: "system.timezone" }],
-  },
-  "system.date_format": {
-    label: "Default date format",
-    description: "date-fns pattern (e.g. dd/MM/yyyy) dates are shown in, for every user who didn't choose their own. Empty = the browser's format.",
-    section: "Date & time",
-  },
-  "system.time_format": {
-    label: "Default time format",
-    description: "date-fns pattern (e.g. HH:mm) times are shown in, for every user who didn't choose their own. Empty = the browser's format.",
-    section: "Date & time",
-  },
-  "system.datetime_format": {
-    label: "Default date/time format",
-    description: "date-fns pattern (e.g. dd/MM/yyyy HH:mm) dates with a time are shown in, for users who chose neither a date nor a time format. Empty = the browser's format.",
-    section: "Date & time",
   },
 
   // --- smtp.* --- (system emails and the workflow Send email operation)
@@ -631,6 +624,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "s3.enabled": {
     label: "Enable S3 storage",
     description: "Turns the connection on. Can't be turned off while Files stores new uploads in it or still holds files there.",
+    primary: true,
   },
   "s3.endpoint": {
     label: "Endpoint",
@@ -671,9 +665,9 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
 
   // --- backups.* (Administration.md §12) ---
   "backups.enabled": {
-    label: "Backups",
+    label: "Enable backups",
     description: "Backs the instance up on the schedule below, and lets an administrator Back up now. Off: no new backup - those made stay listed, to download or delete.",
-    section: "Schedule",
+    primary: true,
   },
   "backups.schedule": {
     label: "Schedule",
@@ -790,6 +784,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "async_executions.enabled": {
     label: "Enable the worker",
     description: "Turns off background processing - queued executions wait until it's enabled again.",
+    primary: true,
   },
   "async_executions.max_retries": {
     label: "Maximum retries",
@@ -906,6 +901,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "mcp.enabled": {
     label: "Enable MCP",
     description: "Serves the MCP server at this instance's address, /mcp, for an agent with an administrator's token. Off = /mcp doesn't answer, and the stdio binary refuses to start.",
+    primary: true,
   },
   "mcp.mode": {
     label: "Mode",
@@ -998,6 +994,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "realtime.enabled": {
     label: "Enable Realtime",
     description: "Serves /api/realtime. Needs PostgreSQL's logical replication: wal_level = logical and the REPLICATION attribute on TotalBase's role. Off = the endpoint doesn't answer; the tables keep their Realtime exposure.",
+    primary: true,
   },
   "realtime.max_subscriptions": {
     label: "Subscriptions per connection",
@@ -1016,6 +1013,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "graphql.enabled": {
     label: "Enable GraphQL",
     description: "Serves POST /api/graphql with a Data API token. Every field runs through the same permissions, limits and audit as the REST call it stands for. Off = 404.",
+    primary: true,
   },
   "graphql.default_schema": {
     label: "Default schema",
@@ -1039,6 +1037,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "sql_console.enabled": {
     label: "Enable SQL Console",
     description: "Lets admins run raw SQL from the console. Off = the console can't execute or explain; its history stays readable.",
+    primary: true,
   },
   "sql_console.token_access": {
     label: "Allow API tokens",
@@ -1198,6 +1197,18 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
       { label: "Zinc", value: "zinc", description: "Cool, nearly pure gray." },
       { label: "Neutral", value: "neutral", description: "Pure gray." },
       { label: "Stone", value: "stone", description: "Warm gray." },
+    ],
+  },
+  "appearance.color_mode": {
+    label: "Color mode",
+    description: "How the admin and the App look in a browser whose viewer hasn't picked a mode in their avatar menu - their own choice always wins.",
+    section: "Color",
+    input: "cards",
+    options: [
+      { label: "System", value: "SYSTEM", description: "Light or dark, following the viewer's device." },
+      { label: "Light", value: "LIGHT", description: "Light everywhere." },
+      { label: "Dark", value: "DARK", description: "Dark everywhere." },
+      { label: "Midnight", value: "MIDNIGHT", description: "The rail and the panel dark, the content light." },
     ],
   },
   "appearance.login_layout": {

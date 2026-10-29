@@ -38,18 +38,18 @@ test('a user switches to Spanish in My account - at once, and after a reload', a
 
   await page.goto('/account?tab=preferences')
   const main = page.locator('main')
-  await expect(main.getByRole('heading', { name: 'Date and time' })).toBeVisible()
+  await expect(main.getByRole('heading', { name: 'Region and time' })).toBeVisible()
   await main.getByLabel('Language').click()
   await page.getByRole('option', { name: 'Español' }).click()
-  await expect(main.getByRole('heading', { name: 'Fecha y hora' })).toBeVisible()
+  await expect(main.getByRole('heading', { name: 'Región y hora' })).toBeVisible()
   await expect(main.getByRole('heading', { name: 'Idioma', exact: true }).first()).toBeVisible()
 
   await page.reload()
-  await expect(main.getByRole('heading', { name: 'Fecha y hora' })).toBeVisible()
+  await expect(main.getByRole('heading', { name: 'Región y hora' })).toBeVisible()
 
   // Back to the instance's language.
   await main.getByLabel('Idioma').click()
   await page.getByRole('option', { name: /Predeterminado de la instancia/ }).click()
-  await expect(main.getByRole('heading', { name: 'Date and time' })).toBeVisible()
+  await expect(main.getByRole('heading', { name: 'Region and time' })).toBeVisible()
   await context.close()
 })

@@ -174,6 +174,9 @@ test('settings: the default role for self-registration is picked from the roles 
   const key = 'auth.registration_default_role'
   const read = async () => (await api<Record<string, string>>(page, token, 'GET', '/admin/api/settings/auth'))[key]
   const original = await read()
+  // It depends on self-registration: held until that switch is on.
+  const registration = (await api<Record<string, unknown>>(page, token, 'GET', '/admin/api/settings/auth'))['auth.registration_enabled']
+  if (!registration) await api(page, token, 'PATCH', '/admin/api/settings/auth', { registration_enabled: true })
   const role = await api<{ id: string, name: string }>(page, token, 'POST', '/api/totalbase/table/roles', { name: `ui-settings ${SUFFIX}`, api_access: true })
   try {
     await page.goto('/settings/auth')
@@ -196,46 +199,36 @@ test('settings: the default role for self-registration is picked from the roles 
       if (original) await api(page, token, 'PATCH', '/admin/api/settings/auth', { registration_default_role: original })
       else await api(page, token, 'DELETE', '/admin/api/settings/auth/registration_default_role')
     }
+    if (!registration) await api(page, token, 'DELETE', '/admin/api/settings/auth/registration_enabled')
     await api(page, token, 'DELETE', `/api/totalbase/table/roles/${role.id}`)
   }
   expect(failures).toEqual([])
 })
 
-test('settings: SMTP "Send test email" shows the error when SMTP is not configured', async ({ page }) => {
+test('settings: SMTP\'s tests wait for a saved host and sender', async ({ page }) => {
   const token = await login(page)
   const smtp = await api<Record<string, unknown>>(page, token, 'GET', '/admin/api/settings/smtp')
-  // With a real relay this would send a real email (and a reserved domain is refused, after its own timeouts).
+  // Configured, they're enabled: the next test presses one.
   test.skip(!!smtp['smtp.host'] && !!smtp['smtp.from'], 'SMTP is configured on this instance')
-  // Without SMTP the server answers 409 SMTP_NOT_CONFIGURED - provoked on purpose.
-  const failures = watchApiFailures(page, [/^POST \/admin\/api\/settings\/mail\/test$/])
+  // Without them the server would answer 409 SMTP_NOT_CONFIGURED: the buttons don't offer it.
   await page.goto('/settings/smtp')
-  await page.getByRole('button', { name: 'Send test email' }).click()
-  await page.getByLabel('Send to').fill(`ui-settings-${SUFFIX}@example.com`)
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByText(/SMTP is not configured/)).toBeVisible()
-  expect(failures).toEqual([])
+  await expect(page.getByRole('button', { name: 'Send test email' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Test connection' })).toBeDisabled()
 })
 
 test('settings: SMTP "Test connection" reports the relay without sending', async ({ page }) => {
   const token = await login(page)
   const smtp = await api<Record<string, unknown>>(page, token, 'GET', '/admin/api/settings/smtp')
-  const configured = !!smtp['smtp.host'] && !!smtp['smtp.from']
-  // Unconfigured: 409 SMTP_NOT_CONFIGURED; configured: the dev relay may or
-  // may not be reachable (502 SMTP_CONNECTION_FAILED) - both answers are
-  // what the button is there to show.
+  test.skip(!smtp['smtp.host'] || !smtp['smtp.from'], 'SMTP is not configured on this instance')
+  // The dev relay may or may not be reachable (502 SMTP_CONNECTION_FAILED) -
+  // both answers are what the button is there to show.
   const failures = watchApiFailures(page, [/^POST \/admin\/api\/settings\/mail\/verify$/])
   await page.goto('/settings/smtp')
   const verify = page.waitForResponse(r => r.url().endsWith('/admin/api/settings/mail/verify') && r.request().method() === 'POST')
   await page.getByRole('button', { name: 'Test connection' }).click()
   const response = await verify
-  expect([204, 409, 502]).toContain(response.status())
-  if (response.status() === 204) {
-    await toast(page, 'Connection works')
-  } else {
-    await toast(page, 'Connection failed')
-    // In the toast - its screen-reader announcement repeats the text, hidden.
-    if (!configured) await expect(page.getByLabel('Notifications (F8)').getByText(/SMTP is not configured/)).toBeVisible()
-  }
+  expect([204, 502]).toContain(response.status())
+  await toast(page, response.status() === 204 ? 'Connection works' : 'Connection failed')
   expect(failures).toEqual([])
 })
 
@@ -559,12 +552,11 @@ test.describe('my account', () => {
       // --- Preferences ---
       const prefs = () => api<{ preferences: Record<string, string | null> }>(me, token, 'GET', '/app/api/me/preferences')
       await me.getByRole('tab', { name: 'Preferences' }).click()
-      await me.getByLabel('Date format').click()
-      await me.getByRole('option', { name: /^yyyy-MM-dd/ }).click()
-      await expect.poll(async () => (await prefs()).preferences.dateFormat).toBe('yyyy-MM-dd')
-      await me.getByLabel('Time format').click()
-      await me.getByRole('option', { name: /^12-hour/ }).click()
-      await expect.poll(async () => (await prefs()).preferences.timeFormat).toBe('h:mm a')
+      // Found by its country's name.
+      await me.getByLabel('Regional format').click()
+      await me.keyboard.type('India')
+      await me.getByRole('option', { name: /^India ·/ }).click()
+      await expect.poll(async () => (await prefs()).preferences.regionalFormat).toBe('en-IN')
       const timezone = me.getByLabel('Timezone')
       if (await timezone.isEnabled()) {
         await timezone.click()
@@ -572,9 +564,9 @@ test.describe('my account', () => {
         await me.getByRole('option', { name: 'Asia/Tokyo' }).click()
         await expect.poll(async () => (await prefs()).preferences.timezone).toBe('Asia/Tokyo')
       }
-      await me.getByLabel('Date format').click()
+      await me.getByLabel('Regional format').click()
       await me.getByRole('option', { name: /^Instance default/ }).click()
-      await expect.poll(async () => (await prefs()).preferences.dateFormat ?? null).toBeNull()
+      await expect.poll(async () => (await prefs()).preferences.regionalFormat ?? null).toBeNull()
 
       // --- Sessions: revoke one, then every other ---
       const other1 = await me.request.post(`${BASE}/api/auth/login`, { data: { email, password } })

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isRegionalFormat, regionalFormatLabel } from '@totalbase/shared'
 import { invalidateDataViewCaps } from '~/composables/useDisplayFormatDefaults'
 import type { Role } from '~/types/permission'
 import { CUSTOM_CSS_EXAMPLES } from '~/utils/custom-css-examples'
@@ -17,8 +18,11 @@ import { CUSTOM_CSS_EXAMPLES } from '~/utils/custom-css-examples'
  * value that differs from its registry default is marked "Modified";
  * Restore default puts the default in the draft, and saving it drops the
  * stored override (the server stores no value equal to its default).
- * A setting whose `dependsOn` switch is off is dimmed, still editable - or,
- * with `disableDependents`, not editable until the switch is on.
+ * A setting whose `dependsOn` switch is off - in the draft, or further up
+ * its chain - is locked until the switch is on. A page's `primary` switch
+ * (the one that turns its whole feature on) stands on its own above
+ * everything else, which waits for it: the intro, the fields, the list
+ * after them; the `actions` and `after` slots get `off` to do the same.
  */
 const props = defineProps<{
   /**
@@ -33,11 +37,6 @@ const props = defineProps<{
   description?: string
   /** The zone a `cron` setting's next occurrences are shown in - the instance's (system.timezone); UTC when unset. */
   cronTimezone?: string
-  /**
-   * A setting whose `dependsOn` switch is off can't be edited, rather than only dimmed - for a page whose switch
-   * turns the whole feature off (Backups). Elsewhere it stays editable, to be set up before turning it on.
-   */
-  disableDependents?: boolean
 }>()
 
 interface SettingField {
@@ -46,10 +45,12 @@ interface SettingField {
   description: string
   unit?: string
   section?: string
-  input?: 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron'
+  input?: 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron'
   options?: Array<{ label: string, value: string, description?: string }>
   orientation?: 'vertical'
   dependsOn?: string
+  /** The switch that turns the page's whole feature on - shown first, on its own. */
+  primary?: boolean
   links?: SettingLink[]
   default?: unknown
   min?: number
@@ -85,7 +86,10 @@ const metaKey = (key: string) => `settings.metadata.keys.${key.replaceAll('.', '
 const groupText = (group: string, part: 'label' | 'description', english: string | undefined) => catalog(`settings.metadata.groups.${group}.${part}`, english)
 const sectionText = (section: string) => catalog(`settings.metadata.sections.${sectionKey(section)}`, section)
 const unitText = (unit: string) => catalog(`settings.metadata.units.${unit}`, unit)
-const optionText = (field: SettingField, option: { label: string, value: string }) => catalog(`${metaKey(field.key)}.options.${option.value || 'empty'}`, option.label)
+/** A regional format names its country in the UI's language ("Argentina · 1.234,56 · …"); other options come from the catalog. */
+const optionText = (field: SettingField, option: { label: string, value: string }) => field.input === 'regional' && isRegionalFormat(option.value)
+  ? regionalFormatLabel(option.value, ui.languageTag.value)
+  : catalog(`${metaKey(field.key)}.options.${option.value || 'empty'}`, option.label)
 const optionDescription = (field: SettingField, option: { value: string, description?: string }) => option.description ? catalog(`${metaKey(field.key)}.optionDescriptions.${option.value}`, option.description) : undefined
 /** `css`: Examples - each snippet appended to the sheet, to adjust from there. */
 function cssExampleItems(key: string) {
@@ -148,6 +152,7 @@ const groupedFields = computed(() => {
   }
   const sections = new Map<string | null, SettingField[]>()
   for (const field of fields.value) {
+    if (field.primary) continue
     const label = field.section ? sectionText(field.section) : (groups.value.length > 1 ? groupLabel(field.key) : null)
     if (!sections.has(label)) sections.set(label, [])
     sections.get(label)!.push(field)
@@ -163,7 +168,7 @@ function shortKey(fullKey: string) {
   return fullKey.startsWith(`${group}.`) ? fullKey.slice(group.length + 1) : fullKey
 }
 
-type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'string'
+type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'string'
 function widgetFor(field: SettingField): Widget {
   if (field.input) return field.input
   if (field.options) return 'select'
@@ -182,13 +187,19 @@ const isModified = (field: SettingField) => field.default !== undefined && !same
 function restartPending(field: SettingField) {
   return field.liveValue !== undefined && !isDirty(field.key) && !same(field.liveValue, settings.value?.[field.key])
 }
-function isDimmed(field: SettingField) {
-  return !!field.dependsOn && settings.value?.[field.dependsOn] === false
-}
-/** With `disableDependents`: off while its switch is off in the draft - turning the switch on frees it at once. */
+/** Dimmed while its switch is off in the draft - turning the switch on brightens it at once, before saving. */
+/** Locked while its switch, or one its switch depends on, is off in the draft - turning it on frees it at once. */
 function isDisabled(field: SettingField) {
-  return !!props.disableDependents && !!field.dependsOn && draft.value[field.dependsOn] === false
+  const byKey = new Map(fields.value.map(f => [f.key, f]))
+  for (let key = field.dependsOn, hops = 0; key && hops < 8; key = byKey.get(key)?.dependsOn, hops++) {
+    if (draft.value[key] === false) return true
+  }
+  return false
 }
+/** The page's own on/off switch (Admin_UI.md §11) - none on a page whose switches don't turn it all off. */
+const primaryField = computed(() => fields.value.find(f => f.primary))
+/** The page's feature is off in the draft: everything below its switch waits. */
+const featureOff = computed(() => !!primaryField.value && draft.value[primaryField.value.key] === false)
 
 // --- Human-readable hints next to raw numbers ---
 function formatDuration(ms: number) {
@@ -267,7 +278,10 @@ function selectItems(field: SettingField) {
     return [{ label: t('common.none'), value: NONE }, ...items]
   }
   // An option for "empty" goes through NONE - a select item can't be ''.
-  return (field.options ?? []).map(option => ({ label: optionText(field, option), value: option.value === '' ? NONE : option.value }))
+  const items = (field.options ?? []).map(option => ({ label: optionText(field, option), value: option.value === '' ? NONE : option.value }))
+  // Regional formats by their country's name in the UI's language, Browser first.
+  if (field.input === 'regional') items.sort((a, b) => Number(b.value === NONE) - Number(a.value === NONE) || a.label.localeCompare(b.label, ui.languageTag.value))
+  return items
 }
 function selectValue(key: string) {
   return draft.value[key] === '' ? NONE : String(draft.value[key] ?? NONE)
@@ -325,7 +339,7 @@ onBeforeUnmount(() => clearTimeout(highlightTimer))
 
 // --- Save / cancel / restore: one draft for the whole page ---
 const session = useSession()
-const DISPLAY_KEYS = new Set(['system.timezone', 'system.date_format', 'system.time_format', 'system.datetime_format', 'system.language', 'system.regional_format'])
+const DISPLAY_KEYS = new Set(['system.timezone', 'system.language', 'system.regional_format'])
 const saving = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const dirtyKeys = computed(() => settings.value ? Object.keys(draft.value).filter(isDirty) : [])
@@ -403,6 +417,7 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
           name="actions"
           :dirty="dirtyKeys.length > 0"
           :draft="draft"
+          :off="featureOff"
         />
       </PageHeader>
     </template>
@@ -414,11 +429,53 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
         :title="error.message"
       />
 
+      <!-- The feature's own switch, first and on its own: what's below waits for it. -->
+      <template v-if="primaryField && settings">
+        <div
+          :id="settingAnchor(primaryField.key)"
+          class="flex items-start gap-4 rounded-md outline-offset-8 transition-[outline-color] duration-500"
+          :class="highlightKey === primaryField.key ? 'outline-2 outline-primary/50' : 'outline-2 outline-transparent'"
+        >
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base font-semibold text-highlighted">
+                {{ fieldLabel(primaryField) }}
+              </h2>
+              <UBadge
+                v-if="isDirty(primaryField.key)"
+                :label="t('settings.groupForm.unsaved')"
+                color="warning"
+                variant="subtle"
+                size="sm"
+              />
+            </div>
+            <p
+              v-if="primaryField.description"
+              class="text-sm text-muted"
+            >
+              {{ fieldDescription(primaryField) }}
+            </p>
+          </div>
+          <USwitch
+            v-model="draft[primaryField.key] as boolean"
+            :aria-label="fieldLabel(primaryField)"
+            class="mt-1"
+          />
+        </div>
+        <USeparator class="mb-2" />
+      </template>
+
       <!-- Above the fields: what the page shows besides them (MCP's connection details). -->
-      <slot
-        name="intro"
-        :settings="settings"
-      />
+      <div
+        v-if="$slots.intro"
+        :inert="featureOff"
+        :class="featureOff ? 'opacity-60' : undefined"
+      >
+        <slot
+          name="intro"
+          :settings="settings"
+        />
+      </div>
 
       <!-- Only the true first load (no data yet) shows the spinner in
       place of the form - every save's refresh() also flips `pending`, and
@@ -453,7 +510,7 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
               :disabled="isDisabled(field)"
               class="m-0 flex min-w-0 flex-col gap-2 rounded-md border-0 p-0 outline-offset-8 transition-[opacity,outline-color] duration-500"
               :class="[
-                isDimmed(field) || isDisabled(field) ? 'opacity-60' : undefined,
+                isDisabled(field) ? 'opacity-60' : undefined,
                 highlightKey === field.key ? 'outline-2 outline-primary/50' : 'outline-2 outline-transparent'
               ]"
             >
@@ -577,11 +634,11 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                     class="w-full max-w-md"
                   />
                   <USelectMenu
-                    v-else-if="widgetFor(field) === 'timezone' || widgetFor(field) === 'secret' || widgetFor(field) === 'select' || widgetFor(field) === 'role'"
+                    v-else-if="widgetFor(field) === 'timezone' || widgetFor(field) === 'regional' || widgetFor(field) === 'secret' || widgetFor(field) === 'select' || widgetFor(field) === 'role'"
                     :model-value="selectValue(field.key)"
                     :items="selectItems(field)"
                     value-key="value"
-                    :search-input="widgetFor(field) === 'timezone' || widgetFor(field) === 'role' ? {} : false"
+                    :search-input="widgetFor(field) === 'timezone' || widgetFor(field) === 'regional' || widgetFor(field) === 'role' ? {} : false"
                     :aria-label="fieldLabel(field)"
                     class="w-full max-w-md"
                     @update:model-value="(v: string) => setSelectValue(field.key, v)"
@@ -681,6 +738,7 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
       <slot
         name="after"
         :settings="settings"
+        :off="featureOff"
       />
     </div>
     <template

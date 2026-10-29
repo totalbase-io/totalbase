@@ -38,7 +38,7 @@ const dashboardsFiltered = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const colorMode = useColorMode()
+const surfaceTone = useSurfaceTone()
 
 function openDashboard(id: string) {
   navigateTo(`/dashboards/${id}`)
@@ -103,7 +103,7 @@ async function onCreated(dashboard: Pick<Dashboard, 'id'>) {
         <UIcon
           :name="dashboard.icon || 'i-lucide-layout-dashboard'"
           class="size-4 shrink-0 text-muted"
-          :style="identityIconStyle(dashboard.color, colorMode.value)"
+          :style="identityIconStyle(dashboard.color, surfaceTone)"
         />
         <span class="truncate">{{ dashboard.name }}</span>
         <UTooltip

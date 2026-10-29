@@ -1,21 +1,16 @@
 <script setup lang="ts">
 /**
- * My account > Preferences: the UI's language and how dates and times
- * read for the signed-in user (Security.md §4.2,
- * Admin_UI.md §14). Each choice applies at
+ * My account > Preferences: the UI's language, and how numbers, dates and
+ * times read for the signed-in user - the regional format and the timezone
+ * (Security.md §4.2, Admin_UI.md §14). Each choice applies at
  * once (PATCH /app/api/me/preferences) - there's nothing to review before
  * saving a display setting - and "Instance default" clears it back to
  * Settings > General. The session's `display` is refreshed after each
  * change, so the whole portal (useDateTimeFormat) follows immediately.
- *
- * The format choices mirror the presets PostgreSQL accepts
- * (its CHECK, packages/auth user-preferences.ts).
  */
-import { format as formatDateFns } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
 import type { MyPreferences, MyPreferencesState } from '~/types/security'
-import { UI_LANGUAGES } from '@totalbase/shared'
-import { clockOptions } from '~/utils/datetime-local'
+import { isRegionalFormat, REGIONAL_FORMATS, regionalFormatExample, regionalFormatLabel, UI_LANGUAGES } from '@totalbase/shared'
+import { clockOptions, SHORT_DATE, SHORT_TIME } from '~/utils/datetime-local'
 import { useApiErrorMessage } from '~/utils/api-error-message'
 
 const appApi = useAppApi()
@@ -31,17 +26,6 @@ const { data: state, error } = await useAsyncData(
 )
 
 const DEFAULT = '__default__'
-const DATE_FORMATS = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd', 'dd.MM.yyyy', 'd MMM yyyy']
-const TIME_FORMATS = computed(() => [
-  { value: 'HH:mm', label: t('account.preferences.dateTime.hours24') },
-  { value: 'h:mm a', label: t('account.preferences.dateTime.hours12') }
-])
-
-// One fixed instant for the samples (not "now", so a sample doesn't tick
-// or change between renders): 5 March, 14:30 - day, month and 12/24-hour
-// all read unambiguously.
-const SAMPLE = new Date(2026, 2, 5, 14, 30)
-const sample = (pattern: string) => formatDateFns(SAMPLE, pattern, { locale: ui.dateFns.value })
 
 const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const instance = computed(() => state.value?.instance)
@@ -65,14 +49,16 @@ const timezoneItems = computed(() => [
   { value: DEFAULT, label: defaultLabel(instance.value?.timezone, v => v, t('account.preferences.dateTime.browserZone', { zone: browserZone })) },
   ...(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['UTC']).map(zone => ({ value: zone, label: zone }))
 ])
-const dateItems = computed(() => [
-  { value: DEFAULT, label: defaultLabel(instance.value?.dateFormat, v => `${v} (${sample(v)})`, t('account.preferences.dateTime.browserFormat')) },
-  ...DATE_FORMATS.map(pattern => ({ value: pattern, label: `${pattern} (${sample(pattern)})` }))
-])
-const timeItems = computed(() => [
-  { value: DEFAULT, label: defaultLabel(instance.value?.timeFormat, v => `${v} (${sample(v)})`, t('account.preferences.dateTime.browserFormat')) },
-  ...TIME_FORMATS.value.map(item => ({ value: item.value, label: `${item.label} (${sample(item.value)})` }))
-])
+// The country first, in the UI's language - typing "Argentina" finds it.
+const regionalItems = computed(() => {
+  const browser = t('account.preferences.dateTime.browserFormat', { example: regionalFormatExample(new Intl.DateTimeFormat().resolvedOptions().locale) })
+  const own = instance.value?.regionalFormat
+  return [
+    { value: DEFAULT, label: defaultLabel(own, v => isRegionalFormat(v) ? regionalFormatLabel(v, ui.languageTag.value) : v, browser) },
+    ...REGIONAL_FORMATS.map(format => ({ value: format, label: regionalFormatLabel(format, ui.languageTag.value) }))
+      .sort((a, b) => a.label.localeCompare(b.label, ui.languageTag.value))
+  ]
+})
 
 const selected = (key: keyof MyPreferences) => state.value?.preferences[key] ?? DEFAULT
 
@@ -101,10 +87,7 @@ onBeforeUnmount(() => clearInterval(timer))
 const preview = computed(() => {
   const effective = state.value?.effective
   if (!effective) return ''
-  const zone = effective.timezone || browserZone
-  return effective.datetimeFormat
-    ? formatInTimeZone(now.value, zone, effective.datetimeFormat, { locale: ui.dateFns.value })
-    : now.value.toLocaleString(ui.intlLocale.value, { ...clockOptions(), timeZone: zone })
+  return now.value.toLocaleString(ui.intlLocale.value, { ...clockOptions(), ...SHORT_DATE, ...SHORT_TIME, timeZone: effective.timezone || browserZone })
 })
 </script>
 
@@ -150,6 +133,21 @@ const preview = computed(() => {
           {{ t('account.preferences.dateTime.intro') }}
         </p>
         <UFormField
+          :label="t('account.preferences.dateTime.regionalFormat')"
+          :description="t('account.preferences.dateTime.regionalFormatDescription')"
+        >
+          <USelectMenu
+            :model-value="selected('regionalFormat')"
+            :items="regionalItems"
+            value-key="value"
+            :search-input="{}"
+            :loading="saving === 'regionalFormat'"
+            :aria-label="t('account.preferences.dateTime.regionalFormat')"
+            class="w-full max-w-md"
+            @update:model-value="(v: string) => choose('regionalFormat', v)"
+          />
+        </UFormField>
+        <UFormField
           :label="t('account.preferences.dateTime.timezone')"
           :description="state.timezoneLocked ? t('account.preferences.dateTime.timezoneLocked') : t('account.preferences.dateTime.timezoneDescription')"
         >
@@ -163,24 +161,6 @@ const preview = computed(() => {
             :aria-label="t('account.preferences.dateTime.timezone')"
             class="w-full max-w-md"
             @update:model-value="(v: string) => choose('timezone', v)"
-          />
-        </UFormField>
-        <UFormField :label="t('account.preferences.dateTime.dateFormat')">
-          <USelect
-            :model-value="selected('dateFormat')"
-            :items="dateItems"
-            :loading="saving === 'dateFormat'"
-            class="w-full max-w-md"
-            @update:model-value="(v: string) => choose('dateFormat', v)"
-          />
-        </UFormField>
-        <UFormField :label="t('account.preferences.dateTime.timeFormat')">
-          <USelect
-            :model-value="selected('timeFormat')"
-            :items="timeItems"
-            :loading="saving === 'timeFormat'"
-            class="w-full max-w-md"
-            @update:model-value="(v: string) => choose('timeFormat', v)"
           />
         </UFormField>
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-default px-4 py-3 text-sm">

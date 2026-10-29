@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { isUiLanguage, DEFAULT_UI_LANGUAGE, LOGIN_CARD_POSITIONS, LOGIN_LAYOUTS, UI_LANGUAGES } from "@totalbase/shared";
+import { isUiLanguage, COLOR_MODES, DEFAULT_UI_LANGUAGE, LOGIN_CARD_POSITIONS, LOGIN_LAYOUTS, UI_LANGUAGES } from "@totalbase/shared";
 import { dataEnvelope, type RouteDoc } from "@totalbase/openapi";
 import type { AppContext } from "../context.js";
 
@@ -12,7 +12,7 @@ const publicFileUrl = (id: string) => (id ? `/api/totalbase/table/files/${id}` :
  * What a page needs to know about the instance before anyone signs in, and
  * on every page after: the language it speaks (`system.language`,
  * Admin_UI.md §14) and its branding (§4.1.1) - its name, its
- * mark and how the sign-in page is laid out. Public, and nothing else: no
+ * mark, its color mode and how the sign-in page is laid out. Public, and nothing else: no
  * version, no other setting. The colors and the custom CSS travel as a
  * stylesheet instead (/theme.css).
  */
@@ -21,7 +21,7 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
     "/api/instance",
     doc({
       summary: "The instance's public presentation",
-      description: "The default UI language, the instance's name and mark, and the sign-in page's layout - what the sign-in and other public pages are shown with.",
+      description: "The default UI language, the instance's name, mark and color mode, and the sign-in page's layout - what the sign-in and other public pages are shown with.",
       tags: ["auth"],
       access: "public",
       response: {
@@ -32,6 +32,7 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
             language: { type: "string", enum: UI_LANGUAGES.map((l) => l.code) },
             name: { type: "string", description: "`system.instance_name`." },
             logoUrl: { type: ["string", "null"], description: "The operator's mark (`system.logo`, a public file), or null for the built-in one." },
+            colorMode: { type: "string", enum: [...COLOR_MODES], description: "`appearance.color_mode`: the color mode of a browser whose viewer hasn't picked one." },
             login: {
               type: "object",
               properties: {
@@ -58,15 +59,16 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
               required: ["layout", "cardPosition", "backgroundUrl", "headline", "intro", "providers"],
             },
           },
-          required: ["language", "name", "logoUrl", "login"],
+          required: ["language", "name", "logoUrl", "colorMode", "login"],
         }),
       },
     }),
     async () => {
-      const [language, name, logo, layout, background, headline, intro, cardPosition, providers] = await Promise.all([
+      const [language, name, logo, colorMode, layout, background, headline, intro, cardPosition, providers] = await Promise.all([
         context.settings.get("system.language"),
         context.settings.get("system.instance_name"),
         context.settings.get("system.logo"),
+        context.settings.get("appearance.color_mode"),
         context.settings.get("appearance.login_layout"),
         context.settings.get("appearance.login_background"),
         context.settings.get("appearance.login_headline"),
@@ -80,6 +82,7 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
           language: isUiLanguage(language) ? language : DEFAULT_UI_LANGUAGE,
           name,
           logoUrl: publicFileUrl(logo),
+          colorMode,
           login: {
             layout,
             cardPosition,

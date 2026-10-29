@@ -762,7 +762,7 @@
     "directory": {
       "deletedUser": "Usuario eliminado {id}",
       "anotherUser": "Otro usuario",
-      "apiKey": "API key {id}"
+      "apiKey": "Clave de API {id}"
     },
     "objectRoles": {
       "search": "Buscar roles",

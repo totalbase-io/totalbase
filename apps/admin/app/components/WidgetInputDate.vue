@@ -70,7 +70,8 @@ const precision = computed(() => (isTimestamp.value ? props.granularity ?? 'minu
 const ui = useUiLocale()
 // The picker's month and day names: the UI's language.
 const locale = computed(() => ui.languageTag.value)
-const hourCycle = computed(() => pickerHourCycle(locale.value))
+// 12 or 24 hours: the regional format's (Admin_UI.md §14).
+const hourCycle = computed(() => pickerHourCycle(ui.intlLocale.value))
 /** The language's first day of the week (Monday in Spanish, Sunday in American English). */
 const weekStartsOn = computed(() => {
   try {

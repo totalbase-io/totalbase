@@ -162,22 +162,22 @@ describe("My account: /app/api/me", () => {
   describe("preferences", () => {
     it("sets, clears and resolves them, and serves the result with /admin/api/auth/me", async () => {
       const token = await login(`${PREFIX}-user@example.com`);
-      const set = await send("PATCH", "/app/api/me/preferences", token, { timezone: "America/Argentina/Buenos_Aires", dateFormat: "dd/MM/yyyy", timeFormat: "h:mm a" });
+      const set = await send("PATCH", "/app/api/me/preferences", token, { timezone: "America/Argentina/Buenos_Aires", regionalFormat: "es-AR" });
       expect(set.statusCode, set.body).toBe(200);
-      expect(set.json().data.preferences).toEqual({ timezone: "America/Argentina/Buenos_Aires", dateFormat: "dd/MM/yyyy", timeFormat: "h:mm a" });
-      expect(set.json().data.effective).toMatchObject({ timezone: "America/Argentina/Buenos_Aires", dateFormat: "dd/MM/yyyy", timeFormat: "h:mm a", datetimeFormat: "dd/MM/yyyy h:mm a" });
+      expect(set.json().data.preferences).toEqual({ timezone: "America/Argentina/Buenos_Aires", regionalFormat: "es-AR" });
+      expect(set.json().data.effective).toMatchObject({ timezone: "America/Argentina/Buenos_Aires", regionalFormat: "es-AR" });
 
       const me = await inject("GET", "/admin/api/auth/me", token);
       expect(me.statusCode, me.body).toBe(200);
-      expect(me.json().data.display).toMatchObject({ timezone: "America/Argentina/Buenos_Aires", datetimeFormat: "dd/MM/yyyy h:mm a" });
+      expect(me.json().data.display).toMatchObject({ timezone: "America/Argentina/Buenos_Aires", regionalFormat: "es-AR" });
 
       // A partial patch leaves the other keys alone; null clears one.
-      const cleared = await send("PATCH", "/app/api/me/preferences", token, { timeFormat: null });
-      expect(cleared.json().data.preferences).toEqual({ timezone: "America/Argentina/Buenos_Aires", dateFormat: "dd/MM/yyyy" });
+      const cleared = await send("PATCH", "/app/api/me/preferences", token, { timezone: null });
+      expect(cleared.json().data.preferences).toEqual({ regionalFormat: "es-AR" });
       // Stored under the column's own keys (its CHECK names them).
       const { rows } = await database.query<{ preferences: unknown }>(`SELECT preferences FROM totalbase.users WHERE id = $1`, [userId]);
-      expect(rows[0]!.preferences).toEqual({ timezone: "America/Argentina/Buenos_Aires", date_format: "dd/MM/yyyy" });
-      await send("PATCH", "/app/api/me/preferences", token, { timezone: null, dateFormat: null });
+      expect(rows[0]!.preferences).toEqual({ regional_format: "es-AR" });
+      await send("PATCH", "/app/api/me/preferences", token, { regionalFormat: null });
       expect((await inject("GET", "/app/api/me/preferences", token)).json().data.preferences).toEqual({});
     });
 
@@ -198,11 +198,14 @@ describe("My account: /app/api/me", () => {
       } finally {
         await context.settings.reset("system.language");
       }
-      // The regional format is the instance's alone - numbers and dates read the same for everyone.
+      // The instance's regional format for whoever chose none; a user's own wins.
       expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.regionalFormat).toBe("");
       await context.settings.set("system.regional_format", "es-AR");
       try {
         expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.regionalFormat).toBe("es-AR");
+        await send("PATCH", "/app/api/me/preferences", token, { regionalFormat: "en-IN" });
+        expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.regionalFormat).toBe("en-IN");
+        await send("PATCH", "/app/api/me/preferences", token, { regionalFormat: null });
         await expect(context.settings.set("system.regional_format", "xx-YY")).rejects.toMatchObject({ code: "INVALID_SETTING" });
       } finally {
         await context.settings.reset("system.regional_format");
@@ -213,7 +216,7 @@ describe("My account: /app/api/me", () => {
 
     it("rejects unknown keys, off-list formats and timezones PostgreSQL doesn't know", async () => {
       const token = await login(`${PREFIX}-user@example.com`);
-      for (const body of [{ language: "fr" }, { locale: "es" }, { dateFormat: "yyyy" }, { timeFormat: "HH:mm:ss" }, { date_format: "dd/MM/yyyy" }, { timezone: "Mars/Olympus" }, { timezone: 3 }, []]) {
+      for (const body of [{ language: "fr" }, { locale: "es" }, { dateFormat: "dd/MM/yyyy" }, { regionalFormat: "es" }, { regionalFormat: "xx-YY" }, { regional_format: "es-AR" }, { timezone: "Mars/Olympus" }, { timezone: 3 }, []]) {
         const res = await send("PATCH", "/app/api/me/preferences", token, body);
         expect(res.statusCode, JSON.stringify(body)).toBe(400);
       }
@@ -222,10 +225,10 @@ describe("My account: /app/api/me", () => {
     it("is guarded by PostgreSQL too, whoever writes the row", async () => {
       const write = (preferences: unknown) =>
         database.query(`UPDATE totalbase.users SET preferences = $2::jsonb WHERE id = $1`, [otherUserId, JSON.stringify(preferences)]);
-      await expect(write({ date_format: "yyyy" })).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
-      await expect(write({ time_format: 12 })).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
+      await expect(write({ regional_format: "es_AR" })).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
+      await expect(write({ regional_format: 12 })).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
       await expect(write(["not", "an", "object"])).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
-      await write({ date_format: "yyyy-MM-dd" });
+      await write({ regional_format: "es-AR" });
     });
   });
 });

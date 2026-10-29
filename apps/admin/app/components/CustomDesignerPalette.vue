@@ -25,6 +25,7 @@ const cat = useDesignerCatalogText()
 const label = (name: WidgetName) => cat.widgetLabel(name, widgetDefinition(name).label)
 const description = (name: WidgetName) => cat.widgetDescription(name, widgetDefinition(name).description)
 
+// i18n: the English fallback - shown through cat.groupLabel (designer.catalog.groups.*).
 const GROUPS: { key: WidgetGroup, label: string }[] = [
   { key: 'form', label: 'Form' },
   { key: 'input', label: 'Inputs' },

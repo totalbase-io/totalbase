@@ -31,7 +31,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import { DATAVIEW_TYPE_META, dataviewMetaKey, PAGE_SIZE_OPTIONS, resolveFeatures, resolveHeaderAlign, type CalendarLayoutConfig, type CardLayoutConfig, type DataView, type DataViewField, type DataViewType, type EditPresentation, type EditSide, type FormSize, type GanttLayoutConfig, type GanttZoom, type TreeLayoutConfig, type KanbanLayoutConfig, type MapLayoutConfig, type MapViewConfig, type Density, DENSITY_META, type SavedView, type SavedViewConfig, type RowsChange } from '~/types/dataview'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDetail } from '~/types/schema'
-import { searchForApi } from '~/utils/search-terms'
+import { regionalDatePattern, searchForApi } from '~/utils/search-terms'
 import { columnValueSource } from '~/utils/column-values'
 import { columnWidthVar, defaultColumnAlign, formatCellPlainText } from '~/utils/build-dataview-columns'
 import { displayFieldAlias } from '~/utils/display-field'
@@ -558,7 +558,7 @@ const fieldsParam = computed<string>(() => {
 
 // --- CALENDAR's own visible-range state (useGridCalendarRange) - the grid owns the refs since the range they imply
 // drives the main fetch below. The rest of the CALENDAR logic is DataViewCalendarView.vue.
-const { timezone: viewerTimezone, patterns: datePatterns } = useDateTimeFormat()
+const { timezone: viewerTimezone } = useDateTimeFormat()
 const { referenceDate: calendarReferenceDate, view: calendarView, rangeWhereParams: calendarRangeWhereParams } = useGridCalendarRange({
   active: () => isCalendar.value,
   layout: () => props.calendarLayout,
@@ -644,7 +644,7 @@ const listFilterParams = computed<Record<string, string>>(() => ({
   ...whereParams.value,
   ...forcedWhereParams.value,
   ...calendarRangeWhereParams.value,
-  ...(typeof fetchParams.value.search === 'string' && fetchParams.value.search ? { search: searchForApi(fetchParams.value.search, datePatterns.value.date), fields: fieldsParam.value } : {})
+  ...(typeof fetchParams.value.search === 'string' && fetchParams.value.search ? { search: searchForApi(fetchParams.value.search, regionalDatePattern()), fields: fieldsParam.value } : {})
 }))
 
 const { data, pending, error, refresh } = await useAsyncData(
@@ -1371,7 +1371,6 @@ async function onImported(created: number) {
         :layout="calendarLayout"
         :primary-key="primaryKey"
         :can-write="canWrite"
-        :time-format="displayFormatDefaults.timeFormat"
         :timezone="viewerTimezone"
         :pending="pending"
         :total="total"

@@ -2139,8 +2139,25 @@
       },
       "syncColumns": "Sincronizar columnas",
       "syncTooltip": "Concilia las columnas con las columnas reales y actuales de la tabla",
-      "truncate": "Truncar",
-      "truncateDescription": "Una línea, terminada en … - el valor completo al pasar el cursor.",
+      "cell": "Celda",
+      "textWrap": "Texto",
+      "textWraps": {
+        "truncate": "Una línea, cortada con …",
+        "wrap": "Varias líneas"
+      },
+      "textWrapDescription": "El valor completo se ve al pasar el cursor y en el formulario. Cada usuario puede cambiarlo para sí desde el encabezado de la columna.",
+      "maxLines": "Máximo de líneas",
+      "maxLinesDescription": "Vacío: todas las líneas.",
+      "verticalAlign": "Alineación vertical",
+      "verticalAligns": {
+        "top": "Arriba",
+        "middle": "Centro",
+        "bottom": "Abajo"
+      },
+      "width": "Ancho",
+      "widthDescription": "En px. Vacío: tan ancha como su contenido, hasta {max} px.",
+      "minWidth": "Ancho mínimo",
+      "maxWidth": "Ancho máximo",
       "widget": "Widget",
       "total": "Total",
       "totalDescription": "Al pie de la grilla: sobre todas las filas que dejan sus filtros, no solo la página. Lo calcula PostgreSQL, con el formato de esta columna.",
@@ -2282,7 +2299,8 @@
       "useTable": "Usar esta tabla"
     },
     "dataViewScopeSettings": {
-      "columnSet": "Conjunto de columnas",
+      "columnSet": "Columnas nuevas de la tabla",
+      "columnSetDescription": "Qué hace este DataView con una columna que se agregue a la tabla después de crearlo.",
       "filter": "Filtro",
       "heading": "Alcance",
       "invalidJson": "JSON no válido",
@@ -2425,7 +2443,7 @@
     },
     "dataViewWizardModal": {
       "byColumn": "Por su columna \"{column}\"",
-      "columnSet": "Conjunto de columnas",
+      "columnSet": "Columnas nuevas de la tabla",
       "columnsIntro": "Elige qué columnas de {resource} usa esta vista.",
       "createError": "No se pudo crear el DataView",
       "cycleGuardError": "El DataView se creó, pero no se pudo agregar la protección contra ciclos",
@@ -2602,6 +2620,14 @@
       "toolbarCompact": "Compacta",
       "toolbarFull": "Completa",
       "toolbarInstance": "La de la instancia (Configuración > DataViews)",
+      "headerAlign": "Títulos de las columnas",
+      "headerAlignHelp": "Cómo se alinean los títulos de las columnas de la tabla. Automática: cada uno como su columna - el de un número a la derecha, el de un texto a la izquierda.",
+      "headerAligns": {
+        "auto": "Automática",
+        "left": "Izquierda",
+        "center": "Centro",
+        "right": "Derecha"
+      },
       "listMargin": "Margen de la lista",
       "listMarginHelp": "El espacio alrededor de la lista - Por defecto: una tabla toma Settings > DataViews > Margen de las tablas; el resto de las listas, normal.",
       "listMargins": {

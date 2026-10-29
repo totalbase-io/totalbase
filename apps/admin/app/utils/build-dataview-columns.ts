@@ -1,5 +1,5 @@
 import { h, type VNode, type VNodeChild } from 'vue'
-import { FileCell, UButton, UDropdownMenu, UIcon, UTooltip } from '#components'
+import { FileCell, UButton, UDropdownMenu, UIcon } from '#components'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import type { DataViewField } from '~/types/dataview'
 import { formatNumberLocale, formatNumberValue, formatTemporalLocale, formatTemporalValue, uiIntlLocale } from '~/utils/format-pattern'
@@ -12,7 +12,7 @@ import { applyRelationFieldValues, collectRelationFieldRefs } from '~/utils/rela
 import { temporalColumnKinds } from '~/utils/formula-column-kinds'
 import { sortableHeader } from '~/utils/sortable-header'
 import { backgroundTint, optionBadge, setCellStyleClass } from '~/utils/table-column-style'
-import type { CellStyle, ColumnOptionPresentation, ConditionStyle } from '@totalbase/tb-catalog'
+import { gridColumnWidths, type CellAlign, type CellStyle, type ColumnOptionPresentation, type ConditionStyle, type GridCellConfig, type GridCellTextWrap } from '@totalbase/tb-catalog'
 import { conditionStyleAttrs } from '~/utils/column-conditions'
 import { FILE_VALUE_WIDGETS } from '@totalbase/tb-catalog'
 import { displayFieldAlias, displayText, sortKey, type DisplayConfig } from '~/utils/display-field'
@@ -30,6 +30,127 @@ export interface BuildDataViewColumnsOpts {
   shade?: (color: string) => string | undefined
   /** The condition a cell meets, if any (DataViews.md §15.7) - its look, over the column's. */
   cellLook?: (row: Record<string, unknown>, column: string) => ConditionStyle | undefined
+  /** A column header's menu (DataViews.md §5.2) - sort, hide, move, its text; without it, the header only sorts. */
+  headerMenu?: (field: DataViewField) => DropdownMenuItem[][]
+  /** The viewer's own choice of how a column's text fits and aligns (their columnPrefs), over the column's. */
+  cellPrefFor?: (field: DataViewField) => { textWrap?: GridCellTextWrap, align?: CellAlign }
+  /** Its header's right edge drags its width (a mouse, not a finger): pointer down there, with the column's key. Double click: back to the DataView's. */
+  onResizeStart?: (key: string, event: PointerEvent) => void
+  onResizeReset?: (key: string) => void
+  /** Its header drags the column to another place (a mouse, not a finger): pointer down on it, with the column's key. */
+  onReorderStart?: (key: string, event: PointerEvent) => void
+  /** Every column title so aligned (`view_config.header_align`, DataViews.md §5.2) - unset: each as its column. */
+  headerAlign?: CellAlign | null
+}
+
+/**
+ * A column's width as the viewer dragged it (their columnPrefs, DataViews.md §5.9) - a CSS variable the grid sets on
+ * the table, read by the column's header and cells over the DataView's widths: a drag moves it without drawing a cell.
+ */
+export function columnWidthVar(key: string): string {
+  return `--tb-w-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+}
+
+/** The column's width bounds as CSS - the viewer's width (its variable) when set, else the DataView's. */
+function widthStyle(cell: GridCellConfig, key: string): Record<string, string> {
+  const { width, minWidth, maxWidth } = gridColumnWidths(cell)
+  const own = columnWidthVar(key)
+  return {
+    maxWidth: `var(${own}, ${maxWidth}px)`,
+    width: `var(${own}, ${width !== undefined ? `${width}px` : 'auto'})`,
+    minWidth: `var(${own}, ${minWidth ?? 0}px)`
+  }
+}
+
+/**
+ * A column's alignment when nothing says one (DataViews.md §4.3) - its type's, as spreadsheets do: a number, a date or
+ * a time right (figures compared by their end), a yes/no centered, anything else left - a foreign key too, which shows
+ * its row's text whatever its key is. Read live from the type, never stored; the column's presentation and the
+ * viewer's own choice win over it.
+ */
+export function defaultColumnAlign(field: DataViewField): CellAlign {
+  if (field.widget === 'USwitch' || field.widget === 'UCheckbox') return 'center'
+  if (field.widget === 'USelectMenu' || (field.config as { display_field?: string }).display_field) return 'left'
+  return (field.config as { displayFormatKind?: string }).displayFormatKind ? 'right' : 'left'
+}
+
+/** A tooltip's text is the value, not a document - a long one is cut. */
+const TITLE_MAX = 2000
+
+/**
+ * A cell's box (DataViews.md §4.3): the column's width bounds, its text on one line cut with "…" or on several,
+ * the whole value on hover. The td itself can't be bounded - a table cell ignores max-width - so its content is.
+ */
+function cellBox(content: unknown, title: string, cell: GridCellConfig, wrap: GridCellTextWrap, key: string) {
+  const lines = wrap === 'wrap' ? cell.maxLines : undefined
+  return h('div', {
+    class: wrap === 'wrap' ? 'whitespace-normal break-words' : 'truncate',
+    style: {
+      ...widthStyle(cell, key),
+      ...(lines && { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: String(lines), overflow: 'hidden' })
+    },
+    title: title ? title.slice(0, TITLE_MAX) : undefined
+  }, [content as VNodeChild])
+}
+
+/** A json/jsonb document in a cell: what it is and how big, never the document - the record form shows it. */
+function jsonSummary(raw: unknown): string | null {
+  if (Array.isArray(raw)) return useNuxtApp().$i18n.t('dataviews.grid.jsonItems', { n: raw.length }, raw.length)
+  if (raw && typeof raw === 'object') {
+    const n = Object.keys(raw).length
+    return useNuxtApp().$i18n.t('dataviews.grid.jsonKeys', { n }, n)
+  }
+  return null
+}
+
+/**
+ * A grid column's header (DataViews.md §5.2): its title opens its menu; an arrow only on the sorted column, so a
+ * header is never wider than its title needs. Bounded like its cells, its title cut with "…".
+ */
+function columnHeader(label: string, direction: 'asc' | 'desc' | false, items: DropdownMenuItem[][], align: 'left' | 'center' | 'right', cell: GridCellConfig, key: string, opts: BuildDataViewColumnsOpts) {
+  const icon = direction === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : direction === 'desc' ? 'i-lucide-arrow-down-wide-narrow' : undefined
+  const menu = h(UDropdownMenu, { items, content: { align: align === 'right' ? 'end' : 'start' } }, {
+    default: () => h(UButton, {
+      'color': 'neutral',
+      'variant': 'ghost',
+      'size': 'xs',
+      label,
+      'title': label,
+      'aria-label': useNuxtApp().$i18n.t('dataviews.grid.columnMenu', { name: label }),
+      ...(icon && (align === 'right' ? { leadingIcon: icon } : { trailingIcon: icon })),
+      'ui': { base: 'font-semibold text-default hover:text-highlighted max-w-full' },
+      'class': align === 'right' ? '-mx-2 ml-auto flex' : align === 'center' ? 'mx-auto flex' : '-mx-2'
+    })
+  })
+  // Its right edge: a hairline in the border color between headers - primary on hover - over a wider strip that
+  // drags its width (the th is `relative`).
+  const edge = opts.onResizeStart
+    ? h('span', {
+        'class': 'group/edge absolute inset-y-0 -right-1 z-10 flex w-2 cursor-col-resize justify-center',
+        'aria-hidden': 'true',
+        'data-col-resize': key,
+        'onPointerdown': (event: PointerEvent) => {
+          event.stopPropagation()
+          opts.onResizeStart!(key, event)
+        },
+        'onDblclick': (event: MouseEvent) => {
+          event.stopPropagation()
+          opts.onResizeReset?.(key)
+        },
+        'onClick': (event: MouseEvent) => event.stopPropagation()
+      }, [h('span', { class: 'my-2.5 w-px bg-(--ui-border-accented) transition-colors group-hover/edge:bg-primary group-data-[resizing]/edge:bg-primary' })])
+    : null
+  // Pressed, it may become a drag (no text selected meanwhile); its menu still opens on the click a release makes.
+  // Its width's edge, a finger and other buttons keep their own way.
+  const onPointerdownCapture = opts.onReorderStart
+    ? (event: PointerEvent) => {
+        if (event.button !== 0 || event.pointerType === 'touch' || (event.target as Element | null)?.closest('[data-col-resize]')) return
+        event.stopPropagation()
+        event.preventDefault()
+        opts.onReorderStart!(key, event)
+      }
+    : undefined
+  return h('div', { 'class': 'flex min-w-0', 'style': widthStyle(cell, key), 'data-col-box': key, onPointerdownCapture }, [menu, edge])
 }
 
 /**
@@ -128,31 +249,41 @@ export function buildDataViewColumns(
       const label = (field.config as { shortLabel?: string } | undefined)?.shortLabel ?? field.label ?? key
       const sortBy = sortKey(field)
       // Its cells' look (DataViews.md §15) - only what it sets; the grid's own defaults otherwise.
-      // A yes/no column (its check) sits centered unless its presentation aligns it.
-      const isBoolean = field.widget === 'USwitch' || field.widget === 'UCheckbox'
-      const style = { ...(field.config as CellStyle), ...(isBoolean && !(field.config as CellStyle).align ? { align: 'center' as const } : {}) }
-      const styleClass = setCellStyleClass(style)
+      // Aligned by the viewer, else by its presentation, else by its type (defaultColumnAlign).
+      const own = opts.cellPrefFor?.(field) ?? {}
+      const style = { ...(field.config as CellStyle), align: own.align ?? (field.config as CellStyle).align ?? defaultColumnAlign(field) }
+      // Figures of one width - a number's, a date's, a time's - so they line up row under row.
+      const figures = !!(field.config as { displayFormatKind?: string }).displayFormatKind && defaultColumnAlign(field) === 'right'
+      const cell = field.config as GridCellConfig
+      const wrap = own.textWrap ?? cell.textWrap ?? 'truncate'
+      const styleClass = [setCellStyleClass(style), cell.verticalAlign ? `align-${cell.verticalAlign}` : '', figures ? 'tabular-nums' : ''].filter(Boolean).join(' ')
       const color = style.color ? opts.shade?.(style.color) : undefined
       const background = style.background ? backgroundTint(opts.shade?.(style.background)) : undefined
       return {
         // A related column's key is its dotted path, a flat key in the row - not a nested accessor path.
         ...(field.kind === 'RELATED' ? { id: key, accessorFn: (row: Record<string, unknown>) => row[key] } : { accessorKey: key }),
-        header: () => sortableHeader(label, opts.sortDirection(sortBy), () => opts.onToggleSort(sortBy), style.align ?? 'left'),
-        ...(styleClass || color || background ? { meta: { class: { td: styleClass }, ...(color || background ? { style: { td: { ...(color ? { color } : {}), ...(background ? { backgroundColor: background } : {}) } } } : {}) } } : {}),
+        header: () => opts.headerMenu
+          ? columnHeader(label, opts.sortDirection(sortBy), opts.headerMenu(field), opts.headerAlign ?? style.align, cell, key, opts)
+          : sortableHeader(label, opts.sortDirection(sortBy), () => opts.onToggleSort(sortBy), opts.headerAlign ?? style.align),
+        ...(styleClass || color || background || opts.onResizeStart
+          ? { meta: { class: { td: styleClass, ...(opts.onResizeStart && { th: 'relative' }) }, ...(color || background ? { style: { td: { ...(color ? { color } : {}), ...(background ? { backgroundColor: background } : {}) } } } : {}) } }
+          : {}),
         cell: ({ row }) => {
           const raw = resolveCellValue(row.original, key)
-          const content = renderCell(field, raw, row.original, opts.displayFormatDefaults, opts.onCopy)
+          const { content, title } = renderCell(field, raw, row.original, wrap, opts.displayFormatDefaults, opts.onCopy)
           const look = opts.cellLook?.(row.original, key)
-          return look ? conditionedCell(content, look, opts.shade) : content
+          return cellBox(look ? conditionedCell(content, look, opts.shade) : content, title, cell, wrap, key)
         }
       }
     })
 
   if (!opts.rowMenu) return dataCols
 
-  // The row's "⋮" - the record's own menu (utils/record-menu.ts); clicking the row itself opens it.
+  // The row's "⋮" - the record's own menu (utils/record-menu.ts); clicking the row itself opens it. It takes the room
+  // the columns leave (`w-full`): each of them as wide as its title and content - or its width - the rest at the end.
   const actionsCol: TableColumn<Record<string, unknown>> = {
     id: 'actions',
+    meta: { class: { th: 'w-full', td: 'w-full' } },
     header: () => h('span', { class: 'sr-only' }, useNuxtApp().$i18n.t('common.actions')),
     cell: ({ row }) => {
       const items = opts.rowMenu!(row.original)
@@ -364,15 +495,18 @@ function anchor(href: string, text: string) {
   }, text)
 }
 
+/** A cell's content and the text its box shows on hover - the whole value. */
 function renderCell(
   field: DataViewField,
   raw: unknown,
   row: Record<string, unknown>,
+  wrap: GridCellTextWrap,
   displayFormatDefaults?: DisplayFormatDefaults,
   onCopy?: (text: string) => void
-) {
+): { content: unknown, title: string } {
   const text = formatCellPlainText(field, raw, row, displayFormatDefaults)
-  const config = field.config as { truncate?: boolean, copyable?: boolean, linkType?: 'url' | 'email' | 'tel', booleanLabels?: { true?: string, false?: string } }
+  const config = field.config as { copyable?: boolean, isJsonColumn?: boolean, linkType?: 'url' | 'email' | 'tel', booleanLabels?: { true?: string, false?: string } }
+  const json = config.isJsonColumn && raw !== null && typeof raw === 'object' ? jsonSummary(raw) : null
 
   // A CHECK value with a color or an icon (its column's `options`, DataViews.md §15) - a badge.
   const badge = raw === null || raw === undefined ? null : optionBadge(text, (field.config as { options?: Record<string, ColumnOptionPresentation> }).options?.[String(raw)], name => h(UIcon, { name, class: 'size-3.5' }))
@@ -401,32 +535,28 @@ function renderCell(
       : h(UIcon, { name: raw ? 'i-lucide-check' : 'i-lucide-x', class: raw ? 'size-4 text-success' : 'size-4 text-muted' })
   } else if (field.widget === 'USelectMenu' && !(field.config as { display_field?: string }).display_field) {
     content = h('span', { class: 'font-mono text-xs text-muted' }, text)
+  } else if (json) {
+    // A document reads as its size (DataViews.md §4.3) - the record form shows it whole.
+    content = h('span', { class: 'text-muted' }, json)
   } else if (badge) {
     content = badge
   } else if (config.linkType) {
     // Text/UInput columns only in practice (applicableConfigKeys) - a
     // real clickable link instead of plain text.
     content = anchor(hrefForLink(config.linkType, text), text)
-  } else if (config.truncate) {
-    // `config.truncate` (field-config.ts) - one line + "…" instead of
-    // blowing out the row height/column width for a long text/jsonb
-    // value, full value still available on hover.
-    content = h(UTooltip, { text, class: 'block max-w-full' }, {
-      default: () => h('span', { class: 'block truncate' }, text)
-    })
   } else {
     content = text
   }
 
   // `config.copyable` (field-config.ts) - a small clipboard button next
   // to ANY field's cell, offered for every widget (unlike `linkType`/
-  // `truncate` which only make sense for text-ish ones) - see the
+  // `textWrap` which only make sense for text-ish ones) - see the
   // chat's own framing ("switch que el usuario pueda habilitar para
   // cualquier columna"). Skipped entirely for a null/empty cell -
   // nothing useful to copy.
   if (config.copyable && raw !== null && raw !== undefined && onCopy) {
     content = h('div', { class: 'flex items-center gap-1 min-w-0' }, [
-      h('span', { class: 'truncate min-w-0' }, [content as never]),
+      h('span', { class: wrap === 'wrap' ? 'min-w-0 whitespace-normal break-words' : 'truncate min-w-0' }, [content as never]),
       h(UButton, {
         'icon': 'i-lucide-copy',
         'color': 'neutral',
@@ -442,5 +572,5 @@ function renderCell(
     ])
   }
 
-  return content
+  return { content, title: json ? JSON.stringify(raw, null, 2) : text }
 }

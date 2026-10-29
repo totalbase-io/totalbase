@@ -51,7 +51,7 @@ const FIELD_CONFIG: JsonSchema = {
   type: "object",
   additionalProperties: true,
   description:
-    "A COLUMN/RELATED field: how the list shows it (`truncate`, `copyable`, `total`, a FORM's `searchable`) - never its " +
+    "A COLUMN/RELATED field: how the list shows it (its cell: `textWrap`, `maxLines`, `verticalAlign`, `width`, `minWidth`, `maxWidth`; `copyable`, `total`, a FORM's `searchable`) - never its " +
     "title or presentation, which are its table's column's (refused, `DATAVIEW_COLUMN_INVALID`) - plus, on a read, the keys " +
     "its column's type derives (`displayFormatKind`, `displayFormatTzAware`, `isJsonColumn`) and a foreign key's display its " +
     "table's row presentation gives (`display_field`, `display_template`, `display_inherited`) - never stored. " +

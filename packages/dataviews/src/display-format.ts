@@ -46,3 +46,12 @@ export function isJsonColumnDataType(dataType: string): boolean {
   const type = dataType.toLowerCase();
   return type === "json" || type === "jsonb";
 }
+
+/**
+ * A column a new list leaves hidden when no columns were picked (DataViews.md
+ * §3.2): a document or bytes read nothing useful in a grid cell - still read,
+ * still in the record form, shown from the Columns menu.
+ */
+export function isHiddenByDefaultDataType(dataType: string): boolean {
+  return isJsonColumnDataType(dataType) || dataType.toLowerCase() === "bytea";
+}

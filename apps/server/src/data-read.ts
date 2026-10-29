@@ -18,13 +18,20 @@ import { ReadAudit, type ReadOrigin } from "./read-audit.js";
  * The Data API's read path (Data_API.md §1.2, §4), callable without an HTTP
  * request: the routes of a TABLE or VIEW call it, and so can anything else
  * that reads as a principal (realtime, Data_API.md §16.4, §16.5; GraphQL,
- * Roadmap_v2.md §2.10). The caller resolves the principal and the resource;
+ * Data_API.md §17). The caller resolves the principal and the resource;
  * this resolves READ, parses and compiles the query, runs it and writes the
  * READ audit row (§4.3).
  */
 export interface ReadRowsResult {
   data: Record<string, unknown>[];
   meta?: { count?: number; flags?: unknown };
+}
+
+/** What a caller beside REST asks of a read: each row's version (`ROW_VERSION_COLUMN`, Data_API.md §5.3), for GraphQL's `_version`. */
+export interface ReadRowsOptions {
+  withVersion?: boolean;
+  /** limit and offset per value of this column (compileSelect's limitPer), for GraphQL's one-to-many. */
+  limitPer?: string;
 }
 
 /**
@@ -37,6 +44,7 @@ async function prepareRows(
   resource: ResolvedApiResource,
   rawQuery: Record<string, unknown>,
   readAudit: ReadAudit,
+  options: ReadRowsOptions = {},
 ) {
   const permission = await context.effectivePermissions.resolve(dataPrincipal.roleIds, resource.id, "READ");
   if (permission.action !== "ALLOW") {
@@ -73,6 +81,8 @@ async function prepareRows(
     maxLimit,
     maxOffset,
     defaultOrderBy: resource.defaultSort,
+    ...(options.withVersion && { withVersion: true }),
+    ...(options.limitPer !== undefined && { limitPer: options.limitPer }),
   });
   return { ast, compiled };
 }
@@ -94,9 +104,10 @@ export async function readRows(
   resource: ResolvedApiResource,
   rawQuery: Record<string, unknown>,
   origin: ReadOrigin,
+  options: ReadRowsOptions = {},
 ): Promise<ReadRowsResult> {
   const readAudit = new ReadAudit(context, origin, resource, dataPrincipal);
-  const { ast, compiled } = await prepareRows(context, dataPrincipal, resource, rawQuery, readAudit);
+  const { ast, compiled } = await prepareRows(context, dataPrincipal, resource, rawQuery, readAudit, options);
 
   // Rows, count and the READ audit row (audit_read) in one
   // transaction: one statement_timeout (api.request_timeout_ms) and one

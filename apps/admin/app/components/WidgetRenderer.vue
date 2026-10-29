@@ -28,7 +28,8 @@ import { isReservedAttrKey } from '~/utils/field-config'
 import type { ResourceHandle, ValueHandle } from '~/utils/variables-engine'
 import { boundErrors, rangeErrors, type FormMessages, columnDecimals, fieldColumn, fieldJunction, fieldName, fieldVariable, formFields, inputColumn, patternErrors, requiredErrors, toFieldErrors } from '~/utils/widget-form'
 import { fromDateTimeLocal, toDateTimeLocal } from '~/utils/datetime-local'
-import { commitDecimalInput } from '~/utils/number-input'
+import { commitDecimalInput, numberFieldAccepts, numberFieldText, numberFieldValue } from '~/utils/number-input'
+import { regionalLocale } from '~/utils/regional-locale'
 import { computedRows, designOptions, designTable, OPTION_LIST_WIDGETS, resourceTableColumns, searchEnterPayload, type RowFormula } from '~/utils/widget-table'
 import { tableActionsColumn } from '~/utils/widget-table-actions'
 import { optionGridClass, optionIconColor, optionIconSizeClass, widgetStyleClasses } from '~/utils/widget-style'
@@ -131,6 +132,17 @@ function fieldPatternMessage(field: DataViewField): string | undefined {
 const boundColumn = computed(() => inputColumn(runtime.fields.value, props.field))
 /** A UInput of type datetime-local bound to a column. */
 const isDateTimeLocal = computed(() => name.value === 'UInput' && config.value.props?.type === 'datetime-local' && Boolean(boundColumn.value))
+/**
+ * A number column's text input (its number field, DataViews.md §16.1): typed with a numeric keyboard, shown with
+ * the locale's decimal point, written as text PostgreSQL reads - null for anything else; else whether it has decimals.
+ */
+const numberField = computed<{ decimals: boolean } | null>(() => {
+  if (name.value !== 'UInput' || !boundColumn.value) return null
+  const dataType = runtime.record?.columns[boundColumn.value]?.dataType
+  if (!dataType || !isNumericDataType(dataType)) return null
+  const type = config.value.props?.type ?? columnInputType(runtime.recordPresentation?.(boundColumn.value)?.input) ?? 'text'
+  return type === 'text' ? { decimals: columnDecimals(dataType) > 0 } : null
+})
 /** Its column holds an instant (timestamptz), not a wall-clock time. */
 const isZonedColumn = computed(() => /with time zone/.test(runtime.record?.columns[boundColumn.value ?? '']?.dataType ?? ''))
 /** This form field's column. */
@@ -343,6 +355,8 @@ const resolvedProps = computed(() => {
     out.modelValue = record.data[boundColumn.value] ?? null
     // A timestamp in a native datetime-local input: its wall-clock time, in the viewer's zone for a timestamptz.
     if (isDateTimeLocal.value) out.modelValue = toDateTimeLocal(out.modelValue, isZonedColumn.value, timezone.value)
+    // A number field's text: the locale's decimal point.
+    if (numberField.value) out.modelValue = numberFieldText(out.modelValue, regionalLocale())
     // PostgreSQL's numeric arrives as text ("30990.00", exact) - a number input shows it as the number it is.
     if (name.value === 'UInputNumber' && typeof out.modelValue === 'string' && out.modelValue.trim() !== '' && Number.isFinite(Number(out.modelValue))) out.modelValue = Number(out.modelValue)
     if (!record.canEdit(boundColumn.value)) out.disabled = true
@@ -375,12 +389,13 @@ const resolvedProps = computed(() => {
         if (bound.op === '<=' && out.max === undefined) out.max = bound.value
       }
     }
-    // A number column's plain input (DataViews.md §15.2): a number input, its CHECK range and its
-    // scale's step (numeric(5,2): 0.01) - derived, never stored; what the page sets wins.
+    // A number column's plain input (DataViews.md §15.2): text with a numeric keyboard - a whole number's digits
+    // alone, a decimal's with its separator (its CHECK range is the form's check and PostgreSQL's). A page that
+    // sets a number input keeps its CHECK range and its scale's step (numeric(5,2): 0.01); what the page sets wins.
     if (name.value === 'UInput' && dataType && isNumericDataType(dataType)) {
-      // The column's chosen control's type (its presentation's input - a number field's, or text), else a number field.
       const chosen = boundColumn.value ? columnInputType(runtime.recordPresentation?.(boundColumn.value)?.input) : undefined
-      if (out.type === undefined) out.type = chosen ?? 'number'
+      if (out.type === undefined) out.type = chosen ?? 'text'
+      if (numberField.value && out.inputmode === undefined) out.inputmode = numberField.value.decimals ? 'decimal' : 'numeric'
       if (out.type === 'number') {
         for (const bound of record.columns[boundColumn.value]?.bounds ?? []) {
           if (bound.kind !== 'value') continue
@@ -848,9 +863,18 @@ const listeners = computed(() => {
   const links = boundLinks.value
   if (links) out['update:modelValue'] = (value: unknown) => links.set(Array.isArray(value) ? value : [...links.values, value])
   if (record && column) {
+    const number = numberField.value
     out['update:modelValue'] = isDateTimeLocal.value
       ? (value: unknown) => record.set(column, fromDateTimeLocal(value, isZonedColumn.value, timezone.value))
-      : (value: unknown) => record.set(column, value)
+      : number
+        ? (value: unknown) => record.set(column, numberFieldValue(String(value ?? ''), number.decimals))
+        : (value: unknown) => record.set(column, value)
+    // A letter never reaches a number field, whatever keyboard typed it.
+    if (number) {
+      out.beforeinput = (event: unknown) => {
+        if (event instanceof InputEvent && event.data && !numberFieldAccepts(event.data, number.decimals)) event.preventDefault()
+      }
+    }
   }
   const model = variableHandle(bindings.value.modelValue)
   if (!column && model?.kind === 'VALUE') {

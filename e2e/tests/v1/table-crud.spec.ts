@@ -53,9 +53,14 @@ test('search narrows the rows on the server, and clearing it brings them back', 
 test('a header sorts its column, both ways', async ({ page, token: _ }) => {
   const main = await openGrid(page)
   const first = () => main.locator('tbody tr').first()
-  await main.getByRole('button', { name: 'Nombre', exact: true }).click()
+  // From the header's menu (DataViews.md §5.2).
+  const sortBy = async (direction: 'Sort ascending' | 'Sort descending') => {
+    await main.getByRole('button', { name: 'Nombre: sort, filter, hide, align' }).click()
+    await page.getByRole('menuitemcheckbox', { name: direction }).click()
+  }
+  await sortBy('Sort ascending')
   await expect(first()).toContainText('Acme SA')
-  await main.getByRole('button', { name: 'Nombre', exact: true }).click()
+  await sortBy('Sort descending')
   await expect(first()).toContainText('Gamma Coop')
 })
 
@@ -74,7 +79,7 @@ test('a new customer saves with PostgreSQL\'s defaults, its category picked from
   await page.getByRole('option', { name: 'Minorista' }).click()
   // Its list closes before the next field is typed in - as a person's hand would wait.
   await expect(page.getByRole('listbox')).toHaveCount(0)
-  await form.getByRole('spinbutton', { name: 'Limite Credito' }).fill('1500')
+  await form.getByRole('textbox', { name: 'Limite Credito' }).fill('1500')
   await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(form).toBeHidden()
   await main.getByRole('textbox', { name: 'Search', exact: true }).fill('zeta')
@@ -101,7 +106,7 @@ test('PostgreSQL decides what saves: NOT NULL, UNIQUE and CHECK, each shown on i
 
   // A CHECK the form reads (limite_credito >= 0): a negative is flagged on its field, nothing sent.
   await form.getByRole('textbox', { name: 'Email' }).fill('otro@e2e.test')
-  const limite = form.getByRole('spinbutton', { name: 'Limite Credito' })
+  const limite = form.getByRole('textbox', { name: 'Limite Credito' })
   await limite.fill('-5')
   await save.click()
   await expect(limite).toHaveAttribute('aria-invalid', 'true')
@@ -120,7 +125,7 @@ test('editing a customer saves the change; closing with unsaved edits asks first
   await openGrid(page)
   await row(page, 'Beta SRL').click()
   const form = page.getByRole('dialog')
-  const limite = form.getByRole('spinbutton', { name: 'Limite Credito' })
+  const limite = form.getByRole('textbox', { name: 'Limite Credito' })
   await expect(limite).toBeVisible()
 
   // An unsaved edit: closing asks; keeping it leaves the form as it was.

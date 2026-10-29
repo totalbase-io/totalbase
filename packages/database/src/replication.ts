@@ -36,6 +36,12 @@ export interface ReplicationOptions {
   publication: string;
   /** Keys kept per table and event in one transaction (api.max_limit); read at each transaction. */
   maxKeys: () => number;
+  /**
+   * How long creating the slot may wait (default SLOT_TIMEOUT_MS), as the connection's lock_timeout: PostgreSQL
+   * waits on every transaction open in the cluster - any database - and one left open would hang the
+   * subscription that started it. Past it, the creation fails with 55P03 and the connection is closed.
+   */
+  slotTimeoutMs?: number;
 }
 
 export interface ReplicationHandlers {
@@ -297,6 +303,7 @@ class ReplicationStream implements pg.Submittable {
 }
 
 const RECONNECT_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
+const SLOT_TIMEOUT_MS = 10_000;
 
 /**
  * Replicates `options.publication` on a temporary slot of this process's own. The first connection's
@@ -322,6 +329,8 @@ export async function replicate(config: DatabaseConfig, options: ReplicationOpti
       application_name: "totalbase realtime",
       // A logical replication connection (pg's own connection parameter, not in its types).
       ...({ replication: "database" } as object),
+      // Creating the slot waits on every open transaction's lock: lock_timeout ends that wait in PostgreSQL itself.
+      options: `-c lock_timeout=${options.slotTimeoutMs ?? SLOT_TIMEOUT_MS}`,
     });
     next.on("error", (error) => {
       handlers.onError?.(error);
@@ -332,6 +341,7 @@ export async function replicate(config: DatabaseConfig, options: ReplicationOpti
       await next.connect();
       const slot = `totalbase_realtime_${process.pid}_${randomBytes(4).toString("hex")}`;
       await next.query(`CREATE_REPLICATION_SLOT ${quoteIdentifier(slot)} TEMPORARY LOGICAL pgoutput (SNAPSHOT 'nothing')`);
+      await next.query("SET lock_timeout = 0");
       const publication = options.publication.replace(/'/g, "''");
       const stream = new ReplicationStream(
         `START_REPLICATION SLOT ${quoteIdentifier(slot)} LOGICAL 0/0 (proto_version '1', publication_names '${publication}')`,
@@ -395,3 +405,4 @@ export async function replicate(config: DatabaseConfig, options: ReplicationOpti
     },
   };
 }
+

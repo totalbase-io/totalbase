@@ -125,7 +125,46 @@ export function useGridColumnPrefs(options: {
     commitOrder(list)
   }
 
+  // --- A column header's menu (DataViews.md §5.2) - the same prefs, one column at a time.
+  function hideColumn(key: string) {
+    if (colPrefs.prefs[key]) colPrefs.prefs = { ...colPrefs.prefs, [key]: { ...colPrefs.prefs[key]!, visible: false } }
+  }
+  /** The viewer's own text fit or alignment for a column; picking the DataView's own again drops theirs. */
+  function setCellPref<K extends 'textWrap' | 'align'>(key: string, pref: K, value: NonNullable<ColPref[K]>, columnDefault: ColPref[K]) {
+    const current = colPrefs.prefs[key]
+    if (!current) return
+    const { [pref]: _previous, ...rest } = current
+    colPrefs.prefs = { ...colPrefs.prefs, [key]: (value === columnDefault ? rest : { ...rest, [pref]: value }) as ColPref }
+  }
+  const cellPrefOf = (key: string) => ({ textWrap: colPrefs.prefs[key]?.textWrap, align: colPrefs.prefs[key]?.align })
+  /**
+   * Puts column `key` just before `before` - a shown column - or, null, after the last shown one (dragged by its
+   * header, DataViews.md §5.2): every column's place renumbered, the hidden ones keeping theirs among them.
+   */
+  function placeColumn(key: string, before: string | null) {
+    if (!colPrefs.prefs[key] || before === key) return
+    const keys = Object.keys(colPrefs.prefs)
+      .sort((a, b) => (colPrefs.prefs[a]!.order ?? 0) - (colPrefs.prefs[b]!.order ?? 0))
+      .filter(k => k !== key)
+    const lastShown = orderedFields.value.map(f => f.columnName!).filter(k => k !== key).at(-1)
+    const at = before !== null ? keys.indexOf(before) : lastShown ? keys.indexOf(lastShown) + 1 : keys.length
+    if (at < 0) return
+    keys.splice(at, 0, key)
+    const next = { ...colPrefs.prefs }
+    keys.forEach((k, order) => {
+      next[k] = { ...next[k]!, order }
+    })
+    colPrefs.prefs = next
+  }
+  /** The viewer's own width for a column (dragged at its header's edge); undefined: back to the DataView's. */
+  function setWidth(key: string, width: number | undefined) {
+    const current = colPrefs.prefs[key]
+    if (!current) return
+    const { width: _previous, ...rest } = current
+    colPrefs.prefs = { ...colPrefs.prefs, [key]: width === undefined ? rest : { ...rest, width: Math.round(width) } }
+  }
+
   const hiddenColCount = computed(() => Object.values(colPrefs.prefs).filter(p => !p.visible).length)
 
-  return { colPrefs, orderedFields, colsOpen, listItems, setAllColsVisible, hasDefaultColsState, selectDefaultCols, toggleColVisible, moveUp, moveDown, hiddenColCount }
+  return { colPrefs, orderedFields, colsOpen, listItems, setAllColsVisible, hasDefaultColsState, selectDefaultCols, toggleColVisible, moveUp, moveDown, hideColumn, setCellPref, cellPrefOf, setWidth, placeColumn, hiddenColCount }
 }

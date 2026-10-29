@@ -59,6 +59,8 @@ import type {
 import type { TableAction, TableColumnSettings, TableComputedColumn, WIDGET_CATALOG, WidgetName } from '@totalbase/tb-catalog'
 import type { EditSize } from '~/types/dataview'
 import type WidgetColorSelect from '~/components/WidgetColorSelect.vue'
+import type WidgetUuidInput from '~/components/WidgetUuidInput.vue'
+import type WidgetUlidInput from '~/components/WidgetUlidInput.vue'
 import type WidgetDataView from '~/components/WidgetDataView.vue'
 import type WidgetDashboard from '~/components/WidgetDashboard.vue'
 import type WidgetFrame from '~/components/WidgetFrame.vue'
@@ -117,7 +119,8 @@ interface WidgetCatalogChecks {
   UInputNumber: Assert<Check<'UInputNumber', InputNumberProps, InputNumberSlots, InputNumberEmits>>
   // `calendar` is TotalBase's: the adapter (WidgetInputDate.vue) draws the calendar button, Nuxt UI's documented pattern.
   UInputDate: Assert<Check<'UInputDate', InputDateProps & { calendar?: boolean }, InputDateSlots, InputDateEmits>>
-  UInputTime: Assert<Check<'UInputTime', InputTimeProps, InputTimeSlots, InputTimeEmits>>
+  // `picker` and `minuteStep` are TotalBase's: WidgetInputTime's clock button and its minutes - never passed on.
+  UInputTime: Assert<Check<'UInputTime', InputTimeProps & { picker?: boolean, minuteStep?: string }, InputTimeSlots, InputTimeEmits>>
   USwitch: Assert<Check<'USwitch', SwitchProps, SwitchSlots, SwitchEmits>>
   UCheckbox: Assert<Check<'UCheckbox', CheckboxProps, CheckboxSlots, CheckboxEmits>>
   USelect: Assert<Check<'USelect', SelectProps & OptionFields, SelectSlots, SelectEmits<any, any, any>>>
@@ -141,6 +144,8 @@ interface WidgetCatalogChecks {
   UEditor: Assert<Check<'UEditor', EditorProps, EditorSlots, EditorEmits>>
   TJson: Assert<Check<'TJson', OwnProps<typeof WidgetJson>, object>>
   TColorSelect: Assert<Check<'TColorSelect', OwnProps<typeof WidgetColorSelect>, object>>
+  TUuidInput: Assert<Check<'TUuidInput', OwnProps<typeof WidgetUuidInput>, object>>
+  TUlidInput: Assert<Check<'TUlidInput', OwnProps<typeof WidgetUlidInput>, object>>
   TLeafletMap: Assert<Check<'TLeafletMap', OwnProps<typeof WidgetMap>, object>>
   TGeolocation: Assert<Check<'TGeolocation', OwnProps<typeof WidgetLocation>, object>>
   TRangeInput: Assert<Check<'TRangeInput', OwnProps<typeof WidgetRangeInput>, object>>

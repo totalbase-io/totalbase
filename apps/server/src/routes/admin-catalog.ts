@@ -308,7 +308,8 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
       summary: "Sync resources with the PostgreSQL catalog",
       description:
         "Reconciles TotalBase resources with pg_catalog: new tables/views/functions become resources (hidden - nothing exposed), " +
-        "dropped ones turn MISSING, renames keep their resource (identity follows the OID). Then pulls column changes and, with " +
+        "dropped ones turn MISSING, renames keep their resource (identity follows the OID). Then pulls column changes, brings each " +
+        "DataView the new columns of its source (its New table columns: shown and in its form, hidden, or not at all) and, with " +
         "catalog.track_comments, syncs descriptions with PostgreSQL COMMENTs. TotalBase's own schema routes do this after their DDL; " +
         "call it after DDL run elsewhere (SQL Console, migrations, psql). The body is optional: `autoPresentation` also gives every " +
         "column of the application's tables and views what Suggest presentation fills - by its type and constraints, never its name - where it lacks it.",

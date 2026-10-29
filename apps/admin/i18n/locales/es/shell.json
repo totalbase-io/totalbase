@@ -393,7 +393,8 @@
         "appearance": "Apariencia",
         "files": "Archivos",
         "postgresql": "PostgreSQL",
-        "backups": "Backups"
+        "backups": "Backups",
+        "graphql": "GraphQL"
       }
     },
     "userMenu": {
@@ -656,6 +657,7 @@
         "ROLE_VARIABLE_REFUSED": "{role} no puede leer {resource}: la variable {variable} de la página falla para ese rol.",
         "ROLE_CANNOT_WRITE": "{role} no puede {actions} aquí: esas opciones no se le muestran.",
         "CONSTRAINT_WITHOUT_MESSAGE": "{columns} no tienen mensaje: una escritura rechazada muestra un texto genérico en lugar de qué corregir.",
+        "SECRET_COLUMN_SHOWN": "{columns} parecen secretos y se muestran en la grilla: ocúltalos o deniega el campo en los permisos de los roles.",
         "WIDGET_IGNORES_ROW_FILTER": "El widget {widget} lee {resource}, de la que {role} solo puede leer algunas filas, pero su SQL nunca filtra por $USER: {role} ve todas las filas a través de él."
       },
       "actions": {

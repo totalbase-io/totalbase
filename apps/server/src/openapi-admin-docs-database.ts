@@ -171,6 +171,11 @@ export const CATALOG_SCHEMAS: Record<string, JsonSchema> = {
       hasDefault: { type: "boolean", description: "PostgreSQL supplies a DEFAULT when the caller omits it." },
     })),
     returnsRows: { type: "boolean", description: "SETOF/TABLE or a composite return - yields rows rather than one value." },
+    resultColumns: {
+      oneOf: [arrayOf(object({ name: STRING, dataType: STRING })), { type: "null" }],
+      description: "A row result's columns as `SELECT * FROM f()` names them; null when PostgreSQL declares none (`SETOF record`) or the result is a scalar.",
+    },
+    resultType: { type: ["string", "null"], description: "A scalar result's type; null for rows and for a pseudo-type (`void`, `record`)." },
     owner: { type: "string", description: "The PostgreSQL role that owns it." },
     canAlter: {
       type: "boolean",
@@ -183,6 +188,7 @@ export const CATALOG_SCHEMAS: Record<string, JsonSchema> = {
     missing: { type: "integer", description: "Resources whose object no longer exists (now MISSING)." },
     purged: { type: "integer" },
     columns: object({ discovered: INTEGER, renamed: INTEGER, removed: INTEGER }),
+    dataviewsSynced: { type: "integer", description: "DataViews that got a column their source gained, as their New table columns say (DataViews.md §4.2)." },
     descriptions: {
       type: ["object", "null"],
       description: "null unless catalog.track_comments is on.",

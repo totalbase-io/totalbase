@@ -25,6 +25,17 @@ export function useGridTableColumns(options: {
   displayFormatDefaults: Ref<DisplayFormatDefaults>
   shade: (color: string) => string | undefined
   cellLook: NonNullable<BuildDataViewColumnsOpts['cellLook']>
+  headerMenu: NonNullable<BuildDataViewColumnsOpts['headerMenu']>
+  cellPrefFor: NonNullable<BuildDataViewColumnsOpts['cellPrefFor']>
+  onResizeStart: NonNullable<BuildDataViewColumnsOpts['onResizeStart']>
+  onResizeReset: NonNullable<BuildDataViewColumnsOpts['onResizeReset']>
+  /** A mouse or a trackpad: a column's header edge drags its width (never with a finger). */
+  resizable: () => boolean
+  onReorderStart: NonNullable<BuildDataViewColumnsOpts['onReorderStart']>
+  /** A mouse or a trackpad, and the viewer may reorder columns (columnsToggle): a header drags its column. */
+  reorderable: () => boolean
+  /** The DataView's column titles' alignment (`view_config.header_align`) - null: each as its column. */
+  headerAlign: () => BuildDataViewColumnsOpts['headerAlign']
   totalsPlanned: ComputedRef<TotalEntry[]>
   totalText: (entry: TotalEntry) => string | null
   /** Keeps the row actions pinned, opaque, at the right edge while the columns scroll sideways. */
@@ -47,7 +58,12 @@ export function useGridTableColumns(options: {
       onCopy: options.onCopy,
       displayFormatDefaults: options.displayFormatDefaults.value,
       shade: options.shade,
-      cellLook: options.cellLook
+      cellLook: options.cellLook,
+      headerMenu: options.headerMenu,
+      cellPrefFor: options.cellPrefFor,
+      ...(options.resizable() && { onResizeStart: options.onResizeStart, onResizeReset: options.onResizeReset }),
+      ...(options.reorderable() && { onReorderStart: options.onReorderStart }),
+      headerAlign: options.headerAlign()
     }).map((column) => {
       const key = (column as { id?: string, accessorKey?: string }).id ?? (column as { accessorKey?: string }).accessorKey
       const entry = options.totalsPlanned.value.find(e => e.column === key)
@@ -58,7 +74,7 @@ export function useGridTableColumns(options: {
   /** `pinRowActions`: the pinned actions cells are opaque - the theme's translucent pinned background lets the scrolled columns show through; its header cell the header strip's color, solid. */
   function pinnedActions(columns: TableColumn<Row>[]): TableColumn<Row>[] {
     if (!options.pinRowActions()) return columns
-    return columns.map(column => column.id === 'actions' ? { ...column, meta: { class: { th: 'bg-[color-mix(in_oklab,var(--ui-bg-elevated)_50%,var(--ui-bg))]', td: 'bg-default' } } } : column)
+    return columns.map(column => column.id === 'actions' ? { ...column, meta: { class: { th: 'w-full bg-[color-mix(in_oklab,var(--ui-bg-elevated)_50%,var(--ui-bg))]', td: 'w-full bg-default' } } } : column)
   }
 
   // A leading checkbox column, standalone + writable only - built here

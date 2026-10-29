@@ -42,6 +42,7 @@ const KEYS: Readonly<Record<string, Shape>> = {
   page_content_width: optionalEnum("narrow", "wide", "full"),
   page_content_align: optionalEnum("left", "center", "right"),
   list_margin: optionalEnum("none", "compact", "normal"),
+  header_align: optionalEnum("left", "center", "right"),
   fit_to_screen: { type: "boolean" },
   // What its viewers may do besides reading - only less than their permissions (DataViews.md §5.1).
   allow: { type: "optional", of: { type: "list", of: enumOf(...EMBED_ACTIONS), check: distinct("an action") } },

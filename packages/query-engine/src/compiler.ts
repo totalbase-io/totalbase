@@ -3,7 +3,7 @@ import type { PermissionDecision } from "@totalbase/permissions";
 import type { AggregateNode, CompiledQuery, FieldNode, FilterNode, OrderNode, QueryAST } from "./ast.js";
 import { compileFilter } from "./filter-compiler.js";
 import { JoinRegistry, resolvePath } from "./path-resolver.js";
-import { limitOffsetClause, quoteIdentifier, ROW_VERSION_SQL, searchMatchSql, searchPattern } from "./pg-dialect.js";
+import { limitOffsetClause, quoteIdentifier, ROW_VERSION_COLUMN, ROW_VERSION_SQL, searchMatchSql, searchPattern } from "./pg-dialect.js";
 import type { ResolvedResource, SchemaContext } from "./schema-context.js";
 import { coerceLiteral } from "./value-coercion.js";
 
@@ -21,6 +21,12 @@ export interface CompileOptions {
   maxOffset: number;
   /** A table's row read by key: also its version (xmin as text, `__version`) - what If-Match sends back (T56). */
   withVersion?: boolean;
+  /**
+   * A root column whose each value gets its own `limit`/`offset` (a window's row_number(), in the read's order):
+   * GraphQL's one-to-many, every parent's children in one read. Then at most `maxLimit` rows in all, and the
+   * count is how many the read would give without that cap. Never on a grouped read.
+   */
+  limitPer?: string;
   /**
    * The resource's default order (Foundations.md §11.7), used when the request asks for none and isn't grouped or
    * aggregated - then the primary key as the tiebreaker, so pages never overlap. A column it no longer has is skipped.
@@ -116,6 +122,8 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
   const isGrouped = Boolean(ast.aggregates?.length || ast.groupBy?.length);
 
   const selectColumns: string[] = [];
+  /** The row's output columns by alias, for a limitPer read to select from its ranked rows. */
+  const outputAliases: string[] = [];
   const groupBySql: string[] = [];
 
   if (isGrouped) {
@@ -134,8 +142,12 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     const fields = await resolveProjection(ast.fields, root, schemaContext, registry, fieldDecision);
     for (const { alias, columnSql } of fields) {
       selectColumns.push(`${columnSql} AS ${quoteIdentifier(alias)}`);
+      outputAliases.push(quoteIdentifier(alias));
     }
-    if (options.withVersion) selectColumns.push(ROW_VERSION_SQL(registry.rootAlias));
+    if (options.withVersion) {
+      selectColumns.push(ROW_VERSION_SQL(registry.rootAlias));
+      outputAliases.push(ROW_VERSION_COLUMN);
+    }
   }
 
   // WHERE: request filter AND permission row filter, combined.
@@ -154,13 +166,6 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     const searchSql = await compileSearch(ast.search, ast.fields, ast.searchFields, root, schemaContext, registry, fieldDecision, pushParam);
     if (searchSql) whereParts.push(searchSql);
   }
-
-  // Joins may have been added by WHERE/search resolution after the projection was built; that's fine,
-  // registry.joins accumulates everything and is emitted once below.
-
-  let fromSql = ` FROM ${quoteIdentifier(root.schema)}.${quoteIdentifier(root.table)} AS ${registry.rootAlias}`;
-  for (const join of registry.joins) fromSql += ` ${join.sql}`;
-  if (whereParts.length > 0) fromSql += ` WHERE ${whereParts.join(" AND ")}`;
 
   let groupHavingSql = "";
   if (isGrouped && groupBySql.length > 0) {
@@ -201,12 +206,22 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     for (const [index, flag] of ast.flags.entries()) {
       const compiled = await compileFilter(flag.filter, filterContext, sharedParams.length + flagParams.length);
       selectColumns.push(`COALESCE((${compiled.sql}), false) AS ${quoteIdentifier(flagColumn(index))}`);
+      outputAliases.push(quoteIdentifier(flagColumn(index)));
       flagParams.push(...compiled.params);
     }
   }
 
+  // Joins are added by every clause that resolves a path - the projection, WHERE, search, HAVING, ORDER BY and flags
+  // (a relation ordered by but not read) - so the FROM is written once all of them are compiled.
+  let fromSql = ` FROM ${quoteIdentifier(root.schema)}.${quoteIdentifier(root.table)} AS ${registry.rootAlias}`;
+  for (const join of registry.joins) fromSql += ` ${join.sql}`;
+  if (whereParts.length > 0) fromSql += ` WHERE ${whereParts.join(" AND ")}`;
+
   const limit = Math.min(ast.limit ?? options.defaultLimit, options.maxLimit);
   const offset = Math.min(ast.offset ?? 0, options.maxOffset);
+  if (options.limitPer !== undefined) {
+    return compileLimitPer(options.limitPer, { isGrouped, root, registry, fieldDecision, selectColumns, outputAliases, fromSql, orderBySql, sharedParams, flagParams, limit, offset, maxLimit: options.maxLimit, count: ast.count === true });
+  }
   const rowParams = [...sharedParams, ...flagParams, limit, offset];
   const sql =
     `SELECT ${selectColumns.join(", ")}${fromSql}${groupHavingSql}${orderBySql}` +
@@ -221,6 +236,46 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     countParams = sharedParams;
   }
 
+  return { sql, params: rowParams, countSql, countParams };
+}
+
+/**
+ * A limitPer read: each value of `column` ranked by row_number() in the read's order, `offset`/`limit` taken per
+ * value, at most `maxLimit` rows in all - and the count of what the ranks let through, so a cut is seen.
+ */
+function compileLimitPer(
+  column: string,
+  read: {
+    isGrouped: boolean;
+    root: ResolvedResource;
+    registry: JoinRegistry;
+    fieldDecision: (dottedPath: string) => PermissionDecision;
+    selectColumns: string[];
+    outputAliases: string[];
+    fromSql: string;
+    orderBySql: string;
+    sharedParams: unknown[];
+    flagParams: unknown[];
+    limit: number;
+    offset: number;
+    maxLimit: number;
+    count: boolean;
+  },
+): CompiledQuery {
+  if (read.isGrouped) throw new TotalBaseError("INVALID_QUERY", "A limit per value applies to rows - not to a grouped read.");
+  if (!read.root.columns.some((c) => c.name === column)) throw new TotalBaseError("INVALID_QUERY", `Unknown field: ${column}`);
+  requireAllowed(read.fieldDecision(column), column);
+  const rank = `row_number() OVER (PARTITION BY ${read.registry.rootAlias}.${quoteIdentifier(column)}${read.orderBySql}) AS __rank`;
+  const rowParams = [...read.sharedParams, ...read.flagParams, read.offset, read.limit, read.maxLimit];
+  const [offsetParam, limitParam, maxParam] = [rowParams.length - 2, rowParams.length - 1, rowParams.length].map((n) => `$${n}`);
+  const sql =
+    `SELECT ${read.outputAliases.join(", ")} FROM (SELECT ${[...read.selectColumns, rank].join(", ")}${read.fromSql}) AS ranked` +
+    ` WHERE __rank > ${offsetParam} AND __rank <= ${offsetParam}::bigint + ${limitParam}::bigint ORDER BY __rank LIMIT ${maxParam}`;
+  if (!read.count) return { sql, params: rowParams, countSql: undefined, countParams: undefined };
+  const countParams = [...read.sharedParams, read.offset, read.limit];
+  const countSql =
+    `SELECT count(*) AS count FROM (SELECT ${rank}${read.fromSql}) AS ranked` +
+    ` WHERE __rank > $${countParams.length - 1} AND __rank <= $${countParams.length - 1}::bigint + $${countParams.length}::bigint`;
   return { sql, params: rowParams, countSql, countParams };
 }
 

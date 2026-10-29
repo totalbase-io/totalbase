@@ -1,4 +1,4 @@
-import { UI_LANGUAGES } from "@totalbase/shared";
+import { REGIONAL_FORMATS, regionalFormatExample, UI_LANGUAGES } from "@totalbase/shared";
 import type { SettingKey } from "./registry.js";
 
 /**
@@ -118,6 +118,10 @@ export const SETTINGS_GROUP_METADATA: Record<string, { label: string; descriptio
   realtime: {
     label: "Realtime",
     description: "Realtime subscriptions: clients follow the changes of the tables exposing Realtime over one WebSocket, /api/realtime, receiving only what their READ permission allows.",
+  },
+  graphql: {
+    label: "GraphQL",
+    description: "The GraphQL API: the Data API's tables at /api/graphql, each caller seeing only what their roles allow.",
   },
   sql_console: {
     label: "SQL Console",
@@ -564,6 +568,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     options: UI_LANGUAGES.map((language) => ({ label: language.name, value: language.code })),
     section: "Language",
   },
+  "system.regional_format": {
+    label: "Regional format",
+    description: "How numbers and dates read for everyone - separators, grouping, the order of day and month - wherever no pattern says otherwise: a field's own Format and the date formats below still win. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
+    options: [{ label: "Browser", value: "" }, ...REGIONAL_FORMATS.map((format) => ({ label: `${format} - ${regionalFormatExample(format)}`, value: format }))],
+    section: "Language",
+  },
   "system.timezone": {
     label: "Timezone",
     description: "The organization's zone: timestamptz values are shown in it, and reports and filters such as \"this month\" count days in it - for every user who didn't choose their own. Empty = each viewer's browser timezone.",
@@ -1000,6 +1010,29 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     description: "How often the server pings each connection; one that doesn't answer before the next ping is closed.",
     unit: "seconds",
     dependsOn: "realtime.enabled",
+  },
+
+  // --- graphql.* ---
+  "graphql.enabled": {
+    label: "Enable GraphQL",
+    description: "Serves POST /api/graphql with a Data API token. Every field runs through the same permissions, limits and audit as the REST call it stands for. Off = 404.",
+  },
+  "graphql.default_schema": {
+    label: "Default schema",
+    description: "The schema whose tables, views and functions are named without a prefix: products, not public__products. Every other schema's keep theirs (sales__orders). Changing it renames them for every client.",
+    dependsOn: "graphql.enabled",
+  },
+  "graphql.max_calls": {
+    label: "Data API calls per request",
+    description: "The most Data API calls one request makes: each root field is one, and so is each one-to-many field, however many rows it is under.",
+    unit: "calls",
+    dependsOn: "graphql.enabled",
+  },
+  "graphql.max_depth": {
+    label: "Selection depth",
+    description: "How deep a request's selection may nest, introspection included. How far relations go is api.max_relation_depth.",
+    unit: "levels",
+    dependsOn: "graphql.enabled",
   },
 
   // --- sql_console.* ---

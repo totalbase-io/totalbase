@@ -79,7 +79,8 @@ describe.skipIf(!HAS_TOOLS)("built-in backups (integration)", () => {
     await admin.query(`DROP DATABASE IF EXISTS ${targetName} WITH (FORCE)`);
     await admin.close();
     if (root) await rm(root, { recursive: true, force: true });
-  });
+    // Dropping two databases waits for PostgreSQL's checkpoint - past vitest's 10 s on a busy server.
+  }, 120_000);
 
   it("queues the schedule's occurrence once, then backs the database and the files up into one archive", async () => {
     const now = new Date();

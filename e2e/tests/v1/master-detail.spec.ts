@@ -45,7 +45,8 @@ test('an order shows its items, each amount computed by PostgreSQL and formatted
   await expect(cell(page, 'Descripcion', 1)).toHaveValue('Cable 10 m')
   // `importe` is generated (cantidad * precio): a read-only amount, grouped like any number.
   await expect(main.locator('tbody tr').first()).toContainText(money(6600))
-  await expect(main.getByRole('spinbutton', { name: 'Total' })).toHaveValue(plain(6600))
+  // A number field is text with a numeric keyboard (DataViews.md §15.2): a textbox, the regional decimal point.
+  await expect(main.getByRole('textbox', { name: 'Total' })).toHaveValue(plain(6600))
 })
 
 test('items added in the grid - Tab past the last cell adds a line - saved with the order in one go, its total recomputed', async ({ page, token: _ }) => {
@@ -63,9 +64,9 @@ test('items added in the grid - Tab past the last cell adds a line - saved with 
   await cell(page, 'Descripcion', 3).fill('Relé')
   await cell(page, 'Precio', 3).fill('300')
   // Nothing written yet: the order's total is still PostgreSQL's last one.
-  await expect(main.getByRole('spinbutton', { name: 'Total' })).toHaveValue(plain(6600))
+  await expect(main.getByRole('textbox', { name: 'Total' })).toHaveValue(plain(6600))
   await main.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(main.getByRole('spinbutton', { name: 'Total' })).toHaveValue(plain(7900))
+  await expect(main.getByRole('textbox', { name: 'Total' })).toHaveValue(plain(7900))
   await expect(main.locator('tbody tr').filter({ has: page.getByLabel('Descripcion, line 2', { exact: true }) })).toContainText(money(1000))
 })
 
@@ -101,8 +102,8 @@ test('a new order: opened blank - its customer is required, nothing refused befo
   await cell(page, 'Precio', 1).fill('1234.5')
   await main.getByRole('button', { name: 'Save', exact: true }).click()
   // Saved: its key and its defaults (estado BORRADOR) come from PostgreSQL, its total from its items' trigger.
-  await expect(main.getByRole('spinbutton', { name: 'Id', exact: true }).first()).toHaveValue(/\d+/)
+  await expect(main.getByRole('textbox', { name: 'Id', exact: true }).first()).toHaveValue(/\d+/)
   await expect(main.getByRole('combobox', { name: 'Estado' })).toContainText('BORRADOR')
-  await expect(main.getByRole('spinbutton', { name: 'Total' })).toHaveValue(plain(1234.5))
+  await expect(main.getByRole('textbox', { name: 'Total' })).toHaveValue(plain(1234.5))
   await expect(cell(page, 'Descripcion', 1)).toHaveValue('Primer ítem')
 })

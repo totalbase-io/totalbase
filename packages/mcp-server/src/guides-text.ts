@@ -283,10 +283,25 @@ A view as source is read-only whatever the type.
 The model comes first: KANBAN needs its stages as a foreign key to a table or a CHECK list, MASTER_DETAIL its lines as a table pointing at the master, MAP a point or two numeric columns - create them with create_table / alter_table before the DataView. CUSTOM pages (a blank page built from variables, widgets and code) are built with create_dataview view_type CUSTOM and the page tools - totalbase://guide/pages.
 
 ## Fields
-- columns picks the source's columns, in order (all when omitted); a related column by path ('customer.city', read-only).
+- columns picks the source's columns, in order (all when omitted); a related column by path ('customer.city', read-only). Omitted, a list's json, jsonb and bytea columns come in hidden (visible false: read, in the record form, shown from the grid's Columns menu).
 - Each field inherits its column's presentation (set_column_presentation: label, help, format, value labels and colors) and a foreign key shows its target's row presentation (set_row_presentation) - set both before creating the DataView.
-- displayFormat (set_column_presentation): dates take a date-fns pattern ('dd/MM/yyyy', 'dd/MM/yyyy HH:mm'). Numbers: 0 a digit, # an optional one, ',' turns thousands grouping on, '.' then the decimals (0 always shown, # only when present); literal text around it, quoted or not; up to three sections positive;negative;zero. Examples: '#,##0.00' (1.234,50), '0' (an invoice number without separator: 3000), '$ #,##0.00' (money), 'CURRENCY:ARS' (the currency's own symbol and decimals), '0.0%' (a value already in percent: 25 shows 25,0% - % never multiplies), '#,##0.00;(#,##0.00);"-"' (accounting). Separators follow the viewer's language.
-- update_dataview fields: [{column, label, visible, widget}] - hide a column (visible false) rather than leaving it out when the form still needs it.
+- displayFormat (set_column_presentation): dates take a date-fns pattern ('dd/MM/yyyy', 'dd/MM/yyyy HH:mm'). Numbers: 0 a digit, # an optional one, ',' turns thousands grouping on, '.' then the decimals (0 always shown, # only when present); literal text around it, quoted or not; up to three sections positive;negative;zero. Examples: '#,##0.00' (1.234,50), '0' (an invoice number without separator: 3000), '$ #,##0.00' (money), 'CURRENCY:ARS' (the currency's own symbol and decimals), '0.0%' (a value already in percent: 25 shows 25,0% - % never multiplies), '#,##0.00;(#,##0.00);"-"' (accounting). Separators follow the instance's regional format (Settings > General, system.regional_format), else the viewer's browser regional settings - never the UI language.
+- update_dataview fields: [{column, visible, widget, textWrap, maxLines, verticalAlign, width, minWidth, maxWidth}] - hide a column (visible false) rather than leaving it out when the form still needs it. get_dataview shows each column's cell.
+- The grid's search covers every column of the DataView, shown or hidden: to find a row by a code without showing it, keep the column and hide it.
+
+### A grid column's cell (update_dataview fields)
+A cell is one line cut with … (the whole value on hover and in the record form), its column as wide as its content up to 320 px - a long text never pushes the grid sideways. A json/jsonb cell reads as its size ('{…} 12 keys', '[…] 3 items').
+| Key | Values | Meaning |
+|---|---|---|
+| textWrap | truncate (default), wrap | wrap: several lines within the column's width. A viewer can switch it for themselves from the column's header menu (their preferences), over this |
+| maxLines | 1-10 | with wrap: at most this many lines, then … ; unset: every line |
+| verticalAlign | top, middle (default), bottom | where the content sits in a taller row |
+| width, minWidth, maxWidth | 24-2000 px | width fixes the column; minWidth/maxWidth bound it; maxWidth unset is 320, or width when wider |
+null unsets a key. A header's own width is its title's: a long title widens its column - give the column a shortLabel (set_column_presentation). Each header opens a menu: sort, filter by the column, hide, align left/center/right and one line or several (the viewer's own, over the column's), and Edit column… for an administrator. A viewer drags a header to reorder the columns and its edge to set its width - theirs, kept with their preferences and saved views, over width/minWidth/maxWidth.
+
+### Secrets and documents
+- A column holding a secret (a token, a password, a private key) doesn't belong in a grid: hide it or leave it out, and deny the field to the roles that must never read it (grant_permission fields) - hiding is presentation, a denied field is security. check_app flags a shown column whose name reads like one (SECRET_COLUMN_SHOWN, info).
+- A view's uuid column that points at another table has no foreign key (a view carries no constraints), so it shows the id. Relations come only from real foreign keys: have the view return what to show too (JOIN the table and select its name or code - 'producto_nombre'), and hide the id column.
 
 ## view_config (create_dataview, update_dataview - shallow merge: a top-level key replaces its value)
 | Key | Types | Values (default first) | Meaning |
@@ -295,13 +310,14 @@ The model comes first: KANBAN needs its stages as a foreign key to a table or a 
 | base_where | list types, FORM | a filter object | rows the view shows (not a permission - the API still decides) |
 | auto_refresh | list types | null, "10s", "30s", "1m", "5m", "15m" | re-reads its rows |
 | default_state | list types | {columnPrefs: {col: {order}}, sort: "name,-created_at", density, pageSize, toolbarMode: full or compact} | what a viewer who hasn't chosen opens with - update_dataview sets column_order, default_sort and toolbar_mode in it; toolbarMode falls back to Settings > DataViews > Toolbar, then the type's (CARDS compact) |
-| edit_presentation | list types | DRAWER, MODAL, SIDEBAR, PAGE | how a record form opens |
+| edit_presentation | list types | unset: PAGE past 10 form fields, else SIDEBAR · DRAWER, MODAL, SIDEBAR, PAGE | how a record form opens - its fields always in one column |
 | edit_size | list types | lg, sm, md, xl | DRAWER / MODAL / SIDEBAR size |
 | edit_side | list types | right, left, top, bottom | SIDEBAR side |
-| column_sync | sourced | auto_hide, auto_show, locked | what a column added to the table later does here |
+| column_sync | sourced | auto_show, auto_hide, locked | New table columns: what a column added to the table later does here, on its own within seconds - auto_show adds it shown and to the generated record form, auto_hide hidden and not to the form, locked not at all. Published with the draft |
 | form_view_mode | FORM | READ, UPDATE, CREATE, SINGLE | how a FORM opens - SINGLE: the table's one row (settings-like), opened to edit, created on the first save, no New/search/browsing/copy/delete; publish_dataview warns when the table has more rows |
 | open_with | MASTER_DETAIL | NEW_RECORD, WAIT | |
 | new_record_label | MASTER_DETAIL | text | the New button |
+| header_align | TABLE | left, center, right; null = Automatic | the column titles' alignment - Automatic (unset): each title as its column (a number's right, a text's left); left/center/right: every title so |
 | list_margin | TABLE, CARDS, KANBAN, CALENDAR, GANTT, MAP | none, compact, normal; null = by type | the space around the list in the App - unset, a TABLE follows Settings > DataViews > Table margin (normal by default; none: the grid right under its header), the other lists normal |
 | page_content_width / page_content_align | FORM, MASTER_DETAIL, a list type whose record opens on its page (edit_presentation PAGE), CUSTOM | narrow, wide, full / left, center, right; null = the instance's | how wide the page's content grows (a CUSTOM page: its body and pinned footer; its header widgets stay in the page header). Null or unset follows Settings > DataViews > Page width - dataviews.record_content_width (narrow) for record pages, dataviews.custom_content_width (full) for CUSTOM, dataviews.content_align (center). Convention: wide for a record of many fields, narrow for a one-step screen |
 | allow | a DataView with a source | null, or some of create, update, delete | what its viewers may do besides reading - only less than their permissions (a history listing with no New: ["update"] or []) |

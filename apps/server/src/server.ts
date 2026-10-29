@@ -64,6 +64,7 @@ import { registerTemplatesRoutes } from "./routes/templates.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
 import { registerExecutionRoutes } from "./routes/executions.js";
 import { registerOpenApiRoutes } from "./routes/openapi.js";
+import { registerGraphQLRoutes } from "./routes/graphql.js";
 
 /**
  * apps/server stays thin: Fastify bootstrap, route registration,
@@ -253,13 +254,14 @@ export async function buildServer(
   registerWorkflowRunRoutes(app, context);
   registerDataTableRoutes(app, context);
   registerDataTableMutationRoutes(app, context);
-  await registerRealtimeRoutes(app, context);
+  const realtimeHub = await registerRealtimeRoutes(app, context);
   registerAdminRealtimeRoutes(app, context);
   registerDataViewRoutes(app, context);
   registerDataFunctionRoutes(app, context);
   registerFilesRoutes(app, context);
   registerTemplatesRoutes(app, context);
   registerTransactionRoutes(app, context);
+  registerGraphQLRoutes(app, context, realtimeHub);
   registerExecutionRoutes(app, context);
   registerTokensRoutes(app, context);
   registerOpenApiRoutes(app, context, adminRoutes, dataRoutes);

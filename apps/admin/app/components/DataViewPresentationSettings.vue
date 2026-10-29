@@ -2,7 +2,7 @@
 /**
  * Settings > Views, on top, and the wizard's Views step (DataViews.md §3.6): how the list shows,
  * whichever view - the density and page size a first-time viewer starts with (a table's and the cards'), the
- * toolbar's default mode, the list's margin and the auto-refresh. None of them is an action. The page or the wizard
+ * toolbar's default mode, the list's margin, a table's column titles' alignment and the auto-refresh. None of them is an action. The page or the wizard
  * owns the values (each a `v-model`).
  */
 import { AUTO_REFRESH_PRESETS, PAGE_SIZE_OPTIONS, dataviewMetaKey } from '~/types/dataview'
@@ -14,6 +14,8 @@ defineProps<{
   paged: boolean
   /** A list - it has a toolbar and a margin; a SETTINGS DataView only refreshes. */
   list: boolean
+  /** A table among its views - its column titles' alignment. */
+  headers?: boolean
 }>()
 const defaultDensity = defineModel<string>('defaultDensity', { required: true })
 const defaultDensitySelect = selectNone(defaultDensity)
@@ -26,6 +28,9 @@ const listMargin = defineModel<string>('listMargin', { required: true })
 const listMarginSelect = selectNone(listMargin)
 /** One of AUTO_REFRESH_PRESETS' values ('off', 'custom' = autoRefreshCustom, else a preset duration). */
 const autoRefreshPreset = defineModel<string>('autoRefreshPreset', { required: true })
+/** `view_config.header_align` - '' is Automatic: each title as its column. */
+const headerAlign = defineModel<string>('headerAlign', { default: '' })
+const headerAlignSelect = selectNone(headerAlign)
 const autoRefreshCustom = defineModel<string>('autoRefreshCustom', { required: true })
 
 const { t } = useI18n()
@@ -51,6 +56,12 @@ const LIST_MARGIN_OPTIONS = computed(() => [
   { value: 'none', label: t('designer.featuresSettings.listMargins.none') },
   { value: 'compact', label: t('designer.featuresSettings.listMargins.compact') },
   { value: 'normal', label: t('designer.featuresSettings.listMargins.normal') }
+])
+const HEADER_ALIGN_OPTIONS = computed(() => [
+  { value: SELECT_NONE, label: t('designer.featuresSettings.headerAligns.auto') },
+  { value: 'left', label: t('designer.featuresSettings.headerAligns.left') },
+  { value: 'center', label: t('designer.featuresSettings.headerAligns.center') },
+  { value: 'right', label: t('designer.featuresSettings.headerAligns.right') }
 ])
 const AUTO_REFRESH_ITEMS = computed(() => AUTO_REFRESH_PRESETS.map(p => ({ ...p, label: catalogText(`dataviews.meta.autoRefresh.${p.value}`, p.label) })))
 </script>
@@ -113,6 +124,20 @@ const AUTO_REFRESH_ITEMS = computed(() => AUTO_REFRESH_PRESETS.map(p => ({ ...p,
         <USelectMenu
           v-model="listMarginSelect"
           :items="LIST_MARGIN_OPTIONS"
+          value-key="value"
+          class="w-full"
+        />
+      </UFormField>
+      <UFormField
+        v-if="list && headers"
+        :label="t('designer.featuresSettings.headerAlign')"
+        :description="t('designer.featuresSettings.headerAlignHelp')"
+        orientation="horizontal"
+        :ui="{ container: 'w-56' }"
+      >
+        <USelectMenu
+          v-model="headerAlignSelect"
+          :items="HEADER_ALIGN_OPTIONS"
           value-key="value"
           class="w-full"
         />

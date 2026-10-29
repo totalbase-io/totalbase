@@ -44,9 +44,9 @@ export async function brokenReferences(context: AppContext, resourceId?: string)
 }
 
 /**
- * The full "Sync resources" pass - the admin's manual action and the
- * catalog.refresh_interval_minutes job: reconcile, then pull column
- * changes, then (catalog.track_comments) keep each resource's description
+ * The full "Sync resources" pass - the admin's manual action, the catalog
+ * watch and the catalog.refresh_interval_minutes job: reconcile, then pull column
+ * changes and bring each DataView the new columns of its source, then (catalog.track_comments) keep each resource's description
  * and PostgreSQL's own COMMENT ON in step. `descriptions` is null when
  * comments aren't tracked. `autoPresentation` then fills what each column's type and constraints suggest
  * and it lacks (Suggest presentation, never a value of its own - `presentedColumns`, null
@@ -56,6 +56,8 @@ export async function brokenReferences(context: AppContext, resourceId?: string)
 export async function syncCatalog(context: AppContext, options: { autoPresentation?: boolean } = {}) {
   const result = await reconcileCatalog(context);
   const columns = await syncAllResourceColumns(context.database);
+  // A table's new column reaches its DataViews as their New table columns say (DataViews.md §4.2).
+  const dataviewsSynced = await context.dataviewsAdmin.syncNewColumns();
   const descriptions = (await context.settings.get("catalog.track_comments"))
     ? await syncResourceDescriptions(context.database)
     : null;
@@ -63,7 +65,7 @@ export async function syncCatalog(context: AppContext, options: { autoPresentati
     ? await context.resourcesAdmin.applyPresentationFills()
     : null;
   const lostSomething = result.missing > 0 || columns.renamed > 0 || columns.removed > 0;
-  return { ...result, columns, descriptions, presentedColumns, brokenReferences: lostSomething ? await brokenReferences(context) : null };
+  return { ...result, columns, dataviewsSynced: dataviewsSynced.length, descriptions, presentedColumns, brokenReferences: lostSomething ? await brokenReferences(context) : null };
 }
 
 /**

@@ -44,6 +44,8 @@ export interface InstanceDisplayDefaults {
   userTimezone: boolean;
   /** `system.language` - the UI's language for whoever chose none. */
   language: string;
+  /** `system.regional_format` - how numbers and browser-formatted dates read; empty = the browser's. Not a user preference. */
+  regionalFormat: string;
 }
 
 /** What the portal formats with. Empty timezone = the browser's zone; empty pattern = the raw value. */
@@ -76,7 +78,7 @@ export function resolveDisplayPreferences(own: UserPreferences, instance: Instan
     : `${dateFormat || FALLBACK_DATE} ${timeFormat || FALLBACK_TIME}`;
   const timezone = isTimezoneLocked(instance) ? instance.timezone : own.timezone ?? instance.timezone;
   const language = own.language ?? (isUiLanguage(instance.language) ? instance.language : DEFAULT_UI_LANGUAGE);
-  return { timezone, dateFormat, timeFormat, datetimeFormat, language };
+  return { timezone, dateFormat, timeFormat, datetimeFormat, language, regionalFormat: instance.regionalFormat };
 }
 
 /**

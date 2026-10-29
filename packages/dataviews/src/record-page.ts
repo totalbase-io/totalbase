@@ -72,8 +72,6 @@ export interface GeneratedPage {
   code: string;
 }
 
-/** A form with more fields than this lays them out two to a row. */
-const TWO_UP_AFTER = 6;
 /** What a foreign key's select is given its options by. */
 const OPTION_INPUTS: readonly WidgetName[] = ["USelectMenu", "USelect", "UInputMenu", "URadioGroup"];
 
@@ -97,7 +95,8 @@ function fieldProps(column: RecordPageColumn): Record<string, unknown> {
 
 export function generateRecordPage(input: RecordPageInput): GeneratedPage {
   const isMasterDetail = input.type === "MASTER_DETAIL";
-  const width = isMasterDetail ? 3 : input.columns.length > TWO_UP_AFTER ? 6 : 12;
+  // One column, always (DataViews.md §6.3): a record reads top to bottom, in a Sidebar or on its page.
+  const width = 12;
 
   const fields: GeneratedWidget[] = input.columns.map((column) => {
     const widget = widgetDefinition(column.widget).formField ? column.widget : "UInput";

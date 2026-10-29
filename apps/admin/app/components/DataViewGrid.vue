@@ -28,14 +28,14 @@
  */
 import type { ComponentPublicInstance } from 'vue'
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { DATAVIEW_TYPE_META, dataviewMetaKey, PAGE_SIZE_OPTIONS, resolveFeatures, type CalendarLayoutConfig, type CardLayoutConfig, type DataView, type DataViewField, type DataViewType, type EditPresentation, type EditSide, type FormSize, type GanttLayoutConfig, type GanttZoom, type TreeLayoutConfig, type KanbanLayoutConfig, type MapLayoutConfig, type MapViewConfig, type Density, DENSITY_META, type SavedView, type SavedViewConfig, type RowsChange } from '~/types/dataview'
+import { DATAVIEW_TYPE_META, dataviewMetaKey, PAGE_SIZE_OPTIONS, resolveFeatures, resolveHeaderAlign, type CalendarLayoutConfig, type CardLayoutConfig, type DataView, type DataViewField, type DataViewType, type EditPresentation, type EditSide, type FormSize, type GanttLayoutConfig, type GanttZoom, type TreeLayoutConfig, type KanbanLayoutConfig, type MapLayoutConfig, type MapViewConfig, type Density, DENSITY_META, type SavedView, type SavedViewConfig, type RowsChange } from '~/types/dataview'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDetail } from '~/types/schema'
 import { searchForApi } from '~/utils/search-terms'
 import { columnValueSource } from '~/utils/column-values'
-import { formatCellPlainText } from '~/utils/build-dataview-columns'
+import { columnWidthVar, defaultColumnAlign, formatCellPlainText } from '~/utils/build-dataview-columns'
 import { displayFieldAlias } from '~/utils/display-field'
-import { displayColumns, displayText, foreignKeyDisplayFields, sortForViewer, type DisplayConfig } from '~/utils/display-field'
+import { displayColumns, displayText, foreignKeyDisplayFields, sortForViewer, sortKey, type DisplayConfig } from '~/utils/display-field'
 import { recordMenu } from '~/utils/record-menu'
 import { buildFieldsParam, collectRelationFieldRefs } from '~/utils/relation-field-refs'
 import { parseConditions, serializeConditions, type Condition } from '~/utils/filterConditions'
@@ -43,7 +43,7 @@ import { flattenQueryObject } from '~/utils/flatten-query-object'
 import { cardMark, conditionPlan, conditionStyleAttrs, flagsByRow, MAX_FLAGS, rowLook, type RowLook } from '~/utils/column-conditions'
 import { actionFlags, actionsAt, CUSTOM_ACTION_ICON, runnableActions } from '~/utils/custom-actions'
 import { selectionSum } from '~/utils/column-totals'
-import type { ColumnCondition } from '@totalbase/tb-catalog'
+import { CELL_ALIGNS, GRID_CELL_TEXT_WRAPS, type CellStyle, type ColumnCondition, type GridCellConfig } from '@totalbase/tb-catalog'
 import { parseRefreshInterval } from '~/utils/parse-refresh-interval'
 import { createDashboardRefreshScheduler, type DashboardRefreshScheduler } from '~/utils/dashboard-refresh'
 import { columnTitles, resolveFieldPresentation } from '~/utils/field-presentation'
@@ -318,6 +318,8 @@ const { page, pageSize, search, debouncedSearch, sort, params, toggleSort, sortD
 // a caller that doesn't pass `sourceResourceOid` (a Detail) keeps the
 // JSON-only fallback.
 const filterOpen = ref(false)
+/** The column a header's "Filter by this column…" opens the Filter panel's builder on. */
+const filterColumn = ref<string>()
 const whereText = ref('')
 /** A link's filter (`linkFilter`), taken once - its chips, and its error when it isn't a filter object. */
 const link = useGridLinkFilter({ linkFilter: props.linkFilter, dataviewId: () => props.dataviewId, fields, onApplied: () => emit('linkFilterApplied') })
@@ -748,6 +750,115 @@ const columnPrefs = useGridColumnPrefs({
 })
 const { colPrefs, orderedFields, colsOpen, hiddenColCount } = columnPrefs
 
+// --- A column's width, dragged at its header's right edge (DataViews.md §5.2, §5.9) - with a mouse; a finger scrolls.
+const isTouch = useIsTouch()
+const COLUMN_WIDTH = { min: 48, max: 2000 }
+/** The table element, where each column's width variable lives (build-dataview-columns.ts's `columnWidthVar`). */
+function tableRoot(): HTMLElement | null {
+  const el = tableEl.value
+  return el instanceof HTMLElement ? el : ((el as ComponentPublicInstance | null)?.$el as HTMLElement | undefined) ?? null
+}
+// The viewer's widths, as the variables the headers and cells read - set again whenever their preferences change
+// (a column whose width is gone - Reset width, a view applied - drops its variable).
+const widthVars = new Set<string>()
+watch([tableEl, () => colPrefs.prefs], () => {
+  const root = tableRoot()
+  if (!root) return
+  const now = new Set<string>()
+  for (const [key, pref] of Object.entries(colPrefs.prefs)) {
+    if (pref.width === undefined) continue
+    root.style.setProperty(columnWidthVar(key), `${pref.width}px`)
+    now.add(key)
+  }
+  for (const key of widthVars) if (!now.has(key)) root.style.removeProperty(columnWidthVar(key))
+  widthVars.clear()
+  now.forEach(key => widthVars.add(key))
+}, { immediate: true, flush: 'post' })
+// --- A column moved by dragging its header (useGridColumnDrag, DataViews.md §5.2) - a plain click still opens its menu.
+const columnDrag = useGridColumnDrag({
+  root: tableRoot,
+  keys: () => orderedFields.value.map(f => f.columnName!),
+  place: (key, before) => columnPrefs.placeColumn(key, before)
+})
+/** Drags column `key`'s width: the variable follows the pointer (no cell drawn again), its preference is kept on release. */
+function startColumnResize(key: string, event: PointerEvent) {
+  const root = tableRoot()
+  const box = root?.querySelector<HTMLElement>(`[data-col-box="${CSS.escape(key)}"]`)
+  if (!root || !box) return
+  event.preventDefault()
+  // The edge stays primary while dragged, the pointer off it.
+  const edge = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  edge?.setAttribute('data-resizing', '')
+  const startX = event.clientX
+  const startWidth = box.getBoundingClientRect().width
+  let width = startWidth
+  const onMove = (move: PointerEvent) => {
+    width = Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, startWidth + move.clientX - startX))
+    root.style.setProperty(columnWidthVar(key), `${width}px`)
+  }
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    document.body.style.removeProperty('cursor')
+    edge?.removeAttribute('data-resizing')
+    if (width !== startWidth) columnPrefs.setWidth(key, width)
+  }
+  document.body.style.cursor = 'col-resize'
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+
+/**
+ * A column header's menu (DataViews.md §5.2): its sort, its place and its text for this viewer (their prefs, like
+ * the Columns menu), and for an administrator the column's panel in Settings.
+ */
+function headerMenu(field: DataViewField): DropdownMenuItem[][] {
+  const key = field.columnName!
+  const by = sortKey(field)
+  const direction = sortDirection(by)
+  const columnWrap = (field.config as GridCellConfig).textWrap ?? 'truncate'
+  // Its column's alignment (DataViews.md §15), else its type's (§4.3, defaultColumnAlign).
+  const columnAlign = (field.config as CellStyle).align ?? defaultColumnAlign(field)
+  const own = columnPrefs.cellPrefOf(key)
+  const wrap = own.textWrap ?? columnWrap
+  const align = own.align ?? columnAlign
+  const groups: DropdownMenuItem[][] = [[
+    { label: t('dataviews.grid.sortAscending'), icon: 'i-lucide-arrow-up-narrow-wide', type: 'checkbox', checked: direction === 'asc', onSelect: () => { sort.value = by } },
+    { label: t('dataviews.grid.sortDescending'), icon: 'i-lucide-arrow-down-wide-narrow', type: 'checkbox', checked: direction === 'desc', onSelect: () => { sort.value = `-${by}` } },
+    ...(direction ? [{ label: t('dataviews.grid.clearSort'), icon: 'i-lucide-x', onSelect: () => { sort.value = '' } }] : [])
+  ]]
+  if (activeFeatures.value.filter) {
+    groups[0]!.push({ label: t('dataviews.grid.filterByColumn'), icon: 'i-lucide-filter', onSelect: () => {
+      filterColumn.value = key
+      filterOpen.value = true
+    } })
+  }
+  if (activeFeatures.value.columnsToggle) {
+    groups.push([{ label: t('dataviews.grid.hideColumn'), icon: 'i-lucide-eye-off', disabled: orderedFields.value.length <= 1, onSelect: () => columnPrefs.hideColumn(key) }])
+  }
+  groups.push(CELL_ALIGNS.map(option => ({
+    label: t(`dataviews.grid.align.${option}`),
+    icon: `i-lucide-align-${option}`,
+    type: 'checkbox' as const,
+    checked: align === option,
+    onSelect: () => columnPrefs.setCellPref(key, 'align', option, columnAlign)
+  })))
+  groups.push(GRID_CELL_TEXT_WRAPS.map(option => ({
+    label: t(option === 'truncate' ? 'dataviews.grid.oneLine' : 'dataviews.grid.severalLines'),
+    icon: option === 'truncate' ? 'i-lucide-text-cursor' : 'i-lucide-wrap-text',
+    type: 'checkbox' as const,
+    checked: wrap === option,
+    onSelect: () => columnPrefs.setCellPref(key, 'textWrap', option, columnWrap)
+  })))
+  if (colPrefs.prefs[key]?.width !== undefined) {
+    groups.push([{ label: t('dataviews.grid.resetWidth'), icon: 'i-lucide-move-horizontal', onSelect: () => columnPrefs.setWidth(key, undefined) }])
+  }
+  if (readsActivity.value && field.kind !== 'WIDGET') {
+    groups.push([{ label: t('dataviews.grid.editColumn'), icon: 'i-lucide-settings-2', to: { path: `/dataviews/${props.dataviewId}/settings`, query: { section: 'data', column: key } } }])
+  }
+  return groups
+}
+
 // --- Edit form (create/edit a row) ---
 const formOpen = ref(false)
 // The form (and its widgets) loads on first open, then stays mounted so it can animate closed and reopen at once.
@@ -979,6 +1090,14 @@ const { tableColumns, columnPinning } = useGridTableColumns({
   displayFormatDefaults,
   shade: shadeColor,
   cellLook: (row, column) => lookOf(row)?.cells[column],
+  headerMenu,
+  cellPrefFor: field => columnPrefs.cellPrefOf(field.columnName!),
+  onResizeStart: (key, event) => startColumnResize(key, event),
+  onResizeReset: key => columnPrefs.setWidth(key, undefined),
+  resizable: () => !isTouch.value,
+  onReorderStart: (key, event) => columnDrag.start(key, event),
+  reorderable: () => !isTouch.value && !!activeFeatures.value.columnsToggle,
+  headerAlign: () => resolveHeaderAlign(props.dataview?.viewConfig),
   totalsPlanned,
   totalText,
   pinRowActions: () => !!props.pinRowActions,
@@ -1370,6 +1489,7 @@ async function onImported(created: number) {
           min-height="14rem"
           :columns="filterColumns"
           :value-text="filterValueText"
+          :default-field="filterColumn"
           default-mode="simple"
         />
         <UAlert

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tooltipText } from '~/utils/tooltip-text'
 import { cardMarkAttrs, type CardMark } from '~/utils/column-conditions'
 /**
  * The `KANBAN` layout's own render (DataViewGrid.vue's own `isKanban`
@@ -208,8 +209,8 @@ const richHtml = useRichHtml(() => props.lanes.flatMap(lane => lane.cards))
 
           <div class="flex flex-col gap-1 p-2.5">
             <UTooltip
-              :text="card.title"
-              class="block w-full"
+              :text="tooltipText(card.title)"
+              class="w-full"
             >
               <!-- `richHtml[card.key]?.title` (KanbanCard's own doc
               comment) - a safe, pre-sanitized `v-html` from
@@ -232,20 +233,20 @@ const richHtml = useRichHtml(() => props.lanes.flatMap(lane => lane.cards))
             </UTooltip>
             <UTooltip
               v-if="card.description"
-              :text="card.description"
-              class="block w-full"
+              :text="tooltipText(card.description)"
+              class="w-full"
             >
               <!-- `whitespace-pre-line` - same fix DataViewCard.vue's own description just got: a formula's literal `\n` (typed, or NEW_LINE() flattened down by formula-engine.ts's own `flattenRichText`) would otherwise collapse to a plain space; NEW_LINE() itself renders as a real `<br>` in the rich path below instead, so it doesn't need this either way. -->
               <!-- eslint-disable vue/no-v-html -- built by renderRichTextHtml: text escaped, fixed tags, http(s)/mailto/tel links only -->
               <p
                 v-if="richHtml[card.key]?.description"
-                class="line-clamp-2 whitespace-pre-line text-xs text-muted"
+                class="line-clamp-3 whitespace-pre-line text-xs text-muted"
                 v-html="richHtml[card.key]!.description"
               />
               <!-- eslint-enable vue/no-v-html -->
               <p
                 v-else
-                class="line-clamp-2 whitespace-pre-line text-xs text-muted"
+                class="line-clamp-3 whitespace-pre-line text-xs text-muted"
               >
                 {{ card.description }}
               </p>

@@ -203,15 +203,17 @@ export const adminNavGroups: AdminNavGroup[] = [
         { label: 'shell.nav.items.asyncExecutions', icon: 'i-lucide-list-restart', to: '/settings/async-executions' },
         { label: 'shell.nav.items.openapi', icon: 'i-lucide-file-code', to: '/settings/openapi' },
         { label: 'shell.nav.items.realtime', icon: 'i-lucide-radio', to: '/settings/realtime' },
+        { label: 'shell.nav.items.graphql', icon: 'i-lucide-waypoints', to: '/settings/graphql' },
         { label: 'shell.nav.items.mcp', icon: 'i-lucide-bot', to: '/settings/mcp' }
       ],
       [
         { label: 'shell.nav.items.features', type: 'label' },
-        { label: 'shell.nav.items.dataviews', icon: 'i-lucide-table', to: '/settings/dataviews' },
+        // The rail's order and icons: what each one configures, as the navigation shows it.
+        { label: 'shell.nav.items.dataviews', icon: 'i-lucide-layout-panel-left', to: '/settings/dataviews' },
         { label: 'shell.nav.items.dashboards', icon: 'i-lucide-layout-dashboard', to: '/settings/dashboards' },
-        { label: 'shell.nav.items.maps', icon: 'i-lucide-map', to: '/settings/maps' },
-        { label: 'shell.nav.items.files', icon: 'i-lucide-files', to: '/settings/files' },
-        { label: 'shell.nav.items.workflows', icon: 'i-lucide-workflow', to: '/settings/workflows' }
+        { label: 'shell.nav.items.workflows', icon: 'i-lucide-workflow', to: '/settings/workflows' },
+        { label: 'shell.nav.items.files', icon: 'i-lucide-folder-open', to: '/settings/files' },
+        { label: 'shell.nav.items.maps', icon: 'i-lucide-map', to: '/settings/maps' }
       ]
     ]
   }
@@ -254,6 +256,7 @@ export const SETTINGS_GROUP_ROUTES: Record<string, string> = {
   outbox: '/settings/async-executions',
   openapi: '/settings/openapi',
   realtime: '/settings/realtime',
+  graphql: '/settings/graphql',
   dataviews: '/settings/dataviews',
   dashboards: '/settings/dashboards',
   maps: '/settings/maps',

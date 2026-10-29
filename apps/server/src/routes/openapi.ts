@@ -7,6 +7,7 @@ import {
   listApiEndpoints,
   type DocumentedRoute,
   type EndpointWorkflow,
+  type PublicOpenApiOptions,
   type RouteInfo,
   type WorkflowEndpoint,
 } from "@totalbase/openapi";
@@ -90,11 +91,22 @@ const ENDPOINT_SCHEMA = object({
   tag: { type: "string" },
 });
 
+/**
+ * The always-on field guardrails the Data API applies, for a document that lists what `roleIds` may do
+ * (OpenAPI, the GraphQL schema). Which guarded columns the viewer may write depends on whether they are an
+ * administrator (an admin_access role) - the same test the writes use.
+ */
+export async function dataApiFieldGuard(context: AppContext, roleIds: string[]): Promise<NonNullable<PublicOpenApiOptions["guardFieldDecision"]>> {
+  const caller = { administrator: await context.effectivePermissions.isAdministrators(roleIds) };
+  return (resource, action, decision) => {
+    const guarded = protectedFieldDecision(resource, decision);
+    return action === "CREATE" || action === "UPDATE" ? guardedColumnsWriteFieldDecision(resource, guarded, caller, action) : guarded;
+  };
+}
+
 /** The Data API document for `roleIds`, with the same always-on field guardrails the Data API itself applies. */
 async function buildDataApiSpec(context: AppContext, dataRoutes: DocumentedRoute[], roleIds: string[], principalType: "USER" | "API_KEY") {
-  // Which guarded columns the viewer may write depends on whether they are
-  // an administrator (an admin_access role) - the same test the writes use.
-  const caller = { administrator: await context.effectivePermissions.isAdministrators(roleIds) };
+  const guardFieldDecision = await dataApiFieldGuard(context, roleIds);
   const build = async () => buildPublicOpenApiSpec(context.database, context.effectivePermissions, roleIds, {
     publicUrl: await context.auth.mailer.publicUrl(),
     principalType,
@@ -102,10 +114,7 @@ async function buildDataApiSpec(context: AppContext, dataRoutes: DocumentedRoute
     workflows: await invokableWorkflows(context, roleIds),
     includeExamples: await context.settings.get("openapi.include_examples"),
     idempotencyEnabled: await context.settings.get("idempotency.enabled"),
-    guardFieldDecision: (resource, action, decision) => {
-      const guarded = protectedFieldDecision(resource, decision);
-      return action === "CREATE" || action === "UPDATE" ? guardedColumnsWriteFieldDecision(resource, guarded, caller, action) : guarded;
-    },
+    guardFieldDecision,
   });
   if (!(await context.settings.get("openapi.cache_enabled"))) return build();
   return context.openApiCache.get(`${principalType}:${[...roleIds].sort().join(",")}`, build);

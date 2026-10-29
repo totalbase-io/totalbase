@@ -84,14 +84,15 @@ const showPanelOpen = computed(() => panelFolded.value && !embedded && !isCompac
 /** The ☰, with the navigation's own name - its button takes the attribute over Nuxt UI's "Open sidebar". */
 const navToggle = computed(() => (isCompact.value && !embedded ? ({ 'aria-label': t('shell.mobileNav.open') } as Record<string, string>) : false))
 const { t } = useI18n()
-// Its documentation page (utils/docs-links.ts): a "?" after the screen's own actions - an admin screen's, never
-// the App's, never a header embedded in another page.
+// Its documentation page (utils/docs-links.ts): a "?" at the right end, just before the object's "⋮" - after
+// everything else the screen puts there (Admin_UI.md §3.8). An admin screen's, never the App's, never a header
+// embedded in another page.
 const route = useRoute()
 const docsLink = computed(() => embedded || isAppPath(route.path) ? null : docsLinkFor(route.path))
-const visibleActions = computed(() => [
-  ...(props.actions ?? []),
-  ...(docsLink.value ? [{ label: t('shell.pageHeader.help'), icon: 'i-lucide-circle-help', iconOnly: true, onSelect: () => { window.open(docsLink.value!, '_blank', 'noopener') } }] : [])
-])
+const docsAction = computed<HeaderAction | null>(() => docsLink.value
+  ? { label: t('shell.pageHeader.help'), icon: 'i-lucide-circle-help', iconOnly: true, onSelect: () => { window.open(docsLink.value!, '_blank', 'noopener') } }
+  : null)
+const visibleActions = computed(() => props.actions ?? [])
 const objectMenu = computed(() => (props.menu ?? []).filter(group => group.length > 0))
 const selecting = computed(() => (props.selection?.count ?? 0) > 0)
 /** A phone while rows are selected: the header is only about the selection. */
@@ -116,7 +117,7 @@ const phoneMenu = computed<DropdownMenuItem[][]>(() => {
     return [(props.selection?.actions ?? []).filter(a => !selectionIconActions.value.includes(a)).map(toMenuItem)].filter(group => group.length > 0)
   }
   return [
-    visibleActions.value.map(toMenuItem),
+    [...visibleActions.value, ...(docsAction.value ? [docsAction.value] : [])].map(toMenuItem),
     ...(props.mobileMenu ?? []),
     ...objectMenu.value
   ].filter(group => group.length > 0)
@@ -283,6 +284,10 @@ function goBack() {
           />
         </template>
         <slot />
+        <HeaderActionButton
+          v-if="docsAction && !isCompact"
+          :action="docsAction"
+        />
         <!-- Actions on the object itself (Settings…, Delete…): the "⋮" at the
         right end, after everything else. On a phone they join its one "⋮". -->
         <UDropdownMenu

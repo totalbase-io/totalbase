@@ -79,6 +79,7 @@ export const PALETTE_COLORS = [
 export type PaletteColor = (typeof PALETTE_COLORS)[number];
 
 export const CELL_ALIGNS = ["left", "center", "right"] as const;
+export type CellAlign = (typeof CELL_ALIGNS)[number];
 export const CELL_FONT_SIZES = ["xs", "sm", "base", "lg"] as const;
 
 /**

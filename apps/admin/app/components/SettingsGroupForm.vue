@@ -85,7 +85,7 @@ const metaKey = (key: string) => `settings.metadata.keys.${key.replaceAll('.', '
 const groupText = (group: string, part: 'label' | 'description', english: string | undefined) => catalog(`settings.metadata.groups.${group}.${part}`, english)
 const sectionText = (section: string) => catalog(`settings.metadata.sections.${sectionKey(section)}`, section)
 const unitText = (unit: string) => catalog(`settings.metadata.units.${unit}`, unit)
-const optionText = (field: SettingField, option: { label: string, value: string }) => catalog(`${metaKey(field.key)}.options.${option.value}`, option.label)
+const optionText = (field: SettingField, option: { label: string, value: string }) => catalog(`${metaKey(field.key)}.options.${option.value || 'empty'}`, option.label)
 const optionDescription = (field: SettingField, option: { value: string, description?: string }) => option.description ? catalog(`${metaKey(field.key)}.optionDescriptions.${option.value}`, option.description) : undefined
 /** `css`: Examples - each snippet appended to the sheet, to adjust from there. */
 function cssExampleItems(key: string) {
@@ -211,6 +211,9 @@ function numberHint(field: SettingField, value: unknown): string | null {
 function formatValue(field: SettingField, value: unknown): string {
   if (typeof value === 'boolean') return value ? t('settings.groupForm.on') : t('settings.groupForm.off')
   if (Array.isArray(value)) return value.length ? value.join(', ') : t('settings.groupForm.none')
+  // An option for "empty" (Regional format's Browser) names it.
+  const emptyOption = value === '' ? field.options?.find(o => o.value === '') : undefined
+  if (emptyOption) return optionText(field, emptyOption)
   if (value === '' || value === null || value === undefined) return t('settings.groupForm.empty')
   if (typeof value === 'number') {
     const hint = numberHint(field, value)
@@ -263,7 +266,8 @@ function selectItems(field: SettingField) {
     if (current && !allowed.some(r => r.id === current)) items.unshift({ label: t('settings.groupForm.unknownRole', { id: current }), description: undefined, value: current })
     return [{ label: t('common.none'), value: NONE }, ...items]
   }
-  return (field.options ?? []).map(option => ({ label: optionText(field, option), value: option.value }))
+  // An option for "empty" goes through NONE - a select item can't be ''.
+  return (field.options ?? []).map(option => ({ label: optionText(field, option), value: option.value === '' ? NONE : option.value }))
 }
 function selectValue(key: string) {
   return draft.value[key] === '' ? NONE : String(draft.value[key] ?? NONE)
@@ -321,7 +325,7 @@ onBeforeUnmount(() => clearTimeout(highlightTimer))
 
 // --- Save / cancel / restore: one draft for the whole page ---
 const session = useSession()
-const DISPLAY_KEYS = new Set(['system.timezone', 'system.date_format', 'system.time_format', 'system.datetime_format', 'system.language'])
+const DISPLAY_KEYS = new Set(['system.timezone', 'system.date_format', 'system.time_format', 'system.datetime_format', 'system.language', 'system.regional_format'])
 const saving = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const dirtyKeys = computed(() => settings.value ? Object.keys(draft.value).filter(isDirty) : [])

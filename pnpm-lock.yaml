@@ -212,6 +212,9 @@ importers:
       '@totalbase/files':
         specifier: workspace:*
         version: link:../../packages/files
+      '@totalbase/graphql':
+        specifier: workspace:*
+        version: link:../../packages/graphql
       '@totalbase/idempotency':
         specifier: workspace:*
         version: link:../../packages/idempotency
@@ -534,6 +537,34 @@ importers:
       '@totalbase/migrations':
         specifier: workspace:*
         version: link:../migrations
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(happy-dom@15.11.7)(lightningcss@1.33.0)(terser@5.50.0)
+
+  packages/graphql:
+    dependencies:
+      '@totalbase/database':
+        specifier: workspace:*
+        version: link:../database
+      '@totalbase/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@totalbase/permissions':
+        specifier: workspace:*
+        version: link:../permissions
+      '@totalbase/pg-catalog':
+        specifier: workspace:*
+        version: link:../pg-catalog
+      '@totalbase/query-engine':
+        specifier: workspace:*
+        version: link:../query-engine
+      '@totalbase/resources':
+        specifier: workspace:*
+        version: link:../resources
+      graphql:
+        specifier: 17.0.2
+        version: 17.0.2
+    devDependencies:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)(happy-dom@15.11.7)(lightningcss@1.33.0)(terser@5.50.0)
@@ -5947,6 +5978,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  graphql@17.0.2:
+    resolution: {integrity: sha512-FRWbddMxfkjiB7z+aQDWIR+E34xo9I8c9mtK2RPv8PmMzKRvrdsreHL/Ui/TmwHJfhHChEtsFPyMHKI+xuarQQ==}
+    engines: {node: ^22.0.0 || ^24.0.0 || ^25.0.0 || >=26.0.0}
 
   gridstack@13.3.0:
     resolution: {integrity: sha512-1tqFd3/hb3CSOJWFG8aFleCGWT6Gqx/hnjRT78ocnixp0XPk5Aa6Uxkm0qn9VHFwLrEdOFb+ZXtQZT+a/IdS3g==}
@@ -14476,6 +14511,8 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  graphql@17.0.2: {}
 
   gridstack@13.3.0: {}
 

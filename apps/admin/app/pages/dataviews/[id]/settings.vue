@@ -70,6 +70,7 @@ import {
   resolveFormViewMode,
   resolveMasterDetailOpenWith,
   storedPageContentAlign,
+  resolveHeaderAlign,
   storedListMargin,
   resolveSettingsLayout,
   type SettingsLayoutConfig,
@@ -166,7 +167,7 @@ const pageContentAlign = ref<PageContentAlign | null>(null)
 const fitToScreen = ref(false)
 /** CUSTOM only - `view_config.kiosk`: the page alone on screen in the App (DataViews.md §7.3). */
 const kiosk = ref(false)
-const columnSync = ref<ColumnSync>('auto_hide')
+const columnSync = ref<ColumnSync>('auto_show')
 /** `view_config.allow` - what its viewers may do besides reading, only less than their permissions (DataViews.md §5.1). */
 const ALLOW_ACTIONS = ['create', 'update', 'delete'] as const
 const allow = ref<string[]>([...ALLOW_ACTIONS])
@@ -333,6 +334,8 @@ let originalDensity = ''
 const defaultToolbarMode = ref('')
 /** A list's margin (`view_config.list_margin`) - '' is Default, the instance's. */
 const listMargin = ref('')
+/** A table's column titles' alignment (`view_config.header_align`) - '' is Automatic. */
+const headerAlign = ref('')
 let originalToolbarMode = ''
 const defaultPageSize = ref(0)
 let originalPageSize = 0
@@ -382,6 +385,7 @@ watch(dataview, async (dv) => {
   const storedToolbarMode = currentDefaultState.value.toolbarMode
   defaultToolbarMode.value = storedToolbarMode === 'full' || storedToolbarMode === 'compact' ? storedToolbarMode : ''
   listMargin.value = storedListMargin(dv.viewConfig) ?? ''
+  headerAlign.value = resolveHeaderAlign(dv.viewConfig) ?? ''
   originalToolbarMode = defaultToolbarMode.value
   const storedPageSize = currentDefaultState.value.pageSize
   defaultPageSize.value = typeof storedPageSize === 'number' ? storedPageSize : 0
@@ -510,6 +514,7 @@ function buildSettingsBody(): UpdateDataViewBody {
     auto_refresh: autoRefreshValue,
     page_content_width: pageContentWidth.value,
     list_margin: listMargin.value || null,
+    header_align: headerAlign.value || null,
     page_content_align: pageContentAlign.value
   }
   if (!isCustom.value) viewConfig.fit_to_screen = fitToScreen.value
@@ -1048,9 +1053,11 @@ async function deleteDataview() {
               v-model:default-page-size="defaultPageSize"
               v-model:default-toolbar-mode="defaultToolbarMode"
               v-model:list-margin="listMargin"
+              v-model:header-align="headerAlign"
               v-model:auto-refresh-preset="autoRefreshPreset"
               v-model:auto-refresh-custom="autoRefreshCustom"
               :paged="pagedViews"
+              :headers="layouts.includes('TABLE') || mainView === 'TABLE'"
               list
             />
             <SettingsSection

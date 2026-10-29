@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { Database, loadDatabaseConfigFromEnv } from "@totalbase/database";
 import { runMigrations } from "@totalbase/migrations";
 import { SettingsService } from "@totalbase/settings";
+import { FILE_THUMBNAIL_QUERY } from "@totalbase/shared";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FilesLocalStorageProvider } from "./local-storage-provider.js";
 import { FilesTransformService } from "./transform-service.js";
@@ -94,6 +95,28 @@ describe("FilesTransformService (integration)", () => {
     });
     expect(reads).toBe(1); // cache hit - readOriginal not called again
     expect(second?.buffer.equals(first!.buffer)).toBe(true);
+  });
+
+  it("makes a stored image's list thumbnail ahead - the grid's first request is served from cache", async () => {
+    const source = await testImage(200, 100);
+    await transformService.warmThumbnail({ id: "file-warm-1", checksum: "hash-warm-1", mime_type: "image/png" }, source);
+    let reads = 0;
+    const served = await transformService.resolve({
+      fileId: "file-warm-1",
+      sourceHash: "hash-warm-1",
+      mimeType: "image/png",
+      query: { ...FILE_THUMBNAIL_QUERY },
+      readOriginal: async () => {
+        reads++;
+        return source;
+      },
+    });
+    expect(served?.contentType).toBe("image/png");
+    expect(reads).toBe(0);
+    // Not an image, or transformations off: nothing, and no error.
+    await expect(transformService.warmThumbnail({ id: "file-warm-2", checksum: "h", mime_type: "application/pdf" }, Buffer.from("%PDF"))).resolves.toBeUndefined();
+    await settings.set("files.transforms.enabled", false);
+    await expect(transformService.warmThumbnail({ id: "file-warm-3", checksum: "h", mime_type: "image/png" }, source)).resolves.toBeUndefined();
   });
 
   it("rejects transformation query params on a non-image file", async () => {

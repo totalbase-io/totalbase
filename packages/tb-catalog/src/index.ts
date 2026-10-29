@@ -25,6 +25,8 @@ export * from "./columns/regex-patterns.js";
 export * from "./dataviews/dataview-features.js";
 export * from "./dataviews/settings-layout.js";
 export * from "./dataviews/custom-actions.js";
+export * from "./dataviews/grid-cell.js";
+export * from "./dataviews/record-form-defaults.js";
 export * from "./dashboards/dashboard-catalog.js";
 export * from "./dashboards/dashboard-shapes.js";
 export * from "./dashboards/dashboard-decisions.js";

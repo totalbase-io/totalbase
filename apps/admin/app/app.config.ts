@@ -50,6 +50,12 @@ export default defineAppConfig({
         }
       }
     },
+    // A row of option cards (Settings' choices, any horizontal card group): equal parts of the row, whatever each
+    // one's text - one card's words never squeezed one per line beside a wide one. Stacked, as they are below md, each
+    // takes the whole width.
+    radioGroup: {
+      compoundVariants: [{ variant: 'card', orientation: 'horizontal', class: { item: 'min-w-0 md:flex-1 md:basis-0' } }]
+    },
     // Every UTable as in Nuxt UI's dashboard template: the header a rounded strip with a border on a soft
     // background, 40 px, its labels small and semibold; rows of 44 px with a rule under each but the last (a
     // DataView's Compact and Very compact densities narrow them). Light and dark from the theme's tokens.

@@ -8,6 +8,7 @@ import type { AdminDataView, CreateDataViewInput, DataViewsContext, DetailCandid
 import { getDataView } from "./dataviews-read.js";
 import { getSourceForCreate, remapDataViewUniqueViolation } from "./dataviews-crud.js";
 import { insertColumnFields, insertGeneratedPage, recordPageColumns } from "./dataviews-generated-page.js";
+import { isHiddenByDefaultDataType } from "./display-format.js";
 
 /**
  * Tables whose single-column FK points at `masterResourceId` - the
@@ -119,12 +120,13 @@ export async function createMasterDetail(
     await insertColumnFields(ctx, client, masterId, masterDetail, masterInputs, {
       presence: (column) => (!masterSelected || masterSelected.has(column.name) ? "shown" : masterDetail.primaryKey.includes(column.name) ? "hidden" : null),
       fieldOverrides: masterOverrides,
-      columnsPerRow: 4,
     });
     // The detail's columns.
     await insertColumnFields(ctx, client, detailId, detailCatalog, detailInputs, {
       // The key pointing at the master is read, not shown - the Detail fills it in.
-      presence: (column) => (column.name === link.fkColumn ? "hidden" : !detailSelected || detailSelected.has(column.name) ? "shown" : detailCatalog.primaryKey.includes(column.name) ? "hidden" : null),
+      presence: (column) => (column.name === link.fkColumn ? "hidden"
+        : detailSelected ? detailSelected.has(column.name) ? "shown" : detailCatalog.primaryKey.includes(column.name) ? "hidden" : null
+        : isHiddenByDefaultDataType(column.dataType) ? "hidden" : "shown"),
       fieldOverrides: detailOverrides,
     });
     // Its record form: a generated page - the master's fields, the Detail over the detail DataView, Save & New.

@@ -1,6 +1,6 @@
 import type { ActionTarget } from '~/utils/custom-actions'
 import { DEFAULT_ROLE_COLOR, type RoleColor } from '~/types/permission'
-import { looksLikeSettingsTable, REQUIRED_SETTINGS_LAYOUT_KEYS, SETTINGS_LAYOUT_KEYS, suggestSettingsLayout, type ColumnPresentation, type SettingsLayout } from '@totalbase/tb-catalog'
+import { looksLikeSettingsTable, REQUIRED_SETTINGS_LAYOUT_KEYS, SETTINGS_LAYOUT_KEYS, suggestSettingsLayout, type ColumnPresentation, type CellAlign, type GridCellTextWrap, type SettingsLayout } from '@totalbase/tb-catalog'
 
 /** Shape of `totalbase.dataviews` rows as returned by the Admin API — DataViews.md. */
 export type DataViewType = 'TABLE' | 'FORM' | 'CARDS' | 'MAP' | 'KANBAN' | 'CALENDAR' | 'GANTT' | 'TREE' | 'EXTERNALFRAME' | 'MASTER_DETAIL' | 'CUSTOM' | 'SETTINGS'
@@ -537,11 +537,11 @@ export function pageContentClass(align: PageContentAlign, width: PageContentWidt
  */
 export type ColumnSync = 'auto_show' | 'auto_hide' | 'locked'
 export const COLUMN_SYNC_META: Record<ColumnSync, { label: string, description: string }> = {
-  auto_show: { label: 'Auto-show new columns', description: 'A column added to the table later joins this view automatically, visible right away.' },
-  auto_hide: { label: 'Auto-hide new columns', description: 'A column added to the table later joins this view hidden - read, not shown, until someone shows it (default).' },
-  locked: { label: 'Lock to selected columns', description: 'A column added to the table later stays out of this view - Add columns… can still bring it in.' }
+  auto_show: { label: 'Add them shown', description: 'In the list and at the end of the record form (default).' },
+  auto_hide: { label: 'Add them hidden', description: 'In the list, hidden - read, not shown, until someone shows it; not in the form.' },
+  locked: { label: 'Don\'t add them', description: 'The DataView keeps the columns it has - Add columns… can still bring one in.' }
 }
-const DEFAULT_COLUMN_SYNC: ColumnSync = 'auto_hide'
+const DEFAULT_COLUMN_SYNC: ColumnSync = 'auto_show'
 export function resolveColumnSync(viewConfig: Record<string, unknown>): ColumnSync {
   const stored = viewConfig.column_sync
   return stored === 'auto_show' || stored === 'locked' ? stored : DEFAULT_COLUMN_SYNC
@@ -604,9 +604,6 @@ export function resolveAutoRefresh(viewConfig: Record<string, unknown>): string 
   const stored = viewConfig.auto_refresh
   return typeof stored === 'string' && stored.trim() ? stored.trim() : null
 }
-
-/** The wizard's own soft-nudge threshold for suggesting Drawer once a DataView has "many" visible fields - same number the two-column layout default keys off of, one threshold, not two magic numbers. */
-export const MANY_FIELDS_THRESHOLD = 8
 
 /** The grid's own "Rows per page" choices (`DataViewGrid.vue`'s toolbar select) - shared here so the DataView settings page's own "Default page size" picker (`view_config.default_state.pageSize`) can only ever offer a value a viewer could actually pick themselves later, never a stray number nobody's UI exposes. */
 export const PAGE_SIZE_OPTIONS: number[] = [10, 20, 50, 100]
@@ -1287,7 +1284,8 @@ export const DESIGNER_VIEWS: { label: string, value: DesignerView, icon: string 
 ]
 
 /** A column's visibility and position in a viewer's grid prefs / a saved view. */
-export type ColPref = { visible: boolean, order: number }
+/** A viewer's column (DataViews.md §5.9): shown, its place and, set from its header, how its text fits and aligns and its width (px, dragged) - over the DataView's. */
+export type ColPref = { visible: boolean, order: number, textWrap?: GridCellTextWrap, align?: CellAlign, width?: number }
 export type Density = 'normal' | 'compact' | 'tiny'
 /**
  * A table's row density - only UTable's own td/th padding and font size,
@@ -1362,6 +1360,13 @@ export function resolveSettingsLayout(viewConfig: Record<string, unknown>): Sett
 }
 export function settingsLayoutComplete(layout: SettingsLayoutConfig): boolean {
   return REQUIRED_SETTINGS_LAYOUT_KEYS.every(key => Boolean(layout[key]))
+}
+
+/** `view_config.header_align` (a TABLE's, DataViews.md §5.2): every column title so aligned - null (Automatic): each as its column. */
+export type HeaderAlign = 'left' | 'center' | 'right'
+export function resolveHeaderAlign(viewConfig: Record<string, unknown> | null | undefined): HeaderAlign | null {
+  const stored = viewConfig?.header_align
+  return stored === 'left' || stored === 'center' || stored === 'right' ? stored : null
 }
 
 /**

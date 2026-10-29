@@ -1,5 +1,5 @@
 import type { RelationDetail } from '~/types/schema'
-import type { WidgetName } from '@totalbase/tb-catalog'
+import type { GridCellConfig, WidgetName } from '@totalbase/tb-catalog'
 import { evaluateFormula, type FormulaReturnType } from '~/utils/formula-engine'
 
 /**
@@ -197,9 +197,17 @@ export interface FieldConfig {
   emptyText?: string
   /** USwitch/UCheckbox only - custom text instead of the plain check/x icon in the grid, e.g. `{ true: 'Active', false: 'Inactive' }`. Unset keeps today's icon-only rendering; either side may be set alone (the other still falls back to its own icon). */
   booleanLabels?: { true?: string, false?: string }
-  /** Long text/jsonb columns only, in practice - truncates the grid cell to one line with a "…" and shows the full value in a tooltip on hover, instead of blowing out the row height or the column width. Never touches the FORM (the real widget there already wraps/scrolls on its own). */
-  truncate?: boolean
-  /** A small clipboard button next to this field's grid cell - offered for basically any widget (unlike `truncate`/`linkType`), not just text-ish ones: copying a UUID/number/formatted date is just as common as copying a name. Copies the SAME text the cell shows (`formatCellPlainText`), not the raw underlying value. */
+  /** How a text cell fits its column - one line cut with "…" (default) or several lines (`GridCellConfig`, DataViews.md §4.3). Never touches the FORM. */
+  textWrap?: GridCellConfig['textWrap']
+  /** With `textWrap: 'wrap'`, at most this many lines. */
+  maxLines?: number
+  /** Where the cell's content sits in a taller row. */
+  verticalAlign?: GridCellConfig['verticalAlign']
+  /** The grid column's width and its bounds, in px - unset, as wide as its content up to GRID_COLUMN_DEFAULT_MAX_WIDTH. */
+  width?: number
+  minWidth?: number
+  maxWidth?: number
+  /** A small clipboard button next to this field's grid cell - offered for basically any widget (unlike `textWrap`/`linkType`), not just text-ish ones: copying a UUID/number/formatted date is just as common as copying a name. Copies the SAME text the cell shows (`formatCellPlainText`), not the raw underlying value. */
   copyable?: boolean
   /** Its total at the grid's foot (DataViews.md §4.9): sum, avg, min, max or count over every filtered row. */
   total?: 'sum' | 'avg' | 'min' | 'max' | 'count'
@@ -308,8 +316,14 @@ const BASE_KEYS: FieldConfigKey[] = [
   // as `displayFormat` just above (booleanLabels is the one exception,
   // deleted back out for every widget except USwitch/UCheckbox below;
   // linkType is offered per-widget below instead of here, UInput-only).
-  'emptyText', 'truncate', 'booleanLabels', 'copyable', 'total'
+  'emptyText', 'textWrap', 'maxLines', 'booleanLabels', 'copyable', 'total'
 ]
+
+/** A cell's text fit is for text - a widget whose cell never is long text drops both. */
+function dropTextWrap(keys: Set<FieldConfigKey>) {
+  keys.delete('textWrap')
+  keys.delete('maxLines')
+}
 
 export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: boolean): Set<FieldConfigKey> {
   const keys = new Set<FieldConfigKey>(BASE_KEYS)
@@ -327,7 +341,7 @@ export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: 
       break
     case 'UInputNumber':
       keys.add('min').add('max').add('step').add('decimals').add('prefix').add('suffix')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'USelect':
     case 'USelectMenu':
@@ -337,7 +351,7 @@ export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: 
     case 'UCheckbox':
       // A toggle has no placeholder text, and its grid cell is never long text.
       keys.delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'UInputTags':
       // No default value for tags in this pass - it'd need its own tag-list
@@ -360,20 +374,20 @@ export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: 
       break
     case 'UInputRating':
       keys.add('ratingLength').delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'UPinInput':
       keys.add('pinLength').delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'USlider':
       keys.add('min').add('max').add('step').delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'UInputDate':
     case 'UInputTime':
       keys.delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'UFileUpload':
     case 'TCamera':
@@ -384,24 +398,30 @@ export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: 
       // the field's starting value.
       keys.delete('placeholder')
       keys.delete('defaultValue')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       keys.delete('copyable')
       break
     case 'TJson':
       // Same reasoning as UFileUpload just above - the value is a real
       // object/array, not text, so there's no plain-text "default
-      // value"/placeholder/truncate-length/copy-icon config that would
+      // value"/placeholder/wrap/copy-icon config that would
       // mean anything here. Property-level editing lives entirely
       // inside WidgetJson.vue's own Simple/Advanced UI, not the
       // inspector's generic config keys.
       keys.delete('placeholder')
       keys.delete('defaultValue')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       keys.delete('copyable')
       break
     case 'TScanner':
       // Its text field is read by a reader or Enter - no placeholder (a help label explains it, AGENTS.md section 25).
       keys.delete('placeholder')
+      break
+    case 'TUuidInput':
+    case 'TUlidInput':
+      // An id on one line, generated by its icon - no wrapping, no placeholder (a help label explains it).
+      keys.delete('placeholder')
+      dropTextWrap(keys)
       break
     case 'TColorSelect':
       // A swatch button, not a text input - no placeholder text, and
@@ -410,18 +430,18 @@ export function applicableConfigKeys(widget: WidgetName | string, isForeignKey: 
       // (a plain name or hex string) for new records, and copying the
       // raw stored value is just as meaningful as for any other widget.
       keys.delete('placeholder')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       break
     case 'UEditor':
       // Same reasoning as TJson just above - the value is rich content
       // (markdown/HTML source, or a JSON document for Blocks), not
       // plain text, so there's no plain-text "default value"/
-      // placeholder/truncate-length/copy-icon config that would mean
+      // placeholder/wrap/copy-icon config that would mean
       // anything here.
       keys.add('editorContentType')
       keys.delete('placeholder')
       keys.delete('defaultValue')
-      keys.delete('truncate')
+      dropTextWrap(keys)
       keys.delete('copyable')
       break
   }

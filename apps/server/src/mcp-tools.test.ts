@@ -391,7 +391,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     // No input is suggested: Automatic already gives the rule's (§15.2).
     expect(suggested.columns.flatMap((c) => c.suggestions).filter((s) => s.key === "input")).toEqual([]);
     // describe_table says which control an Input is.
-    expect(described.columns.find((c) => c.name === "amount")).toMatchObject({ widgetProps: { type: "number" } });
+    expect(described.columns.find((c) => c.name === "amount")).toMatchObject({ widgetProps: { type: "text" } });
 
     // Set on the column: every form that follows it changes.
     await call("set_column_presentation", { schema: SCHEMA, name: "deals", column: "amount", presentation: { input: "slider" }, merge: true });
@@ -519,6 +519,14 @@ describe("MCP tools (an agent building on a real instance)", () => {
     // Its title and short label: its table column's (M21).
     expect(updated.fields).toEqual([expect.objectContaining({ column: "amount", visible: false, title: "Amount", shortLabel: "Amt." })]);
     expect((await call<{ hasUnpublishedChanges: boolean }>("get_dataview", { id })).hasUnpublishedChanges).toBe(true);
+
+    // Its grid cell (DataViews.md §4.3): set, shown by get_dataview, unset with null, refused out of range.
+    await call("update_dataview", { id, fields: [{ column: "amount", textWrap: "wrap", maxLines: 2, verticalAlign: "top", width: 140 }] });
+    const cellOf = async () => (await call<{ fields: { column?: string; cell?: Record<string, unknown> }[] }>("get_dataview", { id })).fields.find((f) => f.column === "amount")?.cell;
+    expect(await cellOf()).toEqual({ textWrap: "wrap", maxLines: 2, verticalAlign: "top", width: 140 });
+    await call("update_dataview", { id, fields: [{ column: "amount", textWrap: null, maxLines: null, width: null }] });
+    expect(await cellOf()).toEqual({ verticalAlign: "top" });
+    await expect(call("update_dataview", { id, fields: [{ column: "amount", minWidth: 300, maxWidth: 200 }] })).rejects.toThrow(/minWidth/);
 
     const scratch = await call<{ id: string }>("create_dataview", { name: `Scratch ${SUFFIX}`, view_type: "FORM", schema: SCHEMA, table: "customers" });
     await call("delete_dataview", { id: scratch.id, confirm: true });

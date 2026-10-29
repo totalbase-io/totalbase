@@ -478,6 +478,10 @@
         "realtime": {
           "label": "Realtime",
           "description": "Suscripciones en tiempo real: los clientes siguen los cambios de las tablas que exponen Realtime por un único WebSocket, /api/realtime, y reciben solo lo que su permiso READ permite."
+        },
+        "graphql": {
+          "label": "GraphQL",
+          "description": "La API GraphQL: las tablas de la Data API en /api/graphql; cada cliente ve solo lo que sus roles le permiten."
         }
       },
       "sections": {
@@ -843,6 +847,13 @@
         "system__language": {
           "label": "Idioma predeterminado",
           "description": "El idioma de la interfaz para los usuarios que no eligieron uno en Mi cuenta, y de las páginas sin un usuario con sesión iniciada: inicio de sesión, restablecimiento de contraseña, dashboards insertados. Los datos y los mensajes de PostgreSQL nunca se traducen."
+        },
+        "system__regional_format": {
+          "label": "Formato regional",
+          "description": "Cómo se leen los números y las fechas para todos - separadores, agrupación, el orden de día y mes - donde ningún patrón diga otra cosa: el Formato propio de un campo y los formatos de fecha de abajo siguen mandando. La región, no el idioma: la interfaz en inglés puede leer 1.234,56. Navegador = la configuración regional de cada persona.",
+          "options": {
+            "empty": "Navegador"
+          }
         },
         "smtp__host": {
           "label": "Host SMTP",
@@ -1456,6 +1467,22 @@
         "realtime__heartbeat_seconds": {
           "label": "Heartbeat",
           "description": "Cada cuánto el servidor hace ping a cada conexión; la que no responde antes del siguiente ping se cierra."
+        },
+        "graphql__enabled": {
+          "label": "Habilitar GraphQL",
+          "description": "Sirve POST /api/graphql con un token de la Data API. Cada campo pasa por los mismos permisos, límites y auditoría que la llamada REST que representa. Apagado: 404."
+        },
+        "graphql__default_schema": {
+          "label": "Esquema por defecto",
+          "description": "El esquema cuyas tablas, vistas y funciones se nombran sin prefijo: products, no public__products. Las de cualquier otro esquema lo conservan (sales__orders). Cambiarlo las renombra para todos los clientes."
+        },
+        "graphql__max_calls": {
+          "label": "Llamadas a la Data API por petición",
+          "description": "La mayor cantidad de llamadas a la Data API que hace una petición: cada campo raíz es una, y también cada campo uno-a-muchos, bajo cuantas filas esté."
+        },
+        "graphql__max_depth": {
+          "label": "Profundidad de la selección",
+          "description": "Cuánto puede anidarse la selección de una petición, introspección incluida. Hasta dónde llegan las relaciones lo fija api.max_relation_depth."
         }
       }
     },

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { isTimezoneLocked, parsePreferencesPatch, resolveDisplayPreferences, toUserPreferences } from "./user-preferences.js";
 
-const DISPLAY = { timezone: "UTC", dateFormat: "dd-MM-yyyy", timeFormat: "HH:mm:ss", datetimeFormat: "dd-MM-yyyy HH:mm:ss", language: "en" };
+const DISPLAY = { timezone: "UTC", dateFormat: "dd-MM-yyyy", timeFormat: "HH:mm:ss", datetimeFormat: "dd-MM-yyyy HH:mm:ss", language: "en", regionalFormat: "es-AR" };
 const INSTANCE = { ...DISPLAY, userTimezone: true };
-const EMPTY = { timezone: "", dateFormat: "", timeFormat: "", datetimeFormat: "", userTimezone: true, language: "en" };
+const EMPTY = { timezone: "", dateFormat: "", timeFormat: "", datetimeFormat: "", userTimezone: true, language: "en", regionalFormat: "" };
 
 describe("resolveDisplayPreferences", () => {
   it("uses the instance defaults when the user chose nothing", () => {
@@ -17,7 +17,14 @@ describe("resolveDisplayPreferences", () => {
       timeFormat: "h:mm a",
       datetimeFormat: "dd-MM-yyyy h:mm a",
       language: "en",
+      regionalFormat: "es-AR",
     });
+  });
+
+  it("takes the regional format from the instance alone - it is not a user preference", () => {
+    expect(resolveDisplayPreferences({ language: "es" }, INSTANCE).regionalFormat).toBe("es-AR");
+    expect(toUserPreferences({ regional_format: "en-US" })).toEqual({});
+    expect(() => parsePreferencesPatch({ regionalFormat: "en-US" })).toThrow();
   });
 
   it("takes the user's language, else the instance's - never one the UI doesn't have", () => {
@@ -36,6 +43,7 @@ describe("resolveDisplayPreferences", () => {
       timeFormat: "",
       datetimeFormat: "dd/MM/yyyy HH:mm",
       language: "en",
+      regionalFormat: "",
     });
   });
 });

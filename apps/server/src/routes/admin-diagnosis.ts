@@ -14,7 +14,7 @@ import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
  */
 const NAMED = object({ id: UUID, name: { type: "string" } }, ["id", "name"]);
 const ISSUE = object({
-  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "WIDGET_IGNORES_ROW_FILTER"] },
+  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "SECRET_COLUMN_SHOWN", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "WIDGET_IGNORES_ROW_FILTER"] },
   severity: { type: "string", enum: ["warning", "info"] },
   message: { type: "string", description: "The issue in English." },
   role: { ...NAMED, type: ["object", "null"], description: "The role it is about - null for the object itself." },

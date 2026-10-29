@@ -67,6 +67,14 @@ describe("Database (integration)", () => {
     expect(rows[0]!.d).toBe("2026-01-31");
   });
 
+  it("returns an interval as PostgreSQL's own text, and an interval[] as an array of them", async () => {
+    // Regression: node-postgres' default parsed it into an object ({ days, hours }) a form showed as [object Object].
+    const { rows } = await database.query<{ i: unknown, a: unknown, missing: unknown }>(
+      "SELECT '1 day 2 hours 3 minutes'::interval AS i, ARRAY['1 day'::interval, '00:30'::interval] AS a, NULL::interval AS missing",
+    );
+    expect(rows[0]).toEqual({ i: "1 day 02:03:00", a: ["1 day", "00:30:00"], missing: null });
+  });
+
   it("commits a successful transaction", async () => {
     await database.transaction(async (client) => {
       await client.query(`INSERT INTO public."${TABLE}" (code) VALUES ($1)`, ["a"]);

@@ -14,6 +14,8 @@ export interface DisplayPreferences {
   datetimeFormat: string
   /** The UI's language - the user's, else the instance's (Admin_UI.md §14). */
   language?: string
+  /** How numbers and browser-formatted dates read - the instance's `system.regional_format`; empty = the browser's (Admin_UI.md §14). */
+  regionalFormat?: string
 }
 
 export interface AdminAccount {

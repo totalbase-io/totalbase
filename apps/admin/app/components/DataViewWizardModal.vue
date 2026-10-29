@@ -13,7 +13,6 @@ import {
   DEFAULT_MAP_VIEW,
   EDIT_PRESENTATION_META,
   LIST_DATAVIEW_TYPES,
-  MANY_FIELDS_THRESHOLD,
   SETTINGS_LAYOUT_KEYS,
   looksLikeSettingsTable,
   settingsLayoutComplete,
@@ -37,6 +36,7 @@ import {
 } from '~/types/dataview'
 
 import type { RoleColor } from '~/types/permission'
+import { defaultEditPresentation, MANY_FIELDS_THRESHOLD } from '@totalbase/tb-catalog'
 import type { WizardColumnRow } from '~/components/DataViewWizardColumns.vue'
 import type { WizardColumn } from '~/utils/dataview-wizard-layouts'
 import { embeddableFrameUrl } from '~/utils/frame-url'
@@ -150,7 +150,7 @@ const relationDetail = ref<RelationDetail | null>(null)
 /** The Columns step (DataViewWizardColumns.vue): every column of the source, all chosen by default. */
 const columnRows = ref<WizardColumnRow[]>([])
 /** `view_config.column_sync` (types/dataview.ts's own doc comment) - what happens to a column the table gains later, or an existing one nobody selected here. Editable later from the Design form toolbar too. */
-const columnSync = ref<ColumnSync>('auto_hide')
+const columnSync = ref<ColumnSync>('auto_show')
 /** A Master-detail's detail rows: their columns - its grid and each row's form - all chosen by default. */
 const detailColumnRows = ref<WizardColumnRow[]>([])
 const detailResource = computed(() => resources.value?.find(r => r.id === selectedDetail.value?.resourceId) ?? null)
@@ -169,6 +169,15 @@ watch(viewType, (type) => {
 // "View settings" section edits later; the wizard just picks a starting
 // value instead of leaving every new DataView to default silently.
 const editPresentation = ref<EditPresentation>('SIDEBAR')
+/** Until the author picks one, it follows how many fields the form has (DataViews.md §6.3): a Page past the threshold. */
+const editPresentationChosen = ref(false)
+function chooseEditPresentation(value: EditPresentation) {
+  editPresentation.value = value
+  editPresentationChosen.value = true
+}
+watch(() => columnRows.value.filter(c => c.visible).length, (count) => {
+  if (!editPresentationChosen.value) editPresentation.value = defaultEditPresentation(count)
+})
 const editSize = ref<EditSize | null>(null)
 const editSide = ref<EditSide>('right')
 const presentationLabel = (key: EditPresentation) => catalogText(dataviewMetaKey('editPresentations', key, 'label'), EDIT_PRESENTATION_META[key].label)
@@ -328,9 +337,10 @@ function reset() {
   sourceResourceId.value = props.initialResourceId
   relationDetail.value = null
   columnRows.value = []
-  columnSync.value = 'auto_hide'
+  columnSync.value = 'auto_show'
   features.value = {}
   editPresentation.value = 'SIDEBAR'
+  editPresentationChosen.value = false
   editSize.value = null
   editSide.value = 'right'
   formViewMode.value = 'READ'
@@ -868,7 +878,6 @@ async function create() {
         <DataViewFormSettings
           v-if="viewType"
           v-model:features="features"
-          v-model:edit-presentation="editPresentation"
           v-model:edit-size="editSize"
           v-model:edit-side="editSide"
           v-model:form-view-mode="formViewMode"
@@ -877,9 +886,11 @@ async function create() {
           v-model:page-content-width="pageContentWidth"
           v-model:page-content-align="pageContentAlign"
           v-model:fit-to-screen="fitToScreen"
+          :edit-presentation="editPresentation"
           :dataview="{ viewType, name }"
           :name="name"
           :allow="allow"
+          @update:edit-presentation="chooseEditPresentation"
         />
         <UAlert
           v-if="manyColumnsNudge"

@@ -37,6 +37,16 @@ function parsePoint(raw: string): { lng: number; lat: number } | null {
  */
 const DATE_OID = 1082;
 const parseDate = (raw: string): string => raw;
+/**
+ * `interval` is returned as PostgreSQL's own text (`1 day 02:03:00`), and an
+ * `interval[]` as an array of them. node-postgres' default is an object
+ * (`{ days, hours }`) no form can show and no write takes back; the text is
+ * what PostgreSQL accepts again as is.
+ */
+const INTERVAL_OID = 1186;
+const INTERVAL_ARRAY_OID = 1187;
+/** text[]'s parser (oid 1009, not among pg's TypeId names) - an array of the elements' text. */
+const parseTextArray = pg.types.getTypeParser(1009 as Parameters<typeof pg.types.getTypeParser>[0], "text");
 export type PoolClient = pg.PoolClient;
 
 export interface ResultField {
@@ -545,7 +555,8 @@ function createPool(config: DatabaseConfig): pg.Pool {
     types: {
       getTypeParser: (oid: number, format?: string) =>
         oid === POINT_OID ? parsePoint
-          : oid === DATE_OID ? parseDate
+          : oid === DATE_OID || oid === INTERVAL_OID ? parseDate
+          : oid === INTERVAL_ARRAY_OID ? parseTextArray
           : pg.types.getTypeParser(oid, format as "text" | "binary" | undefined),
     },
   });

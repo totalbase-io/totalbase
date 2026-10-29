@@ -9,7 +9,12 @@ export default defineConfig({
   },
   reporter: [['list']],
   projects: [
-    { name: 'parallel', testIgnore: [/[\\/]v1[\\/]/, /ui-dataviews\.spec\.ts$/] },
+    { name: 'parallel', testIgnore: [/[\\/]v1[\\/]/, /ui-dataviews\.spec\.ts$/, /graphql(-docs)?\.spec\.ts$/] },
+    // Its subscription needs Realtime on, which realtime.spec.ts turns off when it ends: after the parallel files.
+    { name: 'graphql', testMatch: /graphql\.spec\.ts$/, dependencies: ['parallel'] },
+    // The docs' GraphQL examples, run as written: GraphQL and Realtime on too, which graphql.spec.ts turns off when it
+    // ends - after it.
+    { name: 'graphql-docs', testMatch: /graphql-docs\.spec\.ts$/, dependencies: ['graphql'] },
     // Every v1 file recreates the same e2e_v1_* tables in its beforeAll (v1/fixtures.ts resetSchema): one at a time.
     { name: 'v1', testMatch: /[\\/]v1[\\/].*\.spec\.ts$/, workers: 1 },
     // Its App menu tests rearrange the instance's one menu, which every other file's DataViews join and leave as

@@ -727,6 +727,7 @@
         "file": "a foreign key to the files",
         "relation": "a foreign key",
         "check-list": "a CHECK list of values",
+        "small-integer": "a smallint",
         "small-range": "a whole number in a CHECK range of up to 100",
         "number": "a number without a small range",
         "link-type": "its link type",
@@ -940,6 +941,14 @@
       "uid": {
         "label": "UID",
         "description": "A unique slug generated from another column."
+      },
+      "uuid": {
+        "label": "UUID",
+        "description": "A universally unique id - typed, pasted or generated with the icon in the field."
+      },
+      "ulid": {
+        "label": "ULID",
+        "description": "A unique id of 26 characters: sorted ascending, in the order they were made. Typed, pasted or generated with the icon in the field."
       },
       "pin": {
         "label": "PIN / fixed-length code",

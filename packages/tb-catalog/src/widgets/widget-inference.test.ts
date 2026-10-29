@@ -8,9 +8,10 @@ import type { ValueKind } from "./widget-catalog.js";
 const inferDefaultWidget = (dataType: string, foreignKey: ForeignKeyTarget | null) => columnFormInput({ name: "n", dataType, foreignKey, checks: [] }).widget;
 
 describe("a column's default widget (columnFormInput, DataViews.md §16.1)", () => {
-  it("defaults a plain (non-FK) uuid/text column to UInput", () => {
-    expect(inferDefaultWidget("uuid", null)).toBe("UInput");
-    expect(inferDefaultWidget("text", null)).toBe("UInput");
+  it("defaults a plain (non-FK) uuid column to its UUID field, a varchar to UInput, a text to UTextarea", () => {
+    expect(inferDefaultWidget("uuid", null)).toBe("TUuidInput");
+    expect(inferDefaultWidget("character varying(80)", null)).toBe("UInput");
+    expect(inferDefaultWidget("text", null)).toBe("UTextarea");
   });
 
   it("defaults any other FK to USelectMenu", () => {

@@ -5,6 +5,8 @@
  * name, downloading it. Both read with the viewer's token - a PRIVATE file answers nothing else - and only once
  * the cell is on screen. Clicks stay in the cell: the row's own click (open the record) never fires.
  */
+import { FILE_THUMBNAIL } from '@totalbase/shared'
+
 const props = defineProps<{ fileId: string }>()
 
 const { t } = useI18n()
@@ -33,7 +35,8 @@ onBeforeUnmount(() => observer?.disconnect())
 
 const info = computed(() => (seen.value ? fileInfo(props.fileId) : undefined))
 const isImage = computed(() => info.value?.mime_type?.startsWith('image/') === true)
-const thumb = computed(() => (isImage.value ? fileObjectUrl(props.fileId, 80) : undefined))
+// The size the server makes ahead when an image is stored (FILE_THUMBNAIL): already cached on first view.
+const thumb = computed(() => (isImage.value ? fileObjectUrl(props.fileId, FILE_THUMBNAIL.width) : undefined))
 
 const viewerOpen = ref(false)
 const large = computed(() => (viewerOpen.value ? fileObjectUrl(props.fileId, 1600) : undefined))

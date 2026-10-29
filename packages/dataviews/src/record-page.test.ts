@@ -40,7 +40,7 @@ describe("generateRecordPage()", () => {
   it("gives a Master-detail its Detail, rereading the record when its rows change - no Save & New, its frame's footer has it", () => {
     const page = generateRecordPage({ type: "MASTER_DETAIL", columns: COLUMNS, detail: { dataview: "dv-items", column: "factura" } });
     const children = page.widgets[0]!.slots!.default!;
-    expect(children.slice(0, 3).every((c) => c.width === 3)).toBe(true);
+    expect(children.slice(0, 3).every((c) => c.width === 12)).toBe(true);
     expect(children[3]).toMatchObject({ widget: "TDataView", props: { dataview: "dv-items", column: "factura", toolbarMode: "none", paging: false, editInline: true }, emits: { rowsChanged: "onDetailRowsChanged" }, height: 8 });
     expect(children).toHaveLength(4);
     expect(page.code).toContain("await dataview.vars.record.refresh()");

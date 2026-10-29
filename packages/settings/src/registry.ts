@@ -81,6 +81,9 @@ export interface SettingsRegistry {
   // The UI's language for whoever chose none in My account, and for pages
   // with no user (sign-in, embeds) - Admin_UI.md §14.
   "system.language": string;
+  // How numbers and browser-formatted dates read for everyone (a
+  // REGIONAL_FORMATS tag) - Admin_UI.md §14. Empty = each viewer's browser.
+  "system.regional_format": string;
   // Instance-wide display defaults (apps/admin/app/utils/format-pattern.ts):
   // the zone a `timestamptz` value is converted into before display, and
   // the fallback date-fns patterns for a date/time/timestamp column whose
@@ -218,6 +221,13 @@ export interface SettingsRegistry {
   "realtime.enabled": boolean;
   "realtime.max_subscriptions": number;
   "realtime.heartbeat_seconds": number;
+
+  // The GraphQL API (Data_API.md §17): POST /api/graphql,
+  // and what one document may ask on top of the api.* limits each root field meets.
+  "graphql.enabled": boolean;
+  "graphql.default_schema": string;
+  "graphql.max_calls": number;
+  "graphql.max_depth": number;
 
   "sql_console.enabled": boolean;
   // Raw SQL through a personal access token (the MCP server's agent, a
@@ -424,6 +434,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "system.instance_name": "TotalBase",
   "system.logo": "",
   "system.language": "en",
+  "system.regional_format": "",
   "system.timezone": "",
   "system.timezone_user_choice": false,
   "system.date_format": "",
@@ -554,6 +565,11 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "realtime.max_subscriptions": 50,
   "realtime.heartbeat_seconds": 30,
 
+  "graphql.enabled": false,
+  "graphql.default_schema": "public",
+  "graphql.max_calls": 10,
+  "graphql.max_depth": 8,
+
   "sql_console.enabled": true,
   "sql_console.token_access": false,
   "sql_console.max_rows": 1_000,
@@ -646,6 +662,8 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api.max_limit": { min: 1 },
   "realtime.max_subscriptions": { min: 1, max: 1_000 },
   "realtime.heartbeat_seconds": { min: 5, max: 3_600 },
+  "graphql.max_calls": { min: 1, max: 100 },
+  "graphql.max_depth": { min: 2, max: 32 },
   "api.max_relation_depth": { min: 1 },
   "api.max_filter_depth": { min: 1 },
   "api.bulk_max_items": { min: 1 },

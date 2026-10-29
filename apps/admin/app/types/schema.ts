@@ -79,6 +79,10 @@ export interface FunctionParameter {
 export interface FunctionDetail {
   parameters: FunctionParameter[]
   returnsRows: boolean
+  /** A row result's columns; null when PostgreSQL declares none, or for a scalar. */
+  resultColumns: { name: string, dataType: string }[] | null
+  /** A scalar result's type; null for rows and pseudo-types. */
+  resultType: string | null
   /** The PostgreSQL role that owns it. */
   owner: string
   /** The configured PostgreSQL role may alter/drop it (owner or member of the owner role) - Administration.md §3.15. */

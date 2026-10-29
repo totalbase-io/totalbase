@@ -139,6 +139,11 @@ export class DataViewsAdminService {
     return columns.syncFields(this.ctx, dataviewId);
   }
 
+  /** Sync columns on every DataView whose source has a column it hasn't seen - the catalog watch's (§4.2). */
+  syncNewColumns(): Promise<string[]> {
+    return columns.syncNewColumns(this.ctx);
+  }
+
   /** "Add columns…": source columns not in the DataView yet, and `fk.column` related columns - see `addColumns`. */
   addColumns(dataviewId: string, columnNames: string[]): Promise<AdminDataViewField[]> {
     return columns.addColumns(this.ctx, dataviewId, columnNames);

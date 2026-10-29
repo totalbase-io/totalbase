@@ -82,6 +82,8 @@ export class FilesAdminService {
     private readonly database: Queryable,
     private readonly settings: SettingsService,
     private readonly storage: FilesStorage = new FilesStorage(settings),
+    /** Called, never awaited, once a file's content is stored and its row written - the server warms its thumbnail. */
+    private readonly afterStore?: (file: FileRecord, content: Buffer) => void,
   ) {}
 
   async list(folder?: string | null): Promise<FileRecord[]> {
@@ -191,7 +193,9 @@ export class FilesAdminService {
           input.actorUserId ?? null,
         ],
       );
-      return toRecord(rows[0]!);
+      const record = toRecord(rows[0]!);
+      this.afterStore?.(record, input.content);
+      return record;
     } catch (error) {
       await storage.delete(storageKey).catch(() => undefined);
       throw error;
@@ -230,7 +234,9 @@ export class FilesAdminService {
        WHERE id = $1`,
       [id, content.length, checksum, width, height],
     );
-    return this.get(id);
+    const record = await this.get(id);
+    this.afterStore?.(record, content);
+    return record;
   }
 
   async updateMetadata(id: string, patch: UpdateFileMetadataInput): Promise<FileRecord> {

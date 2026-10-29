@@ -243,7 +243,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
     {
       title: "Describe table",
       description:
-        "A table's, view's or function's structure. Table: columns (type, nullable, default, identity/generated, input - its control, a column input catalog entry, with the widget and widgetProps it is and inputReason: chosen, file, relation, check-list, small-range, number, link-type, pattern or default -, presentation, values - a CHECK IN list's, which a DataView's form shows as a select), primary key, foreign keys, UNIQUE and CHECK constraints (named - drop_constraint takes the name), indexes, row presentation and exposed methods. View: its columns and definition. Function: its parameters and return shape. Read it before changing a table or building on it.",
+        "A table's, view's or function's structure. Table: columns (type, nullable, default, identity/generated, input - its control, a column input catalog entry, with the widget and widgetProps it is and inputReason: chosen, file, relation, check-list, small-integer, small-range, number, link-type, pattern or default -, presentation, values - a CHECK IN list's, which a DataView's form shows as a select), primary key, foreign keys, UNIQUE and CHECK constraints (named - drop_constraint takes the name), indexes, row presentation and exposed methods. View: its columns and definition. Function: its parameters and return shape. Read it before changing a table or building on it.",
       inputSchema: { schema: schemaName(), name: z.string().describe("Table, view or function name") },
       annotations: READ_ONLY,
     },

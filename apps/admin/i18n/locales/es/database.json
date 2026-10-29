@@ -727,6 +727,7 @@
         "file": "una clave foránea a los archivos",
         "relation": "una clave foránea",
         "check-list": "una lista de valores en un CHECK",
+        "small-integer": "un smallint",
         "small-range": "un entero en un rango CHECK de hasta 100",
         "number": "un número sin rango chico",
         "link-type": "su tipo de enlace",
@@ -940,6 +941,14 @@
       "uid": {
         "label": "UID",
         "description": "Un slug único generado a partir de otra columna."
+      },
+      "uuid": {
+        "label": "UUID",
+        "description": "Un identificador único universal: se escribe, se pega o se genera con el ícono del campo."
+      },
+      "ulid": {
+        "label": "ULID",
+        "description": "Un identificador único de 26 caracteres: ordenado de forma ascendente, queda en el orden en que se crearon. Se escribe, se pega o se genera con el ícono del campo."
       },
       "pin": {
         "label": "PIN / código de longitud fija",

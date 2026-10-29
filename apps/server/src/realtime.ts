@@ -36,13 +36,34 @@ const MAX_UID_LENGTH = 64;
 const CLOSE_POLICY = 1008;
 const CLOSE_TRY_LATER = 1013;
 
-type RealtimeEvent = "create" | "update" | "delete";
+export type RealtimeEvent = "create" | "update" | "delete";
+/** What a subscriber hears: the accepted subscription, a change, or that changes may have been missed (Data_API.md §16.5, §16.6). */
+export type RealtimeDelivery = "init" | RealtimeEvent | "truncate" | "reset";
 const EVENTS: RealtimeEvent[] = ["create", "update", "delete"];
 const CHANGE_OF: Record<RealtimeEvent, "insert" | "update" | "delete"> = { create: "insert", update: "update", delete: "delete" };
 
-interface Subscription {
+/**
+ * Who a subscription delivers to: a /api/realtime connection, or a GraphQL subscription (routes/graphql-ws.ts).
+ * The hub decides what reaches it; the subscriber only says it in its own protocol.
+ */
+export interface RealtimeSubscriber {
+  readonly closed: boolean;
+  /** The credential, resolved again before each delivery (Data_API.md §16.3). */
+  readonly token: string | null;
+  /** A READ audit row's origin, a request id of its own per delivery. */
+  origin(): ReadOrigin;
+  event(uid: string, event: RealtimeDelivery, data?: Record<string, unknown>[]): void;
+  /** A delivery's error that leaves the subscription on. */
+  failed(uid: string, error: unknown): void;
+  /** The subscription no longer passes its intent: the hub has dropped it. */
+  ended(uid: string, error: unknown): void;
+  /** The credential no longer resolves: the connection closes. */
+  refused(error: unknown): void;
+}
+
+export interface Subscription {
   uid: string;
-  connection: Connection;
+  subscriber: RealtimeSubscriber;
   resource: ResolvedApiResource;
   keyColumn: string;
   /** int2/int4 keys go out as numbers, like the Data API's rows; every other key as text. */
@@ -60,7 +81,7 @@ function errorBody(error: unknown): { code: string; message: string } {
   return { code: "INTERNAL_ERROR", message: "Internal server error." };
 }
 
-class Connection {
+class Connection implements RealtimeSubscriber {
   readonly subscriptions = new Map<string, Subscription>();
   token: string | null;
   awaitingPong = false;
@@ -98,6 +119,23 @@ class Connection {
     this.send({ type: "error", ...(uid !== undefined && { uid }), errors: [errorBody(error)] });
   }
 
+  event(uid: string, event: RealtimeDelivery, data?: Record<string, unknown>[]): void {
+    this.send({ type: "subscription", uid, event, ...(data !== undefined && { data }) });
+  }
+
+  failed(uid: string, error: unknown): void {
+    this.error(error, uid);
+  }
+
+  ended(uid: string, error: unknown): void {
+    this.subscriptions.delete(uid);
+    this.error(error, uid);
+  }
+
+  refused(error: unknown): void {
+    this.close(CLOSE_POLICY, error);
+  }
+
   /** An error about the connection, then the close (Data_API.md §16.6). */
   close(code: number, error?: unknown): void {
     if (this.closed) return;
@@ -110,7 +148,7 @@ class Connection {
 }
 
 /** This process's subscriptions by table OID, and the replication slot that feeds them while any exists. */
-class RealtimeHub {
+export class RealtimeHub {
   private readonly byTable = new Map<number, Set<Subscription>>();
   private count = 0;
   private replication: { close(): Promise<void> } | null = null;
@@ -187,7 +225,7 @@ class RealtimeHub {
   private resetAll(): void {
     this.pending.length = 0;
     for (const set of this.byTable.values()) {
-      for (const subscription of set) subscription.connection.send({ type: "subscription", uid: subscription.uid, event: "reset" });
+      for (const subscription of set) subscription.subscriber.event(subscription.uid, "reset");
     }
   }
 
@@ -199,7 +237,7 @@ class RealtimeHub {
       while (this.pending.length > 0) {
         const transaction = this.pending.shift()!;
         this.maxKeys = await this.context.settings.get("api.max_limit").catch(() => this.maxKeys);
-        const principals = new Map<Connection, Promise<DataPrincipal | null>>();
+        const principals = new Map<RealtimeSubscriber, Promise<DataPrincipal | null>>();
         const tasks: (() => Promise<void>)[] = [];
         for (const [oid, changes] of transaction) {
           for (const subscription of this.byTable.get(oid) ?? []) tasks.push(() => this.deliver(subscription, changes, principals));
@@ -211,17 +249,17 @@ class RealtimeHub {
     }
   }
 
-  private async deliver(subscription: Subscription, changes: RelationChanges, principals: Map<Connection, Promise<DataPrincipal | null>>): Promise<void> {
-    const { connection } = subscription;
-    if (connection.closed) return;
-    // The credential, live - once per connection and transaction (Data_API.md §16.3).
-    let principal = principals.get(connection);
+  private async deliver(subscription: Subscription, changes: RelationChanges, principals: Map<RealtimeSubscriber, Promise<DataPrincipal | null>>): Promise<void> {
+    const { subscriber, uid } = subscription;
+    if (subscriber.closed) return;
+    // The credential, live - once per subscriber and transaction (Data_API.md §16.3).
+    let principal = principals.get(subscriber);
     if (!principal) {
-      principal = resolveDataPrincipal(this.context, connection.token ?? "").catch((error: unknown) => {
-        connection.close(CLOSE_POLICY, error);
+      principal = resolveDataPrincipal(this.context, subscriber.token ?? "").catch((error: unknown) => {
+        subscriber.refused(error);
         return null;
       });
-      principals.set(connection, principal);
+      principals.set(subscriber, principal);
     }
     const caller = await principal;
     if (!caller) return;
@@ -229,14 +267,13 @@ class RealtimeHub {
     // Still subscribable, and still the intent it was allowed (Data_API.md §16.4): otherwise the subscription ends.
     try {
       subscription.resource = await resolveTableResourceById(this.context, subscription.resource.id, "REALTIME");
-      await authorizeIntent(this.context, caller, subscription, connection.origin());
+      await authorizeIntent(this.context, caller, subscription, subscriber.origin());
     } catch (error) {
       endSubscription(this, subscription, error);
       return;
     }
 
-    const base = { type: "subscription", uid: subscription.uid };
-    if (changes.truncate) connection.send({ ...base, event: "truncate" });
+    if (changes.truncate) subscriber.event(uid, "truncate");
     for (const event of EVENTS) {
       if (!subscription.events.has(event)) continue;
       const changed = changes[CHANGE_OF[event]];
@@ -244,11 +281,11 @@ class RealtimeHub {
       // A summary: only that rows changed - chosen, or past what one read returns (Data_API.md §16.5).
       // Past the limit in force now, too: it may have been lowered after the keys were collected.
       if (subscription.mode === "summary" || changed.overflow || changed.keys.length > this.maxKeys) {
-        connection.send({ ...base, event });
+        subscriber.event(uid, event);
         continue;
       }
       if (event === "delete") {
-        connection.send({ ...base, event, data: changed.keys.map((key) => ({ [subscription.keyColumn]: subscription.keyIsNumber ? Number(key) : key })) });
+        subscriber.event(uid, event, changed.keys.map((key) => ({ [subscription.keyColumn]: subscription.keyIsNumber ? Number(key) : key })));
         continue;
       }
       const byKey = { [subscription.keyColumn]: { _in: changed.keys } };
@@ -259,11 +296,11 @@ class RealtimeHub {
           caller,
           subscription.resource,
           { ...(subscription.query.fields !== undefined && { fields: subscription.query.fields }), where, limit: String(changed.keys.length) },
-          connection.origin(),
+          subscriber.origin(),
         );
-        if (data.length > 0) connection.send({ ...base, event, data });
+        if (data.length > 0) subscriber.event(uid, event, data);
       } catch (error) {
-        connection.error(error, subscription.uid);
+        subscriber.failed(uid, error);
       }
     }
   }
@@ -279,8 +316,66 @@ async function runLimited(tasks: (() => Promise<void>)[], limit: number): Promis
 
 function endSubscription(hub: RealtimeHub, subscription: Subscription, error: unknown): void {
   hub.remove(subscription);
-  subscription.connection.subscriptions.delete(subscription.uid);
-  subscription.connection.error(error, subscription.uid);
+  subscription.subscriber.ended(subscription.uid, error);
+}
+
+export interface SubscriptionIntent {
+  schema: string;
+  table: string;
+  events: ReadonlySet<RealtimeEvent>;
+  mode: "rows" | "summary";
+  query: { fields?: unknown; where?: unknown };
+}
+
+/**
+ * Opens a subscription for `subscriber` (Data_API.md §16.4): the table exposing REALTIME with a single-column
+ * key, the intent authorized as a read before it exists, then the hub's - starting the slot with the process's
+ * first. Whoever opens it removes it (hub.remove) when it ends.
+ */
+export async function openSubscription(
+  context: AppContext,
+  hub: RealtimeHub,
+  subscriber: RealtimeSubscriber,
+  uid: string,
+  intent: SubscriptionIntent,
+): Promise<Subscription> {
+  const resource = await resolveTableResource(context, intent.schema, intent.table, "REALTIME");
+  const key = await primaryKeyOf(context, resource.postgresOid);
+  if (!key) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${intent.schema}.${intent.table}`);
+  const subscription: Subscription = {
+    uid,
+    subscriber,
+    resource,
+    keyColumn: key.column,
+    keyIsNumber: key.isNumber,
+    events: intent.events,
+    mode: intent.mode,
+    query: intent.query,
+  };
+  const principal = await resolveDataPrincipal(context, subscriber.token ?? "");
+  await authorizeIntent(context, principal, subscription, subscriber.origin());
+  await hub.add(subscription);
+  return subscription;
+}
+
+/**
+ * The credential a Data API WebSocket upgrade carries (Data_API.md §16.3): a bearer header, or the session
+ * cookie from this instance's own pages only - the WebSocket form of the CSRF rule; null, the first message
+ * authenticates. A credential that doesn't resolve is refused before the upgrade.
+ */
+export async function upgradeToken(context: AppContext, request: FastifyRequest): Promise<string | null> {
+  if (request.headers.authorization === undefined && request.headers.cookie === undefined) return null;
+  let token: string | null;
+  try {
+    token = extractBearerToken(request);
+  } catch {
+    token = null;
+  }
+  if (token !== null && request.headers.authorization === undefined && !isSameOrigin(request, await context.auth.mailer.publicUrl())) {
+    throw new TotalBaseError("CROSS_SITE_REQUEST_REFUSED", "A session cookie is only accepted from this instance's own pages.");
+  }
+  if (token !== null) await resolveDataPrincipal(context, token);
+  return token;
 }
 
 /**
@@ -345,7 +440,7 @@ function invalid(message: string): TotalBaseError {
 }
 
 /**
- * The server's WebSocket upgrades, dispatched by path: /api/realtime to @fastify/websocket, every other one to
+ * The server's WebSocket upgrades, dispatched by path: /api/realtime and /api/graphql to @fastify/websocket, every other one to
  * the server's other upgrade listeners - the admin's development proxy (admin-ui.ts) forwards Vite's HMR socket.
  * Both plugins would otherwise take every upgrade, and the second to answer one crashes Node
  * (ERR_HTTP_SOCKET_ASSIGNED). Without another listener (production), another path is answered 404.
@@ -354,7 +449,8 @@ function dispatchUpgrades(app: FastifyInstance): EventEmitter {
   const realtimeUpgrades = new EventEmitter();
   let others: ((...args: unknown[]) => void)[] = [];
   const dispatch = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-    if (new URL(request.url ?? "/", "http://localhost").pathname === "/api/realtime") {
+    const path = new URL(request.url ?? "/", "http://localhost").pathname;
+    if (path === "/api/realtime" || path === "/api/graphql") {
       realtimeUpgrades.emit("upgrade", request, socket, head);
     } else if (others.length > 0) {
       for (const listener of others) listener.call(app.server, request, socket, head);
@@ -371,7 +467,7 @@ function dispatchUpgrades(app: FastifyInstance): EventEmitter {
   return realtimeUpgrades;
 }
 
-export async function registerRealtimeRoutes(app: FastifyInstance, context: AppContext): Promise<void> {
+export async function registerRealtimeRoutes(app: FastifyInstance, context: AppContext): Promise<RealtimeHub> {
   // `server`: the plugin listens for upgrades on this emitter, not on the HTTP server (dispatchUpgrades).
   await app.register(websocket, { options: { maxPayload: MAX_MESSAGE_BYTES, server: dispatchUpgrades(app) as unknown as Server } });
   const hub = new RealtimeHub(context);
@@ -387,20 +483,7 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
       if (!(await realtimeRequirements(context)).ready) {
         throw new TotalBaseError("REALTIME_UNAVAILABLE", "Realtime needs PostgreSQL's logical replication (Settings > Realtime shows its requirements).");
       }
-      let token: string | null = null;
-      if (request.headers.authorization !== undefined || request.headers.cookie !== undefined) {
-        try {
-          token = extractBearerToken(request);
-        } catch {
-          token = null;
-        }
-        // The session cookie: from this instance's own pages only - the WebSocket form of the CSRF rule.
-        if (token !== null && request.headers.authorization === undefined && !isSameOrigin(request, await context.auth.mailer.publicUrl())) {
-          throw new TotalBaseError("CROSS_SITE_REQUEST_REFUSED", "A session cookie is only accepted from this instance's own pages.");
-        }
-        if (token !== null) await resolveDataPrincipal(context, token);
-      }
-      upgradeTokens.set(request, token);
+      upgradeTokens.set(request, await upgradeToken(context, request));
     },
   }, async (socket, request) => {
     const connection = new Connection(socket, upgradeTokens.get(request) ?? null, request);
@@ -510,28 +593,19 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
         }
 
         const dot = name.indexOf(".");
-        const resource = await resolveTableResource(context, name.slice(0, dot), name.slice(dot + 1), "REALTIME");
-        const key = await primaryKeyOf(context, resource.postgresOid);
-        if (!key) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${name}`);
-        const subscription: Subscription = {
-          uid,
-          connection,
-          resource,
-          keyColumn: key.column,
-          keyIsNumber: key.isNumber,
+        const subscription = await openSubscription(context, hub, connection, uid, {
+          schema: name.slice(0, dot),
+          table: name.slice(dot + 1),
           events: new Set(event === undefined ? EVENTS : [event as RealtimeEvent]),
           mode,
           query: { ...(queryObject.fields !== undefined && { fields: queryObject.fields }), ...(queryObject.where !== undefined && { where: queryObject.where }) },
-        };
-        const principal = await resolveDataPrincipal(context, connection.token!);
-        await authorizeIntent(context, principal, subscription, connection.origin());
-        await hub.add(subscription);
+        });
         if (connection.closed) {
           hub.remove(subscription);
           return;
         }
         connection.subscriptions.set(uid, subscription);
-        connection.send({ type: "subscription", uid, event: "init" });
+        connection.event(uid, "init");
       } catch (error) {
         connection.error(error, uid);
       }
@@ -545,6 +619,7 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
       }
     }
   });
+  return hub;
 }
 
 /** Settings > Realtime's status (Data_API.md §16.1): the requirements, read live, and how many tables expose REALTIME. */

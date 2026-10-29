@@ -19,6 +19,7 @@ export type DiagnosisCode =
   | "NO_ROLES"
   | "BROKEN_REFERENCE"
   | "CONSTRAINT_WITHOUT_MESSAGE"
+  | "SECRET_COLUMN_SHOWN"
   | "ROLE_CANNOT_READ"
   | "ROLE_FIELDS_HIDDEN"
   | "ROLE_SEES_KEY"
@@ -85,6 +86,15 @@ function displayedPaths(fields: AdminDataViewField[]): string[] {
   return [...paths];
 }
 
+/**
+ * A column whose name reads like a secret - a word of it (between underscores) is one of these. A name, not a
+ * proof: it only points the author at the column (DataViews.md §18).
+ */
+const SECRET_NAME = /(^|_)(secrets?|secretos?|tokens?|passwords?|passwd|pwd|contrase(n|ñ)as?|sign|signature|firma|private_key|clave_privada|api_key|apikey|auth)(_|$)/i;
+export function looksLikeSecretColumn(name: string): boolean {
+  return SECRET_NAME.test(name);
+}
+
 const WRITES = [["create", "CREATE"], ["update", "UPDATE"], ["delete", "DELETE"]] as const;
 
 export async function diagnoseDataView(ctx: DataViewsContext, permissions: EffectivePermissionService, dataviewId: string): Promise<DiagnosisIssue[]> {
@@ -124,6 +134,13 @@ export async function diagnoseDataView(ctx: DataViewsContext, permissions: Effec
   const fields = await listFields(ctx, view.id);
   const shownColumns = fields.filter((f) => f.kind === "COLUMN" && f.columnName && f.visible).map((f) => f.columnName!);
   const paths = displayedPaths(fields);
+  const secrets = shownColumns.filter(looksLikeSecretColumn);
+  if (secrets.length) {
+    issues.push(issue({
+      code: "SECRET_COLUMN_SHOWN", severity: "info", resource: source, columns: secrets,
+      message: `${secrets.join(", ")} look like secrets and are shown in its grid. Hide them (update_dataview fields visible false) or take them out; to keep a role from reading them at all, deny the field (grant_permission fields).`,
+    }));
+  }
   // What the DataView lets its viewers write - never more than their grants (its Allow; every write when unset).
   const allow = Array.isArray(view.viewConfig["allow"]) ? (view.viewConfig["allow"] as string[]) : WRITES.map(([key]) => key);
   const writes = view.sourceResourceType === "TABLE" ? WRITES.filter(([key]) => allow.includes(key)) : [];

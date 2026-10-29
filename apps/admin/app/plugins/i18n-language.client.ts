@@ -1,5 +1,6 @@
 import { isUiLanguage } from '@totalbase/shared'
 import { storedPublicLanguage } from '~/utils/public-language'
+import { setRegionalLocale } from '~/utils/regional-locale'
 
 /**
  * The UI's language (Admin_UI.md §14): the signed-in user's
@@ -8,6 +9,7 @@ import { storedPublicLanguage } from '~/utils/public-language'
  * sign-in and the other public pages - the visitor's choice in this browser (LanguageButton.vue), else the
  * instance's (GET /api/instance, read at boot by instance.client.ts).
  * An embed page sets its own (its embed's instance language, or `?locale=`).
+ * The regional format (numbers, dates) follows the session's `display.regionalFormat` the same way.
  */
 export default defineNuxtPlugin({
   name: 'i18n-language',
@@ -25,6 +27,7 @@ export default defineNuxtPlugin({
     // flush 'sync': a sign-in sets the profile and navigates right after - the
     // switch has started by the time the next page's middleware waits on it.
     watch(() => session.admin.value?.display?.language, language => void apply(language), { flush: 'sync' })
+    watch(() => session.admin.value?.display?.regionalFormat, setRegionalLocale, { immediate: true })
 
     // Awaited: the language's files are loaded before the first page paints,
     // instead of the keys showing until they arrive - the signed-in user's

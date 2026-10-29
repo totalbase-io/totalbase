@@ -72,6 +72,8 @@ const SETUP: Record<string, (name: string, c: Ctx) => Promise<void>> = {
   UEditor: input('text'),
   TJson: input('json'),
   TColorSelect: input('text'),
+  TUuidInput: input('text'),
+  TUlidInput: input('text'),
   TLeafletMap: input('point'),
   TScanner: input('text'),
   TCamera: input('text'),

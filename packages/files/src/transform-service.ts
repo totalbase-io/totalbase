@@ -1,4 +1,4 @@
-import { UUID_PATTERN } from "@totalbase/shared";
+import { FILE_THUMBNAIL_QUERY, UUID_PATTERN } from "@totalbase/shared";
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import type { SettingsService } from "@totalbase/settings";
@@ -107,6 +107,20 @@ export class FilesTransformService {
       await storage.store(cacheKey, result.buffer);
       return { buffer: result.buffer, contentType: result.contentType, cacheTtlSeconds };
     }, timeoutMs);
+  }
+
+  /**
+   * Makes a stored image's list thumbnail (FILE_THUMBNAIL, Administration.md §10.8) ahead of its first view, so a
+   * grid shows it at once. Best-effort, never awaited by a write: transformations off, a file that isn't an image or
+   * an image that can't be read is simply left to the first request.
+   */
+  async warmThumbnail(file: { id: string; checksum: string | null; mime_type: string }, content: Buffer): Promise<void> {
+    if (!file.checksum || !file.mime_type.startsWith("image/")) return;
+    try {
+      await this.resolve({ fileId: file.id, sourceHash: file.checksum, mimeType: file.mime_type, query: FILE_THUMBNAIL_QUERY, readOriginal: async () => content });
+    } catch {
+      // The first request makes it, as before.
+    }
   }
 
   /**

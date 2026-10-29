@@ -115,10 +115,10 @@ describe("DataViewsAdminService (integration)", () => {
     expect(fields.map((f) => f.columnName)).toEqual(["id", "title", "price", "in_stock", "category_id", "created_at"]);
     expect(fields.every((f) => f.kind === "COLUMN")).toBe(true);
     // Each the column input catalog's rule (DataViews.md §16.1): a numeric is a Number field (UInput),
-    // a boolean a Switch, a text a Text - and a foreign key a Relation (searchable), never the plain uuid's UInput.
+    // a boolean a Switch, a text a Text (long) - and a foreign key a Relation (searchable), never the plain uuid's UInput.
     expect(fields.find((f) => f.columnName === "price")?.widget).toBe("UInput");
     expect(fields.find((f) => f.columnName === "in_stock")?.widget).toBe("USwitch");
-    expect(fields.find((f) => f.columnName === "title")?.widget).toBe("UInput");
+    expect(fields.find((f) => f.columnName === "title")?.widget).toBe("UTextarea");
     expect(fields.find((f) => f.columnName === "category_id")?.widget).toBe("USelectMenu");
 
     const bySlug = await dataviewsAdmin.getBySlug("products");
@@ -195,6 +195,8 @@ describe("DataViewsAdminService (integration)", () => {
     });
     expect(dataview.viewConfig).toEqual({
       features: { search: true, filter: false, columnsToggle: true, export: false, print: false },
+      // Three fields: its record form in a Sidebar (DataViews.md §6.3).
+      edit_presentation: "SIDEBAR",
       variables: expect.any(Array),
       last_attnum: expect.any(Number),
     });
@@ -203,6 +205,36 @@ describe("DataViewsAdminService (integration)", () => {
     const fields = (await dataviewsAdmin.listFields(dataview.id)).filter((f) => f.kind === "COLUMN");
     expect(fields.map((f) => f.columnName).sort()).toEqual(["id", "price", "title"]);
     expect(fields.every((f) => f.visible)).toBe(true);
+  });
+
+  it("with no columns picked, a list hides its json, jsonb and bytea columns - the documents still in the record form", async () => {
+    const DOCS = "dataviews_admin_pkg_test_documents";
+    await database.query(`DROP TABLE IF EXISTS public.${DOCS} CASCADE`);
+    await database.query(`CREATE TABLE public.${DOCS} (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text, body jsonb, raw json, blob bytea)`);
+    const { rows } = await database.query<{ id: string }>(
+      `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
+       VALUES ($1::regclass::oid::int, 'public', $2, 'TABLE', 'ACTIVE', '{GET}') RETURNING id`,
+      [`public.${DOCS}`, DOCS],
+    );
+    const resourceId = rows[0]!.id;
+    try {
+      const shown = async (dataviewId: string) => Object.fromEntries((await dataviewsAdmin.listFields(dataviewId))
+        .filter((f) => f.kind === "COLUMN").map((f) => [f.columnName, f.visible]));
+      const table = await dataviewsAdmin.create({ name: "Documents", sourceResourceId: resourceId, viewType: "TABLE" });
+      expect(await shown(table.id)).toEqual({ id: true, title: true, body: false, raw: false, blob: false });
+      const form = (await dataviewsAdmin.listFields(table.id)).filter((f) => f.kind === "WIDGET" && f.widget === "UFormField")
+        .map((f) => (f.config["props"] as { column?: string } | undefined)?.column);
+      expect(form).toEqual(expect.arrayContaining(["body", "raw"]));
+      // Bytes have no input: never in the form.
+      expect(form).not.toContain("blob");
+      // Picked by name: shown, as asked.
+      const picked = await dataviewsAdmin.create({ name: "Documents picked", sourceResourceId: resourceId, viewType: "TABLE", selectedColumns: ["title", "body"] });
+      expect(await shown(picked.id)).toEqual({ id: false, title: true, body: true });
+    } finally {
+      await database.query(`DELETE FROM totalbase.dataviews WHERE source_resource = $1`, [resourceId]);
+      await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [resourceId]);
+      await database.query(`DROP TABLE IF EXISTS public.${DOCS} CASCADE`);
+    }
   });
 
   it("applies fieldOverrides (widget/help) per column and rejects an unknown widget - never a title of its own", async () => {
@@ -564,12 +596,12 @@ describe("DataViewsAdminService (integration)", () => {
     });
   });
 
-  it("create() lays visible fields out one-up in a Sidebar (the default); in a Drawer two-up past 8 visible columns, one-up at or below it", async () => {
+  it("create() lays the record form out in one column, always, and opens it as a Page past 10 fields, else in a Sidebar", async () => {
     const WIDE_TABLE = "dataviews_admin_pkg_test_wide";
     await database.query(`DROP TABLE IF EXISTS public.${WIDE_TABLE} CASCADE`);
     await database.query(`
       CREATE TABLE public.${WIDE_TABLE} (
-        c1 int, c2 int, c3 int, c4 int, c5 int, c6 int, c7 int, c8 int, c9 int, c10 int
+        c1 int, c2 int, c3 int, c4 int, c5 int, c6 int, c7 int, c8 int, c9 int, c10 int, c11 int
       )
     `);
     const { rows } = await database.query<{ oid: number }>(`SELECT $1::regclass::oid::int AS oid`, [`public.${WIDE_TABLE}`]);
@@ -581,39 +613,28 @@ describe("DataViewsAdminService (integration)", () => {
     const wideResourceId = resourceRows[0]!.id;
 
     try {
-      // The default record form, a Sidebar: one column however many fields (DataViews.md §6.3).
-      const sidebar = await dataviewsAdmin.create({ name: "Sidebar Layout", sourceResourceId: wideResourceId, viewType: "TABLE" });
-      const sidebarFields = (await dataviewsAdmin.listFields(sidebar.id)).filter((f) => f.kind === "COLUMN");
-      expect(sidebarFields).toHaveLength(10);
-      expect(sidebarFields.every((f) => f.gridW === 12 && f.gridX === 0)).toBe(true);
-      await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [sidebar.id]);
+      const oneColumn = async (dataviewId: string) => {
+        const fields = await dataviewsAdmin.listFields(dataviewId);
+        const columns = fields.filter((f) => f.kind === "COLUMN");
+        const formFields = fields.filter((f) => f.kind === "WIDGET" && f.widget === "UFormField");
+        return columns.every((f) => f.gridW === 12 && f.gridX === 0) && formFields.length > 0 && formFields.every((f) => f.gridW === 12);
+      };
+      // 11 fields, no presentation said: a Page - its form in one column (DataViews.md §6.3).
+      const many = await dataviewsAdmin.create({ name: "Many Fields", sourceResourceId: wideResourceId, viewType: "TABLE" });
+      expect(many.viewConfig).toMatchObject({ edit_presentation: "PAGE" });
+      expect(many.viewConfig).not.toHaveProperty("edit_size");
+      expect(await oneColumn(many.id)).toBe(true);
 
-      // A Drawer, all 10 columns visible (> 8) - two-up.
-      const wide = await dataviewsAdmin.create({ name: "Wide Layout", sourceResourceId: wideResourceId, viewType: "TABLE", viewConfig: { edit_presentation: "DRAWER" } });
-      const wideFields = (await dataviewsAdmin.listFields(wide.id)).filter((f) => f.kind === "COLUMN").sort((a, b) => a.gridY - b.gridY || a.gridX - b.gridX);
-      expect(wideFields.map((f) => ({ x: f.gridX, y: f.gridY, w: f.gridW }))).toEqual([
-        { x: 0, y: 0, w: 6 }, { x: 6, y: 0, w: 6 },
-        { x: 0, y: 1, w: 6 }, { x: 6, y: 1, w: 6 },
-        { x: 0, y: 2, w: 6 }, { x: 6, y: 2, w: 6 },
-        { x: 0, y: 3, w: 6 }, { x: 6, y: 3, w: 6 },
-        { x: 0, y: 4, w: 6 }, { x: 6, y: 4, w: 6 },
-      ]);
-      await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [wide.id]);
+      // 10 of them: a Sidebar of its default width.
+      const few = await dataviewsAdmin.create({ name: "Few Fields", sourceResourceId: wideResourceId, viewType: "TABLE", selectedColumns: ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10"] });
+      expect(few.viewConfig).toMatchObject({ edit_presentation: "SIDEBAR" });
+      expect(few.viewConfig).not.toHaveProperty("edit_size");
 
-      // A Drawer with only 8 of the 10 columns visible (at the threshold, not past it) - one-up.
-      const narrow = await dataviewsAdmin.create({
-        name: "Narrow Layout",
-        sourceResourceId: wideResourceId,
-        viewType: "TABLE",
-        viewConfig: { edit_presentation: "DRAWER" },
-        selectedColumns: ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"],
-      });
-      const narrowFields = (await dataviewsAdmin.listFields(narrow.id))
-        .filter((f) => f.kind === "COLUMN" && f.visible)
-        .sort((a, b) => a.gridY - b.gridY);
-      expect(narrowFields.every((f) => f.gridW === 12 && f.gridX === 0)).toBe(true);
-      expect(narrowFields.map((f) => f.gridY)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-      await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [narrow.id]);
+      // What the creator says stays - a Drawer, still one column.
+      const drawer = await dataviewsAdmin.create({ name: "Drawer Fields", sourceResourceId: wideResourceId, viewType: "TABLE", viewConfig: { edit_presentation: "DRAWER" } });
+      expect(drawer.viewConfig).toMatchObject({ edit_presentation: "DRAWER" });
+      expect(await oneColumn(drawer.id)).toBe(true);
+      await database.query(`DELETE FROM totalbase.dataviews WHERE id = ANY($1::uuid[])`, [[many.id, few.id, drawer.id]]);
     } finally {
       await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [wideResourceId]);
       await database.query(`DROP TABLE IF EXISTS public.${WIDE_TABLE} CASCADE`);
@@ -656,7 +677,8 @@ describe("DataViewsAdminService (integration)", () => {
       const result = await dataviewsAdmin.syncFields(dataview.id);
 
       expect(result.added).toHaveLength(1);
-      expect(result.added[0]).toMatchObject({ kind: "COLUMN", columnName: "brand_new", visible: false });
+      // New table columns unset: auto_show - shown.
+      expect(result.added[0]).toMatchObject({ kind: "COLUMN", columnName: "brand_new", visible: true });
 
       expect(result.renamed).toEqual([expect.objectContaining({ from: "old_name", to: "new_name" })]);
 
@@ -665,7 +687,7 @@ describe("DataViewsAdminService (integration)", () => {
 
       // Applied for real, not just reported - a fresh listFields() reflects it.
       const fields = await dataviewsAdmin.listFields(dataview.id);
-      expect(fields.some((f) => f.columnName === "brand_new" && !f.visible)).toBe(true);
+      expect(fields.some((f) => f.kind === "COLUMN" && f.columnName === "brand_new" && f.visible)).toBe(true);
       expect(fields.some((f) => f.columnName === "new_name")).toBe(true);
       expect(fields.some((f) => f.columnName === "old_name")).toBe(false);
       // The orphaned row is NOT deleted automatically - still there, unchanged.
@@ -792,12 +814,12 @@ describe("DataViewsAdminService (integration)", () => {
     try {
       const title = (await dataviewsAdmin.listFields(dataview.id)).find((f) => f.kind === "COLUMN" && f.columnName === "title")!;
       await expect(dataviewsAdmin.updateField(dataview.id, title.id, { label: "Título" })).rejects.toMatchObject({ code: "DATAVIEW_COLUMN_INVALID" });
-      for (const own of [{ displayFormat: "#,##0" }, { bold: true }, { conditions: [] }, { disabledConditions: ["x"] }, { display_field: "name" }, { shortLabel: "T" }]) {
+      for (const own of [{ displayFormat: "#,##0" }, { bold: true }, { conditions: [] }, { disabledConditions: ["x"] }, { display_field: "name" }, { shortLabel: "T" }, { width: 10 }, { textWrap: "clip" }, { maxLines: 20 }, { minWidth: 300, maxWidth: 200 }]) {
         await expect(dataviewsAdmin.updateField(dataview.id, title.id, { config: { ...title.config, ...own } })).rejects.toMatchObject({ code: "DATAVIEW_COLUMN_INVALID" });
       }
       // What the list does with it is its own; no title (null) is always fine.
-      const saved = await dataviewsAdmin.updateField(dataview.id, title.id, { label: null, visible: false, config: { ...title.config, truncate: true, copyable: true, total: "count" } });
-      expect(saved).toMatchObject({ label: null, visible: false, config: expect.objectContaining({ truncate: true, copyable: true, total: "count" }) });
+      const saved = await dataviewsAdmin.updateField(dataview.id, title.id, { label: null, visible: false, config: { ...title.config, textWrap: "wrap", maxLines: 3, verticalAlign: "top", width: 240, copyable: true, total: "count" } });
+      expect(saved).toMatchObject({ label: null, visible: false, config: expect.objectContaining({ textWrap: "wrap", maxLines: 3, verticalAlign: "top", width: 240, copyable: true, total: "count" }) });
     } finally {
       await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [dataview.id]);
     }
@@ -838,8 +860,8 @@ describe("DataViewsAdminService (integration)", () => {
       expect((await brand()).config).toMatchObject({ display_field: "code", display_template: "{{code}} - {{name}}", display_inherited: true });
 
       // Sent back as read (another option changed): still inherited, nothing stored.
-      await dataviewsAdmin.updateField(dataview.id, (await brand()).id, { config: { ...(await brand()).config, truncate: true } });
-      expect(await stored()).toEqual({ truncate: true });
+      await dataviewsAdmin.updateField(dataview.id, (await brand()).id, { config: { ...(await brand()).config, textWrap: "wrap" } });
+      expect(await stored()).toEqual({ textWrap: "wrap" });
 
       // Published: frozen. The table changes; the draft follows and differs, the published version doesn't.
       await dataviewsAdmin.publish(dataview.id, null);
@@ -859,7 +881,7 @@ describe("DataViewsAdminService (integration)", () => {
     }
   });
 
-  it("syncFields() respects view_config.column_sync - auto_show adds a new column visible, locked adds none at all", async () => {
+  it("syncFields() respects New table columns - auto_show (the default) adds it shown and to the form, auto_hide hidden and not to the form, locked not at all", async () => {
     const SYNC_TABLE = "dataviews_admin_pkg_test_column_sync";
     await database.query(`DROP TABLE IF EXISTS public.${SYNC_TABLE} CASCADE`);
     await database.query(`CREATE TABLE public.${SYNC_TABLE} (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), keep_me text)`);
@@ -872,19 +894,34 @@ describe("DataViewsAdminService (integration)", () => {
     const syncResourceId = resourceRows[0]!.id;
 
     try {
-      // auto_show - a newly-discovered column is added VISIBLE, not hidden.
-      const showDataview = await dataviewsAdmin.create({
-        name: "Column Sync Show",
-        sourceResourceId: syncResourceId,
-        viewType: "TABLE",
-        viewConfig: { column_sync: "auto_show" },
-      });
+      const formColumns = async (dataviewId: string) => (await dataviewsAdmin.listFields(dataviewId))
+        .filter((f) => f.kind === "WIDGET" && f.widget === "UFormField")
+        .sort((a, b) => a.gridY - b.gridY)
+        .map((f) => (f.config["props"] as { column?: string }).column);
+
+      // Unset: auto_show - shown, and a field at the end of its record form, with no click (the catalog watch).
+      const showDataview = await dataviewsAdmin.create({ name: "Column Sync Show", sourceResourceId: syncResourceId, viewType: "TABLE" });
+      expect(await formColumns(showDataview.id)).toEqual(["id", "keep_me"]);
       await database.query(`ALTER TABLE public.${SYNC_TABLE} ADD COLUMN newly_added text`);
-      const showResult = await dataviewsAdmin.syncFields(showDataview.id);
-      expect(showResult.added).toHaveLength(1);
-      expect(showResult.added[0]).toMatchObject({ columnName: "newly_added", visible: true });
+      expect(await dataviewsAdmin.syncNewColumns()).toContain(showDataview.id);
+      const shown = (await dataviewsAdmin.listFields(showDataview.id)).find((f) => f.kind === "COLUMN" && f.columnName === "newly_added");
+      expect(shown).toMatchObject({ visible: true });
+      expect(await formColumns(showDataview.id)).toEqual(["id", "keep_me", "newly_added"]);
+      // Seen now: the next pass leaves it alone, and a Sync columns adds nothing twice.
+      expect(await dataviewsAdmin.syncNewColumns()).not.toContain(showDataview.id);
+      expect((await dataviewsAdmin.syncFields(showDataview.id)).added).toEqual([]);
+      expect(await formColumns(showDataview.id)).toEqual(["id", "keep_me", "newly_added"]);
       await database.query(`ALTER TABLE public.${SYNC_TABLE} DROP COLUMN newly_added`);
       await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [showDataview.id]);
+
+      // auto_hide - in the list hidden, not in the form.
+      const hideDataview = await dataviewsAdmin.create({ name: "Column Sync Hide", sourceResourceId: syncResourceId, viewType: "TABLE", viewConfig: { column_sync: "auto_hide" } });
+      await database.query(`ALTER TABLE public.${SYNC_TABLE} ADD COLUMN quietly_added text`);
+      const hideResult = await dataviewsAdmin.syncFields(hideDataview.id);
+      expect(hideResult.added[0]).toMatchObject({ columnName: "quietly_added", visible: false });
+      expect(await formColumns(hideDataview.id)).not.toContain("quietly_added");
+      await database.query(`ALTER TABLE public.${SYNC_TABLE} DROP COLUMN quietly_added`);
+      await database.query(`DELETE FROM totalbase.dataviews WHERE id = $1`, [hideDataview.id]);
 
       // locked - the column set is frozen; a real new column gets NO
       // field row at all, not even hidden.
@@ -895,6 +932,7 @@ describe("DataViewsAdminService (integration)", () => {
         viewConfig: { column_sync: "locked" },
       });
       await database.query(`ALTER TABLE public.${SYNC_TABLE} ADD COLUMN never_synced text`);
+      expect(await dataviewsAdmin.syncNewColumns()).not.toContain(lockedDataview.id);
       const lockedResult = await dataviewsAdmin.syncFields(lockedDataview.id);
       expect(lockedResult.added).toEqual([]);
       const lockedFields = await dataviewsAdmin.listFields(lockedDataview.id);
@@ -1043,7 +1081,7 @@ describe("DataViewsAdminService (integration)", () => {
       expect(bioField?.config).toMatchObject({ editorContentType: "markdown" });
       // A column with no resources_columns row (never touched by Push)
       // still falls back to live inference exactly as before.
-      expect(fields.find((f) => f.columnName === "extra")?.widget).toBe("UInput");
+      expect(fields.find((f) => f.columnName === "extra")?.widget).toBe("UTextarea");
 
       // An explicit override to a DIFFERENT widget (the wizard's Columns
       // step) wins, and doesn't inherit the stored widget's own config -

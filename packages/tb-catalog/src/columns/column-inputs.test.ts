@@ -32,8 +32,27 @@ describe("COLUMN_INPUTS (§16)", () => {
 });
 
 describe("columnFormInput() - the rule (§15.2)", () => {
+  it("steps a smallint with − and +, whatever its range", () => {
+    expect(columnFormInput(facts("smallint"))).toEqual({ input: "number-stepper", widget: "UInputNumber", props: {}, reason: "small-integer" });
+    expect(columnFormInput(facts("bigint")).input).toBe("number-field");
+  });
+
+  it("writes a text on several lines and a varchar on one - by its type, never its name", () => {
+    expect(columnFormInput(facts("text"))).toMatchObject({ input: "long-text", widget: "UTextarea", reason: "default" });
+    expect(columnFormInput({ ...facts("text"), name: "nombre" }).input).toBe("long-text");
+    expect(columnFormInput(facts("uuid"))).toMatchObject({ input: "uuid", widget: "TUuidInput", reason: "default" });
+    // A ULID by its CHECK (PostgreSQL has no ulid type) - what Add Column writes.
+    expect(columnFormInput(facts("character(26)", ["CHECK ((n ~ '^[0-9A-HJKMNP-TV-Z]{26}$'::text))"]))).toMatchObject({ input: "ulid", widget: "TUlidInput", reason: "pattern" });
+    expect(buildColumnCreationBody("ulid", "code", {})).toEqual({ dataType: "char(26)", check: "code ~ '^[0-9A-HJKMNP-TV-Z]{26}$'" });
+    for (const type of ["character varying", "character varying(80)", "character varying(2000)", "character(3)", "inet"]) {
+      expect(columnFormInput(facts(type)), type).toMatchObject({ input: "text", widget: "UInput" });
+    }
+    // A chosen input still wins.
+    expect(columnFormInput({ ...facts("text"), input: "text" }).input).toBe("text");
+  });
+
   it("edits a number with a number field - but a whole number in a small CHECK range steps with − and +", () => {
-    expect(columnFormInput(facts("numeric(12,2)"))).toEqual({ input: "number-field", widget: "UInput", props: { type: "number" }, reason: "number" });
+    expect(columnFormInput(facts("numeric(12,2)"))).toEqual({ input: "number-field", widget: "UInput", props: { type: "text" }, reason: "number" });
     expect(columnFormInput(facts("double precision")).input).toBe("number-field");
     expect(columnFormInput(facts("integer")).input).toBe("number-field");
     expect(columnFormInput(facts("integer", ["CHECK (((n >= 1) AND (n <= 12)))"]))).toEqual({ input: "number-stepper", widget: "UInputNumber", props: {}, reason: "small-range" });
@@ -54,7 +73,7 @@ describe("columnFormInput() - the rule (§15.2)", () => {
     expect(columnFormInput(facts("text", ["CHECK ((n = ANY (ARRAY['A'::text, 'B'::text])))"]))).toMatchObject({ input: "choice", reason: "check-list" });
     expect(columnFormInput(facts("integer", ["CHECK ((n = ANY (ARRAY[1, 2, 3])))"])).input).toBe("choice");
     expect(columnFormInput(facts("text[]", ["CHECK ((n <@ ARRAY['a'::text, 'b'::text]))"])).input).toBe("choice-multiple");
-    expect(columnFormInput(facts("text"))).toEqual({ input: "text", widget: "UInput", props: {}, reason: "default" });
+    expect(columnFormInput(facts("text"))).toEqual({ input: "long-text", widget: "UTextarea", props: {}, reason: "default" });
     expect(columnFormInput(facts("text", [], { linkType: "tel" }))).toMatchObject({ input: "phone", props: { type: "tel" }, reason: "link-type" });
     expect(columnFormInput(facts("text", ["CHECK ((n ~* '^[^@]+@[^@]+\\.[^@]+$'::text))"]))).toMatchObject({ input: "email", props: { type: "email" }, reason: "pattern" });
     expect(columnFormInput(facts("text", ["CHECK ((n ~* '^https?://'::text))"])).input).toBe("url");
@@ -67,8 +86,8 @@ describe("columnFormInput() - the rule (§15.2)", () => {
     expect(columnFormInput(facts("integer", [], { input: "slider" }))).toMatchObject({ input: "slider", widget: "USlider", reason: "chosen" });
     expect(columnFormInput(facts("text", [], { input: "markdown" }))).toMatchObject({ input: "markdown", props: { contentType: "markdown" } });
     // A choice entry without a CHECK list, an unknown key: the rule's.
-    expect(columnFormInput(facts("text", [], { input: "choice" })).input).toBe("text");
-    expect(columnFormInput(facts("text", [], { input: "nope" })).input).toBe("text");
+    expect(columnFormInput(facts("text", [], { input: "choice" })).input).toBe("long-text");
+    expect(columnFormInput(facts("text", [], { input: "nope" })).input).toBe("long-text");
   });
 
   it("offers every entry that edits the column", () => {

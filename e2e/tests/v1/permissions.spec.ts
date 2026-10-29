@@ -118,7 +118,7 @@ test('in it: only active customers, no credit limit, edit but no New nor Delete'
     const form = page.getByRole('dialog')
     // The denied field isn't on the form either; the others open once the row is read.
     await expect(form.getByRole('textbox', { name: 'Email' })).toHaveValue('info@beta.test')
-    await expect(form.getByRole('spinbutton', { name: 'Limite Credito' })).toHaveCount(0)
+    await expect(form.getByRole('textbox', { name: 'Limite Credito' })).toHaveCount(0)
     await form.getByRole('textbox', { name: 'Email' }).fill('ventas@beta.test')
     await form.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(form).toBeHidden()

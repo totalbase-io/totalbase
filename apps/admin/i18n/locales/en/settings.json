@@ -478,6 +478,10 @@
         "realtime": {
           "label": "Realtime",
           "description": "Realtime subscriptions: clients follow the changes of the tables exposing Realtime over one WebSocket, /api/realtime, receiving only what their READ permission allows."
+        },
+        "graphql": {
+          "label": "GraphQL",
+          "description": "The GraphQL API: the Data API's tables at /api/graphql, each caller seeing only what their roles allow."
         }
       },
       "sections": {
@@ -843,6 +847,13 @@
         "system__language": {
           "label": "Default language",
           "description": "The language of the interface for users who didn't choose one in My account, and of pages with no signed-in user - sign-in, password reset, embedded dashboards. Data and PostgreSQL's messages are never translated."
+        },
+        "system__regional_format": {
+          "label": "Regional format",
+          "description": "How numbers and dates read for everyone - separators, grouping, the order of day and month - wherever no pattern says otherwise: a field's own Format and the date formats below still win. The region, not the language: the interface in English can read 1.234,56. Browser = each viewer's regional settings.",
+          "options": {
+            "empty": "Browser"
+          }
         },
         "smtp__host": {
           "label": "SMTP host",
@@ -1456,6 +1467,22 @@
         "realtime__heartbeat_seconds": {
           "label": "Heartbeat",
           "description": "How often the server pings each connection; one that doesn't answer before the next ping is closed."
+        },
+        "graphql__enabled": {
+          "label": "Enable GraphQL",
+          "description": "Serves POST /api/graphql with a Data API token. Every field runs through the same permissions, limits and audit as the REST call it stands for. Off = 404."
+        },
+        "graphql__default_schema": {
+          "label": "Default schema",
+          "description": "The schema whose tables, views and functions are named without a prefix: products, not public__products. Every other schema's keep theirs (sales__orders). Changing it renames them for every client."
+        },
+        "graphql__max_calls": {
+          "label": "Data API calls per request",
+          "description": "The most Data API calls one request makes: each root field is one, and so is each one-to-many field, however many rows it is under."
+        },
+        "graphql__max_depth": {
+          "label": "Selection depth",
+          "description": "How deep a request's selection may nest, introspection included. How far relations go is api.max_relation_depth."
         }
       }
     },

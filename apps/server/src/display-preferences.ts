@@ -1,17 +1,18 @@
 import { isTimezoneLocked, resolveDisplayPreferences, type DisplayPreferences, type InstanceDisplayDefaults } from "@totalbase/auth";
 import type { AppContext } from "./context.js";
 
-/** Settings > General > Date & time - the instance-wide display defaults. */
+/** Settings > General > Language and Date & time - the instance-wide display defaults. */
 export async function instanceDisplayDefaults(context: AppContext): Promise<InstanceDisplayDefaults> {
-  const [timezone, dateFormat, timeFormat, datetimeFormat, userTimezone, language] = await Promise.all([
+  const [timezone, dateFormat, timeFormat, datetimeFormat, userTimezone, language, regionalFormat] = await Promise.all([
     context.settings.get("system.timezone"),
     context.settings.get("system.date_format"),
     context.settings.get("system.time_format"),
     context.settings.get("system.datetime_format"),
     context.settings.get("system.timezone_user_choice"),
     context.settings.get("system.language"),
+    context.settings.get("system.regional_format"),
   ]);
-  return { timezone, dateFormat, timeFormat, datetimeFormat, userTimezone, language };
+  return { timezone, dateFormat, timeFormat, datetimeFormat, userTimezone, language, regionalFormat };
 }
 
 /**

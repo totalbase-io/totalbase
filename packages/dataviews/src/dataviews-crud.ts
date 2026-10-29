@@ -3,7 +3,7 @@ import { remapUniqueViolation, TotalBaseError } from "@totalbase/errors";
 import { getRelationDetail } from "@totalbase/pg-catalog";
 import { validateRoleColor } from "@totalbase/permissions";
 import { slugify, validateDescription, validateMenuLabel, validateName, validateSlug } from "@totalbase/shared";
-import { isColumnWidgetName, LIST_VIEW_TYPES } from "@totalbase/tb-catalog";
+import { defaultEditPresentation, isColumnWidgetName, LIST_VIEW_TYPES } from "@totalbase/tb-catalog";
 import { parseFilter } from "@totalbase/query-engine";
 import { getColumnInputs } from "@totalbase/resources";
 import { generateRecordPage } from "./record-page.js";
@@ -16,6 +16,7 @@ import { assertVariablesInDatabase, VARIABLE_FILTER_LIMITS } from "./dataviews-w
 import { createMasterDetail } from "./dataviews-master-detail.js";
 import { fillLaneColumns, fillTreeLayout, insertColumnFields, insertGeneratedPage, recordPageColumns } from "./dataviews-generated-page.js";
 import { insertSnapshotFields, versionSnapshot } from "./dataviews-versions.js";
+import { isHiddenByDefaultDataType } from "./display-format.js";
 
 /** The types whose main view is a grid of rows (table, cards, board, calendar, map, timeline) - each opens a record form. */
 export const GRID_VIEW_TYPES: readonly DataViewType[] = ["TABLE", "CARDS", "KANBAN", "CALENDAR", "MAP", "GANTT", "TREE"];
@@ -101,16 +102,19 @@ export async function createDataView(ctx: DataViewsContext, input: CreateDataVie
 
   // Over a table, its record form is a generated page (DataViews.md §6.1):
   // a FORM's is the page itself; a grid type's opens from its grid.
-  const recordPage = source.type === "TABLE" && (input.viewType === "FORM" || GRID_VIEW_TYPES.includes(input.viewType))
-    ? generateRecordPage({
-        type: input.viewType === "FORM" ? "FORM" : "GRID",
-        columns: await recordPageColumns(ctx, detail, inputs, {
-          include: (column) => (selectedColumns ? selectedColumns.has(column) : true),
-          widget: (column) => fieldOverrides[column]?.widget,
+  const formColumns = await recordPageColumns(ctx, detail, inputs, {
+    include: (column) => (selectedColumns ? selectedColumns.has(column) : true),
+    widget: (column) => fieldOverrides[column]?.widget,
     help: (column) => fieldOverrides[column]?.help,
-        }),
-      })
+  });
+  const recordPage = source.type === "TABLE" && (input.viewType === "FORM" || GRID_VIEW_TYPES.includes(input.viewType))
+    ? generateRecordPage({ type: input.viewType === "FORM" ? "FORM" : "GRID", columns: formColumns })
     : null;
+
+  // How its record form opens, when not said (DataViews.md §6.3): by how many fields it has.
+  if (GRID_VIEW_TYPES.includes(input.viewType) && viewConfig.edit_presentation === undefined) {
+    viewConfig.edit_presentation = defaultEditPresentation(formColumns.length);
+  }
 
   const createdId = await ctx.database.transaction(async (client) => {
     let dataviewId: string;
@@ -126,14 +130,12 @@ export async function createDataView(ctx: DataViewsContext, input: CreateDataVie
       remapDataViewUniqueViolation(error);
     }
 
-    // A grid's record form in a Sidebar or a Modal (the default, DataViews.md §6.3) is narrow: its
-    // fields in one column, however many. A Drawer, a Page or a FORM's own page lay out by field count.
-    const presentation = viewConfig.edit_presentation ?? "SIDEBAR";
-    const narrowOverlay = GRID_VIEW_TYPES.includes(input.viewType) && (presentation === "SIDEBAR" || presentation === "MODAL");
     await insertColumnFields(ctx, client, dataviewId, detail, inputs, {
-      presence: (column) => (!selectedColumns || selectedColumns.has(column.name) ? "shown" : detail.primaryKey.includes(column.name) ? "hidden" : null),
+      // No columns picked: a list's json/jsonb/bytea columns are read but hidden (§3.2).
+      presence: (column) => (selectedColumns
+        ? selectedColumns.has(column.name) ? "shown" : detail.primaryKey.includes(column.name) ? "hidden" : null
+        : GRID_VIEW_TYPES.includes(input.viewType) && isHiddenByDefaultDataType(column.dataType) ? "hidden" : "shown"),
       fieldOverrides,
-      ...(narrowOverlay && { columnsPerRow: 1 }),
     });
     if (recordPage) await insertGeneratedPage(ctx, client, dataviewId, recordPage);
     return dataviewId;

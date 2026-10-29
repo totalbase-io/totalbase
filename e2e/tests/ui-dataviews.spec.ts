@@ -305,17 +305,23 @@ test('settings: columns added, synced, removed; a column\'s panel, hidden, order
   await page.goto(`/dataviews/${id}/settings?section=data`)
   const fieldOf = async (column: string) => (await getFields(page, token, id)).find(f => f.columnName === column)
 
-  // Add columns…: telefono, shown at the end.
+  // New table columns - Add them shown, the wizard's default: both come in by themselves, shown (DataViews.md §4.2).
+  await poll(async () => (await fieldOf('telefono'))?.visible).toBe(true)
+  await poll(async () => (await fieldOf('notas'))?.visible).toBe(true)
+  await expect(columnRow(main, 'telefono')).toBeVisible()
+
+  // Removed, it stays out - Sync columns never brings it back - until Add columns… does.
+  await columnRow(main, 'telefono').getByRole('button', { name: 'Settings of telefono' }).click()
+  await page.getByRole('dialog', { name: 'Telefono' }).getByRole('button', { name: 'Remove from the DataView' }).click()
+  await expect(columnRow(main, 'telefono')).toHaveCount(0)
+  await main.getByRole('button', { name: 'Sync columns' }).click()
+  await expect(page.getByText('Already in sync').first()).toBeVisible()
+  expect(await fieldOf('telefono')).toBeUndefined()
   await main.getByRole('button', { name: 'Add columns…' }).click()
   await page.getByRole('dialog').getByRole('checkbox', { name: 'telefono' }).check()
   await page.getByRole('dialog').getByRole('button', { name: 'Add 1', exact: true }).click()
   await expect(columnRow(main, 'telefono')).toBeVisible()
   expect((await fieldOf('telefono'))?.visible).toBe(true)
-
-  // Sync columns: notas, the table's other new column, comes in too.
-  await main.getByRole('button', { name: 'Sync columns' }).click()
-  await expect(page.getByText('Columns synced').first()).toBeVisible()
-  await poll(async () => (await fieldOf('notas'))?.columnName).toBe('notas')
 
   // A column's panel, a sidebar over the page: its list's Properties; its title, format and look From the column, read only.
   const panel = page.getByRole('dialog', { name: 'Ciudad' })
@@ -766,9 +772,9 @@ test('grid prefs: a column moved and a sort chosen come back after a reload', as
   await poll(async () => (await headers()).indexOf('Email')).toBe(before.indexOf('Email') + 1)
   const moved = await headers()
 
-  // Sorted by Email, descending: Gamma's address first.
-  await main.getByRole('button', { name: 'Email', exact: true }).click()
-  await main.getByRole('button', { name: 'Email', exact: true }).click()
+  // Sorted by Email, descending, from its header's menu (DataViews.md §5.2): Gamma's address first.
+  await main.getByRole('button', { name: 'Email: sort, filter, hide, align' }).click()
+  await page.getByRole('menuitemcheckbox', { name: 'Sort descending' }).click()
   await expect(gridRows(page).first()).toContainText('gamma@ui-dv.test')
   const prefs = async () => (await api<{ config: { sort?: string, columnPrefs?: Record<string, { order: number }> } } | null>(page, token, 'GET', `/app/api/dataviews/${dv.id}/user-prefs`))?.config
   await poll(async () => (await prefs())?.sort).toBe('-email')

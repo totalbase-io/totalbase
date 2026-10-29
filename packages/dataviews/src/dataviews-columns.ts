@@ -7,6 +7,7 @@ import { toAdminDataViewField, type AdminDataViewField, type DataViewFieldRow, t
 import { getDataView } from "./dataviews-read.js";
 import { livePresentation } from "./dataviews-presentation.js";
 import { getField, withLiveColumnFacts } from "./dataviews-fields.js";
+import { appendFormFields } from "./dataviews-generated-page.js";
 
 /**
  * Reconciles a DataView's own `COLUMN` rows against the source
@@ -120,10 +121,16 @@ export async function syncFields(ctx: DataViewsContext, dataviewId: string): Pro
         `INSERT INTO totalbase.dataviews_fields
            (dataview, kind, column_attnum, column_name, widget, visible, config, grid_x, grid_y, grid_w, grid_h)
          VALUES ($1, 'COLUMN', $2, $3, $4, $5, $6, 0, (SELECT coalesce(max(grid_y), -1) + 1 FROM totalbase.dataviews_fields WHERE dataview = $1 AND kind IN ('COLUMN', 'RELATED')), 12, 1)
+         -- The catalog watch and a Sync columns at once: PostgreSQL keeps one (UNIQUE (dataview, column_attnum)).
+         ON CONFLICT DO NOTHING
          RETURNING *`,
         [dataviewId, column.attnum, column.name, widget, columnSync === "auto_show", JSON.stringify(config)],
       );
-      added.push(toAdminDataViewField(rows[0]!));
+      if (rows[0]) added.push(toAdminDataViewField(rows[0]));
+    }
+    // Shown, it is in the record form too - after its last field (§4.2).
+    if (columnSync === "auto_show" && added.length > 0) {
+      await appendFormFields(ctx, dataviewId, detail, inputs, added.map((field) => field.columnName!));
     }
     await ctx.database.query(
       `UPDATE totalbase.dataviews SET view_config = coalesce(view_config, '{}'::jsonb) || jsonb_build_object('last_attnum', $2::int) WHERE id = $1`,
@@ -304,4 +311,29 @@ export function columnWidget(
 /** A stored widget's config without the column's presentation - a field inherits that live. */
 export function withoutPresentation(config: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(config).filter(([key]) => !(COLUMN_PRESENTATION_KEYS as readonly string[]).includes(key)));
+}
+
+/**
+ * What the catalog watch runs once the schema changed (DataViews.md §4.2): Sync columns on every DataView whose
+ * source has a column it hasn't seen - an attnum past its `last_attnum` - unless its new table columns aren't added
+ * (`locked`). A DataView that fails is skipped, never the rest. Returns the DataViews it synced.
+ */
+export async function syncNewColumns(ctx: DataViewsContext): Promise<string[]> {
+  const { rows } = await ctx.database.query<{ id: string }>(
+    `SELECT d.id FROM totalbase.dataviews d
+     JOIN totalbase.resources r ON r.id = d.source_resource AND r.status = 'ACTIVE' AND r.type IN ('TABLE', 'VIEW')
+     WHERE coalesce(d.view_config->>'column_sync', 'auto_show') <> 'locked'
+       AND (SELECT max(a.attnum) FROM pg_attribute a WHERE a.attrelid = r.postgres_oid::oid AND a.attnum > 0 AND NOT a.attisdropped)
+           > coalesce((d.view_config->>'last_attnum')::int, 0)`,
+  );
+  const synced: string[] = [];
+  for (const { id } of rows) {
+    try {
+      await syncFields(ctx, id);
+      synced.push(id);
+    } catch {
+      // One DataView's trouble (its source gone mid-way) is its own: the next pass tries again.
+    }
+  }
+  return synced;
 }

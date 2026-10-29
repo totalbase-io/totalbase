@@ -1,7 +1,7 @@
 import type { FunctionDetail } from "@totalbase/pg-catalog";
 import type { JsonSchema, PathItem } from "./openapi-types.js";
 import { errorResponses, idempotencyKeyHeader, operationId, PREFER_RESPOND_ASYNC_HEADER, QUEUED_EXECUTION_RESPONSE, WRITE_ERROR_STATUSES } from "./common-components.js";
-import { postgresTypeToSchema } from "./postgres-type-schema.js";
+import { postgresTypeToSchema, withNull } from "./postgres-type-schema.js";
 
 /** An administrator's classification of a FUNCTION resource (Data_API.md §7). */
 export type FunctionClass = "UNCLASSIFIED" | "QUERY" | "ACTION";
@@ -47,12 +47,21 @@ export function buildFunctionSpec(input: FunctionSpecInput): FunctionSpecOutput 
 
   const argsSchema: JsonSchema = { type: "object", properties, ...(required.length > 0 ? { required } : {}) };
 
-  // Result column/scalar types aren't introspected (V1 scope, see
-  // @totalbase/pg-catalog's function-detail.ts) - the response shape is
-  // therefore intentionally left open rather than guessed.
+  // The result as PostgreSQL declares it (@totalbase/pg-catalog's function-detail.ts): a row's columns, a
+  // scalar's type - nullable, a function's result carries no NOT NULL. What it doesn't declare (SETOF
+  // record, void, a pseudo-type) is left open rather than guessed.
+  const { resultColumns, resultType } = input.detail;
+  const row: JsonSchema = resultColumns
+    ? {
+        type: "object",
+        properties: Object.fromEntries(resultColumns.map((column) => [column.name, withNull(postgresTypeToSchema(column.dataType, input.includeExamples))])),
+      }
+    : { type: "object", additionalProperties: true };
   const resultSchema: JsonSchema = input.detail.returnsRows
-    ? { type: "array", items: { type: "object", additionalProperties: true } }
-    : {};
+    ? { type: "array", items: row }
+    : resultType !== null
+      ? withNull(postgresTypeToSchema(resultType, input.includeExamples))
+      : {};
 
   return {
     path: `/api/${input.schema}/function/${input.name}`,

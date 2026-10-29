@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tooltipText } from '~/utils/tooltip-text'
 import { cardMarkAttrs, type CardMark } from '~/utils/column-conditions'
 /**
  * One card in the `CARDS` layout's grid (DataViewGrid.vue's own `isCards`
@@ -148,9 +149,10 @@ const descriptionHtml = computed(() => richHtml.value.card?.description)
       the record form's frame (DataViewRecordPanel.vue) already use) reveals the full value on hover
       regardless of whether it actually overflows, so a long title is
       never silently unreadable. -->
+      <!-- `w-full`, never `block`: passed on to the text, it would undo its line clamp (display: -webkit-box). -->
       <UTooltip
-        :text="title"
-        class="block w-full"
+        :text="tooltipText(title)"
+        class="w-full"
       >
         <!-- `titleHtml` (a safe, pre-sanitized `v-html` from
         renderRichTextHtml - this file's own top doc comment) only when
@@ -174,8 +176,8 @@ const descriptionHtml = computed(() => richHtml.value.card?.description)
       </UTooltip>
       <UTooltip
         v-if="description"
-        :text="description"
-        class="block w-full"
+        :text="tooltipText(description)"
+        class="w-full"
       >
         <!-- `whitespace-pre-line` - a formula's own literal `\n` (a plain
         typed newline, OR a FORMAT formula's `NEW_LINE()` flattened down
@@ -186,14 +188,14 @@ const descriptionHtml = computed(() => richHtml.value.card?.description)
         <!-- eslint-disable vue/no-v-html -- built by renderRichTextHtml: text escaped, fixed tags, http(s)/mailto/tel links only -->
         <p
           v-if="descriptionHtml"
-          :class="density === 'compact' ? 'truncate' : 'line-clamp-2 whitespace-pre-line'"
+          :class="density === 'compact' ? 'truncate' : 'line-clamp-3 whitespace-pre-line'"
           class="text-xs text-muted"
           v-html="descriptionHtml"
         />
         <!-- eslint-enable vue/no-v-html -->
         <p
           v-else
-          :class="density === 'compact' ? 'truncate' : 'line-clamp-2 whitespace-pre-line'"
+          :class="density === 'compact' ? 'truncate' : 'line-clamp-3 whitespace-pre-line'"
           class="text-xs text-muted"
         >
           {{ description }}

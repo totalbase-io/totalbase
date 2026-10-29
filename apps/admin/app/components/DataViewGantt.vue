@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tooltipText } from '~/utils/tooltip-text'
 /**
  * The `GANTT` layout's own render (DataViewGanttView.vue's own `isGantt`
  * branch) - same "dumb, receives lanes/bars already resolved" split
@@ -382,8 +383,8 @@ function barInvalidClass(color: string): string {
               :class="isMobile ? 'px-2 text-xs' : 'truncate px-3 text-sm'"
             >
               <UTooltip
-                :text="bar.title"
-                class="block w-full"
+                :text="tooltipText(bar.title)"
+                class="w-full"
                 :class="isMobile ? 'line-clamp-2 break-words' : 'truncate'"
               >
                 <!-- eslint-disable vue/no-v-html -- built by renderRichTextHtml: text escaped, fixed tags, http(s)/mailto/tel links only -->

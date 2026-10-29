@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { isAbsolute } from "node:path";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { HEX_COLOR, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
+import { HEX_COLOR, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
 import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistry } from "./registry.js";
 import {
   SYSTEM_EMAIL_SLOTS,
@@ -93,6 +93,7 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
     return null;
   },
   "system.language": (value) => (isUiLanguage(value) ? null : `Expected one of ${UI_LANGUAGES.map((l) => l.code).join(", ")}.`),
+  "system.regional_format": (value) => (value === "" || isRegionalFormat(value) ? null : `Expected empty or one of ${REGIONAL_FORMATS.join(", ")}.`),
   "app.menu_groups_open": (value) => (value === "CURRENT" || value === "OPEN" || value === "CLOSED" ? null : 'Expected "CURRENT", "OPEN" or "CLOSED".'),
   "app.menu_search": (value) => (value === "AUTO" || value === "ALWAYS" || value === "NEVER" ? null : 'Expected "AUTO", "ALWAYS" or "NEVER".'),
   "auth.mfa_required": (value) => (value === "NONE" || value === "ADMINISTRATORS" || value === "EVERYONE" ? null : 'Expected "NONE", "ADMINISTRATORS" or "EVERYONE".'),

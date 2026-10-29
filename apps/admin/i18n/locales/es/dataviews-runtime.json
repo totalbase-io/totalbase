@@ -240,16 +240,16 @@
       },
       "columnSync": {
         "auto_show": {
-          "label": "Mostrar columnas nuevas automáticamente",
-          "description": "Una columna que se agregue después a la tabla se suma a esta vista automáticamente, visible de inmediato."
+          "label": "Agregarlas visibles",
+          "description": "En la grilla y al final del formulario (predeterminado)."
         },
         "auto_hide": {
-          "label": "Ocultar columnas nuevas automáticamente",
-          "description": "Una columna que se agregue después a la tabla se suma a esta vista oculta - se lee, pero no se muestra, hasta que alguien la muestre (predeterminado)."
+          "label": "Agregarlas ocultas",
+          "description": "En la grilla, ocultas - se leen pero no se muestran hasta que alguien las muestre; no van al formulario."
         },
         "locked": {
-          "label": "Limitar a las columnas seleccionadas",
-          "description": "Una columna que se agregue después a la tabla queda fuera de esta vista - Agregar columnas… aún puede incluirla."
+          "label": "No agregarlas",
+          "description": "El DataView queda con sus columnas actuales - Agregar columnas… aún puede incluir una."
         }
       },
       "densities": {
@@ -598,6 +598,23 @@
       "noTasks": "No hay tareas en este rango."
     },
     "grid": {
+      "columnMenu": "{name}: ordenar, filtrar, ocultar, alinear",
+      "sortAscending": "Orden ascendente",
+      "sortDescending": "Orden descendente",
+      "clearSort": "Quitar orden",
+      "align": {
+        "left": "Alinear a la izquierda",
+        "center": "Centrar",
+        "right": "Alinear a la derecha"
+      },
+      "hideColumn": "Ocultar columna",
+      "oneLine": "Una línea",
+      "severalLines": "Varias líneas",
+      "filterByColumn": "Filtrar por esta columna…",
+      "resetWidth": "Restablecer ancho",
+      "editColumn": "Editar columna…",
+      "jsonKeys": "{'{'}…{'}'} {n} clave | {'{'}…{'}'} {n} claves",
+      "jsonItems": "[…] {n} elemento | […] {n} elementos",
       "notAvailable": "DataView no disponible",
       "notAvailableHelp": "No existe, no está publicado o no tienes acceso a él.",
       "addItem": "Agregar ítem",
@@ -699,6 +716,9 @@
       "offlineTitle": "Sin conexión",
       "offlineDescription": "Esta pantalla vuelve a funcionar en cuanto vuelva la conexión.",
       "unreachableTitle": "No se puede contactar al servidor"
+    },
+    "widgetUuid": {
+      "generate": "Generar uno nuevo"
     },
     "widgetJson": {
       "addItem": "Agregar elemento",
@@ -837,6 +857,11 @@
     "widgetInputDate": {
       "openCalendar": "Abrir el calendario",
       "time": "Hora"
+    },
+    "widgetInputTime": {
+      "openPicker": "Elegir la hora",
+      "hours": "Horas",
+      "minutes": "Minutos"
     },
     "widgetColorSelect": {
       "custom": "Personalizado",

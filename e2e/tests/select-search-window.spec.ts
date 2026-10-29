@@ -56,7 +56,8 @@ test('a select menu\'s search window finds a row by another column and picks it'
     await page.goto(`/app/dataviews/${dataview.slug}`)
     await expect(page.getByText('No rows found')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: 'New' }).first().click()
-    await expect(page.getByLabel('Title')).toBeVisible({ timeout: 20_000 })
+    // Exact: the grid's Title header names a menu too ("Title: sort, filter, hide, align").
+    await expect(page.getByLabel('Title', { exact: true })).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: 'Search Category' }).click()
 
     // A sidebar with the Resource's fields as columns - the uuid key left out - searched on the server.

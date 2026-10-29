@@ -66,6 +66,18 @@ describe("FilesAdminService (integration)", () => {
     expect(text.height).toBeNull();
   });
 
+  it("hands every stored content to its afterStore hook - an upload and a replaced content (the server warms its thumbnail)", async () => {
+    const stored: string[] = [];
+    const hooked = new FilesAdminService(database, new SettingsService(database), FilesStorage.fixed(new FilesLocalStorageProvider(basePath)), (file, content) => {
+      stored.push(`${file.name}:${content.length}`);
+    });
+    const png = await pngBuffer(30, 30);
+    const file = await hooked.upload({ content: png, filename: "pkg-test-hook.png" });
+    const replaced = await pngBuffer(40, 40);
+    await hooked.updateContent(file.id, replaced);
+    expect(stored).toEqual([`pkg-test-hook.png:${png.length}`, `pkg-test-hook.png:${replaced.length}`]);
+  });
+
   it("refreshes width/height when content is replaced via updateContent", async () => {
     const initial = await service.upload({ content: await pngBuffer(100, 50), filename: "pkg-test-replace.png" });
     expect(initial.width).toBe(100);

@@ -5,7 +5,8 @@ import { apiRequest, login, publishDataView } from './helpers.js'
  * Covers the 5 follow-up display niceties added after the display-
  * format feature itself (see the chat): Excel-style negative/zero
  * number sections, ISO-currency numbers, a per-field empty-value text,
- * custom boolean labels, and truncate+tooltip for long text - all
+ * custom boolean labels, and a long text cut to its column (one line,
+ * or several when the column says wrap) with its whole value on hover - all
  * grid-only (build-dataview-columns.ts), none of them touch the FORM's
  * live widget.
  */
@@ -20,7 +21,7 @@ test.afterEach(async ({ page }) => {
   created = undefined
 })
 
-test('accounting negative/zero, currency, emptyText, booleanLabels, and truncate all render correctly in the grid', async ({ page }) => {
+test('accounting negative/zero, currency, emptyText, booleanLabels, and a long text cut to its column all render correctly in the grid', async ({ page }) => {
   const token = await login(page)
 
   const existingDataviews = await apiRequest<{ id: string, name: string }[]>(page, token, 'GET', '/admin/api/dataviews')
@@ -75,8 +76,9 @@ test('accounting negative/zero, currency, emptyText, booleanLabels, and truncate
       }
     }
   })
+  // Its cell's format (DataViews.md §4.3): several lines, at most 2.
   await apiRequest(page, token, 'PATCH', `/admin/api/dataviews/${dataview.id}/fields/${byName('notes').id}`, {
-    data: { config: { truncate: true } }
+    data: { config: { textWrap: 'wrap', maxLines: 2 } }
   })
 
   await publishDataView(page, token, dataview.id)
@@ -96,15 +98,13 @@ test('accounting negative/zero, currency, emptyText, booleanLabels, and truncate
   await expect(page.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Inactive', exact: true })).toBeVisible()
 
-  // Truncated long text: the cell's own text content still carries the
-  // full value (CSS `truncate` only clips it VISUALLY - accessible name
-  // and a hover tooltip both still expose the whole string, never
-  // silently dropping data), but it must render through a `<span
-  // class="truncate">` wrapper, not the plain untouched text a
-  // non-truncated cell gets.
+  // A long text is cut to its column - every cell is bounded (320 px unset), the whole value kept in its text and
+  // on hover (its box's title): never silently dropped. `notes` wraps on at most 2 lines; any other cell is one line.
   const notesCell = page.getByRole('cell', { name: /This is a deliberately long note/ })
-  await expect(notesCell.locator('span.truncate')).toHaveCount(1)
-  // The short row's own `notes` cell also went through `truncate:
-  // true`, but never actually clips visually - same wrapper regardless.
-  await expect(page.getByRole('cell', { name: 'short', exact: true }).locator('span.truncate')).toHaveCount(1)
+  const notesBox = notesCell.locator('div[title]').first()
+  await expect(notesBox).toHaveAttribute('title', /showing the full text on hover\.$/)
+  await expect(notesBox).toHaveClass(/whitespace-normal/)
+  expect(await notesBox.evaluate(el => (el as HTMLElement).style.webkitLineClamp)).toBe('2')
+  expect((await notesBox.boundingBox())!.width).toBeLessThanOrEqual(320)
+  await expect(page.getByRole('cell', { name: 'Unassigned' }).locator('div.truncate')).toHaveCount(1)
 })

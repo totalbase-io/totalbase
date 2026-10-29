@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { compatibleWidgets, type ColumnPresentation, type WidgetName } from '@totalbase/tb-catalog'
+import { compatibleWidgets, GRID_CELL_MAX_LINES, GRID_CELL_TEXT_WRAPS, GRID_CELL_VERTICAL_ALIGNS, GRID_COLUMN_DEFAULT_MAX_WIDTH, GRID_COLUMN_WIDTH_KEYS, GRID_COLUMN_WIDTH_RANGE, type ColumnPresentation, type GridCellConfig, type GridCellTextWrap, type GridCellVerticalAlign, type WidgetName } from '@totalbase/tb-catalog'
 import { TOTAL_KINDS, type TotalKind } from '~/utils/column-totals'
 /**
  * Settings' Columns (DataViews.md §4): what
@@ -63,15 +63,30 @@ const columnWidget = ref<Record<string, string>>({})
 /** What the list does with a column (build-dataview-columns.ts reads these from its config) - its look is its table's column's. */
 interface ColumnDisplay {
   copyable: boolean
-  truncate: boolean
+  /** Its cell (DataViews.md §4.3) - the defaults (one line, middle, sized by content) are stored as nothing. */
+  textWrap: GridCellTextWrap
+  maxLines: number | null
+  verticalAlign: GridCellVerticalAlign
+  width: number | null
+  minWidth: number | null
+  maxWidth: number | null
   /** Its total at the grid's foot (DataViews.md §4.9) - empty: none. */
   total: '' | TotalKind
 }
 const columnDisplay = ref<Record<string, ColumnDisplay>>({})
 let originalDisplay: Record<string, string> = {}
 function displayOf(f: DataViewField): ColumnDisplay {
-  const config = (f.config ?? {}) as { copyable?: boolean, truncate?: boolean, total?: TotalKind }
-  return { copyable: config.copyable === true, truncate: config.truncate === true, total: config.total ?? '' }
+  const config = (f.config ?? {}) as GridCellConfig & { copyable?: boolean, total?: TotalKind }
+  return {
+    copyable: config.copyable === true,
+    textWrap: config.textWrap ?? 'truncate',
+    maxLines: config.maxLines ?? null,
+    verticalAlign: config.verticalAlign ?? 'middle',
+    width: config.width ?? null,
+    minWidth: config.minWidth ?? null,
+    maxWidth: config.maxWidth ?? null,
+    total: config.total ?? ''
+  }
 }
 /** The title a column shows - its table's column's, else its name humanized (DataViews.md §15). */
 function columnTitle(f: DataViewField): string {
@@ -265,11 +280,16 @@ function scheduleFieldConfigSave(fieldId: string) {
     const display = columnDisplay.value[fieldId]
     if (display) {
       const set = (key: string, value: unknown) => {
-        if (value === undefined || value === '' || value === false) Reflect.deleteProperty(nextConfig, key)
+        if (value === undefined || value === null || value === '' || value === false) Reflect.deleteProperty(nextConfig, key)
         else nextConfig[key] = value
       }
       set('copyable', display.copyable)
-      set('truncate', display.truncate)
+      set('textWrap', display.textWrap === 'truncate' ? undefined : display.textWrap)
+      set('maxLines', display.textWrap === 'wrap' ? display.maxLines : undefined)
+      set('verticalAlign', display.verticalAlign === 'middle' ? undefined : display.verticalAlign)
+      set('width', display.width)
+      set('minWidth', display.minWidth)
+      set('maxWidth', display.maxWidth)
       set('total', display.total)
       originalDisplay[fieldId] = JSON.stringify(display)
     }
@@ -289,8 +309,8 @@ function columnOptions(field: GridColumnField) {
   const keys = applicableConfigKeys(columnWidget.value[field.id] || field.widget || '', Boolean(foreignKeyFor(field)))
   const kind = (field.config as { displayFormatKind?: 'number' | 'date' | 'time' | 'datetime' } | undefined)?.displayFormatKind ?? null
   return {
-    // A number or a date has its format instead - a truncation is for text.
-    truncate: !kind && keys.has('truncate'),
+    // A number or a date has its format instead - wrapping is for text.
+    textWrap: !kind && keys.has('textWrap'),
     copyable: keys.has('copyable'),
     // A number adds up; any column counts its values - a list's, not a FORM's.
     totals: props.dataview.viewType === 'FORM' ? [] : kind === 'number' ? [...TOTAL_KINDS] : ['count'] as TotalKind[]
@@ -464,7 +484,7 @@ function sortHint(columnName: string): string {
 /** What its panel's Properties set on this row - the button shows it, so nothing set there goes unseen. */
 function hasColumnSettings(field: GridColumnField): boolean {
   const d = columnDisplay.value[field.id]
-  return Boolean(d && (d.copyable || d.truncate || d.total))
+  return Boolean(d && (d.copyable || d.total || d.textWrap !== 'truncate' || d.verticalAlign !== 'middle' || d.width || d.minWidth || d.maxWidth))
 }
 /** Same debounced autosave as `columnOrder` above, through the same `patchDefaultState`. */
 let sortSaveTimer: ReturnType<typeof setTimeout> | undefined
@@ -513,6 +533,16 @@ function openPanel(field: GridColumnField) {
   panelField.value = field
   panelOpen.value = true
 }
+// `?column=` - a grid header's "Edit column…" (DataViews.md §5.2) opens that column's panel.
+const route = useRoute()
+let openedFromRoute: string | undefined
+watch(() => [route.query.column, props.columnFields] as const, ([column, list]) => {
+  if (typeof column !== 'string' || column === openedFromRoute) return
+  const field = list.find(f => f.columnName === column)
+  if (!field) return
+  openedFromRoute = column
+  openPanel(field)
+}, { immediate: true })
 // A reload hands new field objects - the panel follows its column, or closes when it's gone.
 watch(() => props.columnFields, (list) => {
   if (!panelField.value) return
@@ -821,12 +851,49 @@ const panelShows = computed(() => {
                 @update:model-value="(v: string) => { columnDisplay[panelField!.id]!.total = v === 'none' ? '' : v as TotalKind }"
               />
             </UFormField>
+            <USeparator :label="t('designer.dataViewColumnsSettings.cell')" />
             <UFormField
-              v-if="columnOptions(panelField).truncate"
-              :label="t('designer.dataViewColumnsSettings.truncate')"
-              :description="t('designer.dataViewColumnsSettings.truncateDescription')"
+              v-if="columnOptions(panelField).textWrap"
+              :label="t('designer.dataViewColumnsSettings.textWrap')"
+              :description="t('designer.dataViewColumnsSettings.textWrapDescription')"
             >
-              <USwitch v-model="columnDisplay[panelField.id]!.truncate" />
+              <URadioGroup
+                v-model="columnDisplay[panelField.id]!.textWrap"
+                :items="GRID_CELL_TEXT_WRAPS.map(v => ({ label: t(`designer.dataViewColumnsSettings.textWraps.${v}`), value: v }))"
+              />
+            </UFormField>
+            <UFormField
+              v-if="columnOptions(panelField).textWrap && columnDisplay[panelField.id]!.textWrap === 'wrap'"
+              :label="t('designer.dataViewColumnsSettings.maxLines')"
+              :description="t('designer.dataViewColumnsSettings.maxLinesDescription')"
+            >
+              <UInputNumber
+                v-model="columnDisplay[panelField.id]!.maxLines"
+                :min="1"
+                :max="GRID_CELL_MAX_LINES"
+                class="w-32"
+              />
+            </UFormField>
+            <UFormField :label="t('designer.dataViewColumnsSettings.verticalAlign')">
+              <URadioGroup
+                v-model="columnDisplay[panelField.id]!.verticalAlign"
+                orientation="horizontal"
+                :items="GRID_CELL_VERTICAL_ALIGNS.map(v => ({ label: t(`designer.dataViewColumnsSettings.verticalAligns.${v}`), value: v }))"
+              />
+            </UFormField>
+            <UFormField
+              v-for="key in GRID_COLUMN_WIDTH_KEYS"
+              :key="key"
+              :label="t(`designer.dataViewColumnsSettings.${key}`)"
+              :description="key === 'width' ? t('designer.dataViewColumnsSettings.widthDescription', { max: GRID_COLUMN_DEFAULT_MAX_WIDTH }) : undefined"
+            >
+              <UInputNumber
+                v-model="columnDisplay[panelField.id]![key]"
+                :min="GRID_COLUMN_WIDTH_RANGE.min"
+                :max="GRID_COLUMN_WIDTH_RANGE.max"
+                :step="10"
+                class="w-32"
+              />
             </UFormField>
             <UFormField
               v-if="columnOptions(panelField).copyable"

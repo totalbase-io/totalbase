@@ -1,5 +1,5 @@
 /**
- * `view_config.column_sync` - a DataView-level (not per-field) setting
+ * `view_config.column_sync` - "New table columns" (DataViews.md §4.2), a DataView-level (not per-field) setting
  * deciding what `syncFields()` (dataviews-admin-service.ts) does with a
  * column the underlying table has that this DataView doesn't yet have
  * a field for, and whether the Design form's palette may add one that
@@ -15,9 +15,9 @@
  * `totalbase.permissions`. Real field-level access control is a
  * FieldGrant on a role's permission, not this.
  *
- * - `auto_show`: a newly-discovered column is added VISIBLE.
- * - `auto_hide` (default - the original, only behavior before this
- *   existed): added HIDDEN, same as every column already was.
+ * - `auto_show` (default - "Add them shown"): a newly-discovered column is
+ *   added VISIBLE, and to the generated record form after its last field.
+ * - `auto_hide` ("Add them hidden"): added HIDDEN in the list, not to the form.
  * - `locked`: NOT added at all - the DataView's column set is frozen
  *   to whatever it already has. The Design form's own palette (admin
  *   app) additionally refuses to let a builder manually add a
@@ -30,7 +30,7 @@
  */
 export const COLUMN_SYNC_VALUES = ["auto_show", "auto_hide", "locked"] as const;
 export type ColumnSync = (typeof COLUMN_SYNC_VALUES)[number];
-const DEFAULT_COLUMN_SYNC: ColumnSync = "auto_hide";
+const DEFAULT_COLUMN_SYNC: ColumnSync = "auto_show";
 
 export function resolveColumnSync(viewConfig: Record<string, unknown>): ColumnSync {
   const stored = viewConfig.column_sync;

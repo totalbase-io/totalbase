@@ -151,6 +151,30 @@ describe("compileSelect (integration)", () => {
     expect(rows.every((r) => r["brand.name"] === "Acme")).toBe(true);
   });
 
+  it("joins a relation only order_by names", async () => {
+    // The join is added while ORDER BY compiles, after the projection and WHERE - the FROM must still carry it.
+    const compiled = await compile(parseQuery({ fields: "name", order_by: "-brand.name,name" }, LIMITS));
+    const { rows } = await database.query<{ name: string }>(compiled.sql, compiled.params);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(Object.keys(rows[0]!)).toEqual(["name"]);
+  });
+
+  it("takes limit and offset per value of limitPer's column, in the read's order, at most maxLimit rows in all", async () => {
+    const run = async (query: Record<string, unknown>, maxLimit = 500) => {
+      const compiled = await compile(parseQuery({ fields: "name,brand.name", order_by: "-price", count: true, ...query }, LIMITS), { limitPer: "brand", maxLimit });
+      const { rows } = await database.query<Record<string, unknown>>(compiled.sql, compiled.params);
+      const { rows: counted } = await database.query<{ count: string }>(compiled.countSql!, compiled.countParams);
+      return { names: rows.map((r) => r["name"]).sort(), keys: Object.keys(rows[0] ?? {}), count: Number(counted[0]!.count) };
+    };
+    // Acme's priciest and Globex's only one; then Acme's second.
+    expect(await run({ limit: 1 })).toEqual({ names: ["Gadget", "Gizmo"], keys: ["name", "brand.name"], count: 2 });
+    expect((await run({ limit: 1, offset: 1 })).names).toEqual(["Widget"]);
+    // Past maxLimit in all, the count still says how many the ranks let through.
+    expect(await run({ limit: 5 }, 2)).toMatchObject({ count: 3 });
+    expect((await run({ limit: 5 }, 2)).names).toHaveLength(2);
+    await expect(compile(parseQuery({ fields: "name" }, LIMITS), { limitPer: "nope" })).rejects.toMatchObject({ code: "INVALID_QUERY" });
+  });
+
   it("compiles $INTERVAL.* against a timestamptz column", async () => {
     const ast = parseQuery({ where: { updated_at: { _lt: "$INTERVAL.24h" } } }, LIMITS);
     const compiled = await compile(ast);

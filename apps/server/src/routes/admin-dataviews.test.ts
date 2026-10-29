@@ -110,7 +110,8 @@ describe("/admin/api/dataviews", () => {
     });
     expect(res.statusCode).toBe(201);
     const { data } = res.json();
-    expect(data.viewConfig).toEqual({ features: { search: true, filter: false }, variables: expect.any(Array), last_attnum: expect.any(Number) });
+    // One field: its record form in a Sidebar, said at create (DataViews.md §6.3).
+    expect(data.viewConfig).toEqual({ features: { search: true, filter: false }, edit_presentation: "SIDEBAR", variables: expect.any(Array), last_attnum: expect.any(Number) });
     createdWithConfigId = data.id;
 
     const fields = await app.inject({
@@ -341,7 +342,8 @@ describe("/admin/api/dataviews", () => {
     expect(sync.statusCode).toBe(200);
     const result = sync.json().data;
     expect(result.added).toHaveLength(1);
-    expect(result.added[0]).toMatchObject({ kind: "COLUMN", columnName: "note", visible: false });
+    // New table columns unset: Add them shown (DataViews.md §4.2).
+    expect(result.added[0]).toMatchObject({ kind: "COLUMN", columnName: "note", visible: true });
     expect(result.renamed).toEqual([]);
     expect(result.orphaned).toEqual([]);
 

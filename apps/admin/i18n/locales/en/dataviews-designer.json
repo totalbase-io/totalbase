@@ -2139,8 +2139,25 @@
       },
       "syncColumns": "Sync columns",
       "syncTooltip": "Reconcile columns against the table's real, current columns",
-      "truncate": "Truncate",
-      "truncateDescription": "One line, ending in … - the whole value on hover.",
+      "cell": "Cell",
+      "textWrap": "Text",
+      "textWraps": {
+        "truncate": "One line, cut with …",
+        "wrap": "Several lines"
+      },
+      "textWrapDescription": "The whole value shows on hover and in the record form. A viewer can change it for themselves from the column's header.",
+      "maxLines": "Maximum lines",
+      "maxLinesDescription": "Empty: every line.",
+      "verticalAlign": "Vertical alignment",
+      "verticalAligns": {
+        "top": "Top",
+        "middle": "Middle",
+        "bottom": "Bottom"
+      },
+      "width": "Width",
+      "widthDescription": "In px. Empty: as wide as its content, up to {max} px.",
+      "minWidth": "Minimum width",
+      "maxWidth": "Maximum width",
       "widget": "Widget",
       "total": "Total",
       "totalDescription": "At the grid's foot: over every row its filters keep, not only the page - PostgreSQL computes it, in this column's format.",
@@ -2282,7 +2299,8 @@
       "useTable": "Use this table"
     },
     "dataViewScopeSettings": {
-      "columnSet": "Column set",
+      "columnSet": "New table columns",
+      "columnSetDescription": "What this DataView does with a column added to the table after it was created.",
       "filter": "Filter",
       "heading": "Scope",
       "invalidJson": "Invalid JSON",
@@ -2425,7 +2443,7 @@
     },
     "dataViewWizardModal": {
       "byColumn": "By its column \"{column}\"",
-      "columnSet": "Column set",
+      "columnSet": "New table columns",
       "columnsIntro": "Pick which columns of {resource} this view uses.",
       "createError": "Could not create DataView",
       "cycleGuardError": "The DataView was created, but the cycle guard could not be added",
@@ -2602,6 +2620,14 @@
       "toolbarCompact": "Compact",
       "toolbarFull": "Full",
       "toolbarInstance": "The instance's (Settings > DataViews)",
+      "headerAlign": "Column titles",
+      "headerAlignHelp": "How a table's column titles align. Automatic: each one as its column - a number's right, a text's left.",
+      "headerAligns": {
+        "auto": "Automatic",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      },
       "listMargin": "List margin",
       "listMarginHelp": "The space around the list - Default: a table takes Settings > DataViews > Table margin, any other list normal.",
       "listMargins": {

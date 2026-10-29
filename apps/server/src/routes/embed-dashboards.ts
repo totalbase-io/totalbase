@@ -221,6 +221,8 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
         startingValues: embed.starting,
         // No user: the instance's language (a `locale` URL parameter may override it).
         language: await context.settings.get("system.language"),
+        // How numbers and dates read: the instance's (empty = the visitor's browser).
+        regionalFormat: await context.settings.get("system.regional_format"),
       },
     };
   });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * Settings > Data, at the foot of Columns (DataViews.md §4.2): what a column the table gains later
- * does - shown, hidden or left out. The page or the wizard owns the value (`v-model`).
+ * New table columns - Settings > Data, at the foot of Columns, and the wizard (DataViews.md §4.2): what a column
+ * the table gains later does - added shown (and to the record form), hidden, or not at all. The page or the wizard owns the value (`v-model`).
  */
 import { COLUMN_SYNC_META, COLUMN_SYNC_SCOPE_NOTICE, dataviewMetaKey, type ColumnSync } from '~/types/dataview'
 
@@ -11,7 +11,10 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <UFormField :label="t('designer.dataViewScopeSettings.columnSet')">
+  <UFormField
+    :label="t('designer.dataViewScopeSettings.columnSet')"
+    :description="t('designer.dataViewScopeSettings.columnSetDescription')"
+  >
     <template #hint>
       <FieldHelp
         :text="cat('dataviews.meta.notices.columnSync', COLUMN_SYNC_SCOPE_NOTICE)"

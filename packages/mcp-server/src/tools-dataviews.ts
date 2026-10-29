@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { whereParams, type AdminClient } from "./admin-client.js";
-import { columnInputWidgets, columnValueKind, looksLikeSettingsTable, suggestSettingsLayout, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
+import { columnInputWidgets, columnValueKind, GRID_CELL_CONFIG_KEYS, GRID_CELL_MAX_LINES, GRID_CELL_TEXT_WRAPS, GRID_CELL_VERTICAL_ALIGNS, GRID_COLUMN_DEFAULT_MAX_WIDTH, GRID_COLUMN_WIDTH_RANGE, gridCellConfigProblem, looksLikeSettingsTable, suggestSettingsLayout, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
 import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, schemaName } from "./tool-helpers.js";
 
 /**
@@ -83,6 +83,15 @@ const fieldSummary = (f: DataViewField) => ({
   ...(Object.keys(f.config ?? {}).length > 0 && { config: f.config }),
 });
 
+/** A grid column's cell format (DataViews.md §4.3), only what is set - get_dataview shows it beside the column. */
+const cellOf = (f: DataViewField) => {
+  const cell = Object.fromEntries(GRID_CELL_CONFIG_KEYS.filter((key) => f.config?.[key] !== undefined && f.config[key] !== null).map((key) => [key, f.config[key]]));
+  return Object.keys(cell).length > 0 ? { cell } : {};
+};
+/** The keys a read config carries that its column inherits - never sent back as its own. */
+const INHERITED_KEYS = ["display_field", "display_template", "display_field_target", "display_inherited"];
+const pixels = z.number().int().min(GRID_COLUMN_WIDTH_RANGE.min).max(GRID_COLUMN_WIDTH_RANGE.max).nullable().optional();
+
 const viewConfigDescription =
   "The layout's settings (totalbase://guide/dataviews has every key): e.g. {\"kanban_layout\":{\"groupColumn\":\"stage\"}}, {\"base_where\":{\"archived\":{\"_eq\":\"false\"}}}, {\"auto_refresh\":\"1m\"}, {\"edit_presentation\":\"MODAL\"}, {\"features\":{\"import\":false}}, a CUSTOM page alone on screen {\"kiosk\":true}";
 
@@ -109,7 +118,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
     {
       title: "Get DataView",
       description:
-        "A DataView's draft: its settings, view_config, fields (id, column, a column's title and shortLabel - its table column's, set_column_presentation -, a widget's label and widget, visible, a column's gridWidget (its grid cell's) and formInput: the input its record form edits it with, formInputFollowsColumn true when it follows its column's (set_column_presentation widget), false when it is the form's own - update_dataview changes visible and widget by column), the roles that may open it and, for each of those roles, what it may do on the source (READ / CREATE / UPDATE / DELETE) - a role granted the DataView without READ on its source can't open it; the paths a role may not read - related columns, and the columns a reference shows its row by (it would see the key) - are listed too (rolesMissingRelatedColumns). By default its columns only, without their config; detail=true adds its whole field tree (the generated form's widgets, each field's config and bindings).",
+        "A DataView's draft: its settings, view_config, fields (id, column, a column's title and shortLabel - its table column's, set_column_presentation -, a widget's label and widget, visible, a column's cell - its grid cell's format when set: textWrap, maxLines, verticalAlign, width, minWidth, maxWidth -, its gridWidget (its grid cell's) and formInput: the input its record form edits it with, formInputFollowsColumn true when it follows its column's (set_column_presentation widget), false when it is the form's own - update_dataview changes visible and widget by column), the roles that may open it and, for each of those roles, what it may do on the source (READ / CREATE / UPDATE / DELETE) - a role granted the DataView without READ on its source can't open it; the paths a role may not read - related columns, and the columns a reference shows its row by (it would see the key) - are listed too (rolesMissingRelatedColumns). By default its columns only, without their config; detail=true adds its whole field tree (the generated form's widgets, each field's config and bindings).",
       inputSchema: {
         id: z.string().describe("The DataView's id (list_dataviews)"),
         detail: z.boolean().optional().describe("Every field - the form's widgets too - with its config"),
@@ -140,7 +149,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
         viewConfig: dataview.viewConfig ?? {},
         // Most questions - which columns, can role X read it - need the columns, not the generated form's widget tree
         // with its bindings (5k tokens for a 9-column KANBAN).
-        fields: detail ? withFormInputs(fields) : withFormInputs(fields).filter((f) => "column" in f && f.kind !== "WIDGET").map(({ config: _config, ...f }) => f),
+        fields: detail ? withFormInputs(fields) : withFormInputs(fields).filter((f) => "column" in f && f.kind !== "WIDGET").map(({ config: _config, ...f }) => ({ ...f, ...cellOf(fields.find((field) => field.id === f.id)!) })),
         roles: access,
         ...(missingPaths(related) && { rolesMissingRelatedColumns: missingPaths(related) }),
       });
@@ -152,7 +161,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
     {
       title: "Create DataView",
       description:
-        "Create a DataView - the screen users work with in the App - over a table or view, as an unpublished draft (totalbase://guide/dataviews: which type for which data). Its fields come from the source's columns (columns picks some), with the columns' presentation (set_column_presentation) and foreign keys shown by their row presentation (set_row_presentation); over a table a TABLE (or any list type) also gets its record form. The other layouts need their columns in view_config: KANBAN {\"kanban_layout\":{\"groupColumn\": a FOREIGN KEY column - one lane per row of its target - or a column with a CHECK list - one lane per value}}, CALENDAR {\"calendar_layout\":{\"dateColumn\"}}, GANTT {\"gantt_layout\":{\"startDateColumn\",\"endDateColumn\"}}, MAP {\"map_layout\":{\"pointColumn\"}} (a point column) or latitudeColumn/longitudeColumn, EXTERNALFRAME {\"frame_url\": an https URL} and no table. MASTER_DETAIL takes detail: the lines table and its foreign key to the master table. A FORM shows one record at a time: browsing and editing existing rows by default (view_config form_view_mode READ or UPDATE), or only creating new ones (form_view_mode CREATE - a data-entry screen: always a blank record, a save starts the next), or a table's one row (form_view_mode SINGLE - a company's settings: opened to edit, created on the first save, no New, search, browsing or delete). Over a view, any type is read-only - no New, edit or delete. CUSTOM is a blank page you build (totalbase://guide/pages): table, optional, is its record's table (a TABLE) - then set_page_variables, add_page_widgets, save_page_code. SETTINGS is a parameter table (a key, a value, a title, a description per row - totalbase://guide/modeling) edited in place: view_config {\"settings_layout\":{\"keyColumn\",\"valueColumn\",\"titleColumn\",\"descriptionColumn\",\"groupColumn\"?,\"orderColumn\"?}}. A list type may offer several views of the same rows, switched from the toolbar: view_config {\"layouts\":[\"TABLE\",\"MAP\",\"CARDS\"]} - view_type among them, the one it opens with - plus each one's own *_layout. Then publish_dataview with the roles that open it.",
+        "Create a DataView - the screen users work with in the App - over a table or view, as an unpublished draft (totalbase://guide/dataviews: which type for which data). Its fields come from the source's columns (columns picks some; without columns, a list's json, jsonb and bytea columns are read but hidden in its grid - still in the record form, shown from the Columns menu), with the columns' presentation (set_column_presentation) and foreign keys shown by their row presentation (set_row_presentation); over a table a TABLE (or any list type) also gets its record form. The other layouts need their columns in view_config: KANBAN {\"kanban_layout\":{\"groupColumn\": a FOREIGN KEY column - one lane per row of its target - or a column with a CHECK list - one lane per value}}, CALENDAR {\"calendar_layout\":{\"dateColumn\"}}, GANTT {\"gantt_layout\":{\"startDateColumn\",\"endDateColumn\"}}, MAP {\"map_layout\":{\"pointColumn\"}} (a point column) or latitudeColumn/longitudeColumn, EXTERNALFRAME {\"frame_url\": an https URL} and no table. MASTER_DETAIL takes detail: the lines table and its foreign key to the master table. A FORM shows one record at a time: browsing and editing existing rows by default (view_config form_view_mode READ or UPDATE), or only creating new ones (form_view_mode CREATE - a data-entry screen: always a blank record, a save starts the next), or a table's one row (form_view_mode SINGLE - a company's settings: opened to edit, created on the first save, no New, search, browsing or delete). Over a view, any type is read-only - no New, edit or delete. CUSTOM is a blank page you build (totalbase://guide/pages): table, optional, is its record's table (a TABLE) - then set_page_variables, add_page_widgets, save_page_code. SETTINGS is a parameter table (a key, a value, a title, a description per row - totalbase://guide/modeling) edited in place: view_config {\"settings_layout\":{\"keyColumn\",\"valueColumn\",\"titleColumn\",\"descriptionColumn\",\"groupColumn\"?,\"orderColumn\"?}}. A list type may offer several views of the same rows, switched from the toolbar: view_config {\"layouts\":[\"TABLE\",\"MAP\",\"CARDS\"]} - view_type among them, the one it opens with - plus each one's own *_layout. Then publish_dataview with the roles that open it.",
       inputSchema: {
         name: z.string().max(32).describe(`Shown in the App menu, e.g. 'Customers' - ${NAME_RULE}`),
         view_type: z.enum(VIEW_TYPES),
@@ -217,7 +226,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
     {
       title: "Update DataView",
       description:
-        "Change a DataView's draft: name, slug, description, icon, color, scope (LISTED in the App menu, or EMBEDDED_ONLY - out of it), view_config (shallow merge: each top-level key sent replaces that key, the rest stay - null resets one), auto_refresh, its columns (add_columns from the source - a column or 'fk.column' -, remove_columns, column_order and default_sort for the grid), toolbar_mode (full or compact) and its fields by column (visible, widget) - a column's title, format and look are its table column's: set_column_presentation. role_ids replaces who may open it at once, without publishing - [] leaves only administrators: the way to take a DataView out of the App without deleting it. Everything else reaches the App at the next publish_dataview.",
+        "Change a DataView's draft: name, slug, description, icon, color, scope (LISTED in the App menu, or EMBEDDED_ONLY - out of it), view_config (shallow merge: each top-level key sent replaces that key, the rest stay - null resets one), auto_refresh, its columns (add_columns from the source - a column or 'fk.column' -, remove_columns, column_order and default_sort for the grid), toolbar_mode (full or compact) and its fields by column (visible, widget, and its grid cell: textWrap, maxLines, verticalAlign, width, minWidth, maxWidth - null unsets one) - a column's title, format and look are its table column's: set_column_presentation. role_ids replaces who may open it at once, without publishing - [] leaves only administrators: the way to take a DataView out of the App without deleting it. Everything else reaches the App at the next publish_dataview.",
       inputSchema: {
         id: z.string().describe("The DataView's id"),
         name: z.string().max(32).optional().describe(NAME_RULE),
@@ -249,6 +258,12 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
                 .nullable()
                 .optional()
                 .describe("Its input - in the grid and in the record form, an input of this form's own: one compatible with the column's type, e.g. 'UInput', 'UTextarea', 'USelectMenu', 'URadioGroup', 'USwitch'. null: the form follows its column's input again (set_column_presentation widget)"),
+              textWrap: z.enum(GRID_CELL_TEXT_WRAPS).nullable().optional().describe("Its grid cell's text: truncate (default - one line cut with …, the whole value on hover) or wrap (several lines within the column's width). A viewer may switch it for themselves from the column's header"),
+              maxLines: z.number().int().min(1).max(GRID_CELL_MAX_LINES).nullable().optional().describe("With wrap: at most this many lines, then …; unset, every line"),
+              verticalAlign: z.enum(GRID_CELL_VERTICAL_ALIGNS).nullable().optional().describe("Where the cell's content sits in a taller row: top, middle (default), bottom"),
+              width: pixels.describe(`The grid column's width in px; unset, as wide as its content up to ${GRID_COLUMN_DEFAULT_MAX_WIDTH} px`),
+              minWidth: pixels.describe("Its narrowest, in px"),
+              maxWidth: pixels.describe(`Its widest, in px (unset: ${GRID_COLUMN_DEFAULT_MAX_WIDTH}, or its width when wider)`),
             }),
           )
           .optional(),
@@ -294,9 +309,24 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
             const valid = columnInputWidgets(kind);
             if (!(valid as string[]).includes(change.widget)) throw new Error(`Widget "${change.widget}" doesn't edit "${change.column}" (${field.dataType}) - one of: ${valid.join(", ")}.`);
           }
+          const cellChange = GRID_CELL_CONFIG_KEYS.filter((key) => change[key] !== undefined);
+          if (cellChange.length > 0 && (!field || field.kind === "WIDGET")) throw new Error(`"${change.column}" isn't a grid column - only a column of the DataView has a cell format.`);
           if (field) {
-            const body = defined({ visible: change.visible, widget: change.widget ?? undefined });
-            if (Object.keys(body).length > 0) changed.push(fieldSummary(await client.patch<DataViewField>(`/dataviews/${id}/fields/${field.id}`, { data: body })));
+            let config: Record<string, unknown> | undefined;
+            if (cellChange.length > 0) {
+              config = Object.fromEntries(Object.entries(field.config ?? {}).filter(([key]) => !INHERITED_KEYS.includes(key)));
+              for (const key of cellChange) {
+                if (change[key] === null) delete config[key];
+                else config[key] = change[key];
+              }
+              const problem = gridCellConfigProblem(config);
+              if (problem) throw new Error(`${change.column}: ${problem}`);
+            }
+            const body = defined({ visible: change.visible, widget: change.widget ?? undefined, config });
+            if (Object.keys(body).length > 0) {
+              const saved = await client.patch<DataViewField>(`/dataviews/${id}/fields/${field.id}`, { data: body });
+              changed.push({ ...fieldSummary(saved), ...cellOf(saved) });
+            }
           }
           if (input && change.widget === null) {
             changed.push(fieldSummary(await client.patch<DataViewField>(`/dataviews/${id}/fields/${input.id}`, { data: { config: { ...input.config, fromColumn: true } } })));

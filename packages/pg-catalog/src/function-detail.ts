@@ -7,10 +7,23 @@ export interface FunctionParameter {
   hasDefault: boolean;
 }
 
+export interface FunctionResultColumn {
+  name: string;
+  dataType: string;
+}
+
 export interface FunctionDetail {
   parameters: FunctionParameter[];
   /** True for SETOF/table functions, or a composite (row-type) return - both yield multiple output columns/rows. */
   returnsRows: boolean;
+  /**
+   * A row result's columns as `SELECT * FROM f()` names them: the OUT/TABLE parameters, a composite type's
+   * attributes, or the function's own name for SETOF a scalar. Null when PostgreSQL doesn't declare them
+   * (`SETOF record`) - or when the result is a scalar: null.
+   */
+  resultColumns: FunctionResultColumn[] | null;
+  /** A scalar result's type (`format_type`); null for rows, and for a pseudo-type (`void`, `record`, `anyelement`). */
+  resultType: string | null;
 }
 
 /**
@@ -27,7 +40,9 @@ export async function getFunctionDetail(database: Database, oid: number): Promis
     getParameters(database, oid),
     getReturnShape(database, oid),
   ]);
-  return { parameters, returnsRows: returnShape.returnsSet || returnShape.isComposite };
+  const returnsRows = returnShape.returnsSet || returnShape.isComposite;
+  if (!returnsRows) return { parameters, returnsRows, resultColumns: null, resultType: returnShape.resultType };
+  return { parameters, returnsRows, resultColumns: returnShape.columns.length > 0 ? returnShape.columns : null, resultType: null };
 }
 
 async function getParameters(database: Database, oid: number): Promise<FunctionParameter[]> {
@@ -48,16 +63,35 @@ async function getParameters(database: Database, oid: number): Promise<FunctionP
 async function getReturnShape(
   database: Database,
   oid: number,
-): Promise<{ returnsSet: boolean; isComposite: boolean }> {
-  const { rows } = await database.query<{ returns_set: boolean; type_kind: string }>(
-    `SELECT p.proretset AS returns_set, t.typtype AS type_kind
+): Promise<{ returnsSet: boolean; isComposite: boolean; resultType: string | null; columns: FunctionResultColumn[] }> {
+  const { rows } = await database.query<{ returns_set: boolean; type_kind: string; result_type: string; columns: FunctionResultColumn[] }>(
+    `SELECT p.proretset AS returns_set, t.typtype AS type_kind, format_type(p.prorettype, NULL) AS result_type,
+            COALESCE(
+              -- OUT, INOUT and TABLE parameters, when there are any: they are the columns.
+              (SELECT json_agg(json_build_object('name', a.name, 'dataType', format_type(a.type, NULL)) ORDER BY a.i)
+                 FROM unnest(p.proallargtypes, p.proargmodes, p.proargnames) WITH ORDINALITY AS a(type, mode, name, i)
+                WHERE a.mode IN ('o', 'b', 't')),
+              -- A composite type's attributes.
+              (SELECT json_agg(json_build_object('name', at.attname, 'dataType', format_type(at.atttypid, at.atttypmod)) ORDER BY at.attnum)
+                 FROM pg_attribute at
+                WHERE t.typtype = 'c' AND at.attrelid = t.typrelid AND at.attnum > 0 AND NOT at.attisdropped),
+              -- SETOF a scalar: one column, named after the function.
+              CASE WHEN t.typtype <> 'p' AND t.typtype <> 'c' THEN json_build_array(json_build_object('name', p.proname, 'dataType', format_type(p.prorettype, NULL))) END,
+              '[]'::json
+            ) AS columns
      FROM pg_proc p
      JOIN pg_type t ON t.oid = p.prorettype
      WHERE p.oid = $1`,
     [oid],
   );
   const row = rows[0];
-  return { returnsSet: row?.returns_set ?? false, isComposite: row?.type_kind === "c" };
+  return {
+    returnsSet: row?.returns_set ?? false,
+    isComposite: row?.type_kind === "c",
+    resultType: row && row.type_kind !== "p" ? row.result_type : null,
+    // An unnamed OUT parameter has no name to read it by.
+    columns: row && row.columns.every((column) => column.name) ? row.columns : [],
+  };
 }
 
 /**

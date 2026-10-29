@@ -1,7 +1,7 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { getRelationDetail, type RelationDetail } from "@totalbase/pg-catalog";
-import { columnFormInput, COLUMN_PRESENTATION_KEYS, isColumnWidgetName, templateColumns, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
+import { columnFormInput, COLUMN_PRESENTATION_KEYS, gridCellConfigProblem, isColumnWidgetName, templateColumns, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
 import { widgetRelatedDashboard, widgetRelatedDataview, type WidgetFieldConfig } from "./widget-fields.js";
 import { classifyColumnDataType, isJsonColumnDataType } from "./display-format.js";
 import { DATAVIEW_FIELDS_SELECT, FIELDS_ORDER, toAdminDataViewField, type AdminDataViewField, type DataViewFieldKind, type DataViewFieldRow, type DataViewFieldSnapshotRow, type DataViewsContext, type FieldSource, type InheritedPresentation, type UpdateFieldInput } from "./dataviews-types.js";
@@ -39,12 +39,14 @@ export function withoutInheritedDisplay(config: Record<string, unknown>, read: R
 /** What a DataView's column may not set itself - its title and presentation are its table's column's (§15), its foreign key's display its table's row presentation's (§15.5). */
 export const COLUMN_FIELD_FORBIDDEN_KEYS: readonly string[] = [...COLUMN_PRESENTATION_KEYS, "disabledConditions", "display_field", "display_template", "display_field_target"];
 
-/** A grid column's config, refused when it sets what belongs to its table's column (DataViews.md §15). */
+/** A grid column's config, refused when it sets what belongs to its table's column (DataViews.md §15) or a cell format it can't take (§4.3). */
 export function withoutColumnPresentation(config: Record<string, unknown>): Record<string, unknown> {
   const own = Object.keys(config).filter((key) => COLUMN_FIELD_FORBIDDEN_KEYS.includes(key));
   if (own.length > 0) {
     throw new TotalBaseError("DATAVIEW_COLUMN_INVALID", `A DataView's column takes ${own.join(", ")} from its table's column - set it in Database › the column.`);
   }
+  const cellProblem = gridCellConfigProblem(config);
+  if (cellProblem) throw new TotalBaseError("DATAVIEW_COLUMN_INVALID", cellProblem);
   return config;
 }
 

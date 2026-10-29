@@ -240,16 +240,16 @@
       },
       "columnSync": {
         "auto_show": {
-          "label": "Auto-show new columns",
-          "description": "A column added to the table later joins this view automatically, visible right away."
+          "label": "Add them shown",
+          "description": "In the list and at the end of the record form (default)."
         },
         "auto_hide": {
-          "label": "Auto-hide new columns",
-          "description": "A column added to the table later joins this view hidden - read, not shown, until someone shows it (default)."
+          "label": "Add them hidden",
+          "description": "In the list, hidden - read, not shown, until someone shows it; not in the form."
         },
         "locked": {
-          "label": "Lock to selected columns",
-          "description": "A column added to the table later stays out of this view - Add columns… can still bring it in."
+          "label": "Don't add them",
+          "description": "The DataView keeps the columns it has - Add columns… can still bring one in."
         }
       },
       "densities": {
@@ -598,6 +598,23 @@
       "noTasks": "No tasks in range."
     },
     "grid": {
+      "columnMenu": "{name}: sort, filter, hide, align",
+      "sortAscending": "Sort ascending",
+      "sortDescending": "Sort descending",
+      "clearSort": "Remove sort",
+      "align": {
+        "left": "Align left",
+        "center": "Align center",
+        "right": "Align right"
+      },
+      "hideColumn": "Hide column",
+      "oneLine": "One line",
+      "severalLines": "Several lines",
+      "filterByColumn": "Filter by this column…",
+      "resetWidth": "Reset width",
+      "editColumn": "Edit column…",
+      "jsonKeys": "{'{'}…{'}'} {n} key | {'{'}…{'}'} {n} keys",
+      "jsonItems": "[…] {n} item | […] {n} items",
       "notAvailable": "DataView not available",
       "notAvailableHelp": "It doesn't exist, isn't published or you don't have access to it.",
       "addItem": "Add item",
@@ -699,6 +716,9 @@
       "offlineTitle": "No connection",
       "offlineDescription": "This screen works again as soon as the connection is back.",
       "unreachableTitle": "The server can't be reached"
+    },
+    "widgetUuid": {
+      "generate": "Generate a new one"
     },
     "widgetJson": {
       "addItem": "Add item",
@@ -837,6 +857,11 @@
     "widgetInputDate": {
       "openCalendar": "Open the calendar",
       "time": "Time"
+    },
+    "widgetInputTime": {
+      "openPicker": "Pick a time",
+      "hours": "Hours",
+      "minutes": "Minutes"
     },
     "widgetColorSelect": {
       "custom": "Custom",

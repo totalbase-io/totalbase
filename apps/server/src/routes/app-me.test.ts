@@ -198,6 +198,15 @@ describe("My account: /app/api/me", () => {
       } finally {
         await context.settings.reset("system.language");
       }
+      // The regional format is the instance's alone - numbers and dates read the same for everyone.
+      expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.regionalFormat).toBe("");
+      await context.settings.set("system.regional_format", "es-AR");
+      try {
+        expect((await inject("GET", "/admin/api/auth/me", token)).json().data.display.regionalFormat).toBe("es-AR");
+        await expect(context.settings.set("system.regional_format", "xx-YY")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+      } finally {
+        await context.settings.reset("system.regional_format");
+      }
       // PostgreSQL holds the shape of a stored code, whoever writes it.
       await expect(database.query(`UPDATE totalbase.users SET preferences = '{"language": "Spanish"}'::jsonb WHERE id = $1`, [userId])).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
     });

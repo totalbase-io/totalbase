@@ -37,3 +37,15 @@ describe("assertViewConfigShape() - kiosk (DataViews.md §7.3)", () => {
     }
   });
 });
+
+describe("assertViewConfigShape() - header_align (DataViews.md §5.2)", () => {
+  it("takes left, center, right and null (Automatic)", () => {
+    for (const header_align of ["left", "center", "right", null]) expect(() => assertViewConfigShape("TABLE", { header_align })).not.toThrow();
+  });
+
+  it("refuses anything else", () => {
+    for (const header_align of ["auto", "justify", 1]) {
+      expect(() => assertViewConfigShape("TABLE", { header_align })).toThrow(expect.objectContaining({ code: "DATAVIEW_VIEW_CONFIG_INVALID" }));
+    }
+  });
+});

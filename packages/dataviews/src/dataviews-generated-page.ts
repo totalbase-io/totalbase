@@ -1,8 +1,8 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { getRelationDetail, type RelationDetail } from "@totalbase/pg-catalog";
-import { checkConstraintValues, columnFormInput, isNumericDataType, isWidgetName, templateColumns, type RowPresentation, type WidgetName } from "@totalbase/tb-catalog";
-import { takesOptions, variableNameFor, type GeneratedPage, type GeneratedWidget, type RecordPageColumn } from "./record-page.js";
+import { checkConstraintValues, columnFormInput, isNumericDataType, isWidgetName, templateColumns, type RowPresentation, type VariableDefinition, type WidgetName } from "@totalbase/tb-catalog";
+import { generateRecordPage, takesOptions, variableNameFor, type GeneratedPage, type GeneratedWidget, type RecordPageColumn } from "./record-page.js";
 import { assertVariablesValid, assertWidgetConfigValid, widgetRelatedDashboard, widgetRelatedDataview, type WidgetFieldConfig } from "./widget-fields.js";
 import type { CreateDataViewInput, DataViewsContext } from "./dataviews-types.js";
 import { defaultDisplayColumn } from "./dataviews-presentation.js";
@@ -27,8 +27,7 @@ export function writtenByPostgres(column: RelationDetail["columns"][number], pri
  * One COLUMN field per column in the DataView, in catalog order
  * (DataViews.md §3.2) - `presence` decides which columns are in it, shown or
  * hidden; one left out gets no row.
- * Visible fields are laid out `columnsPerRow` to a row (12-column grid);
- * without it, one per row, or two once there are many (see below).
+ * Visible fields are laid out one per row (12-column grid).
  * Returns how many grid rows the visible fields took.
  */
 export async function insertColumnFields(
@@ -45,30 +44,13 @@ export async function insertColumnFields(
      */
     presence: (column: RelationDetail["columns"][number]) => "shown" | "hidden" | null;
     fieldOverrides?: CreateDataViewInput["fieldOverrides"];
-    columnsPerRow?: 1 | 2 | 3 | 4;
   },
 ): Promise<number> {
   const fkColumns = new Map(detail.relations.map((r) => [r.sourceColumn, r]));
   // One COLUMN item per column in the DataView, in catalog order
   // (DataViews.md §3.2) - a fresh DataView is already usable before anyone
-  // opens the Design form.
-  //
-  // Stacked full-width (grid_w 12) one per row when there aren't
-  // many visible fields - the simple case, and what every DataView
-  // had before this. Past TWO_COLUMN_THRESHOLD visible fields, lay
-  // them out two-up (grid_w 6) instead: a form with a dozen fields
-  // in one long column is worse to scroll through than the same
-  // fields half as tall, and the Design form's own canvas already
-  // supports arbitrary per-field widths - this just picks a better
-  // starting point than "everything is 12 wide" for a DataView
-  // nobody has opened the Design form on yet. Same number as the
-  // spec's own SIDEBAR/MODAL nudge toward a Page (DataViews.md §6.3) - one
-  // threshold, not two unrelated magic numbers. A Sidebar or a Modal
-  // passes `columnsPerRow: 1` instead: too narrow for two.
-  const TWO_COLUMN_THRESHOLD = 8;
-  const visibleColumnCount = detail.columns.filter((column) => options.presence(column) === "shown").length;
-  const useTwoColumns = visibleColumnCount > TWO_COLUMN_THRESHOLD;
-  const perRow = options.columnsPerRow ?? (useTwoColumns ? 2 : 1);
+  // opens the Design form. Stacked one per row (grid_w 12), like its record form (§6.3).
+
 
   let visibleIndex = 0;
   for (const column of detail.columns) {
@@ -103,9 +85,9 @@ export async function insertColumnFields(
     // form's palette doesn't care about it, and DataViewRecordPanel
     // skips non-visible fields entirely) - only visible fields
     // consume a slot in the layout.
-    const gridW = 12 / perRow;
-    const gridX = visible ? (visibleIndex % perRow) * gridW : 0;
-    const gridY = visible ? Math.floor(visibleIndex / perRow) : visibleIndex;
+    const gridW = 12;
+    const gridX = 0;
+    const gridY = visibleIndex;
     if (visible) visibleIndex++;
 
     await client.query(
@@ -120,7 +102,7 @@ export async function insertColumnFields(
     `UPDATE totalbase.dataviews SET view_config = coalesce(view_config, '{}'::jsonb) || jsonb_build_object('last_attnum', $2::int) WHERE id = $1`,
     [dataviewId, lastAttnum(detail)],
   );
-  return Math.ceil(visibleIndex / perRow);
+  return visibleIndex;
 }
 
 /**
@@ -138,12 +120,16 @@ export async function recordPageColumns(
   inputs: Map<string, string>,
   // No title of their own: each field inherits its column's (DataViews.md §15).
   choose: { include: (column: string) => boolean; widget?: (column: string) => string | undefined; help?: (column: string) => string | undefined },
+  /** Variable names the page already has - a foreign key's options variable takes another. */
+  reserved: readonly string[] = [],
 ): Promise<RecordPageColumn[]> {
   const columns: RecordPageColumn[] = [];
-  const taken: string[] = [];
+  const taken: string[] = [...reserved];
   const checks = detail.checkConstraints.map((c) => c.expression);
   for (const column of detail.columns) {
     if (!choose.include(column.name)) continue;
+    // Bytes have no input (DataViews.md §6.2): left out of the form - a file column is a foreign key to the files.
+    if (column.dataType.toLowerCase() === "bytea") continue;
     const fk = detail.relations.find((r) => r.sourceColumn === column.name) ?? null;
     const override = choose.widget?.(column.name);
     const values = fk ? null : checkConstraintValues(column.name, checks);
@@ -260,27 +246,84 @@ export async function fillTreeLayout(ctx: DataViewsContext, viewConfig: Record<s
 }
 
 /** Writes a generated page: its widgets (each through the widget catalog's checks), its variables and its Code. */
+/** Generated widgets placed under `parent` (null: the page's top level) from row `firstRow` on, their own children below them. */
+async function insertWidgets(
+  client: Queryable,
+  dataviewId: string,
+  widgets: readonly GeneratedWidget[],
+  place: { parent: string | null; slot: string | undefined; firstRow: number },
+  refs: Parameters<typeof assertWidgetConfigValid>[2],
+): Promise<void> {
+  for (const [order, widget] of widgets.entries()) {
+    const config: WidgetFieldConfig = { props: widget.props, bindings: widget.bindings ?? {}, emits: widget.emits ?? {}, ...(place.slot ? { slot: place.slot } : {}), ...(widget.fromColumn && { fromColumn: true }) };
+    assertWidgetConfigValid(widget.widget, config, refs);
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO totalbase.dataviews_fields (dataview, kind, widget, label, config, parent, grid_x, grid_y, grid_w, grid_h, related_dataview, related_dashboard)
+       VALUES ($1, 'WIDGET', $2, $3, $4::jsonb, $5, 0, $6, $7, $8, $9, $10)
+       RETURNING id`,
+      [dataviewId, widget.widget, widget.name ?? null, JSON.stringify(config), place.parent, place.firstRow + order, widget.width, widget.height ?? 1, widgetRelatedDataview(widget.widget, config), widgetRelatedDashboard(widget.widget, config)],
+    );
+    for (const [slotName, children] of Object.entries(widget.slots ?? {})) await insertWidgets(client, dataviewId, children, { parent: rows[0]!.id, slot: slotName, firstRow: 0 }, refs);
+  }
+}
+
 export async function insertGeneratedPage(ctx: DataViewsContext, client: Queryable, dataviewId: string, page: GeneratedPage): Promise<void> {
   assertVariablesValid(page.variables);
   const refs = page.variables.map((v) => ({ name: v.name, kind: v.kind }));
-  const insert = async (widgets: readonly GeneratedWidget[], parent: string | null, slot: string | undefined) => {
-    for (const [order, widget] of widgets.entries()) {
-      const config: WidgetFieldConfig = { props: widget.props, bindings: widget.bindings ?? {}, emits: widget.emits ?? {}, ...(slot ? { slot } : {}), ...(widget.fromColumn && { fromColumn: true }) };
-      assertWidgetConfigValid(widget.widget, config, refs);
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO totalbase.dataviews_fields (dataview, kind, widget, label, config, parent, grid_x, grid_y, grid_w, grid_h, related_dataview, related_dashboard)
-         VALUES ($1, 'WIDGET', $2, $3, $4::jsonb, $5, 0, $6, $7, $8, $9, $10)
-         RETURNING id`,
-        [dataviewId, widget.widget, widget.name ?? null, JSON.stringify(config), parent, order, widget.width, widget.height ?? 1, widgetRelatedDataview(widget.widget, config), widgetRelatedDashboard(widget.widget, config)],
-      );
-      for (const [slotName, children] of Object.entries(widget.slots ?? {})) await insert(children, rows[0]!.id, slotName);
-    }
-  };
-  await insert(page.widgets, null, undefined);
+  await insertWidgets(client, dataviewId, page.widgets, { parent: null, slot: undefined, firstRow: 0 }, refs);
   await client.query(
     `UPDATE totalbase.dataviews
      SET view_config = view_config || jsonb_build_object('variables', $2::jsonb), code = $3
      WHERE id = $1`,
     [dataviewId, JSON.stringify(page.variables), page.code],
   );
+}
+
+/**
+ * A column added to the table later, into a generated record form (DataViews.md §4.2, "Add them shown"): its form
+ * field after the form's last one - before a Master-detail's Detail - with the input its column takes, as the
+ * form was generated (`fromColumn`), and a foreign key's options variable beside the page's. A page with no
+ * generated form (a CUSTOM page, a form someone rebuilt without one named `form`), or a column already in it,
+ * gets nothing. Returns the columns placed.
+ */
+export async function appendFormFields(ctx: DataViewsContext, dataviewId: string, detail: RelationDetail, inputs: Map<string, string>, columnNames: readonly string[]): Promise<string[]> {
+  const { rows: forms } = await ctx.database.query<{ id: string }>(
+    `SELECT id FROM totalbase.dataviews_fields WHERE dataview = $1 AND kind = 'WIDGET' AND widget = 'UForm' AND parent IS NULL AND label = 'form'`,
+    [dataviewId],
+  );
+  const form = forms[0];
+  if (!form) return [];
+  const { rows: children } = await ctx.database.query<{ id: string; widget: string; grid_y: number; column: string | null }>(
+    `SELECT id, widget, grid_y, config->'props'->>'column' AS column FROM totalbase.dataviews_fields WHERE dataview = $1 AND parent = $2`,
+    [dataviewId, form.id],
+  );
+  const bound = new Set(children.map((c) => c.column).filter((c): c is string => c !== null));
+  const wanted = columnNames.filter((name) => !bound.has(name));
+  if (wanted.length === 0) return [];
+
+  const { rows: dataviews } = await ctx.database.query<{ variables: VariableDefinition[] | null }>(
+    `SELECT view_config->'variables' AS variables FROM totalbase.dataviews WHERE id = $1`,
+    [dataviewId],
+  );
+  const variables = Array.isArray(dataviews[0]?.variables) ? dataviews[0]!.variables : [];
+  const columns = await recordPageColumns(ctx, detail, inputs, { include: (column) => wanted.includes(column) }, variables.map((v) => v.name));
+  if (columns.length === 0) return [];
+  const page = generateRecordPage({ type: "GRID", columns });
+  const fields = page.widgets[0]!.slots!["default"]!;
+  const allVariables = [...variables, ...page.variables];
+  assertVariablesValid(allVariables);
+
+  // After the last form field: whatever follows them (a Master-detail's Detail) moves down.
+  const firstRow = Math.max(-1, ...children.filter((c) => c.widget === "UFormField").map((c) => c.grid_y)) + 1;
+  await ctx.database.transaction(async (client) => {
+    await client.query(
+      `UPDATE totalbase.dataviews_fields SET grid_y = grid_y + $3 WHERE dataview = $1 AND parent = $2 AND grid_y >= $4`,
+      [dataviewId, form.id, fields.length, firstRow],
+    );
+    await insertWidgets(client, dataviewId, fields, { parent: form.id, slot: "default", firstRow }, allVariables.map((v) => ({ name: v.name, kind: v.kind })));
+    if (page.variables.length > 0) {
+      await client.query(`UPDATE totalbase.dataviews SET view_config = view_config || jsonb_build_object('variables', $2::jsonb) WHERE id = $1`, [dataviewId, JSON.stringify(allVariables)]);
+    }
+  });
+  return columns.map((c) => c.name);
 }

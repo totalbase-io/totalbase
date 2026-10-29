@@ -148,3 +148,35 @@ describe("Database.replicate (integration)", () => {
     expect(remaining).toBe(0);
   });
 });
+
+describe("Database.replicate while a transaction is open (integration)", () => {
+  it("gives up creating its slot after slotTimeoutMs instead of waiting for the transaction to end", async () => {
+    const database = new Database(loadDatabaseConfigFromEnv());
+    let release!: () => void;
+    let holding!: () => void;
+    const held = new Promise<void>((resolve) => (holding = resolve));
+    // A transaction with an xid, open in another session: creating a slot waits for it.
+    const open = database.transaction(async (client) => {
+      await client.query("SELECT pg_catalog.txid_current()");
+      holding();
+      await new Promise<void>((resolve) => (release = resolve));
+    });
+    try {
+      await held;
+      const started = Date.now();
+      await expect(
+        database.replicate({ publication: PUBLICATION, maxKeys: () => 1, slotTimeoutMs: 300 }, { onTransaction: () => undefined, onReconnect: () => undefined }),
+      ).rejects.toMatchObject({ code: "55P03" });
+      expect(Date.now() - started).toBeLessThan(5_000);
+      // PostgreSQL ended the wait itself: no walsender of ours is left waiting on the transaction, no slot made.
+      const waiting = async () =>
+        (await database.query(`SELECT 1 FROM pg_stat_activity WHERE application_name = 'totalbase realtime' AND wait_event_type = 'Lock'`)).rows.length;
+      for (let tries = 0; tries < 50 && (await waiting()) > 0; tries += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(await waiting()).toBe(0);
+    } finally {
+      release();
+      await open;
+      await database.close();
+    }
+  });
+});

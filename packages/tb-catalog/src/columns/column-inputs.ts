@@ -149,6 +149,8 @@ function numberDataType(fallback: NumberType) {
 
 const EMAIL_CHECK = (columnName: string) => `${columnName} ~* '^[^@]+@[^@]+\\.[^@]+$'`;
 const URL_CHECK = (columnName: string) => `${columnName} ~* '^https?://'`;
+/** A ULID's shape - 26 characters of Crockford's base32 (PostgreSQL has no ulid type): the field's own CHECK. */
+const ULID_CHECK = (columnName: string) => `${columnName} ~ '^[0-9A-HJKMNP-TV-Z]{26}$'`;
 
 export const COLUMN_INPUT_KEYS = [
   "text",
@@ -158,6 +160,8 @@ export const COLUMN_INPUT_KEYS = [
   "phone",
   "password",
   "uid",
+  "uuid",
+  "ulid",
   "pin",
   "color",
   "scanner",
@@ -265,6 +269,25 @@ export const COLUMN_INPUTS: Record<ColumnInputKey, ColumnInputDefinition> = {
     kinds: ["text"],
     create: { kind: "uid" },
   },
+  uuid: {
+    label: "UUID",
+    description: "A universally unique id - typed, pasted or generated with the icon in the field.",
+    icon: "i-lucide-key-round",
+    group: "text",
+    widget: "TUuidInput",
+    kinds: ["text"],
+    create: { kind: "scalar", dataType: "uuid" },
+  },
+  ulid: {
+    label: "ULID",
+    description: "A unique id of 26 characters: sorted ascending, in the order they were made. Typed, pasted or generated with the icon in the field.",
+    icon: "i-lucide-key-square",
+    group: "text",
+    widget: "TUlidInput",
+    kinds: ["text"],
+    create: { kind: "scalar", dataType: "char(26)" },
+    buildCheckConstraint: ULID_CHECK,
+  },
   pin: {
     label: "PIN / fixed-length code",
     description: "A short code with a fixed number of characters.",
@@ -331,7 +354,9 @@ export const COLUMN_INPUTS: Record<ColumnInputKey, ColumnInputDefinition> = {
     icon: "i-lucide-hash",
     group: "number",
     widget: "UInput",
-    props: { type: "number" },
+    // Text the viewer types with a numeric keyboard, sent as written: a bigint or a numeric never goes through a
+    // JavaScript number (the admin's form sets its inputmode and keeps it to digits, a sign and one separator).
+    props: { type: "text" },
     kinds: ["number"],
     numberType: "decimal",
     create: { kind: "scalar", dataType: numberDataType("decimal") },
@@ -607,7 +632,7 @@ export function columnInputsFor(facts: ColumnInputFacts): ColumnInputKey[] {
  * a CHECK list, a whole number in a small CHECK range, any other number, what its link type or CHECK pattern says
  * of a text, or its type's own.
  */
-export type ColumnInputReason = "chosen" | "file" | "relation" | "check-list" | "small-range" | "number" | "link-type" | "pattern" | "default";
+export type ColumnInputReason = "chosen" | "file" | "relation" | "check-list" | "small-integer" | "small-range" | "number" | "link-type" | "pattern" | "default";
 
 /** A column's input: the catalog entry, its widget and props, and why. */
 export interface ColumnFormInput {
@@ -623,6 +648,7 @@ export const SMALL_RANGE = 100;
 const INTEGER = /^(smallint|integer|bigint)$/;
 const EMAIL_PATTERN = /@/;
 const URL_PATTERN = /^\^?https?|\^\(?https?/i;
+const ULID_PATTERN = /\[0-9A-HJKMNP-TV-Z\]\{26\}/;
 
 function asInput(key: ColumnInputKey, reason: ColumnInputReason): ColumnFormInput {
   const entry = COLUMN_INPUTS[key];
@@ -632,10 +658,10 @@ function asInput(key: ColumnInputKey, reason: ColumnInputReason): ColumnFormInpu
 /**
  * The input a column is edited with in a form (DataViews.md §15.2): its chosen entry when it still
  * edits the column, else the rule's - a file's foreign key a file upload, any other foreign key a searchable
- * relation, a CHECK list a select (a text[]'s, checkboxes), a whole number in a CHECK range at most SMALL_RANGE wide
- * − and +, any other number a number field, a text an email's, a phone's or a URL's field by its link type or CHECK
- * pattern, else its type's own. By type and constraints, never by name - one rule for the server, the Design form,
- * the wizard and the MCP.
+ * relation, a CHECK list a select (a text[]'s, checkboxes), a smallint or a whole number in a CHECK range at most
+ * SMALL_RANGE wide − and +, any other number a number field, a text an email's, a phone's or a URL's field by its link
+ * type or CHECK pattern, a `text` several lines, a `uuid` a UUID field and any other text (a varchar) a line, else its
+ * type's own. By type and constraints, never by name - one rule for the server, the Design form, the wizard and the MCP.
  */
 export function columnFormInput(facts: ColumnInputFacts): ColumnFormInput {
   const { kind, list } = readFacts(facts);
@@ -649,6 +675,7 @@ function automaticInput(facts: ColumnInputFacts, kind: ValueKind, hasList: boole
   if (hasList) return kind === "array" ? ["choice-multiple", "check-list"] : ["choice", "check-list"];
   switch (kind) {
     case "number": {
+      if (facts.dataType.toLowerCase() === "smallint") return ["number-stepper", "small-integer"];
       const range = integerRange(facts.name, facts.dataType, facts.checks);
       return range && range.max - range.min <= SMALL_RANGE ? ["number-stepper", "small-range"] : ["number-field", "number"];
     }
@@ -659,7 +686,12 @@ function automaticInput(facts: ColumnInputFacts, kind: ValueKind, hasList: boole
       const patterns = checkConstraintPatterns(facts.name, facts.checks);
       if (patterns.some((p) => EMAIL_PATTERN.test(p.source))) return ["email", "pattern"];
       if (patterns.some((p) => URL_PATTERN.test(p.source))) return ["url", "pattern"];
-      return ["text", "default"];
+      if (patterns.some((p) => ULID_PATTERN.test(p.source))) return ["ulid", "pattern"];
+      // By its type: a text is prose, several lines; a uuid its own field; anything else read as text (a varchar,
+      // an inet) a line.
+      const type = facts.dataType.toLowerCase();
+      if (type === "uuid") return ["uuid", "default"];
+      return type === "text" ? ["long-text", "default"] : ["text", "default"];
     }
     default:
       return [KIND_INPUTS[kind], "default"];

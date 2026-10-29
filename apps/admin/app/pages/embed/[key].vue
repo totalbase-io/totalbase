@@ -21,6 +21,7 @@
  */
 import { isUiLanguage } from '@totalbase/shared'
 import { parseEmbedParams } from '~/utils/embed-params'
+import { setRegionalLocale } from '~/utils/regional-locale'
 
 definePageMeta({ layout: false })
 
@@ -35,13 +36,15 @@ const credential = ref<string | null>(null)
 const notFramed = ref(false)
 const variableValues = ref<Record<string, unknown>>({})
 const root = ref<HTMLElement | null>(null)
-const view = ref<{ dashboard: { language?: string, display?: { theme?: 'light' | 'dark' | 'auto', transparent?: boolean } } | null, singleWidget: string | null } | null>(null)
+const view = ref<{ dashboard: { language?: string, regionalFormat?: string, display?: { theme?: 'light' | 'dark' | 'auto', transparent?: boolean } } | null, singleWidget: string | null } | null>(null)
 const single = computed(() => Boolean(view.value?.singleWidget))
 // No user: the URL's `locale`, else the instance's language (Admin_UI.md §14).
 const { setLocale, locale, t } = useI18n()
 watch(() => params.locale ?? view.value?.dashboard?.language, (language) => {
   if (isUiLanguage(language) && language !== locale.value) void setLocale(language)
 }, { immediate: true })
+// Numbers and dates: the instance's regional format, else the visitor's browser.
+watch(() => view.value?.dashboard?.regionalFormat, setRegionalLocale, { immediate: true })
 
 // Its notices before the dashboard answers (DB30): the instance's language, unless the URL names one.
 const instanceLanguage = ref<string | null>(null)

@@ -133,7 +133,9 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   const templatesAdmin = new TemplatesAdminService(database);
   const s3 = new S3Connection(settings, (key) => secrets.decrypt(key));
   const filesStorage = new FilesStorage(settings, s3);
-  const filesAdmin = new FilesAdminService(database, settings, filesStorage);
+  const filesTransform = new FilesTransformService(settings, () => filesStorage.current());
+  // A stored image's list thumbnail is made in the background (Administration.md §10.8).
+  const filesAdmin = new FilesAdminService(database, settings, filesStorage, (file, content) => void filesTransform.warmThumbnail(file, content));
   const audit = new AuditService(settings);
   const backups = new BackupsService({
     database,
@@ -240,7 +242,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
     filesAdmin,
     filesStorage,
     s3,
-    filesTransform: new FilesTransformService(settings, () => filesStorage.current()),
+    filesTransform,
     openApiCache: new OpenApiDocumentCache(database),
     dispatchWorkflowDataEvent: (outboxEventId: string) => dataEvents.enqueue(outboxEventId),
     invokeSubWorkflow: (params) => invokeSubWorkflow(context, params),

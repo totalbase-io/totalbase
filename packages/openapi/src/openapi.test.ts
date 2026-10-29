@@ -43,7 +43,7 @@ describe("withNull", () => {
 });
 
 describe("buildFunctionSpec", () => {
-  const detail = { parameters: [{ name: "invoice", dataType: "integer", hasDefault: false }], returnsRows: false } as unknown as Parameters<typeof buildFunctionSpec>[0]["detail"];
+  const detail = { parameters: [{ name: "invoice", dataType: "integer", hasDefault: false }], returnsRows: false, resultColumns: null, resultType: null } as unknown as Parameters<typeof buildFunctionSpec>[0]["detail"];
 
   it("documents the resource's function_class: x-totalbase-function-class, and QUERY as safe", () => {
     const query = buildFunctionSpec({ schema: "public", name: "total", detail, functionClass: "QUERY" }).pathItem.post!;
@@ -53,6 +53,21 @@ describe("buildFunctionSpec", () => {
     expect(action["x-totalbase-function-class"]).toBe("ACTION");
     expect(action.description).toMatch(/changes data/);
     expect(buildFunctionSpec({ schema: "public", name: "x", detail, functionClass: "UNCLASSIFIED" }).pathItem.post!["x-totalbase-function-class"]).toBe("UNCLASSIFIED");
+  });
+
+  it("types the result as PostgreSQL declares it, and leaves what it doesn't open", () => {
+    const resultOf = (more: object) => {
+      const spec = buildFunctionSpec({ schema: "public", name: "f", detail: { ...detail, ...more }, functionClass: "QUERY" });
+      const content = (spec.pathItem.post!.responses as Record<string, { content?: Record<string, { schema: { properties: { data: unknown } } }> }>)["200"]!;
+      return content.content!["application/json"]!.schema.properties.data;
+    };
+    expect(resultOf({ resultType: "integer" })).toEqual({ type: ["integer", "null"] });
+    expect(resultOf({})).toEqual({});
+    expect(resultOf({ returnsRows: true, resultColumns: [{ name: "id", dataType: "integer" }] })).toEqual({
+      type: "array",
+      items: { type: "object", properties: { id: { type: ["integer", "null"] } } },
+    });
+    expect(resultOf({ returnsRows: true })).toEqual({ type: "array", items: { type: "object", additionalProperties: true } });
   });
 });
 

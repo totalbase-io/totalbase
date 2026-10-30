@@ -61,6 +61,7 @@ import type { EditSize } from '~/types/dataview'
 import type WidgetColorSelect from '~/components/WidgetColorSelect.vue'
 import type WidgetUuidInput from '~/components/WidgetUuidInput.vue'
 import type WidgetUlidInput from '~/components/WidgetUlidInput.vue'
+import type WidgetPasswordInput from '~/components/WidgetPasswordInput.vue'
 import type WidgetDataView from '~/components/WidgetDataView.vue'
 import type WidgetDashboard from '~/components/WidgetDashboard.vue'
 import type WidgetFrame from '~/components/WidgetFrame.vue'
@@ -146,6 +147,7 @@ interface WidgetCatalogChecks {
   TColorSelect: Assert<Check<'TColorSelect', OwnProps<typeof WidgetColorSelect>, object>>
   TUuidInput: Assert<Check<'TUuidInput', OwnProps<typeof WidgetUuidInput>, object>>
   TUlidInput: Assert<Check<'TUlidInput', OwnProps<typeof WidgetUlidInput>, object>>
+  TPasswordInput: Assert<Check<'TPasswordInput', OwnProps<typeof WidgetPasswordInput>, object>>
   TLeafletMap: Assert<Check<'TLeafletMap', OwnProps<typeof WidgetMap>, object>>
   TGeolocation: Assert<Check<'TGeolocation', OwnProps<typeof WidgetLocation>, object>>
   TRangeInput: Assert<Check<'TRangeInput', OwnProps<typeof WidgetRangeInput>, object>>

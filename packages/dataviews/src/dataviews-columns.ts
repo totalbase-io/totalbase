@@ -101,6 +101,7 @@ export async function syncFields(ctx: DataViewsContext, dataviewId: string): Pro
   }
 
   const added: AdminDataViewField[] = [];
+  const passwordColumns: string[] = [];
   // `locked` (column-sync.ts's own doc comment) - the DataView's
   // column set stays exactly what it already has; a genuinely new
   // real column is never given a field row at all here (not even
@@ -113,6 +114,11 @@ export async function syncFields(ctx: DataViewsContext, dataviewId: string): Pro
   if (columnSync !== "locked") {
     for (const column of detail.columns) {
       if (column.attnum <= seenThrough || existingAttnums.has(column.attnum)) continue;
+      // A Password column is never read: no list column (§4.1). Shown, it still joins the form below.
+      if (inputs.get(column.name) === "password") {
+        if (columnSync === "auto_show") passwordColumns.push(column.name);
+        continue;
+      }
       const fk = fkColumns.get(column.name) ?? null;
       const seeded = columnWidget(column, fk, detail.checkConstraints, inputs);
       const widget = seeded.widget;
@@ -129,8 +135,8 @@ export async function syncFields(ctx: DataViewsContext, dataviewId: string): Pro
       if (rows[0]) added.push(toAdminDataViewField(rows[0]));
     }
     // Shown, it is in the record form too - after its last field (§4.2).
-    if (columnSync === "auto_show" && added.length > 0) {
-      await appendFormFields(ctx, dataviewId, detail, inputs, added.map((field) => field.columnName!));
+    if (columnSync === "auto_show" && added.length + passwordColumns.length > 0) {
+      await appendFormFields(ctx, dataviewId, detail, inputs, [...added.map((field) => field.columnName!), ...passwordColumns]);
     }
     await ctx.database.query(
       `UPDATE totalbase.dataviews SET view_config = coalesce(view_config, '{}'::jsonb) || jsonb_build_object('last_attnum', $2::int) WHERE id = $1`,
@@ -173,6 +179,7 @@ export async function addColumns(ctx: DataViewsContext, dataviewId: string, colu
       const column = detail.columns.find((c) => c.name === name);
       if (!column) throw new TotalBaseError("DATAVIEW_COLUMN_INVALID", `Not a column of the source table: ${name}`);
       if (existing.has(`${column.attnum}`)) throw new TotalBaseError("DATAVIEW_FIELD_DUPLICATE", `Already in the DataView: ${name}`);
+      if (inputs.get(name) === "password") throw new TotalBaseError("DATAVIEW_COLUMN_INVALID", `A Password column is never read, so it can't be a list column: ${name}`);
       additions.push({ kind: "COLUMN", column });
       continue;
     }

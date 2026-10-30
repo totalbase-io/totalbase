@@ -47,8 +47,13 @@ function titleOf(resourceId: string | undefined, name: string): string {
   return columnTitle(presentation, humanizeColumnName(name))
 }
 
+/** A Password column is never read (Security.md §2.3), so it is never a list column. */
+function isPassword(resourceId: string | undefined | null, name: string): boolean {
+  return (resourceId ? props.dataview.columnPresentation?.[resourceId]?.[name]?.input : undefined) === 'password'
+}
+
 const ownOptions = computed<Option[]>(() => (props.relationDetail?.columns ?? [])
-  .filter(c => !c.protected)
+  .filter(c => !c.protected && !isPassword(props.dataview.sourceResource, c.name))
   .map(c => ({ path: c.name, name: c.name, title: titleOf(props.dataview.sourceResource ?? undefined, c.name), dataType: c.dataType })))
 
 interface Group { fk: string, table: string, resourceId: string | null, available: boolean }
@@ -67,7 +72,7 @@ async function loadGroup(group: Group) {
   try {
     const { data } = await api.get<RelationDetail>(`/catalog/${target.type === 'VIEW' ? 'view' : 'table'}/${target.postgresOid}`)
     targetColumns[group.fk] = data.columns
-      .filter(c => !c.protected)
+      .filter(c => !c.protected && !isPassword(target.id, c.name))
       .map(c => ({ path: `${group.fk}.${c.name}`, name: c.name, title: titleOf(target.id, c.name), dataType: c.dataType }))
   } catch {
     targetColumns[group.fk] = null

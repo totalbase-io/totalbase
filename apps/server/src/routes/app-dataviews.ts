@@ -4,6 +4,7 @@ import { callerRoleIds, callerRoles } from "../caller-roles.js";
 import { settingsWritable, type AdminDataView, type AdminDataViewField } from "@totalbase/dataviews";
 import { ReadAudit, readOrigin } from "../read-audit.js";
 import { TotalBaseError } from "@totalbase/errors";
+import { getPasswordColumns } from "@totalbase/resources";
 import type { CustomAction } from "@totalbase/tb-catalog";
 import type { AppContext } from "../context.js";
 import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
@@ -157,9 +158,14 @@ async function fieldsForViewer(context: AppContext, request: FastifyRequest, vie
   return fieldsVisibleTo(context, request, view, fields);
 }
 
-async function fieldsVisibleTo(context: AppContext, request: FastifyRequest, view: AdminDataView, fields: AdminDataViewField[]): Promise<AdminDataViewField[]> {
+async function fieldsVisibleTo(context: AppContext, request: FastifyRequest, view: AdminDataView, all: AdminDataViewField[]): Promise<AdminDataViewField[]> {
+  if (view.sourceResource === null) return all;
+  // A Password column is never read, not even by an administrator (Security.md §2.3): one a DataView still lists is left out.
+  // So is one whose column is gone (DataViews.md §4.8) - the Data API would refuse every row; the author sees it as broken.
+  const passwordColumns = await getPasswordColumns(context.database, view.sourceResource);
+  const fields = all.filter((field) => !field.orphaned && (field.kind !== "COLUMN" || field.columnName === null || !passwordColumns.has(field.columnName)));
   const roleIds = await callerRoleIds(context, request);
-  if (roleIds === null || view.sourceResource === null) return fields;
+  if (roleIds === null) return fields;
   const permission = await context.effectivePermissions.resolve(roleIds, view.sourceResource, "READ");
   // A related column (RELATED, `brand.country`) the same way: its dotted path needs its own field grant on the source - without it, it's left out.
   const readableFields = fields.filter((field) => (field.kind !== "COLUMN" && field.kind !== "RELATED") || field.columnName === null || permission.fieldDecision(field.columnName) === "ALLOW");

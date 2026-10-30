@@ -1914,6 +1914,19 @@
             "update:modelValue": "Valor cambiado"
           }
         },
+        "TPasswordInput": {
+          "label": "Contraseña",
+          "description": "Un campo de contraseña, con un ojo que muestra lo escrito. Una contraseña guardada nunca se muestra - solo se guarda su hash, y nunca se lee.",
+          "props": {
+            "revealable": {
+              "label": "Botón para mostrar",
+              "description": "Un ojo que muestra u oculta lo escrito en el campo."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Valor cambiado"
+          }
+        },
         "TGeolocation": {
           "label": "Ubicación",
           "description": "La posición del dispositivo en una columna point, sin mapa - un botón, y las coordenadas una vez capturadas. Automático la toma cuando el campo se abre vacío: dónde se tomó una lectura.",

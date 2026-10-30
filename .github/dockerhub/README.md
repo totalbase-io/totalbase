@@ -33,6 +33,24 @@ docker logs totalbase   # the link that creates the first administrator
 
 Open the link, create your administrator, and you're in the admin at `http://localhost:3030/`. With PostgreSQL included, from scratch: the Docker Compose example in [Installation](https://docs.totalbase.io/getting-started/installation).
 
+**Everything in one command**, for a script or a quick try: your own master key and the first administrator, with no setup link - sign in at `http://localhost:3030/` with that email and password (at least 12 characters):
+
+```bash
+export TOTALBASE_MASTER_KEY="$(openssl rand -hex 32)"
+echo "$TOTALBASE_MASTER_KEY"   # keep it safe: every start needs this same key
+
+docker run -d --name totalbase -p 3030:3030 \
+  -v totalbase-data:/var/lib/totalbase \
+  -e POSTGRES_HOST=your-server -e POSTGRES_DB=acme \
+  -e POSTGRES_USER=totalbase -e POSTGRES_PASSWORD=... \
+  -e TOTALBASE_MASTER_KEY \
+  -e TOTALBASE_ADMIN_EMAIL=you@example.com \
+  -e TOTALBASE_ADMIN_PASSWORD='choose-a-long-password' \
+  totalbase/totalbase:beta
+```
+
+The key encrypts stored secrets: a full recovery needs a PostgreSQL backup and this key. Once signed in, change the password; the variables only matter at the first start.
+
 The database role should not be a superuser: TotalBase can do exactly what its role can do, and nothing more.
 
 ## Tags
@@ -40,7 +58,7 @@ The database role should not be a superuser: TotalBase can do exactly what its r
 | Tag | |
 |---|---|
 | `beta` | the latest beta, moved to it once the published image passed its checks on both architectures |
-| `0.1.0-beta.9` | this version - pin one in production |
+| `0.1.0-beta.10` | this version - pin one in production |
 
 Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release. Earlier betas keep their tags; they get no more fixes - upgrade to the latest. From `0.1.0-beta.5` the default port is `3030` (it was `3050`).
 

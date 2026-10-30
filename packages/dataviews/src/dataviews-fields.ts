@@ -156,8 +156,8 @@ export async function withColumnInputs(ctx: DataViewsContext, dataviewId: string
  * Each COLUMN/RELATED field as the grid reads it: its column's PostgreSQL
  * type, live (`dataType`, and the format keys it derives - never stored),
  * and what it inherits from its resource's column out of `presentation`
- * (DataViews.md §15). Matched by attnum, so a
- * rename keeps both; a column that no longer exists gets neither.
+ * (DataViews.md §15), and its column's name now. Matched by attnum, so a
+ * rename keeps all three; a column that no longer exists gets none of them, and `orphaned: true`.
  *
  * A foreign-key COLUMN shows what it
  * inherits (§15.5) - its table's row presentation out of
@@ -201,25 +201,33 @@ export async function withLiveColumnFacts(ctx: DataViewsContext, dataviewId: str
     };
   };
   return Promise.all(fields.map(async (field) => {
+    if (field.kind !== "COLUMN" && field.kind !== "RELATED") return field;
     let column: RelationDetail["columns"][number] | undefined;
     let resource: string | undefined;
+    let name: string | undefined;
     let display: Record<string, unknown> = {};
     if (field.kind === "COLUMN") {
       column = detail.columns.find((c) => c.attnum === field.columnAttnum);
       resource = source.resource;
+      name = column?.name;
       const relation = column ? detail.relations.find((r) => r.sourceColumn === column!.name) : undefined;
       if (relation) display = await inheritedDisplay(relation);
-    } else if (field.kind === "RELATED") {
+    } else {
       const fk = detail.columns.find((c) => c.attnum === field.relationAttnum);
       const relation = fk ? detail.relations.find((r) => r.sourceColumn === fk.name) : undefined;
       const target = relation ? await targetOf(relation) : null;
       column = target?.detail.columns.find((c) => c.attnum === field.targetAttnum);
       resource = target?.id;
+      name = column ? `${fk!.name}.${column.name}` : undefined;
     }
-    if (!column || !resource) return field;
+    // Its column is gone (dropped, or its foreign key's target): orphaned (§4.2) - kept, never read (§4.8).
+    if (!column || !resource || !name) return { ...field, orphaned: true };
     const inherited = presentation.columns[resource]?.[column.name];
     return {
       ...field,
+      // Its column as it is named now - a rename after a version was published still reads it (§4.2).
+      columnName: name,
+      orphaned: false,
       config: { ...storedColumnConfig(field.config), ...display, ...typeDerivedConfig(column.dataType) },
       dataType: column.dataType,
       ...(inherited ? { inherited } : {}),

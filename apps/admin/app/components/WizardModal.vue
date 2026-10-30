@@ -117,7 +117,7 @@ defineExpose({ next, back })
     <template #body>
       <div
         class="grid grid-cols-1 gap-6"
-        :class="[isMobile ? undefined : 'md:grid-cols-[200px_1fr]', fixedHeight ? [fixedHeight, 'overflow-hidden'] : undefined]"
+        :class="[isMobile ? undefined : 'md:grid-cols-[200px_minmax(0,1fr)]', fixedHeight ? [fixedHeight, 'overflow-hidden'] : undefined]"
       >
         <div
           v-if="isMobile"
@@ -186,8 +186,9 @@ defineExpose({ next, back })
             </button>
           </template>
         </UStepper>
+        <!-- min-w-0: a wide step (a table) scrolls inside itself, never widens the modal's content past it. -->
         <div
-          class="flex flex-col gap-4"
+          class="flex min-w-0 flex-col gap-4"
           :class="fixedHeight ? 'min-h-0 overflow-y-auto pr-2' : 'min-h-72'"
         >
           <template

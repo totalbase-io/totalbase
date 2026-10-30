@@ -120,6 +120,28 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
     }
   });
 
+  it("serves a published column renamed since under its name now, and leaves one dropped since out - the Data API would refuse every row", async () => {
+    const env = loadServerEnv();
+    const adminToken = (await context.auth.login({ email: env.adminEmail!, password: env.adminPassword! })).token;
+    await database.query(`ALTER TABLE public.${TABLE} ADD COLUMN gone text, ADD COLUMN moved text`);
+    try {
+      await context.dataviewsAdmin.syncFields(dataviewId);
+      await context.dataviewsAdmin.publish(dataviewId, null);
+      await database.query(`ALTER TABLE public.${TABLE} DROP COLUMN gone`);
+      await database.query(`ALTER TABLE public.${TABLE} RENAME COLUMN moved TO kept`);
+      const res = await call("GET", `/app/api/dataviews/${dataviewId}/fields`, adminToken);
+      expect(res.statusCode, res.body).toBe(200);
+      const columns = res.json().data.filter((f: { kind: string }) => f.kind === "COLUMN").map((f: { columnName: string }) => f.columnName);
+      expect(columns).toContain("kept");
+      expect(columns).not.toContain("gone");
+      expect(columns).not.toContain("moved");
+    } finally {
+      await database.query(`ALTER TABLE public.${TABLE} DROP COLUMN IF EXISTS gone, DROP COLUMN IF EXISTS kept`);
+      for (const field of (await context.dataviewsAdmin.listFields(dataviewId)).filter((f) => f.orphaned)) await context.dataviewsAdmin.deleteField(dataviewId, field.id);
+      await context.dataviewsAdmin.publish(dataviewId, null);
+    }
+  });
+
   it("sends the instance's toolbar default with the DataView - an App user can't read the settings", async () => {
     const overridden = await context.settings.isOverridden("dataviews.toolbar_mode");
     const before = await context.settings.get("dataviews.toolbar_mode");
@@ -174,6 +196,41 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
     await context.dataviewsAdmin.setRoles(blank.id, [viewerRoleId]);
     await context.dataviewsAdmin.publish(blank.id, null);
     expect((await call("GET", `/app/api/dataviews/${blank.id}/record`, viewerToken)).statusCode).toBe(404);
+  });
+
+  it("never gives a Password column as readable: write-only in a record's catalog where the viewer may write it, out of the filter catalog", async () => {
+    await database.query(
+      `INSERT INTO totalbase.resources_columns (resource, attnum, name, config)
+       SELECT $1, attnum, attname, '{"input":"password"}' FROM pg_attribute WHERE attrelid = $2::regclass AND attname = 'secret'
+       ON CONFLICT (resource, attnum) DO UPDATE SET config = excluded.config`,
+      [resourceId, `public.${TABLE}`],
+    );
+    try {
+      const page = await createView({ name: `Password page ${P}`, slug: `${P}-password`, sourceResourceId: resourceId, viewType: "CUSTOM" });
+      await context.dataviewsAdmin.setRoles(page.id, [viewerRoleId]);
+      await context.dataviewsAdmin.publish(page.id, null);
+      const record = async () => (await call("GET", `/app/api/dataviews/${page.id}/record`, viewerToken)).json().data;
+      // Even with a READ grant on it, it is never readable - and not in the record while the viewer may not write it.
+      await context.permissions.set(viewerRoleId, resourceId, "READ", {
+        effect: "ALLOW",
+        fields: ["id", "name", "secret"].map((field) => ({ field, effect: "ALLOW" as const })),
+      });
+      expect((await call("GET", `/app/api/dataviews/${page.id}/catalog`, viewerToken)).json().data.columns.map((c: { name: string }) => c.name).sort()).toEqual(["id", "name"]);
+      expect((await record()).writeOnly).toEqual([]);
+      // Allowed to set it: in the catalog, write-only.
+      await context.permissions.set(viewerRoleId, resourceId, "CREATE", { effect: "ALLOW", fields: ["name", "secret"].map((field) => ({ field, effect: "ALLOW" as const })) });
+      const writable = await record();
+      expect(writable.catalog.columns.map((c: { name: string }) => c.name).sort()).toEqual(["id", "name", "secret"]);
+      expect(writable.writeOnly).toEqual(["secret"]);
+      expect(writable.writable.create.sort()).toEqual(["name", "secret"]);
+    } finally {
+      await database.query(`DELETE FROM totalbase.resources_columns WHERE resource = $1 AND name = 'secret'`, [resourceId]);
+      await context.permissions.set(viewerRoleId, resourceId, "CREATE", { effect: "ALLOW", fields: [{ field: "name", effect: "ALLOW" }] });
+      await context.permissions.set(viewerRoleId, resourceId, "READ", {
+        effect: "ALLOW",
+        fields: [{ field: "id", effect: "ALLOW" }, { field: "name", effect: "ALLOW" }],
+      });
+    }
   });
 
   it("gives the patterns and bounds of the CHECKs on the columns the viewer may write - never the CHECKs", async () => {

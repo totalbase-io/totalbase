@@ -237,6 +237,35 @@ describe("DataViewsAdminService (integration)", () => {
     }
   });
 
+  it("never lists a Password column - it is never read - only puts it in the record form, and Add columns refuses it", async () => {
+    const ACCOUNTS = "dataviews_admin_pkg_test_accounts";
+    await database.query(`DROP TABLE IF EXISTS public.${ACCOUNTS} CASCADE`);
+    await database.query(`CREATE TABLE public.${ACCOUNTS} (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), login text, pass text)`);
+    const { rows } = await database.query<{ id: string }>(
+      `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
+       VALUES ($1::regclass::oid::int, 'public', $2, 'TABLE', 'ACTIVE', '{GET}') RETURNING id`,
+      [`public.${ACCOUNTS}`, ACCOUNTS],
+    );
+    const resourceId = rows[0]!.id;
+    await database.query(
+      `INSERT INTO totalbase.resources_columns (resource, attnum, name, config)
+       SELECT $1, attnum, attname, '{"input":"password"}' FROM pg_attribute WHERE attrelid = $2::regclass AND attname = 'pass'`,
+      [resourceId, `public.${ACCOUNTS}`],
+    );
+    try {
+      const table = await dataviewsAdmin.create({ name: "Accounts", sourceResourceId: resourceId, viewType: "TABLE" });
+      const fields = await dataviewsAdmin.listFields(table.id);
+      expect(fields.filter((f) => f.kind === "COLUMN").map((f) => f.columnName).sort()).toEqual(["id", "login"]);
+      const form = fields.filter((f) => f.kind === "WIDGET" && f.widget === "UFormField").map((f) => (f.config["props"] as { column?: string } | undefined)?.column);
+      expect(form).toContain("pass");
+      await expect(dataviewsAdmin.addColumns(table.id, ["pass"])).rejects.toMatchObject({ code: "DATAVIEW_COLUMN_INVALID" });
+    } finally {
+      await database.query(`DELETE FROM totalbase.dataviews WHERE source_resource = $1`, [resourceId]);
+      await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [resourceId]);
+      await database.query(`DROP TABLE IF EXISTS public.${ACCOUNTS} CASCADE`);
+    }
+  });
+
   it("applies fieldOverrides (widget/help) per column and rejects an unknown widget - never a title of its own", async () => {
     const dataview = await dataviewsAdmin.create({
       name: "Products Overridden",

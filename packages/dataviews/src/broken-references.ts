@@ -3,8 +3,8 @@ import { VIEW_LAYOUTS } from "./view-layouts.js";
 
 /**
  * A DataView that names a column its source no longer has (DataViews.md §4.8): a view's
- * layout (a formula's `{{column}}`, a picked column) or its Filter (`base_where`) - or its source itself
- * gone. Read against PostgreSQL's catalog (pg_attribute), the draft's `view_config` and the live
+ * layout (a formula's `{{column}}`, a picked column), its Filter (`base_where`) or one of its Columns (by
+ * attnum: a column dropped, or a related column's foreign key) - or its source itself gone. Read against PostgreSQL's catalog (pg_attribute), the draft's `view_config` and the live
  * version's. `version`: null for the draft, else the live version.
  */
 export interface BrokenDataViewReference {
@@ -12,7 +12,7 @@ export interface BrokenDataViewReference {
   /** The resource it reads - what Database › Columns lists it under. */
   resource: string | null;
   version: number | null;
-  /** Where: `card_layout.titleFormula`, `base_where`, `source`. */
+  /** Where: `card_layout.titleFormula`, `base_where`, `columns`, `source`. */
   part: string;
   /** The column it names, null when the source itself is gone. */
   column: string | null;
@@ -60,20 +60,27 @@ function namedColumns(viewType: string, viewConfig: Record<string, unknown>): { 
   return named;
 }
 
+/** A COLUMN or RELATED field as its draft row or its version's snapshot holds it. */
+interface ListedField { column_name: string | null; column_attnum: number | null; relation_attnum?: number | null }
+
 /** `dataviewId`: only that DataView's. */
 export async function brokenDataViewReferences(database: Queryable, dataviewId?: string): Promise<BrokenDataViewReference[]> {
   const { rows } = await database.query<{
     id: string; name: string; slug: string; view_type: string; view_config: Record<string, unknown>;
     resource: string | null; oid: number | null; status: string | null; source: string | null;
     live_version: number | null; live_config: Record<string, unknown> | null;
+    draft_fields: ListedField[]; live_fields: ListedField[] | null;
   }>(
     `SELECT d.id, d.name, d.slug, d.view_type, d.view_config, d.source_resource AS resource,
             r.postgres_oid AS oid, r.status, r."schema" || '.' || r.name AS source,
-            v.version AS live_version, v.view_config_snapshot AS live_config
+            v.version AS live_version, v.view_config_snapshot AS live_config,
+            coalesce((SELECT jsonb_agg(jsonb_build_object('column_name', f.column_name, 'column_attnum', f.column_attnum, 'relation_attnum', f.relation_attnum))
+                      FROM totalbase.dataviews_fields f WHERE f.dataview = d.id AND f.kind IN ('COLUMN', 'RELATED')), '[]') AS draft_fields,
+            (SELECT jsonb_agg(f) FROM jsonb_array_elements(v.fields_snapshot) f WHERE f->>'kind' IN ('COLUMN', 'RELATED')) AS live_fields
      FROM totalbase.dataviews d
      JOIN totalbase.resources r ON r.id = d.source_resource
      LEFT JOIN LATERAL (
-       SELECT version, view_config_snapshot FROM totalbase.dataviews_versions
+       SELECT version, view_config_snapshot, fields_snapshot FROM totalbase.dataviews_versions
        WHERE dataview = d.id ORDER BY version DESC LIMIT 1
      ) v ON true
      WHERE $1::uuid IS NULL OR d.id = $1
@@ -81,13 +88,14 @@ export async function brokenDataViewReferences(database: Queryable, dataviewId?:
     [dataviewId ?? null],
   );
   const oids = [...new Set(rows.flatMap((row) => (row.status === "ACTIVE" && row.oid !== null ? [row.oid] : [])))];
-  const { rows: attributes } = await database.query<{ oid: number; columns: string[] }>(
-    `SELECT attrelid::oid::int AS oid, array_agg(attname::text) AS columns
+  const { rows: attributes } = await database.query<{ oid: number; columns: string[]; attnums: number[] }>(
+    `SELECT attrelid::oid::int AS oid, array_agg(attname::text) AS columns, array_agg(attnum::int) AS attnums
      FROM pg_attribute WHERE attrelid = ANY($1::oid[]) AND attnum > 0 AND NOT attisdropped
      GROUP BY attrelid`,
     [oids],
   );
   const columnsOf = new Map(attributes.map((a) => [a.oid, new Set(a.columns)]));
+  const attnumsOf = new Map(attributes.map((a) => [a.oid, new Set(a.attnums)]));
 
   const broken: BrokenDataViewReference[] = [];
   for (const row of rows) {
@@ -106,6 +114,17 @@ export async function brokenDataViewReferences(database: Queryable, dataviewId?:
         if (columns.has(column) || seen.has(`${part}\n${column}`)) continue;
         seen.add(`${part}\n${column}`);
         broken.push({ dataview, resource: row.resource, version, part, column });
+      }
+    }
+    // A column in Columns whose attnum is gone (a related column: its foreign key's) - orphaned, never deleted (§4.2).
+    const attnums = attnumsOf.get(row.oid!)!;
+    const fieldVersions: [number | null, ListedField[] | null][] = [[null, row.draft_fields], [row.live_version, row.live_fields]];
+    for (const [version, fields] of fieldVersions) {
+      for (const field of fields ?? []) {
+        const attnum = field.column_attnum ?? field.relation_attnum;
+        if (attnum === null || attnum === undefined || attnums.has(attnum) || seen.has(`columns\n${field.column_name}`)) continue;
+        seen.add(`columns\n${field.column_name}`);
+        broken.push({ dataview, resource: row.resource, version, part: "columns", column: field.column_name });
       }
     }
   }

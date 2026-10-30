@@ -707,6 +707,8 @@ export interface DataViewField {
   inherited?: ColumnPresentation
   /** COLUMN/RELATED: its column's PostgreSQL type, read live. */
   dataType?: string
+  /** COLUMN/RELATED: true when its column is gone (DataViews.md §4.2) - never read; Sync columns lists it, Remove takes it out. */
+  orphaned?: boolean
 }
 
 /**

@@ -2,6 +2,20 @@
 
 What changes from one TotalBase version to the next: what's new, and what an upgrade asks of you. Each version's section is also its [GitHub release](https://github.com/totalbase-io/totalbase/releases)'s notes (`scripts/release-notes.sh`). The step-by-step upgrade guide is in the [documentation](https://docs.totalbase.io/operations/upgrading).
 
+## 0.1.0-beta.10 - 2026-10-30
+
+### Highlights
+
+- **A Password column in a DataView.** A DataView over a table with a Password column loads its rows and opens its records again (every row was refused before). The column lives in the record form only, never in a grid, a filter or an export: its new **Password** field has an eye that shows what was typed, starts empty when editing - leave it empty to keep the password - and never shows a stored one.
+- **A column dropped from a table no longer breaks its DataViews.** The rows keep loading without it, and the dropped column shows as a broken reference - the error icon on the DataView in the tree and on the table's **Columns** - until you remove it from the DataView and publish. A column renamed since the DataView was published shows under its new name.
+- **Column titles read in an empty grid**: with no rows, a column is at least 120 px wide instead of "…".
+- A wizard's wide step (New DataView's Columns) scrolls inside the modal instead of stretching it.
+
+### Before you upgrade
+
+- **Nothing to do to upgrade.** No migration applies on start.
+- **An App API change**: `GET /app/api/dataviews/:slug/fields` leaves out a Password column and a column the table no longer has; the admin's field read marks the latter `orphaned: true`.
+
 ## 0.1.0-beta.9 - 2026-10-29
 
 ### Highlights

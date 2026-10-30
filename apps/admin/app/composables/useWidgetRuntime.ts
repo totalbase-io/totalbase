@@ -285,7 +285,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
   const recordTable = dataview.value.sourceResource && dataview.value.sourceResourceType === 'TABLE' && dataview.value.sourceResourceSchema && dataview.value.sourceResourceName
     ? { id: dataview.value.sourceResource, schema: dataview.value.sourceResourceSchema, name: dataview.value.sourceResourceName }
     : null
-  /** The columns a read asks for - those the catalog says the viewer may read. */
+  /** The columns a read asks for - those the catalog says the viewer may read, never a write-only (Password) one. */
   let recordFields = ''
   const recordEmits = (dataview.value.viewConfig.record as { emits?: Record<string, string> } | undefined)?.emits ?? {}
   // Each record's version as last read or written (meta.version) - sent back as If-Match, so a save over someone
@@ -305,7 +305,7 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
             const catalog: RecordCatalog = options.preview
               ? (await adminApi.get<RecordCatalog>(`/catalog/table/${recordTable.id}/record`)).data
               : (await appApi.get<RecordCatalog>(`/dataviews/${dataview.value.id}/record`)).data
-            recordFields = catalog.catalog.columns.map(c => c.name).join(',')
+            recordFields = catalog.catalog.columns.filter(c => !catalog.writeOnly?.includes(c.name)).map(c => c.name).join(',')
             return catalog
           },
           async read(pk) {

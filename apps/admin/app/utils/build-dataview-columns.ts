@@ -51,6 +51,9 @@ export function columnWidthVar(key: string): string {
   return `--tb-w-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 }
 
+/** The grid's minimum for a column with none of its own - `GRID_COLUMN_EMPTY_MIN_WIDTH` while it has no rows, else none. */
+export const EMPTY_MIN_WIDTH_VAR = '--tb-w-empty-min'
+
 /** The column's width bounds as CSS - the viewer's width (its variable) when set, else the DataView's. */
 function widthStyle(cell: GridCellConfig, key: string): Record<string, string> {
   const { width, minWidth, maxWidth } = gridColumnWidths(cell)
@@ -58,7 +61,7 @@ function widthStyle(cell: GridCellConfig, key: string): Record<string, string> {
   return {
     maxWidth: `var(${own}, ${maxWidth}px)`,
     width: `var(${own}, ${width !== undefined ? `${width}px` : 'auto'})`,
-    minWidth: `var(${own}, ${minWidth ?? 0}px)`
+    minWidth: `var(${own}, ${minWidth !== undefined ? `${minWidth}px` : `var(${EMPTY_MIN_WIDTH_VAR}, 0px)`})`
   }
 }
 

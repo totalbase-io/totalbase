@@ -99,6 +99,7 @@ export const WIDGET_COMPONENTS: Record<WidgetName, Component> = {
   TColorSelect: defineAsyncComponent(() => import('~/components/WidgetColorSelect.vue')),
   TUuidInput: defineAsyncComponent(() => import('~/components/WidgetUuidInput.vue')),
   TUlidInput: defineAsyncComponent(() => import('~/components/WidgetUlidInput.vue')),
+  TPasswordInput: defineAsyncComponent(() => import('~/components/WidgetPasswordInput.vue')),
   TLeafletMap: defineAsyncComponent(() => import('~/components/WidgetMap.vue')),
   TGeolocation: defineAsyncComponent(() => import('~/components/WidgetLocation.vue')),
   TRangeInput: defineAsyncComponent(() => import('~/components/WidgetRangeInput.vue')),

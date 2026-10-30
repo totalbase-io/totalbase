@@ -152,6 +152,7 @@ export const CATALOG_SCHEMAS: Record<string, JsonSchema> = {
       }),
       description: "The table's detail, as `/admin/api/catalog/table/{id}` without `owner`/`canAlter`.",
     },
+    writeOnly: { ...arrayOf(STRING), description: "Its Password columns: in `catalog.columns` so a form sets them, never read - a read leaves them out." },
     writable: object({ create: arrayOf(STRING), update: arrayOf(STRING) }),
     patterns: { type: "object", additionalProperties: true, description: "Per column: the regular expressions its CHECKs hold." },
     bounds: { type: "object", additionalProperties: true, description: "Per column: the ranges its CHECKs hold (`price >= 0`, `length(code) <= 10`)." },

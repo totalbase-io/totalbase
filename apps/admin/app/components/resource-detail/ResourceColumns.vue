@@ -97,9 +97,9 @@ const { data: broken, refresh: refreshBroken } = useAsyncData(
   { watch: [() => props.resource.id], default: (): BrokenReferences => ({ dashboards: [], dataviews: [] }), lazy: true }
 )
 const brokenCount = computed(() => broken.value.dashboards.length + broken.value.dataviews.length)
-/** Where to fix it: a layout in the DataView's Views, its Filter in Data; a widget in its dashboard. */
+/** Where to fix it: a layout in the DataView's Views, its Filter or Columns in Data; a widget in its dashboard. */
 function dataviewFixPath(reference: BrokenDataViewReference): string {
-  const section = reference.part === 'base_where' || reference.part === 'source' ? 'data' : 'views'
+  const section = reference.part === 'base_where' || reference.part === 'source' || reference.part === 'columns' ? 'data' : 'views'
   return `/dataviews/${reference.dataview.id}/settings?section=${section}`
 }
 

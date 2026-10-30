@@ -254,8 +254,7 @@ export const COLUMN_INPUTS: Record<ColumnInputKey, ColumnInputDefinition> = {
     description: "Stored hashed - never returned by the API.",
     icon: "i-lucide-lock",
     group: "text",
-    widget: "UInput",
-    props: { type: "password" },
+    widget: "TPasswordInput",
     kinds: ["text"],
     // No CHECK: it would run against the stored hash; strength is checked on the server (auth.password_min_length).
     create: { kind: "scalar", dataType: "text" },

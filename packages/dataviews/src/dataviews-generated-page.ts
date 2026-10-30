@@ -54,7 +54,8 @@ export async function insertColumnFields(
 
   let visibleIndex = 0;
   for (const column of detail.columns) {
-    const presence = options.presence(column);
+    // A Password column is never read (Security.md §2.3): it is in the record form only, never a list column.
+    const presence = inputs.get(column.name) === "password" ? null : options.presence(column);
     if (!presence) continue;
     const override = options.fieldOverrides?.[column.name];
     const fk = fkColumns.get(column.name) ?? null;

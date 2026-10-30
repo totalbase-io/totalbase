@@ -26,6 +26,8 @@ export const GRID_COLUMN_WIDTH_RANGE = { min: 24, max: 2000 } as const;
 export const GRID_CELL_MAX_LINES = 10;
 /** A column with no width of its own is never wider than this - a long text or a document never pushes the grid sideways. */
 export const GRID_COLUMN_DEFAULT_MAX_WIDTH = 320;
+/** With no rows, a column with no minimum of its own is at least this wide - its title, not "…", until rows size it. */
+export const GRID_COLUMN_EMPTY_MIN_WIDTH = 120;
 
 /** What's wrong with a column's cell config, or null - the server refuses it (422 `DATAVIEW_COLUMN_INVALID`), the MCP says it first. */
 export function gridCellConfigProblem(config: Record<string, unknown>): string | null {

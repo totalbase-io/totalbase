@@ -1196,6 +1196,22 @@ export const WIDGET_CATALOG = {
     slots: {},
     emits: { "update:modelValue": { label: "Value changed", payload: "{ value }" } },
   },
+  TPasswordInput: {
+    label: "Password",
+    source: "totalbase",
+    icon: "i-lucide-lock",
+    group: "input",
+    description: "A password field, with an eye that shows what was typed. A stored password is never shown - only its hash is kept, and it is never read.",
+    accepts: ["text"],
+    formField: true,
+    props: {
+      modelValue,
+      revealable: { label: "Show button", editor: "boolean", default: true, description: "An eye that shows or hides what was typed in the field." },
+      disabled,
+    },
+    slots: {},
+    emits: { "update:modelValue": { label: "Value changed", payload: "{ value }" } },
+  },
   TLeafletMap: {
     label: "Map (Leaflet)",
     source: "totalbase",

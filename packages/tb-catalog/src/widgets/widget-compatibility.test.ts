@@ -39,7 +39,7 @@ describe("compatibleWidgets()", () => {
   });
 
   it("falls back to the full text-ish widget set, including UPinInput/UEditor, for text/varchar/uuid", () => {
-    const expected = ["UInput", "UTextarea", "USelect", "USelectMenu", "UInputMenu", "URadioGroup", "UListbox", "UPinInput", "TScanner", "UEditor", "TColorSelect", "TUuidInput", "TUlidInput"];
+    const expected = ["UInput", "UTextarea", "USelect", "USelectMenu", "UInputMenu", "URadioGroup", "UListbox", "UPinInput", "TScanner", "UEditor", "TColorSelect", "TUuidInput", "TUlidInput", "TPasswordInput"];
     expect(compatibleWidgets("text", null)).toEqual(expected);
     expect(compatibleWidgets("uuid", null)).toEqual(expected);
   });

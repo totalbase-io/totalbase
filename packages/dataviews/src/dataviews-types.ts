@@ -229,6 +229,8 @@ export interface AdminDataViewField {
   inherited?: ColumnPresentation;
   /** COLUMN/RELATED, on a read: its column's PostgreSQL type, as the table is now. */
   dataType?: string;
+  /** COLUMN/RELATED, on a read: true when its column is gone (DataViews.md §4.2) - kept in the DataView, never read (§4.8). */
+  orphaned?: boolean;
 }
 
 export interface DataViewFieldRow {

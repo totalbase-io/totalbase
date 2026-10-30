@@ -720,6 +720,10 @@
       "offlineDescription": "This screen works again as soon as the connection is back.",
       "unreachableTitle": "The server can't be reached"
     },
+    "widgetPassword": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
     "widgetUuid": {
       "generate": "Generate a new one"
     },

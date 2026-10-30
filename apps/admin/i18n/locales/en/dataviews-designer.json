@@ -1914,6 +1914,19 @@
             "update:modelValue": "Value changed"
           }
         },
+        "TPasswordInput": {
+          "label": "Password",
+          "description": "A password field, with an eye that shows what was typed. A stored password is never shown - only its hash is kept, and it is never read.",
+          "props": {
+            "revealable": {
+              "label": "Show button",
+              "description": "An eye that shows or hides what was typed in the field."
+            }
+          },
+          "emits": {
+            "update:modelValue": "Value changed"
+          }
+        },
         "TGeolocation": {
           "label": "Location",
           "description": "The device's position into a point column, no map - a button, the coordinates once captured. Auto takes it when the field opens empty: where a reading was taken.",

@@ -59,12 +59,14 @@ describe("brokenDataViewReferences (integration)", () => {
     expect(await mine()).toEqual([]);
   });
 
-  it("names the layout formula and the filter whose column was dropped or renamed", async () => {
+  it("names the layout formula and the filter whose column was dropped or renamed, and a column in Columns that was dropped", async () => {
     await database.query(`ALTER TABLE public.${TABLE} DROP COLUMN nombre`);
     await database.query(`ALTER TABLE public.${TABLE} RENAME COLUMN vigente TO activo`);
     expect((await mine()).map((b) => [b.part, b.column, b.version, b.resource])).toEqual([
       ["card_layout.titleFormula", "nombre", null, resourceId],
       ["base_where", "vigente", null, resourceId],
+      // In Columns by attnum: a renamed column is still there, a dropped one is not.
+      ["columns", "nombre", null, resourceId],
     ]);
   });
 

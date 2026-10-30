@@ -33,7 +33,7 @@ import type { CatalogColumn } from '~/types/permission'
 import type { RelationDetail } from '~/types/schema'
 import { regionalDatePattern, searchForApi } from '~/utils/search-terms'
 import { columnValueSource } from '~/utils/column-values'
-import { columnWidthVar, defaultColumnAlign, formatCellPlainText } from '~/utils/build-dataview-columns'
+import { EMPTY_MIN_WIDTH_VAR, columnWidthVar, defaultColumnAlign, formatCellPlainText } from '~/utils/build-dataview-columns'
 import { displayFieldAlias } from '~/utils/display-field'
 import { displayColumns, displayText, foreignKeyDisplayFields, sortForViewer, sortKey, type DisplayConfig } from '~/utils/display-field'
 import { recordMenu } from '~/utils/record-menu'
@@ -43,7 +43,7 @@ import { flattenQueryObject } from '~/utils/flatten-query-object'
 import { cardMark, conditionPlan, conditionStyleAttrs, flagsByRow, MAX_FLAGS, rowLook, type RowLook } from '~/utils/column-conditions'
 import { actionFlags, actionsAt, CUSTOM_ACTION_ICON, runnableActions } from '~/utils/custom-actions'
 import { selectionSum } from '~/utils/column-totals'
-import { CELL_ALIGNS, GRID_CELL_TEXT_WRAPS, type CellStyle, type ColumnCondition, type GridCellConfig } from '@totalbase/tb-catalog'
+import { CELL_ALIGNS, GRID_CELL_TEXT_WRAPS, GRID_COLUMN_EMPTY_MIN_WIDTH, type CellStyle, type ColumnCondition, type GridCellConfig } from '@totalbase/tb-catalog'
 import { parseRefreshInterval } from '~/utils/parse-refresh-interval'
 import { createDashboardRefreshScheduler, type DashboardRefreshScheduler } from '~/utils/dashboard-refresh'
 import { columnTitles, resolveFieldPresentation } from '~/utils/field-presentation'
@@ -780,6 +780,13 @@ const columnDrag = useGridColumnDrag({
   keys: () => orderedFields.value.map(f => f.columnName!),
   place: (key, before) => columnPrefs.placeColumn(key, before)
 })
+// No rows: no content sizes the columns, so each one with no minimum of its own takes GRID_COLUMN_EMPTY_MIN_WIDTH.
+watch([tableEl, () => rows.value.length === 0], ([, empty]) => {
+  const root = tableRoot()
+  if (!root) return
+  if (empty) root.style.setProperty(EMPTY_MIN_WIDTH_VAR, `${GRID_COLUMN_EMPTY_MIN_WIDTH}px`)
+  else root.style.removeProperty(EMPTY_MIN_WIDTH_VAR)
+}, { immediate: true, flush: 'post' })
 /** Drags column `key`'s width: the variable follows the pointer (no cell drawn again), its preference is kept on release. */
 function startColumnResize(key: string, event: PointerEvent) {
   const root = tableRoot()

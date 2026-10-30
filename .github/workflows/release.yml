@@ -7,7 +7,8 @@
 # pushed by digest; `merge` joins both digests under the release's version; `verify` pulls that version from Docker Hub
 # on each architecture and runs scripts/test-image.sh on it; only then `channel` moves the channel tag to it, so whoever
 # pulls `beta` (or `latest`) never gets an image that wasn't checked, and `release` publishes the GitHub release, its notes
-# the version's section of CHANGELOG.md (scripts/release-notes.sh) (Foundations.md §21.5).
+# the version's section of CHANGELOG.md (scripts/release-notes.sh), and `dockerhub-readme` Docker Hub's page
+# (Foundations.md §21.5).
 name: Release
 
 on:
@@ -148,6 +149,19 @@ jobs:
             docker buildx imagetools create -t "$registry/$IMAGE:$channel" "$registry/$IMAGE:$version"
             docker buildx imagetools inspect "$registry/$IMAGE:$channel"
           done
+  # Docker Hub's page, once the channel moved: .github/dockerhub/README.md as the repository's overview, so its tags,
+  # port and addresses are this version's. The token needs Docker Hub's Read, Write, Delete scope.
+  dockerhub-readme:
+    needs: channel
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: totalbase/${{ env.IMAGE }}
+          readme-filepath: .github/dockerhub/README.md
   # The GitHub release, once the image is checked and announced: its notes are the version's section of CHANGELOG.md,
   # written in the release commit (scripts/release-notes.sh). A beta, a release candidate or a stable version without
   # one fails the run, so the docs and website deploys, which wait for it, refuse too; a test of this workflow gets none.

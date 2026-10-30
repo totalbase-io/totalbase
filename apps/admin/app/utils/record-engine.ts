@@ -38,6 +38,8 @@ export interface RecordCatalog {
     /** Its CHECKs, as `pg_get_constraintdef` renders them - a column's plain list of values offered as options. */
     checkConstraints?: { expression: string }[]
   }
+  /** Password columns (Security.md §2.3): in `columns` so a field sets them, never read - a read leaves them out. */
+  writeOnly?: string[]
   writable: { create: string[], update: string[] }
   /** The regular expressions the writable columns' CHECKs hold - what a form checks before saving. */
   patterns?: Record<string, ColumnPattern[]>

@@ -463,10 +463,13 @@ async function save() {
                   class="w-full"
                 />
               </UFormField>
-              <UFormField
-                :label="t('database.addColumn.maxLength')"
-                :description="t('database.addColumn.maxLengthDescription', { type: 'varchar(n)' })"
-              >
+              <UFormField :label="t('database.addColumn.maxLength')">
+                <template #hint>
+                  <FieldHelp
+                    :text="t('database.addColumn.maxLengthDescription', { type: 'varchar(n)' })"
+                    :label="t('database.addColumn.maxLength')"
+                  />
+                </template>
                 <UInputNumber
                   v-model="maxLength"
                   class="w-full"

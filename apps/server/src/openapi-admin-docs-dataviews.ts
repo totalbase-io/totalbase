@@ -176,6 +176,7 @@ export const DATAVIEW_SCHEMAS: Record<string, JsonSchema> = {
       relatedDashboard: { ...UUID_OR_NULL, description: "WIDGET only: the Dashboard it shows (an embedded Dashboard's)." },
       inherited: { ...COLUMN_PRESENTATION, description: "COLUMN/RELATED, on a read, when its resource column has a presentation: its title, format, look and conditions." },
       dataType: { type: "string", description: "COLUMN/RELATED, on a read: its column's PostgreSQL type now; absent when the column no longer exists." },
+      orphaned: { type: "boolean", description: "COLUMN/RELATED, on a read: true when its column no longer exists - kept in the DataView, never read; the App's fields leave it out." },
     },
     [
       "id", "kind", "parent", "gridX", "gridY", "gridW", "gridH", "label", "icon", "columnAttnum", "columnName",

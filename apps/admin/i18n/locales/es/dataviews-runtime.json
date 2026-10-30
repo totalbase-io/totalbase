@@ -720,6 +720,10 @@
       "offlineDescription": "Esta pantalla vuelve a funcionar en cuanto vuelva la conexión.",
       "unreachableTitle": "No se puede contactar al servidor"
     },
+    "widgetPassword": {
+      "show": "Mostrar contraseña",
+      "hide": "Ocultar contraseña"
+    },
     "widgetUuid": {
       "generate": "Generar uno nuevo"
     },

@@ -1,10 +1,12 @@
 /**
  * How placed widgets lay out (DataViews.md §12.2):
  * every area - the page itself, or one slot of a widget - is an ordered list
- * in flow, wrapped into rows of 12 columns; each widget has an order
- * (`gridY`) and a width (`gridW`), each row is as tall as its tallest widget,
- * and a phone stacks them. Only a `sizable` widget has a height of its own,
- * in rows (`gridH`).
+ * in flow (`.widget-area`, a wrapping flex row), wrapped into lines of 12
+ * columns; each widget has an order (`gridY`) and a width (`gridW`): 1-12
+ * columns, or 0 - Fit content - its own width, beside what precedes it (a
+ * button, a badge). Each line is as tall as its tallest widget, and a phone
+ * stacks the widgets that fill, the fitting ones staying in line. Only a
+ * `sizable` widget has a height of its own, in rows (`gridH`).
  */
 import type { DataViewField } from '~/types/dataview'
 
@@ -80,10 +82,43 @@ export function slotHasWidgets(fields: readonly DataViewField[], parent: string,
   return childWidgets(fields, parent).some(f => ((f.config as { slot?: string }).slot === slot || (perItem && ((f.config as { slot?: string }).slot ?? '').startsWith(`${slot}:`))))
 }
 
-/** A widget's width in its area's row; a phone stacks them (see `.widget-area`). */
-export function widgetCellStyle(field: DataViewField): Record<string, string> {
-  const span = Math.min(12, Math.max(1, field.gridW || 12))
-  return { 'grid-column': `span ${span} / span ${span}` }
+/** The gap between an area's widgets - `.widget-area`'s, so a width in columns accounts for it. */
+export const WIDGET_AREA_GAP = '0.75rem'
+
+/**
+ * A widget's width in its area's line (see `.widget-area` in main.css): N of 12 columns,
+ * the gaps between columns accounted for, so widths line up across lines like a grid's;
+ * or - Fit content (`gridW` 0) - its content's width, never wider than the line, sitting
+ * at the bottom of its line unless Style's Vertical align says otherwise (beside a form
+ * field, level with its input).
+ */
+/** A fitting widget whose Full width (`block`, a Button's) is on fills its row - its box, not only its control (DataViews.md §12.2). */
+export function fillsRow(field: DataViewField): boolean {
+  return field.gridW === 0 && (field.config as { props?: { block?: unknown } }).props?.block === true
+}
+
+/**
+ * A widget's cell in its area: N of 12 columns, or - Fit content - its own width, at the bottom of its row unless
+ * Style's Vertical align says otherwise. `centered`: the area is a form field's input row (an input's height), where
+ * a switch or a checkbox sits centered like an input's text (DataViews.md §12.2).
+ */
+export function widgetCellStyle(field: DataViewField, options: { centered?: boolean } = {}): Record<string, string> {
+  if (field.gridW === 0 && !fillsRow(field)) {
+    const verticalAlign = (field.config as { props?: { verticalAlign?: unknown } }).props?.verticalAlign
+    return { 'flex': '0 0 auto', 'max-width': '100%', 'min-width': '0', ...(verticalAlign ? {} : { 'align-self': options.centered ? 'center' : 'flex-end' }) }
+  }
+  return spanStyle(field.gridW)
+}
+
+/** N of 12 columns of a `.widget-area` line, the gaps accounted for - a widget's width, a Columns' column's. A span outside 1-12 is the whole line. */
+export function spanStyle(span: number | undefined): Record<string, string> {
+  const columns = Number.isInteger(span) && span! >= 1 && span! <= 12 ? span! : 12
+  return { flex: `0 0 calc(${columns} / 12 * (100% + ${WIDGET_AREA_GAP}) - ${WIDGET_AREA_GAP})` }
+}
+
+/** A fitting widget's class - what the phone's stacking leaves in its line (`.widget-area` in main.css). */
+export function widgetCellClass(field: DataViewField): string | undefined {
+  return field.gridW === 0 && !fillsRow(field) ? 'widget-fit' : undefined
 }
 
 /** A sizable widget's height, in pixels. */

@@ -320,10 +320,18 @@ html {
 /* CUSTOM pages (WidgetRenderer.vue / CustomPage.vue): every area is a
    12-column grid laid out on the Design form's canvas; a phone stacks its
    widgets in reading order, like the Design form's own one-column canvas. */
+/* An area of placed widgets (DataViews.md §12.2): a wrapping line - a widget of N columns takes N/12 of the width
+   (utils/widget-layout.ts accounts for the gap), one that fits its content (.widget-fit) takes that and sits beside
+   what precedes it. Lines are as tall as their tallest widget, like a grid's rows. */
+.widget-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
 @media (max-width: 767px) {
-  .widget-area > * {
-    grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+  .widget-area > :not(.widget-fit) {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
   }
 }
 /* And in the App, a page's own area its width can't hold - beside its menus on a tablet: the page's width
@@ -333,8 +341,8 @@ html {
   container-type: inline-size;
 }
 @container (max-width: 719px) {
-  .widget-area--live > * {
-    grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+  .widget-area--live > :not(.widget-fit) {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
   }
 }

@@ -221,6 +221,8 @@ function literalShape(prop: WidgetProp): Shape {
 /** A Tabs', an Accordion's or a Dropdown menu's item (`WidgetItem`): only what its prop's `itemFields` give it. */
 /** A panel's share of the whole: 0 to 100. */
 const PERCENT: Shape = { type: "number", check: (value) => (typeof value === "number" && value >= 0 && value <= 100 ? null : "is a percentage, 0 to 100") };
+/** A column's width in the row's 12 columns: 1 to 12. */
+const SPAN: Shape = { type: "number", check: (value) => (Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 12 ? null : "is a width in columns, 1 to 12") };
 
 function itemShape(prop: WidgetProp): Shape {
   const fields = prop.itemFields ?? [];
@@ -236,6 +238,7 @@ function itemShape(prop: WidgetProp): Shape {
       ...(fields.includes("size") ? { defaultSize: PERCENT } : {}),
       ...(fields.includes("minSize") ? { minSize: PERCENT } : {}),
       ...(fields.includes("collapsible") ? { collapsible: { type: "boolean" } } : {}),
+      ...(fields.includes("span") ? { span: SPAN } : {}),
     },
   };
 }

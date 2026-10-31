@@ -25,13 +25,14 @@ const cat = useDesignerCatalogText()
 const label = (name: WidgetName) => cat.widgetLabel(name, widgetDefinition(name).label)
 const description = (name: WidgetName) => cat.widgetDescription(name, widgetDefinition(name).description)
 
+// Layout first: a page is laid out before it is filled (DataViews.md §12.1).
 // i18n: the English fallback - shown through cat.groupLabel (designer.catalog.groups.*).
 const GROUPS: { key: WidgetGroup, label: string }[] = [
+  { key: 'container', label: 'Layout' },
   { key: 'form', label: 'Form' },
   { key: 'input', label: 'Inputs' },
   { key: 'display', label: 'Display' },
   { key: 'embed', label: 'Embed' },
-  { key: 'container', label: 'Layout' },
   { key: 'overlay', label: 'Overlays' },
   { key: 'action', label: 'Actions' }
 ]

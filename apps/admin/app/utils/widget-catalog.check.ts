@@ -67,6 +67,7 @@ import type WidgetDashboard from '~/components/WidgetDashboard.vue'
 import type WidgetFrame from '~/components/WidgetFrame.vue'
 import type WidgetDrawer from '~/components/WidgetDrawer.vue'
 import type WidgetBox from '~/components/WidgetBox.vue'
+import type WidgetColumns from '~/components/WidgetColumns.vue'
 import type WidgetHeading from '~/components/WidgetHeading.vue'
 import type WidgetImage from '~/components/WidgetImage.vue'
 import type WidgetJson from '~/components/WidgetJson.vue'
@@ -154,6 +155,7 @@ interface WidgetCatalogChecks {
   TImage: Assert<Check<'TImage', OwnProps<typeof WidgetImage>, object>>
   THeading: Assert<Check<'THeading', OwnProps<typeof WidgetHeading>, object>>
   TBox: Assert<Check<'TBox', OwnProps<typeof WidgetBox>, InstanceType<typeof WidgetBox>['$slots']>>
+  TColumns: Assert<Check<'TColumns', OwnProps<typeof WidgetColumns>, InstanceType<typeof WidgetColumns>['$slots']>>
   TText: Assert<Check<'TText', OwnProps<typeof WidgetText>, object>>
   TQrCode: Assert<Check<'TQrCode', OwnProps<typeof WidgetQrCode>, object>>
   TResult: Assert<Check<'TResult', OwnProps<typeof WidgetResult>, object>>

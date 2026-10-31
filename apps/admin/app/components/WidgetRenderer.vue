@@ -19,7 +19,7 @@ import type { DataViewField, EditSize } from '~/types/dataview'
 import { isRoleColor, roleColorShade } from '~/types/permission'
 import { FULLSCREEN_WHEN_COMPACT, OVERLAY_CONTENT_WIDTH } from '~/utils/overlay-size'
 import { WIDGET_RUNTIME_KEY, type WidgetControl } from '~/composables/useWidgetRuntime'
-import { areaWidgets, fieldById, sizableHeight, slotHasWidgets, widgetCellStyle } from '~/utils/widget-layout'
+import { areaWidgets, fieldById, sizableHeight, slotHasWidgets, widgetCellClass, widgetCellStyle } from '~/utils/widget-layout'
 import { OVERLAY_WIDGETS, WIDGET_COMPONENTS } from '~/utils/widget-components'
 import { evaluateWidgetFormula, formulaReturnType } from '~/utils/widget-formula'
 import { resolveFrameUrlTemplate } from '~/utils/frame-url'
@@ -168,10 +168,19 @@ const selectMenuLabel = computed(() => {
   return t('common.showOptions')
 })
 /** An input in a form field set to Full width (the default) fills it - its width follows the field's. */
+const inFormField = computed(() => fieldById(runtime.fields.value, props.field.parent)?.widget === 'UFormField')
 const fillsField = computed(() => {
   const parent = fieldById(runtime.fields.value, props.field.parent)
   return parent?.widget === 'UFormField' && (parent.config as StoredConfig).props?.block !== false
 })
+/**
+ * A widget that fills its columns fills them (DataViews.md §12.2): an input, a select, a map take the whole of
+ * their cell - Nuxt UI's are inline-flex and would stop at their own width. A form field's input follows the
+ * field's Full width; a widget with a width of its own (`fit`) keeps it even when given columns.
+ */
+// An overlay has no box on the page: its root is the floating dialog itself (teleported), whose width is its own
+// (a Drawer's w-[88%]) - w-full on it would stretch it past the viewport, its Close out of reach.
+const fillsCell = computed(() => definition.value.group !== 'overlay' && (inFormField.value ? fillsField.value : (!definition.value.fit && props.field.gridW !== 0) || fillsRow(props.field)))
 /** Required fields first, then their patterns (the author's and the column's CHECKs), then the Code's Validate function - errors under each field's name, as UForm shows them. */
 async function validateForm(): Promise<{ name?: string, message: string }[]> {
   const fields = formFields(runtime.fields.value, props.field.id)
@@ -288,6 +297,13 @@ const resolvedProps = computed(() => {
       const handle = runtime.vars[binding.variable]
       if (handle) out[prop] = handle.kind === 'VALUE' ? handle.value : handle.data
     }
+  }
+  // Design: an Icon with no icon yet draws a dashed square - never nothing.
+  if (!live.value && name.value === 'UIcon' && !(typeof out.name === 'string' && out.name)) out.name = 'i-lucide-square-dashed'
+  // Design: a list showing every option (a Radio group, a Checkbox group) with no Options yet draws the three
+  // samples too - never nothing, so the author sees what they placed and where its edges are.
+  if (!live.value && OPTION_LIST_WIDGETS.includes(name.value) && !(Array.isArray(out.items) && out.items.length > 0)) {
+    out.items = designOptions(config.value.props ?? {}, { option: n => t('dataviews.widgetTable.sampleOption', { n }), description: t('dataviews.widgetTable.sampleDescription') })
   }
   // A widget reading a Resource shows it loading, unless its Loading prop is bound otherwise.
   const source = variableHandle(bindings.value.items ?? bindings.value.data)
@@ -556,7 +572,25 @@ const cssClass = computed(() => (typeof resolvedProps.value.cssClass === 'string
 const isMobile = useIsMobile()
 const isCompact = useCompactUi()
 /** The Style tab's box - spacing, border, background, shadow, alignment (utils/widget-style.ts). */
-const styleClasses = computed(() => widgetStyleClasses(resolvedProps.value))
+/**
+ * Where its content sits (Style's Align): its own, else - for a form field's input - its field's, so centering
+ * the field centers its label and its input alike. Nothing set: the start, as the component draws itself.
+ */
+const effectiveAlign = computed<'start' | 'center' | 'end' | undefined>(() => {
+  const own = resolvedProps.value.align
+  if (own === 'start' || own === 'center' || own === 'end') return own
+  if (!inFormField.value) return undefined
+  const parent = fieldById(runtime.fields.value, props.field.parent)
+  const inherited = (parent?.config as StoredConfig | undefined)?.props?.align
+  return inherited === 'start' || inherited === 'center' || inherited === 'end' ? inherited : undefined
+})
+const styleClasses = computed(() => widgetStyleClasses({ ...resolvedProps.value, ...(effectiveAlign.value ? { align: effectiveAlign.value } : {}) }))
+/**
+ * Components whose own root lays its content out, which the wrapper's column can't reach: a Camera's, a Location's
+ * and a Scanner's roots are rows.
+ */
+const ALIGN_JUSTIFY = { start: 'justify-start', center: 'justify-center', end: 'justify-end' } as const
+const alignRootClass = computed(() => (effectiveAlign.value && (name.value === 'TCamera' || name.value === 'TGeolocation' || name.value === 'TScanner') ? ALIGN_JUSTIFY[effectiveAlign.value] : undefined))
 /** The component's props, plus its HTML attributes - never a reserved one (class, on*, v-model...). */
 /**
  * A Table's columns (utils/widget-table.ts, DataViews.md §15):
@@ -682,6 +716,9 @@ const componentProps = computed(() => {
   const { visible: _visible, keepActive: _keepActive, cssClass: _css, htmlAttrs, fillHeight: _fill, iconKey: iconField, colorKey: colorField, disabledKey: disabledField, iconSize, columns, columnSettings: _settings, actions: _actions, computedColumns: _computed, rowColorKey: _rowColor, searchWindow: _searchWindow, searchWindowAs: _searchWindowAs, searchWindowSize: _searchWindowSize, ...withStyle } = resolvedProps.value
   // The Style tab's values are the box's, never the component's.
   const rest = Object.fromEntries(Object.entries(withStyle).filter(([key]) => !(key in COMMON_STYLE_PROPS)))
+  // An Editor on a page always has a box with a height - its rows, or Fill height - and stretches to it (WidgetEditor's
+  // fill); left to itself it stops at its content's minimum, a short editor in a tall box.
+  if (name.value === 'UEditor') rest.fill = true
   // An option list's fields bound to a formula: computed per option, then read as fields like any other.
   let iconKey = iconField
   let colorKey = colorField
@@ -747,6 +784,8 @@ const componentProps = computed(() => {
     rest.ui = { panel: `overflow-auto! min-h-0 min-w-0 p-px ${live.value ? 'items-start' : 'items-stretch'}`, ...(rest.ui as Record<string, unknown> | undefined) }
     if (isMobile.value) rest.orientation = 'vertical'
   }
+  // A File upload's framed area or image is narrower than its field: Style's Align says where it sits (WidgetFileUpload).
+  if (name.value === 'UFileUpload' && effectiveAlign.value) rest.align = effectiveAlign.value
   // A Modal's or a Slideover's Size is TotalBase's: its content's width - a wide Modal is fullscreen on a phone or a tablet.
   if (name.value === 'UModal' || name.value === 'USlideover') {
     const size = rest.size as EditSize | undefined
@@ -1061,6 +1100,27 @@ const heightStyle = computed(() => {
   if (!definition.value.sizable) return undefined
   return { height: `${fills.value && filledHeight.value !== null ? filledHeight.value : sizableHeight(props.field)}px` }
 })
+/**
+ * Where a slot's line gathers its widgets (DataViews.md §12.2): an inline slot (an overlay's or a Card's footer)
+ * at the end; otherwise where Style's Align says, the start by default. Only a line's spare room moves - a widget
+ * that fills its columns is unaffected.
+ */
+function areaJustify(slot: string): 'start' | 'center' | 'end' | undefined {
+  if (definition.value.slots[slot]?.inline) return 'end'
+  const align = effectiveAlign.value
+  return align === 'center' || align === 'end' ? align : undefined
+}
+const JUSTIFY_CLASS = { start: 'justify-start', center: 'justify-center', end: 'justify-end' } as const
+/**
+ * A form field's input row is an input's height (min-h-8, Nuxt UI's md), a switch or a checkbox centered in it:
+ * fields of either kind stacked in two independent columns stay level (DataViews.md §12.2). Shared with the canvas
+ * (CustomCanvasArea.vue), so the Design form draws the same.
+ */
+const FORM_FIELD_AREA_CLASS = 'min-h-8 items-center'
+function areaClass(slot: string): string[] {
+  const justify = areaJustify(slot)
+  return [...(justify ? [JUSTIFY_CLASS[justify]] : []), ...(name.value === 'UFormField' ? [FORM_FIELD_AREA_CLASS] : [])]
+}
 /** A per-item area's own name - a Splitter panel's label - for the canvas's "drop here in …". */
 function itemLabelOf(scope: unknown): string | undefined {
   const item = (asSlotProps(scope) ?? {}).item as { label?: unknown } | undefined
@@ -1078,6 +1138,8 @@ function asSlotProps(scope: unknown): Record<string, unknown> | undefined {
     v-show="!keptHidden"
     ref="root"
     class="min-w-0"
+    :data-widget="field.widget ?? undefined"
+    :data-name="field.label || undefined"
     :class="[styleClasses, cssClass, definition.sizable ? 'overflow-auto' : undefined, searchWindowOn ? 'flex items-center gap-1' : undefined]"
     :style="heightStyle"
   >
@@ -1085,7 +1147,7 @@ function asSlotProps(scope: unknown): Record<string, unknown> | undefined {
       :is="component"
       ref="componentRef"
       v-bind="componentProps"
-      :class="[definition.sizable || fillsContainer || stretchesToRow ? 'h-full' : undefined, fillsField || searchWindowOn ? 'w-full' : undefined, searchWindowOn ? 'min-w-0 flex-1' : undefined, fillsContainer && name !== 'UCard' ? 'overflow-auto' : undefined]"
+      :class="[alignRootClass, definition.sizable || fillsContainer || stretchesToRow ? 'h-full' : undefined, fillsCell || searchWindowOn ? 'w-full' : undefined, searchWindowOn ? 'min-w-0 flex-1' : undefined, fillsContainer && name !== 'UCard' ? 'overflow-auto' : undefined]"
       v-on="listeners"
     >
       <template
@@ -1101,17 +1163,20 @@ function asSlotProps(scope: unknown): Record<string, unknown> | undefined {
           :parent="field.id"
           :slot-name="areaKey(slot, scope)"
           :label="itemLabelOf(scope) ?? cat.slotLabel(name, slot, definition.slots[slot]?.label ?? '')"
+          :justify="areaJustify(slot)"
         />
         <div
           v-else
-          class="widget-area grid w-full min-w-0 grid-cols-12 gap-3"
+          class="widget-area w-full min-w-0"
+          :class="areaClass(slot)"
         >
           <WidgetRenderer
             v-for="child in slotWidgets(slot, scope)"
             :key="child.id"
             :field="child"
             :slot-props="asSlotProps(scope)"
-            :style="widgetCellStyle(child)"
+            :class="widgetCellClass(child)"
+            :style="widgetCellStyle(child, { centered: name === 'UFormField' })"
           />
         </div>
       </template>

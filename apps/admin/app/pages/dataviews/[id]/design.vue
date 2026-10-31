@@ -36,7 +36,7 @@ const { data: dataview, error, refresh: refreshDataview } = useAsyncData(
   () => api.get<DataView>(`/dataviews/${id.value}`).then(r => r.data),
   { watch: [id] }
 )
-const { data: fields, error: fieldsError } = useAsyncData(
+const { data: fields, error: fieldsError, refresh: refreshFields } = useAsyncData(
   () => `dataview-design-fields-${id.value}`,
   () => api.get<DataViewField[]>(`/dataviews/${id.value}/fields`).then(r => r.data),
   { watch: [id] }
@@ -45,9 +45,59 @@ const loadError = computed(() => error.value ?? fieldsError.value)
 
 const { data: status, refresh: refreshStatus } = useAsyncData(
   () => `dataview-design-status-${id.value}`,
-  () => api.get<DataView>(`/dataviews/${id.value}`).then(r => ({ liveVersion: r.data.liveVersion ?? null, hasUnpublishedChanges: r.data.hasUnpublishedChanges ?? true })),
+  () => api.get<DataView>(`/dataviews/${id.value}`).then(r => ({ liveVersion: r.data.liveVersion ?? null, hasUnpublishedChanges: r.data.hasUnpublishedChanges ?? true, updatedAt: r.data.updatedAt })),
   { watch: [id] }
 )
+
+// --- The draft changed elsewhere (DataViews.md §12.6) ------------------------------------------
+// The designer holds its own copy of the draft, seeded once. `status.updatedAt` is the draft's revision as this
+// page last read it through its own actions (§2.1); the server's is compared with it now and then, and a write
+// that finds a widget gone says the same. Moved: a warning with Reload - no write is refused, the warning keeps a
+// stale copy from being saved unknowingly.
+const draftChanged = ref<{ at: string } | null>(null)
+const designerKey = ref(0)
+async function checkDraft() {
+  if (draftChanged.value || !status.value || saveStatus.value === 'saving') return
+  try {
+    const { data } = await api.get<DataView>(`/dataviews/${id.value}`)
+    if (data.updatedAt !== status.value.updatedAt) draftChanged.value = { at: data.updatedAt }
+  } catch {
+    // Nothing to say yet: the next check, or the next write, will.
+  }
+}
+/** A write found a widget gone (the designer's draftChanged): the draft was rebuilt elsewhere - its revision says when. */
+async function draftGone() {
+  if (draftChanged.value) return
+  try {
+    const { data } = await api.get<DataView>(`/dataviews/${id.value}`)
+    draftChanged.value = { at: data.updatedAt }
+  } catch {
+    draftChanged.value = { at: new Date().toISOString() }
+  }
+}
+/** The draft read again - the page, its fields and its status - and the designer seeded anew; edits made here are gone, as the warning said. */
+async function reloadDraft() {
+  draftChanged.value = null
+  await Promise.all([refreshDataview(), refreshFields(), refreshStatus()])
+  designerKey.value++
+}
+const DRAFT_CHECK_MS = 30_000
+let draftTimer: ReturnType<typeof setInterval> | undefined
+function onFocus() {
+  void checkDraft()
+}
+onMounted(() => {
+  draftTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') void checkDraft()
+  }, DRAFT_CHECK_MS)
+  window.addEventListener('focus', onFocus)
+})
+onBeforeUnmount(() => {
+  clearInterval(draftTimer)
+  window.removeEventListener('focus', onFocus)
+})
+const { time } = useDateTimeFormat()
+const draftChangedText = computed(() => (draftChanged.value ? t('designer.designPage.draftChanged', { time: time(draftChanged.value.at) }) : ''))
 // The DataViews sidebar colors each entry by this same status.
 watch(status, (value) => {
   if (value) useAppsNavDataViews().patchStatus(id.value, value)
@@ -97,6 +147,9 @@ async function publishFromPreview() {
   if (await publish()) draftPreviewOpen.value = false
 }
 const saveStatus = computed(() => activeDesigner.value?.saveStatus ?? 'idle')
+watch(saveStatus, (now, before) => {
+  if (before === 'saving' && now !== 'saving') void refreshStatus()
+})
 /** Something to publish: the draft differs from the live version - or an edit is still being written. */
 const canPublish = computed(() => (status.value?.hasUnpublishedChanges ?? true) || saveStatus.value === 'saving')
 // A landed write is exactly when "unpublished changes" can flip on.
@@ -211,6 +264,16 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
         v-else-if="isCustom"
         class="flex min-h-0 flex-1 flex-col gap-3"
       >
+        <UAlert
+          v-if="draftChanged"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-refresh-cw"
+          :title="t('designer.designPage.draftChangedTitle')"
+          :description="draftChangedText"
+          :actions="[{ label: t('designer.designPage.reload'), color: 'warning', variant: 'solid', onClick: () => { void reloadDraft() } }]"
+          class="shrink-0"
+        />
         <UTabs
           v-if="isMobile"
           v-model="view"
@@ -222,6 +285,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
         />
         <CustomDesigner
           ref="customRef"
+          :key="designerKey"
           v-model:view="view"
           v-model:selected-field="urlState.field"
           :dataview="dataview"
@@ -229,6 +293,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
           class="min-h-0 flex-1"
           @presentation-saved="refreshDataview(); refreshStatus()"
           @open-saved="refreshStatus()"
+          @draft-changed="draftGone()"
         />
       </div>
 

@@ -7,11 +7,13 @@
  * page. Each item's key is set once, when it's added, and shown - Code
  * switches tabs by it, and its area (`content:<key>`) keeps what it holds
  * however it's renamed or moved. A Splitter's panels add their size, minimum
- * and Collapsible: the sizes sum to 100 - changing one reshares the rest in
- * proportion, never under a minimum - and a sum that still doesn't reach it
- * is marked.
+ * and Collapsible, a Columns' columns their width: the shares sum to the
+ * whole (100 %, 12 columns) - changing one reshares the rest in proportion,
+ * never under a minimum (utils/widget-item-shares.ts) - and a sum that still
+ * doesn't reach it is marked.
  */
 import { WIDGET_COLORS, type WidgetItem, type WidgetItemField } from '@totalbase/tb-catalog'
+import { reshare, shareField, shareSum } from '~/utils/widget-item-shares'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDefinition } from '~/types/schema'
 
@@ -31,6 +33,8 @@ const emit = defineEmits<{ createFunction: [item: number] }>()
 
 const items = computed(() => model.value ?? [])
 const has = (field: WidgetItemField) => props.fields.includes(field)
+/** The share the items split, if they do - a panel's size, a column's width. */
+const share = computed(() => shareField(props.fields))
 
 /** One item changed - a cleared field is left out, not kept empty. */
 function update(index: number, patch: Partial<WidgetItem>) {
@@ -49,37 +53,25 @@ function add() {
   let n = items.value.length + 1
   while (taken.has(`${props.keyPrefix}${n}`)) n++
   const added: WidgetItem = { value: `${props.keyPrefix}${n}`, label: `${props.label.replace(/s$/, '')} ${n}` }
-  model.value = [...items.value, added]
-  // A new panel takes an even share; the others reshare the rest.
-  if (has('size')) setSize(items.value.length - 1, Math.round(100 / items.value.length))
+  const next = [...items.value, added]
+  // A new panel or column takes an even share; the others reshare the rest. Reshared on the new list, not on
+  // `items`: the model is the parent's prop, which hasn't followed a first emit yet - a second emit from the
+  // old list would undo the first.
+  model.value = share.value ? reshare(next, next.length - 1, Math.round(share.value.total / next.length), share.value) : next
 }
 function remove(index: number) {
   const next = items.value.filter((_, i) => i !== index)
-  model.value = next.length ? next : undefined
-  if (has('size') && next.length) setSize(0, next[0]!.defaultSize ?? 0)
+  if (next.length === 0) {
+    model.value = undefined
+    return
+  }
+  model.value = share.value ? reshare(next, 0, next[0]![share.value.key] ?? 0, share.value) : next
 }
-/** Sizes always sum to 100: the change goes to the others in proportion to what they had, none under its minimum. */
-function setSize(index: number, size: number) {
-  const next = items.value.map(item => ({ ...item }))
-  const others = next.filter((_, i) => i !== index)
-  const target = next[index]!
-  const floor = (item: WidgetItem) => Math.max(0, Math.min(100, item.minSize ?? 0))
-  const value = Math.max(floor(target), Math.min(100 - others.reduce((sum, o) => sum + floor(o), 0), Math.round(size)))
-  target.defaultSize = value
-  const remaining = 100 - value
-  const weights = others.map(o => Math.max(o.defaultSize ?? 0, 0))
-  const totalWeight = weights.reduce((a, b) => a + b, 0)
-  others.forEach((o, i) => {
-    const share = totalWeight > 0 ? Math.round(remaining * (weights[i]! / totalWeight)) : Math.round(remaining / others.length)
-    o.defaultSize = Math.max(floor(o), share)
-  })
-  // Rounding and minimums leave a remainder: the last other panel takes it.
-  const sum = next.reduce((a, item) => a + (item.defaultSize ?? 0), 0)
-  const last = others[others.length - 1]
-  if (last && sum !== 100) last.defaultSize = Math.max(floor(last), (last.defaultSize ?? 0) + (100 - sum))
-  model.value = next
+/** Shares always sum to the whole: the change goes to the others in proportion to what they had, none under its minimum. */
+function setShare(index: number, value: number) {
+  if (share.value) model.value = reshare(items.value, index, value, share.value)
 }
-const sizeSum = computed(() => items.value.reduce((a, item) => a + (item.defaultSize ?? 0), 0))
+const sum = computed(() => (share.value ? shareSum(items.value, share.value) : 0))
 function move(index: number, by: -1 | 1) {
   const next = [...items.value]
   const [item] = next.splice(index, 1)
@@ -156,24 +148,24 @@ const functionItems = computed(() => [{ label: t('common.none'), value: NONE }, 
             @click="remove(index)"
           />
         </div>
-        <!-- A panel's share: its size and minimum in %, and Collapsible. -->
+        <!-- A panel's share: its size and minimum in %, and Collapsible; a column's width in 12ths. -->
         <div
-          v-if="has('size') || has('minSize') || has('collapsible')"
+          v-if="share || has('minSize') || has('collapsible')"
           class="flex flex-wrap items-center gap-3"
         >
           <div
-            v-if="has('size')"
+            v-if="share"
             class="flex items-center gap-1.5"
           >
-            <span class="text-xs text-muted">{{ t('designer.widgetItemsEditor.size') }}</span>
+            <span class="text-xs text-muted">{{ t(share.key === 'span' ? 'designer.widgetItemsEditor.span' : 'designer.widgetItemsEditor.size') }}</span>
             <UInputNumber
-              :model-value="item.defaultSize ?? 0"
-              :min="item.minSize ?? 0"
-              :max="100"
+              :model-value="item[share.key] ?? 0"
+              :min="share.min(item)"
+              :max="share.total"
               size="sm"
               class="w-24"
-              :aria-label="t('designer.widgetItemsEditor.itemSize', { n: index + 1 })"
-              @update:model-value="setSize(index, Number($event ?? 0))"
+              :aria-label="t(share.key === 'span' ? 'designer.widgetItemsEditor.itemSpan' : 'designer.widgetItemsEditor.itemSize', { n: index + 1 })"
+              @update:model-value="setShare(index, Number($event ?? 0))"
             />
           </div>
           <div
@@ -274,18 +266,18 @@ const functionItems = computed(() => [{ label: t('common.none'), value: NONE }, 
           {{ name }} = {{ formula }}
         </p>
       </div>
-      <!-- The sizes' sum, marked while it isn't 100 - the panels share what's missing or trim what's over. -->
+      <!-- The shares' sum, marked while it isn't the whole - the items share what's missing or trim what's over. -->
       <p
-        v-if="has('size') && items.length"
+        v-if="share && items.length"
         class="flex items-center gap-1 text-xs"
-        :class="sizeSum === 100 ? 'text-muted' : 'text-warning'"
+        :class="sum === share.total ? 'text-muted' : 'text-warning'"
       >
         <UIcon
-          v-if="sizeSum !== 100"
+          v-if="sum !== share.total"
           name="i-lucide-triangle-alert"
           class="size-3.5"
         />
-        {{ t('designer.widgetItemsEditor.sizeSum', { sum: sizeSum }) }}
+        {{ t(share.key === 'span' ? 'designer.widgetItemsEditor.spanSum' : 'designer.widgetItemsEditor.sizeSum', { sum }) }}
       </p>
       <UButton
         icon="i-lucide-plus"

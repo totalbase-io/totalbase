@@ -97,6 +97,7 @@ const SETUP: Record<string, (name: string, c: Ctx) => Promise<void>> = {
   UIcon: async (name, c) => { await c.add(name, mark(name, { props: { name: 'i-lucide-smile' } })) },
   UCard: container('default', { props: { title: 'A card' } }),
   TBox: container('default'),
+  TColumns: container('column:col1'),
   UTabs: container('content:tab1'),
   UAccordion: container('body:section1'),
   UCollapsible: async (name, c) => {
@@ -202,7 +203,7 @@ test('every widget runs in the App, with no console error', async ({ page, token
   }
   // Containers show what they hold - an Accordion once its section opens.
   await main.locator('[data-test="UAccordion"]').getByRole('button', { name: 'Section 1' }).click()
-  for (const name of ['UCard', 'TBox', 'UTabs', 'UAccordion', 'UCollapsible', 'USplitter', 'UScrollArea']) {
+  for (const name of ['UCard', 'TBox', 'TColumns', 'UTabs', 'UAccordion', 'UCollapsible', 'USplitter', 'UScrollArea']) {
     await expect(main.getByText(`Inside ${name}`), `${name} shows its content`).toBeVisible()
   }
   // Option lists show the categories.

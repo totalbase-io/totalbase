@@ -25,6 +25,7 @@ describe("compileFunctionCall (integration)", () => {
       "public.fc_test_overload(integer)",
       "public.fc_test_overload(text)",
       "public.fc_test_bad_arg(integer)",
+      "public.fc_test_json(jsonb)",
     ];
     for (const signature of drops) {
       await database.query(`DROP FUNCTION IF EXISTS ${signature}`);
@@ -62,6 +63,11 @@ describe("compileFunctionCall (integration)", () => {
       CREATE FUNCTION public.fc_test_overload(as_text text)
       RETURNS text LANGUAGE sql IMMUTABLE AS $$ SELECT 'text:' || as_text $$
     `);
+    // A jsonb parameter: what it was given, as PostgreSQL reads it.
+    await database.query(`
+      CREATE FUNCTION public.fc_test_json(payload jsonb)
+      RETURNS text LANGUAGE sql IMMUTABLE AS $$ SELECT jsonb_typeof(payload) || ':' || payload::text $$
+    `);
     // Used to exercise a PostgreSQL type-mismatch error at execution time.
     await database.query(`
       CREATE FUNCTION public.fc_test_bad_arg(n integer)
@@ -78,6 +84,7 @@ describe("compileFunctionCall (integration)", () => {
       "public.fc_test_overload(integer)",
       "public.fc_test_overload(text)",
       "public.fc_test_bad_arg(integer)",
+      "public.fc_test_json(jsonb)",
     ];
     for (const signature of drops) {
       await database.query(`DROP FUNCTION IF EXISTS ${signature}`);
@@ -115,6 +122,22 @@ describe("compileFunctionCall (integration)", () => {
     const oid = await oidOf(database, "public.fc_test_add(integer, integer)");
     const detail = await getFunctionDetail(database, oid);
     expect(() => compileFunctionCall("public", "fc_test_add", detail, { a: 1 })).toThrow();
+  });
+
+  it("passes any JSON value to a json/jsonb parameter - a list of objects, an empty list, an object, a scalar", async () => {
+    const oid = await oidOf(database, "public.fc_test_json(jsonb)");
+    const detail = await getFunctionDetail(database, oid);
+    const call = async (payload: unknown) => {
+      const compiled = compileFunctionCall("public", "fc_test_json", detail, { payload });
+      expect(compiled.sql).toContain("$1::jsonb");
+      return (await database.query<{ result: string }>(compiled.sql, compiled.params)).rows[0]!.result;
+    };
+    // The driver alone writes a list as a PostgreSQL array: refused by json, and an empty one read as {}.
+    expect(await call([{ lat: "1", lon: "2" }, { lat: "3", lon: "4" }])).toBe('array:[{"lat": "1", "lon": "2"}, {"lat": "3", "lon": "4"}]');
+    expect(await call([])).toBe("array:[]");
+    expect(await call({ ok: true })).toBe('object:{"ok": true}');
+    expect(await call("text")).toBe('string:"text"');
+    expect(await call(null)).toBeNull();
   });
 
   it("returns complex column types (numeric, jsonb, timestamptz, array) intact", async () => {

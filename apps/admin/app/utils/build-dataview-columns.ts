@@ -238,6 +238,10 @@ export function computedValueResolver(fields: DataViewField[], displayFormatDefa
  * pure render-time read, no catalog lookup needed here either. Every
  * OTHER column (no format configured) still gets the raw, honest
  * value - never a bug to route around silently.
+ *
+ * `fields` are the columns the viewer shows, in their order (useGridColumnPrefs's `orderedFields`): a
+ * column hidden by the DataView that the viewer showed from the Columns panel is among them, one they hid
+ * is not - `visible` is only the DataView's default for that preference (DataViews.md §4.1), never read here.
  */
 export function buildDataViewColumns(
   fields: DataViewField[],
@@ -245,7 +249,7 @@ export function buildDataViewColumns(
 ): TableColumn<Record<string, unknown>>[] {
   const resolveCellValue = computedValueResolver(fields, opts.displayFormatDefaults)
   const dataCols: TableColumn<Record<string, unknown>>[] = fields
-    .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.visible && f.columnName)
+    .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.columnName)
     .map((field) => {
       const key = field.columnName!
       // Its header, where room is short: its short label first (DataViews.md §15).

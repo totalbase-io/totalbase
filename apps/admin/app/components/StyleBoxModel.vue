@@ -5,15 +5,27 @@
  * middle - each side's size at its own edge. A ring's name (MARGIN, PADDING)
  * sets all its sides at once; a side's own size wins over it, and a side
  * without one shows All's, muted - what it really has. A click opens the
- * sizes; None clears.
+ * sizes - the named ones, or Custom: any step of the scale (SPACING_STEPS,
+ * units of 4 px); None clears.
  */
+import { SPACING_SIZES, SPACING_STEPS, spacingPx } from '@totalbase/tb-catalog'
+
 const props = defineProps<{
   /** The widget's props - `margin`, `marginTop`..., `padding`, `paddingTop`... */
   values: Record<string, unknown>
 }>()
 const emit = defineEmits<{ set: [prop: string, value: string | undefined] }>()
 
-const SIZES = ['xs', 's', 'm', 'l', 'xl'] as const
+const SIZES = Object.keys(SPACING_SIZES) as (keyof typeof SPACING_SIZES)[]
+/** The named sizes' pixels, under their buttons: "XS 4 · S 8 · M 16 · L 24 · XL 32 px". */
+const sizesLegend = `${SIZES.map(size => `${size.toUpperCase()} ${spacingPx(size)}`).join(' · ')} px`
+/**
+ * A step's text: its pixels first, then the step (`12 px · 3`), each padded with figure spaces (U+2007, a digit's
+ * width) so the list reads as two aligned columns in a proportional font.
+ */
+const stepLabel = (step: string) => `${String(Number(step) * 4).padStart(2, '\u2007')} px · ${step}`
+const isStep = (value: string | undefined): boolean => value !== undefined && (SPACING_STEPS as readonly string[]).includes(value)
+const stepItems: { label: string, value: string }[] = SPACING_STEPS.map(step => ({ label: stepLabel(step), value: step }))
 type Ring = 'margin' | 'padding'
 type Side = 'Top' | 'Bottom' | 'Left' | 'Right'
 /** Where each side's button sits on its ring. */
@@ -86,6 +98,16 @@ function pick(ring: Ring, side: Side | '', size: string | undefined) {
                   @click="pick(ring, '', size)"
                 />
               </UFieldGroup>
+              <span class="text-xs text-dimmed">{{ sizesLegend }}</span>
+              <USelect
+                :model-value="isStep(own(ring, '')) ? own(ring, '') : undefined"
+                :items="stepItems"
+                :placeholder="t('designer.styleBoxModel.custom')"
+                size="xs"
+                class="w-full"
+                :aria-label="t('designer.styleBoxModel.customAria', { ring: ringName(ring) })"
+                @update:model-value="pick(ring, '', $event as string)"
+              />
             </div>
           </template>
         </UPopover>
@@ -121,6 +143,16 @@ function pick(ring: Ring, side: Side | '', size: string | undefined) {
                   @click="pick(ring, side, size)"
                 />
               </UFieldGroup>
+              <span class="text-xs text-dimmed">{{ sizesLegend }}</span>
+              <USelect
+                :model-value="isStep(own(ring, side)) ? own(ring, side) : undefined"
+                :items="stepItems"
+                :placeholder="t('designer.styleBoxModel.custom')"
+                size="xs"
+                class="w-full"
+                :aria-label="t('designer.styleBoxModel.customSideAria', { ring: ringName(ring), side: sideName(side) })"
+                @update:model-value="pick(ring, side, $event as string)"
+              />
             </div>
           </template>
         </UPopover>

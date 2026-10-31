@@ -110,6 +110,20 @@ export function assertWidgetConfigValid(widget: WidgetName, config: WidgetFieldC
  * A record form's page has neither. A slot that holds an input (a form
  * field's) takes only an input widget.
  */
+/**
+ * A widget's width (DataViews.md §12.2): 1-12 columns, or 0 - *Fit content* - for a
+ * widget with a width of its own (`fit` in the catalog); an input or a container
+ * always fills its columns.
+ */
+export function assertWidgetWidth(widget: WidgetName, gridW: number): void {
+  if (!Number.isInteger(gridW) || gridW < 0 || gridW > 12) {
+    throw new TotalBaseError("DATAVIEW_WIDGET_INVALID", "A widget's width is 1 to 12 columns, or 0 to fit its content.");
+  }
+  if (gridW === 0 && !widgetDefinition(widget).fit) {
+    throw new TotalBaseError("DATAVIEW_WIDGET_INVALID", `${widgetDefinition(widget).label} fills its columns - only a button, a badge, a switch and the like fit their content.`);
+  }
+}
+
 export function assertWidgetPlacement(parent: { kind: string; widget: string | null } | null, slot: string | undefined, widget: WidgetName, viewType: string): void {
   if (!parent) {
     if (slot === undefined) return;

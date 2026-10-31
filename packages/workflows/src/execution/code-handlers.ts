@@ -151,7 +151,11 @@ function sandboxResults(state: HandlerArgs["state"]): { values: Record<string, u
  * Workflows.md §5.8). No `fs`, no
  * network, no `process`, no `require` - none of that exists inside a
  * fresh isolate to begin with (this isn't an allowlist stripping anything
- * away - a new isolate simply never had them).
+ * away - a new isolate simply never had them). What it has is V8's own:
+ * JSON, Math, Date, Intl (locales and time zones included), String,
+ * RegExp, Map, Set, Promise, BigInt, the typed arrays, encodeURIComponent
+ * and its kin - and URLSearchParams, added above. No URL, TextEncoder,
+ * atob/btoa, timers, crypto or fetch (execute-javascript.test.ts keeps the list).
  *
  * The script's return value is deliberately round-tripped through
  * `JSON.stringify`/`JSON.parse` INSIDE the isolate before it's copied back
@@ -169,6 +173,55 @@ function sandboxResults(state: HandlerArgs["state"]): { values: Record<string, u
  * per-operation resource limit in the catalog is settings-configurable
  * either; `workflows.max_run_duration_ms` already bounds the WHOLE run).
  */
+/**
+ * `URLSearchParams` for the isolate - a web API, not V8's, so a fresh isolate has none; building a query string
+ * is what a JavaScript step most often does before an HTTP step. Plain JavaScript, the WHATWG surface that
+ * matters (application/x-www-form-urlencoded: a space is +, the string form sorted only on sort()), nothing of
+ * the host. `URL` is left out on purpose: a correct parser is large, and encodeURIComponent plus this class build any URL.
+ */
+const URL_SEARCH_PARAMS_POLYFILL = `globalThis.URLSearchParams = class URLSearchParams {
+  constructor(init) {
+    this._list = [];
+    if (init === null || init === undefined) return;
+    if (typeof init === "string") {
+      for (const pair of init.replace(/^\\?/, "").split("&")) {
+        if (!pair) continue;
+        const at = pair.indexOf("=");
+        this._list.push([URLSearchParams._decode(at === -1 ? pair : pair.slice(0, at)), URLSearchParams._decode(at === -1 ? "" : pair.slice(at + 1))]);
+      }
+    } else if (init instanceof URLSearchParams) {
+      this._list = init._list.map((pair) => [pair[0], pair[1]]);
+    } else if (Array.isArray(init) || typeof init[Symbol.iterator] === "function") {
+      for (const pair of init) this._list.push([String(pair[0]), String(pair[1])]);
+    } else {
+      for (const key of Object.keys(init)) this._list.push([key, String(init[key])]);
+    }
+  }
+  static _decode(text) { return decodeURIComponent(text.replace(/\\+/g, " ")); }
+  static _encode(text) { return encodeURIComponent(text).replace(/%20/g, "+").replace(/[!'()~]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()); }
+  get size() { return this._list.length; }
+  append(key, value) { this._list.push([String(key), String(value)]); }
+  set(key, value) {
+    key = String(key);
+    const at = this._list.findIndex((pair) => pair[0] === key);
+    if (at === -1) { this._list.push([key, String(value)]); return; }
+    this._list[at][1] = String(value);
+    this._list = this._list.filter((pair, index) => index <= at || pair[0] !== key);
+  }
+  get(key) { const pair = this._list.find((pair) => pair[0] === String(key)); return pair ? pair[1] : null; }
+  getAll(key) { return this._list.filter((pair) => pair[0] === String(key)).map((pair) => pair[1]); }
+  has(key) { return this._list.some((pair) => pair[0] === String(key)); }
+  delete(key) { this._list = this._list.filter((pair) => pair[0] !== String(key)); }
+  sort() { this._list.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)); }
+  forEach(callback, thisArg) { for (const pair of this._list) callback.call(thisArg, pair[1], pair[0], this); }
+  keys() { return this._list.map((pair) => pair[0])[Symbol.iterator](); }
+  values() { return this._list.map((pair) => pair[1])[Symbol.iterator](); }
+  entries() { return this._list.map((pair) => [pair[0], pair[1]])[Symbol.iterator](); }
+  [Symbol.iterator]() { return this.entries(); }
+  toString() { return this._list.map((pair) => URLSearchParams._encode(pair[0]) + "=" + URLSearchParams._encode(pair[1])).join("&"); }
+  toJSON() { return this.toString(); }
+};`;
+
 const executeJavascript: OperationHandler = async ({ configuration, state }) => {
   const code = (configuration.code as string | undefined) ?? "";
   const sandbox = (state.sandbox ??= new RunSandbox());
@@ -186,7 +239,7 @@ const executeJavascript: OperationHandler = async ({ configuration, state }) => 
       // The by-key names re-pointed at the envelopes already in the isolate, before the author's code runs.
       const prelude = `for (const key in __aliases) results[key] = key === "start" && __aliases[key] === "" ? { data: trigger } : results[__aliases[key]]; delete globalThis.__aliases;`;
       const wrapped = `(function (trigger, results) {\n${code}\n})(trigger, results)`;
-      const script = await sandbox.script(`${prelude} JSON.stringify((${wrapped}) ?? null)`);
+      const script = await sandbox.script(`${URL_SEARCH_PARAMS_POLYFILL} ${prelude} JSON.stringify((${wrapped}) ?? null)`);
       resultJson = await script.run(isolateContext, { timeout: EXECUTE_JAVASCRIPT_TIMEOUT_MS });
     } catch (error) {
       throw new TotalBaseError("INTERNAL_ERROR", error instanceof Error ? error.message : "JavaScript execution failed.");

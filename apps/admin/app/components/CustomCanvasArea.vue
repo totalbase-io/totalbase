@@ -7,7 +7,7 @@
  * lands; the innermost area under the pointer wins.
  */
 import { CUSTOM_CANVAS_CONTEXT_KEY, isAreaTarget } from '~/composables/useCustomCanvasContext'
-import { areaWidgets, dropIndex, widgetCellStyle } from '~/utils/widget-layout'
+import { areaWidgets, dropIndex, fieldById, widgetCellClass, widgetCellStyle } from '~/utils/widget-layout'
 import CustomCanvasItem from '~/components/CustomCanvasItem.vue'
 
 const props = defineProps<{
@@ -15,14 +15,16 @@ const props = defineProps<{
   slotName?: string
   /** The slot's name, shown while the area is empty. */
   label?: string
-  /** In a row at the right, each as wide as it is - the page header's buttons, as the App draws them. */
-  inline?: boolean
+  /** Where a line's spare room goes - its fitting widgets gather at the end in the page header and an overlay's footer. */
+  justify?: 'start' | 'center' | 'end'
 }>()
 
 const ctx = inject(CUSTOM_CANVAS_CONTEXT_KEY)!
 const { t } = useI18n()
 const area = computed(() => ({ parent: props.parent, slot: props.slotName }))
 const widgets = computed(() => areaWidgets(ctx.fields.value, props.parent, props.slotName))
+/** A form field's input row is an input's height, its input centered - as the App draws it (WidgetRenderer.vue's FORM_FIELD_AREA_CLASS). */
+const inFormField = computed(() => fieldById(ctx.fields.value, props.parent)?.widget === 'UFormField')
 const target = computed(() => (isAreaTarget(ctx.dropTarget.value, area.value) ? ctx.dropTarget.value : null))
 const el = ref<HTMLElement | null>(null)
 
@@ -65,10 +67,11 @@ function onDrop(event: DragEvent) {
 <template>
   <div
     ref="el"
-    class="w-full min-w-0 gap-3 rounded-md"
+    class="w-full min-w-0 rounded-md"
     :class="[
       // content-start: an area taller than its rows (a Splitter's panel) keeps them their own height, at its top.
-      inline ? 'flex flex-wrap items-center justify-end' : 'widget-area grid grid-cols-12 content-start',
+      'widget-area content-start', justify === 'end' ? 'justify-end' : justify === 'center' ? 'justify-center' : undefined,
+      inFormField ? 'min-h-8 items-center' : undefined,
       widgets.length === 0 ? ['min-h-12 border border-dashed p-2', target ? 'border-primary bg-primary/5' : 'border-accented'] : undefined
     ]"
     @dragover.capture="onDragOverEdge"
@@ -82,11 +85,12 @@ function onDrop(event: DragEvent) {
       :field="child"
       :drop-before="target?.index === index"
       :drop-after="index === widgets.length - 1 && target?.index === widgets.length"
-      :style="inline ? undefined : widgetCellStyle(child)"
+      :class="widgetCellClass(child)"
+      :style="widgetCellStyle(child, { centered: inFormField })"
     />
     <p
       v-if="widgets.length === 0"
-      class="col-span-12 flex flex-1 items-center justify-center text-xs text-dimmed"
+      class="flex w-full flex-1 items-center justify-center text-xs text-dimmed"
     >
       {{ label ? t('designer.customCanvasArea.dropHereIn', { label }) : t('designer.customCanvasArea.dropHere') }}
     </p>

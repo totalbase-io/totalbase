@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { commonWidgetProps, newWidgetControlConfig, widgetDefinition, WIDGET_NAMES, type WidgetName } from "@totalbase/tb-catalog";
+import { commonWidgetProps, defaultWidgetWidth, newWidgetControlConfig, widgetDefinition, WIDGET_NAMES, type WidgetName } from "@totalbase/tb-catalog";
 import { UUID_PATTERN } from "@totalbase/shared";
 import type { AdminClient } from "./admin-client.js";
 import { ADDITIVE, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, result, type ResourceRow } from "./tool-helpers.js";
@@ -73,7 +73,7 @@ const widgetSpec: z.ZodType<WidgetSpec> = z.lazy(() =>
     props: z.record(z.string(), z.unknown()).optional().describe("Literal props by Nuxt UI name, e.g. {\"label\":\"Save\",\"color\":\"primary\"}; a UFormField's column binds it to the page's record"),
     bindings: z.record(z.string(), bindingInput).optional().describe("Props bound instead of literal: {\"modelValue\":{\"variable\":\"code\"}, \"loading\":{\"formula\":\"{{vars.save.status}} == \\\"pending\\\"\"}}"),
     emits: z.record(z.string(), z.string()).optional().describe("Emit -> the Code function it calls, e.g. {\"click\":\"onSaveClick\"} (save_page_code writes the function)"),
-    width: z.number().int().min(1).max(12).optional().describe("Columns of 12 it takes in its row (default 12): 6 = two per row, 4 = three"),
+    width: z.number().int().min(0).max(12).optional().describe("Columns of 12 it takes in its row: 6 = two per row, 4 = three; 0 = its content's width, beside what precedes it (a button, a badge, a switch - their default; an input or a container always fills, default 12)"),
     height: z.number().int().min(2).max(30).optional().describe("Sizable widgets only (a table, an editor, a map, an embedded DataView): rows of 40px"),
     children: z.array(widgetSpec).optional().describe("Widgets it holds, each with its slot - a Form's fields, a form field's one input, a Card's content"),
   }),
@@ -96,7 +96,7 @@ function widgetTree(fields: PageField[]) {
       widget: f.widget,
       ...(f.label && { name: f.label }),
       ...(config.slot && { slot: config.slot }),
-      ...(f.gridW !== 12 && { width: f.gridW }),
+      ...(f.gridW !== defaultWidgetWidth(f.widget as WidgetName) && { width: f.gridW }),
       ...(widgetDefinition(f.widget as WidgetName).sizable && { height: f.gridH }),
       ...(Object.keys(config.props ?? {}).length > 0 && { props: config.props }),
       ...(Object.keys(config.bindings ?? {}).length > 0 && { bindings: Object.fromEntries(Object.entries(config.bindings!).map(([k, v]) => [k, bindingOut(v)])) }),
@@ -298,7 +298,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
         props: z.record(z.string(), z.unknown()).optional(),
         bindings: z.record(z.string(), bindingInput.nullable()).optional(),
         emits: z.record(z.string(), z.string().nullable()).optional(),
-        width: z.number().int().min(1).max(12).optional(),
+        width: z.number().int().min(0).max(12).optional(),
         height: z.number().int().min(2).max(30).optional(),
       },
       annotations: IDEMPOTENT,

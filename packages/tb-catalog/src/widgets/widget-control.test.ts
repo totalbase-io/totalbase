@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newWidgetControlConfig, templateFormula, validateWidgetControlConfig } from "./widget-control.js";
-import { itemSlot, slotBase, widgetState } from "./widget-catalog.js";
+import { defaultWidgetWidth, itemSlot, slotBase, widgetState } from "./widget-catalog.js";
 
 const VARIABLES = [
   { name: "cliente", kind: "VALUE" },
@@ -28,6 +28,13 @@ describe("newWidgetControlConfig()", () => {
 
   it("leaves every prop at Nuxt UI's default otherwise", () => {
     expect(newWidgetControlConfig("UInput").props).toEqual({});
+  });
+});
+
+describe("defaultWidgetWidth()", () => {
+  it("places a widget with a width of its own at Fit content, everything else at the whole row", () => {
+    for (const name of ["UButton", "UBadge", "UIcon", "UAvatar", "USwitch", "UCheckbox", "UDropdownMenu"] as const) expect(defaultWidgetWidth(name)).toBe(0);
+    for (const name of ["UInput", "USelectMenu", "UFormField", "UTable", "UCard", "TBox", "TColumns", "TText", "THeading"] as const) expect(defaultWidgetWidth(name)).toBe(12);
   });
 });
 
@@ -101,6 +108,15 @@ describe("validateWidgetControlConfig()", () => {
     expect(items("UAccordion", [{ value: "a", formulas: { color: "x" } }])).toEqual(["Accordion's Sections has an invalid value."]);
     expect(items("UDropdownMenu", [{ value: "anular", label: "Anular", color: "error", onSelect: "anular", formulas: { disabled: "{{vars.pagada.value}}" } }])).toEqual([]);
     expect(items("UDropdownMenu", [{ label: "Anular", color: "red" }])).toEqual(["Dropdown menu's Items has an invalid value."]);
+  });
+
+  it("takes a Columns' columns with a width of 1 to 12 each - a Splitter's size is not a column's", () => {
+    const items = (value: unknown) => validateWidgetControlConfig({ widget: "TColumns", props: { items: value }, bindings: {}, emits: {} });
+    expect(items([{ value: "col1", label: "Photo", span: 3 }, { value: "col2", label: "Data", span: 9 }])).toEqual([]);
+    expect(items([{ value: "col1", span: 13 }])).toEqual(["Columns's Columns has an invalid value."]);
+    expect(items([{ value: "col1", span: 0 }])).toEqual(["Columns's Columns has an invalid value."]);
+    expect(items([{ value: "col1", span: 4.5 }])).toEqual(["Columns's Columns has an invalid value."]);
+    expect(items([{ value: "col1", defaultSize: 40 }])).toEqual(["Columns's Columns has an invalid value."]);
   });
 
   it("binds a Tabs' open tab to a Value", () => {

@@ -556,7 +556,7 @@ function setHandler(event: string, handler: string | undefined) {
               :label="prop.label"
               :description="prop.description"
               :fields="prop.itemFields ?? []"
-              :key-prefix="config.widget === 'UTabs' ? 'tab' : config.widget === 'UAccordion' ? 'section' : config.widget === 'USplitter' ? 'panel' : 'item'"
+              :key-prefix="config.widget === 'UTabs' ? 'tab' : config.widget === 'UAccordion' ? 'section' : config.widget === 'USplitter' ? 'panel' : config.widget === 'TColumns' ? 'col' : 'item'"
               :code-functions="codeFunctions"
               :columns="columns"
               :relations="relations"

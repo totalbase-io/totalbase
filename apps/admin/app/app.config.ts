@@ -124,6 +124,33 @@ export default defineAppConfig({
     // sideways, instead of every tab shrinking to a truncated "P…". The
     // scrolling list clips what hangs below it, so the link variant's
     // active underline moves up onto the list's own bottom edge there.
+    // The upload area in the theme's looks (Admin_UI.md §4.2): Nuxt UI's variant is only area (outlined, dashed) or
+    // button; soft and subtle are the area in its color's tint, as an Input's or a Badge's - the component renders
+    // any variant but button as the area, and the theme's extend adds the keys at runtime.
+    fileUpload: {
+      variants: {
+        variant: {
+          soft: { wrapper: 'px-4 py-3', base: 'p-4 border-transparent' },
+          subtle: { wrapper: 'px-4 py-3', base: 'p-4' }
+        }
+      },
+      compoundVariants: [
+        { variant: 'soft', color: 'primary', class: { base: 'bg-primary/10' } },
+        { variant: 'soft', color: 'secondary', class: { base: 'bg-secondary/10' } },
+        { variant: 'soft', color: 'success', class: { base: 'bg-success/10' } },
+        { variant: 'soft', color: 'info', class: { base: 'bg-info/10' } },
+        { variant: 'soft', color: 'warning', class: { base: 'bg-warning/10' } },
+        { variant: 'soft', color: 'error', class: { base: 'bg-error/10' } },
+        { variant: 'soft', color: 'neutral', class: { base: 'bg-elevated/50' } },
+        { variant: 'subtle', color: 'primary', class: { base: 'bg-primary/10 border-primary/25' } },
+        { variant: 'subtle', color: 'secondary', class: { base: 'bg-secondary/10 border-secondary/25' } },
+        { variant: 'subtle', color: 'success', class: { base: 'bg-success/10 border-success/25' } },
+        { variant: 'subtle', color: 'info', class: { base: 'bg-info/10 border-info/25' } },
+        { variant: 'subtle', color: 'warning', class: { base: 'bg-warning/10 border-warning/25' } },
+        { variant: 'subtle', color: 'error', class: { base: 'bg-error/10 border-error/25' } },
+        { variant: 'subtle', color: 'neutral', class: { base: 'bg-elevated border-accented' } }
+      ]
+    },
     tabs: {
       variants: {
         orientation: {

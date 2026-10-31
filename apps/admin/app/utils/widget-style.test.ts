@@ -5,7 +5,11 @@ import { optionGridClass, optionIconColor, widgetStyleClasses } from '~/utils/wi
 describe('widgetStyleClasses()', () => {
   it('turns each Style value into its classes, none for unset', () => {
     expect(widgetStyleClasses({ marginTop: 'm', border: 'muted', background: 'primary', align: 'center' }))
-      .toEqual(['mt-4', 'border border-default', 'bg-primary/10', 'text-center'])
+      .toEqual(['mt-4', 'border border-default', 'bg-primary/10', 'flex flex-col items-center text-center'])
+    expect(widgetStyleClasses({ fontSize: 'l', fontWeight: 'semibold', fontStyle: 'italic', textDecoration: 'lineThrough', textColor: 'muted' }))
+      .toEqual(['text-lg', 'font-semibold', 'italic', 'line-through', 'text-muted'])
+    // One scale for margin and padding: a named size is the same step on either (SPACING_SIZES).
+    expect(widgetStyleClasses({ marginLeft: 'l', paddingLeft: 'l', marginTop: 'xl', padding: '2.5' })).toEqual(['mt-8', 'ml-6', 'p-2.5', 'pl-6'])
     expect(widgetStyleClasses({})).toEqual([])
     expect(widgetStyleClasses({ marginTop: 'huge', padding: 3 })).toEqual([])
   })

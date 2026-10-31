@@ -165,13 +165,16 @@ export interface WidgetItem {
   minSize?: number;
   /** A Splitter panel the viewer may drag shut (`collapsible` field). */
   collapsible?: boolean;
+  /** A Columns column's width in the 12 columns of its row (`span` field) - the widths sum to 12. */
+  span?: number;
   formulas?: { label?: string; disabled?: string; visible?: string };
 }
 /**
  * What an item has besides its label (and its key): `function` - its `onSelect`; `disabled`, `visible` - their
- * formulas; `size`, `minSize`, `collapsible` - a panel's share of the whole (a Splitter's).
+ * formulas; `size`, `minSize`, `collapsible` - a panel's share of the whole (a Splitter's);
+ * `span` - a column's width in 12ths (a Columns').
  */
-export type WidgetItemField = "icon" | "color" | "function" | "disabled" | "visible" | "size" | "minSize" | "collapsible";
+export type WidgetItemField = "icon" | "color" | "function" | "disabled" | "visible" | "size" | "minSize" | "collapsible" | "span";
 export const WIDGET_ITEM_FORMULAS = ["label", "disabled", "visible"] as const;
 
 /** One of a Table's row actions: an icon button at the end of each row; its `name` tells the Code which was clicked. */
@@ -213,6 +216,13 @@ export interface WidgetSlot {
    */
   canvas?: "own";
   /**
+   * Its widgets gather at the end of their line (DataViews.md §12.2) - an
+   * overlay's or a Card's footer, where the buttons go. Any area is a flow
+   * where a fitting widget takes its content's width; this only says where
+   * the line's spare room goes.
+   */
+  inline?: true;
+  /**
    * One area per item (`<slot>:<item key>`) rather than one for all - a Tabs'
    * content per tab, an Accordion's body per section. The key is the item's
    * `value`, else its position.
@@ -251,6 +261,13 @@ export interface WidgetDefinition {
    * content. No Height of its own: a fixed one would cut what it holds.
    */
   fillable?: boolean;
+  /**
+   * Has a width of its own - a button, a badge, a switch (DataViews.md
+   * §12.2): placed, it takes *Fit content* (`grid_w` 0) and sits beside
+   * what's before it; the "⋮" offers Fit content to it alone. Everything
+   * else fills its columns - an input, a table, a container.
+   */
+  fit?: true;
   /** Props a newly placed widget starts with (a Tabs' two tabs). */
   defaults?: Readonly<Record<string, unknown>>;
   props: Readonly<Record<string, WidgetProp>>;
@@ -670,6 +687,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-toggle-right",
     group: "input",
+    fit: true,
     description: "An on/off value.",
     accepts: ["boolean"],
     formField: true,
@@ -690,6 +708,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-square-check",
     group: "input",
+    fit: true,
     description: "A yes/no value.",
     accepts: ["boolean"],
     formField: true,
@@ -946,6 +965,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-key-round",
     group: "input",
+    fit: true,
     description: "A short code with a fixed number of characters.",
     accepts: ["text"],
     formField: true,
@@ -990,6 +1010,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-star",
     group: "input",
+    fit: true,
     description: "A star rating out of a fixed maximum.",
     accepts: ["number"],
     formField: true,
@@ -1032,7 +1053,7 @@ export const WIDGET_CATALOG = {
       },
       icon,
       color,
-      variant: variant(["area", "button"]),
+      variant: { ...variant(["area", "soft", "subtle", "button"]), description: "area: an outlined, dashed drop area; soft: the area in its color's tint, no border; subtle: tint and border; button: a button alone." },
       size,
       disabled,
     },
@@ -1086,6 +1107,7 @@ export const WIDGET_CATALOG = {
     source: "totalbase",
     icon: "i-lucide-camera",
     group: "input",
+    fit: true,
     description: "Takes a photo with the device's camera, crops and compresses it, and stores it as a file - for a file column, like a person's photo.",
     accepts: ["file"],
     formField: true,
@@ -1240,6 +1262,7 @@ export const WIDGET_CATALOG = {
     source: "totalbase",
     icon: "i-lucide-locate-fixed",
     group: "input",
+    fit: true,
     description: "The device's position into a point column, no map - a button, the coordinates once captured. Auto takes it when the field opens empty: where a reading was taken.",
     accepts: ["point"],
     formField: true,
@@ -1328,6 +1351,7 @@ export const WIDGET_CATALOG = {
     source: "totalbase",
     icon: "i-lucide-qr-code",
     group: "display",
+    fit: true,
     description: "A QR code of a value - drawn in the browser, never sent anywhere: a device's pairing code, a link. Empty, it says so instead of an unreadable code.",
     props: {
       value: { label: "Value", editor: "text", binding: "formula", description: "What the code holds - a formula: {{vars.record.data.serial_number}}, or a JSON or a URL with it." },
@@ -1435,6 +1459,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-tag",
     group: "display",
+    fit: true,
     description: "A short label.",
     props: { label: text("Label"), color, variant: variant(SOLID_VARIANTS), size, icon, square: { label: "Square", editor: "boolean", description: "As wide as it is tall - for an icon alone." } },
     slots: {},
@@ -1497,6 +1522,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-circle-user",
     group: "display",
+    fit: true,
     description: "An image, initials or an icon in a circle.",
     props: { src: text("Image"), alt: text("Alternative text"), text: text("Initials"), icon, size },
     slots: {},
@@ -1507,6 +1533,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-user",
     group: "display",
+    fit: true,
     description: "A name and a description beside an avatar.",
     // `avatar` is a URL here - its renderer passes Nuxt UI { src, alt }.
     props: { name: text("Name"), description: text("Description"), avatar: { ...text("Image"), description: "Its avatar's image URL - empty shows the name's initials." }, size, orientation },
@@ -1535,13 +1562,36 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-smile",
     group: "display",
+    fit: true,
     description: "A single icon.",
     props: { name: { label: "Icon", editor: "icon", binding: "formula", description: "The icon to show." } },
+    // Placed, it shows something to pick from - with no icon it would draw nothing, on the canvas too.
+    defaults: { name: "i-lucide-star" },
     slots: {},
     emits: {},
   },
 
   // Containers - their slots are drop zones
+  TColumns: {
+    label: "Columns",
+    source: "totalbase",
+    icon: "i-lucide-columns-3",
+    group: "container",
+    // The one widget that is columns in itself (DataViews.md §12.2): a column is an area of its own, named in
+    // Structure, its width in the row's 12 columns - three Boxes sized by hand did the same, unnamed.
+    description: "Side by side areas, each with its width in the row's 12 columns - what each holds stacks inside it; a phone stacks the columns.",
+    props: {
+      items: {
+        label: "Columns",
+        editor: "items",
+        itemFields: ["span"],
+        description: "One per column - its label names it on the canvas and in Structure; its width in the row's 12 columns, the widths summing to 12 (changing one reshares the rest).",
+      },
+    },
+    defaults: { items: [{ value: "col1", label: "Column 1", span: 4 }, { value: "col2", label: "Column 2", span: 4 }, { value: "col3", label: "Column 3", span: 4 }] },
+    slots: { column: { label: "Content", slotProps: ["item", "index"], perItem: true } },
+    emits: {},
+  },
   UCard: {
     label: "Card",
     source: "nuxt-ui",
@@ -1550,7 +1600,7 @@ export const WIDGET_CATALOG = {
     description: "A framed section with a header and a footer.",
     fillable: true,
     props: { title: text("Title"), description: text("Description"), variant: variant(SOLID_VARIANTS) },
-    slots: { header: { label: "Header" }, default: { label: "Body" }, footer: { label: "Footer" } },
+    slots: { header: { label: "Header" }, default: { label: "Body" }, footer: { label: "Footer", inline: true } },
     emits: {},
   },
   TBox: {
@@ -1667,7 +1717,7 @@ export const WIDGET_CATALOG = {
       close: { label: "Close button", editor: "boolean", description: "An ✕ in its corner that closes it." },
       scrollable: { label: "Scroll the whole modal", editor: "boolean", description: "The whole modal scrolls, not only its body." },
     },
-    slots: { header: { label: "Header", canvas: "own" }, body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own" } },
+    slots: { header: { label: "Header", canvas: "own" }, body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own", inline: true } },
     emits: overlayEmits,
     expose: ["open", "close"],
   },
@@ -1686,7 +1736,7 @@ export const WIDGET_CATALOG = {
       dismissible: { label: "Close on outside click", editor: "boolean", description: "Closes when the viewer clicks outside it." },
       close: { label: "Close button", editor: "boolean", description: "An ✕ in its corner that closes it." },
     },
-    slots: { header: { label: "Header", canvas: "own" }, body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own" } },
+    slots: { header: { label: "Header", canvas: "own" }, body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own", inline: true } },
     emits: overlayEmits,
     expose: ["open", "close"],
   },
@@ -1703,7 +1753,7 @@ export const WIDGET_CATALOG = {
       expandable: { label: "Expand button", editor: "boolean", default: true, description: "A button that grows it to almost the whole screen." },
       startExpanded: { label: "Open expanded", editor: "boolean", description: "Opens at almost the whole screen - for content that needs the room." },
     },
-    slots: { body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own" } },
+    slots: { body: { label: "Body", canvas: "own" }, footer: { label: "Footer", canvas: "own", inline: true } },
     // AppDrawer has no after-leave of its own.
     emits: { "update:open": overlayEmits["update:open"] },
     expose: ["open", "close"],
@@ -1713,6 +1763,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-message-square",
     group: "overlay",
+    fit: true,
     description: "A small panel anchored to its trigger.",
     props: { mode: { label: "Opens on", editor: "select", options: ["click", "hover"] }, arrow: { label: "Arrow", editor: "boolean", description: "A small arrow pointing at what opened it." } },
     slots: { default: { label: "Trigger" }, content: { label: "Content", canvas: "own" } },
@@ -1724,6 +1775,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-message-circle-question",
     group: "overlay",
+    fit: true,
     description: "A hint shown over its content on hover.",
     props: { text: text("Text"), arrow: { label: "Arrow", editor: "boolean", description: "A small arrow pointing at what opened it." } },
     slots: { default: { label: "Content" } },
@@ -1734,6 +1786,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-ellipsis-vertical",
     group: "overlay",
+    fit: true,
     description: "A menu of actions under its trigger - each item runs a Code function.",
     props: {
       items: {
@@ -1755,6 +1808,7 @@ export const WIDGET_CATALOG = {
     source: "nuxt-ui",
     icon: "i-lucide-square-mouse-pointer",
     group: "action",
+    fit: true,
     description: "Runs a Code function on click.",
     props: {
       label: text("Label"),
@@ -1765,7 +1819,7 @@ export const WIDGET_CATALOG = {
       trailingIcon,
       type: { label: "Type", editor: "select", options: ["button", "submit", "reset"], description: "Submit sends the form it is in." },
       square: { label: "Square", editor: "boolean", description: "As wide as it is tall - for an icon alone." },
-      block: { label: "Full width", editor: "boolean", description: "Fills the width of its container." },
+      block: { label: "Full width", editor: "boolean", description: "Fills its row: the whole row at Fit content, its columns when given some." },
       loading,
       disabled,
     },
@@ -1789,7 +1843,7 @@ export const COMMON_WIDGET_PROPS = {
     editor: "boolean",
     binding: "formula",
     default: true,
-    description: "Off - or a formula giving false - it leaves the page: no space, and its methods (dataview.controls.<name>.open()) and what it listens to (a Scanner's USB reader) stop. Hidden, still active keeps it working unseen.",
+    description: "Off - or a formula giving false - it leaves the page: no space, and its methods (dataview.controls.name.open()) and what it listens to (a Scanner's USB reader) stop. Hidden, still active keeps it working unseen.",
   },
   keepActive: {
     label: "Hidden, still active",
@@ -1807,25 +1861,50 @@ export const COMMON_WIDGET_PROPS = {
  * mode included. Unset is none. The renderer turns each into Tailwind classes
  * (the admin's utils/widget-style.ts); its component never sees them.
  */
-const SPACING = ["xs", "s", "m", "l", "xl"] as const;
+/** The named sizes of the theme's spacing scale, and - Custom - any of its steps (in units of 4 px, Tailwind's); never free pixels (DataViews.md §12.6). */
+export const SPACING_STEPS = ["0", "0.5", "1", "1.5", "2", "2.5", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24"] as const;
+/** A step of the scale, in pixels (Tailwind's: 4 = 16 px). */
+export const SPACING_STEP_PX = 4;
+/** The named sizes, as steps - one scale for margin and padding alike, so XS to XL mean the same everywhere. */
+export const SPACING_SIZES = { xs: "1", s: "2", m: "4", l: "6", xl: "8" } as const;
+const SPACING = [...(Object.keys(SPACING_SIZES) as (keyof typeof SPACING_SIZES)[]), ...SPACING_STEPS] as const;
+/** A spacing value's pixels: a named size through its step, a step through the scale; undefined for anything else. */
+export function spacingPx(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const step = value in SPACING_SIZES ? SPACING_SIZES[value as keyof typeof SPACING_SIZES] : (SPACING_STEPS as readonly string[]).includes(value) ? value : undefined;
+  return step === undefined ? undefined : Number(step) * SPACING_STEP_PX;
+}
+/** The sizes in words, for the guides and the inspector: "xs 4, s 8, m 16, l 24, xl 32 px; a number is a step of 4 px (4 = 16 px)". */
+export const SPACING_LEGEND = `${Object.entries(SPACING_SIZES).map(([name, step]) => `${name} ${Number(step) * SPACING_STEP_PX}`).join(", ")} px; a number is a step of ${SPACING_STEP_PX} px (4 = 16 px)`;
 export const COMMON_STYLE_PROPS = {
   // Space outside its box, all sides or one - a side wins over All. Left and right narrow it within its columns, never out of them.
-  margin: { label: "Margin", editor: "select", options: SPACING },
-  marginTop: { label: "Margin top", editor: "select", options: SPACING },
-  marginBottom: { label: "Margin bottom", editor: "select", options: SPACING },
-  marginLeft: { label: "Margin left", editor: "select", options: SPACING },
-  marginRight: { label: "Margin right", editor: "select", options: SPACING },
+  margin: { label: "Margin", editor: "select", options: SPACING, description: `Space outside its box, all sides - ${SPACING_LEGEND}. A side's own value wins over it.` },
+  marginTop: { label: "Margin top", editor: "select", options: SPACING, description: "Space above its box - the sizes of Margin." },
+  marginBottom: { label: "Margin bottom", editor: "select", options: SPACING, description: "Space below its box - the sizes of Margin." },
+  marginLeft: { label: "Margin left", editor: "select", options: SPACING, description: "Space at its left, within its columns - the sizes of Margin." },
+  marginRight: { label: "Margin right", editor: "select", options: SPACING, description: "Space at its right, within its columns - the sizes of Margin." },
   // Space inside its box, around its content - all sides or one.
-  padding: { label: "Padding", editor: "select", options: SPACING },
-  paddingTop: { label: "Padding top", editor: "select", options: SPACING },
-  paddingBottom: { label: "Padding bottom", editor: "select", options: SPACING },
-  paddingLeft: { label: "Padding left", editor: "select", options: SPACING },
-  paddingRight: { label: "Padding right", editor: "select", options: SPACING },
+  padding: { label: "Padding", editor: "select", options: SPACING, description: `Space inside its box, around its content, all sides - ${SPACING_LEGEND}. A side's own value wins over it.` },
+  paddingTop: { label: "Padding top", editor: "select", options: SPACING, description: "Space inside, above its content - the sizes of Padding." },
+  paddingBottom: { label: "Padding bottom", editor: "select", options: SPACING, description: "Space inside, below its content - the sizes of Padding." },
+  paddingLeft: { label: "Padding left", editor: "select", options: SPACING, description: "Space inside, at its content's left - the sizes of Padding." },
+  paddingRight: { label: "Padding right", editor: "select", options: SPACING, description: "Space inside, at its content's right - the sizes of Padding." },
   border: { label: "Border", editor: "select", options: ["muted", "accented", "primary"], description: "A line around its box." },
   radius: { label: "Radius", editor: "select", options: ["s", "m", "l", "full"], description: "Its box's rounded corners." },
   background: { label: "Background", editor: "select", options: ["muted", "elevated", "accented", "primary"], description: "Its box's color - the theme's, light and dark." },
   shadow: { label: "Shadow", editor: "select", options: ["s", "m", "l"], description: "Lifts its box off the page." },
-  align: { label: "Align content", editor: "select", options: ["start", "center", "end"], description: "Its text and buttons, left to right." },
+  // Its text - the theme's type scale and text colors, never a font or a free color. Cascades to what it holds.
+  fontSize: { label: "Text size", editor: "select", options: ["xs", "s", "m", "l", "xl", "2xl", "3xl"], description: "Its text's size, the theme's scale - m is the page's." },
+  fontWeight: { label: "Text weight", editor: "select", options: ["normal", "medium", "semibold", "bold"], description: "Its text's weight." },
+  fontStyle: { label: "Text style", editor: "select", options: ["italic"], description: "Its text in italics." },
+  textDecoration: { label: "Text decoration", editor: "select", options: ["underline", "lineThrough"], description: "Its text underlined or struck through." },
+  textColor: {
+    label: "Text color",
+    editor: "select",
+    options: ["muted", "dimmed", "toned", "highlighted", "primary", "secondary", "success", "info", "warning", "error"],
+    description: "Its text's color - the theme's, light and dark: the grays (muted, dimmed, toned, highlighted) or a meaning (primary ... error).",
+  },
+  align: { label: "Align content", editor: "select", options: ["start", "center", "end"], description: "Its content - text, a button, an upload area - left, center or right; a form field's input follows its field's." },
   verticalAlign: {
     label: "Vertical align",
     editor: "select",
@@ -1869,6 +1948,11 @@ export function commonWidgetProps(name: WidgetName): Readonly<Record<string, Wid
   };
 }
 export const WIDGET_NAMES = Object.keys(WIDGET_CATALOG) as WidgetName[];
+
+/** The width a widget takes when placed (DataViews.md §12.2): its content (`grid_w` 0) for one with a width of its own, the whole row (12) otherwise. */
+export function defaultWidgetWidth(name: WidgetName): number {
+  return widgetDefinition(name).fit ? 0 : 12;
+}
 
 /**
  * A CUSTOM page's header (DataViews.md §12.2):

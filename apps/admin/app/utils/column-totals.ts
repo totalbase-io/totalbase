@@ -15,10 +15,14 @@ export interface TotalEntry {
   alias: string
 }
 
-/** The shown columns with a total, in order - each its aggregate's alias (`t0`, `t1`...). */
+/**
+ * The columns with a total, in order - each its aggregate's alias (`t0`, `t1`...). `fields` are the columns the
+ * viewer shows (useGridColumnPrefs's `orderedFields`); a DataView's `visible` is only that preference's default
+ * (DataViews.md §4.1), never read here.
+ */
 export function totalsPlan(fields: readonly DataViewField[]): TotalEntry[] {
   return fields
-    .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.visible && f.columnName && (TOTAL_KINDS as readonly unknown[]).includes((f.config as { total?: unknown } | undefined)?.total))
+    .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.columnName && (TOTAL_KINDS as readonly unknown[]).includes((f.config as { total?: unknown } | undefined)?.total))
     .map((f, index) => ({ column: f.columnName!, kind: (f.config as { total: TotalKind }).total, alias: `t${index}` }))
 }
 

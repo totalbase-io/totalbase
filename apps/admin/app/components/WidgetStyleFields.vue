@@ -45,6 +45,40 @@ const BACKGROUND_OPTIONS = computed(() => [
   { value: 'accented', label: t('designer.inspector.style.accented'), swatch: 'bg-accented border border-default' },
   { value: 'primary', label: t('designer.inspector.style.primarySoft'), swatch: 'bg-primary/10 border border-primary/25' }
 ])
+const SIZE_OPTIONS = computed(() => [
+  { value: 'xs', label: 'XS', tooltip: t('designer.inspector.style.sizeXs') },
+  { value: 's', label: 'S', tooltip: t('designer.inspector.style.sizeS') },
+  { value: 'm', label: 'M', tooltip: t('designer.inspector.style.sizeM') },
+  { value: 'l', label: 'L', tooltip: t('designer.inspector.style.sizeL') },
+  { value: 'xl', label: 'XL', tooltip: t('designer.inspector.style.sizeXl') },
+  { value: '2xl', label: '2XL', tooltip: t('designer.inspector.style.size2xl') },
+  { value: '3xl', label: '3XL', tooltip: t('designer.inspector.style.size3xl') }
+])
+const WEIGHT_OPTIONS = computed(() => [
+  { value: 'normal', label: t('designer.inspector.style.normal'), tooltip: t('designer.inspector.style.normal') },
+  { value: 'medium', label: t('designer.inspector.style.medium'), tooltip: t('designer.inspector.style.medium') },
+  { value: 'semibold', label: t('designer.inspector.style.semibold'), tooltip: t('designer.inspector.style.semibold') },
+  { value: 'bold', label: t('designer.inspector.style.bold'), tooltip: t('designer.inspector.style.bold') }
+])
+// Italic, underline and strike-through as one group of equal buttons - two props (fontStyle, textDecoration), each toggling its own.
+const TEXT_STYLE_OPTIONS = computed(() => [
+  { prop: 'fontStyle', value: 'italic', icon: 'i-lucide-italic', tooltip: t('designer.inspector.style.italic') },
+  { prop: 'textDecoration', value: 'underline', icon: 'i-lucide-underline', tooltip: t('designer.inspector.style.underline') },
+  { prop: 'textDecoration', value: 'lineThrough', icon: 'i-lucide-strikethrough', tooltip: t('designer.inspector.style.lineThrough') }
+])
+// The text colors as fills of the same tokens, so a swatch is the color the text takes.
+const TEXT_COLOR_OPTIONS = computed(() => [
+  { value: 'muted', label: t('designer.inspector.style.muted'), swatch: 'bg-(--ui-text-muted)' },
+  { value: 'dimmed', label: t('designer.inspector.style.dimmed'), swatch: 'bg-(--ui-text-dimmed)' },
+  { value: 'toned', label: t('designer.inspector.style.toned'), swatch: 'bg-(--ui-text-toned)' },
+  { value: 'highlighted', label: t('designer.inspector.style.highlighted'), swatch: 'bg-(--ui-text-highlighted)' },
+  { value: 'primary', label: t('designer.inspector.style.primary'), swatch: 'bg-primary' },
+  { value: 'secondary', label: t('designer.inspector.style.secondary'), swatch: 'bg-secondary' },
+  { value: 'success', label: t('designer.inspector.style.success'), swatch: 'bg-success' },
+  { value: 'info', label: t('designer.inspector.style.info'), swatch: 'bg-info' },
+  { value: 'warning', label: t('designer.inspector.style.warning'), swatch: 'bg-warning' },
+  { value: 'error', label: t('designer.inspector.style.error'), swatch: 'bg-error' }
+])
 const BORDER_OPTIONS = computed(() => [
   { value: 'muted', label: t('designer.inspector.style.muted'), swatch: 'border-2 border-default' },
   { value: 'accented', label: t('designer.inspector.style.accented'), swatch: 'border-2 border-accented' },
@@ -90,6 +124,50 @@ const BORDER_OPTIONS = computed(() => [
         :model-value="str('verticalAlign')"
         :options="VERTICAL_ALIGN_OPTIONS"
         @update:model-value="emit('set', 'verticalAlign', $event)"
+      />
+    </UFormField>
+    <USeparator :label="t('designer.inspector.style.text')" />
+    <UFormField :label="t('designer.inspector.style.size')">
+      <StyleSegmented
+        :model-value="str('fontSize')"
+        none
+        :options="SIZE_OPTIONS"
+        @update:model-value="emit('set', 'fontSize', $event)"
+      />
+    </UFormField>
+    <UFormField :label="t('designer.inspector.style.weight')">
+      <StyleSegmented
+        :model-value="str('fontWeight')"
+        none
+        :options="WEIGHT_OPTIONS"
+        @update:model-value="emit('set', 'fontWeight', $event)"
+      />
+    </UFormField>
+    <UFormField :label="t('designer.inspector.style.textStyle')">
+      <UFieldGroup class="w-full max-w-80">
+        <UTooltip
+          v-for="option in TEXT_STYLE_OPTIONS"
+          :key="option.value"
+          :text="option.tooltip"
+        >
+          <UButton
+            :icon="option.icon"
+            size="xs"
+            :color="str(option.prop) === option.value ? 'primary' : 'neutral'"
+            :variant="str(option.prop) === option.value ? 'solid' : 'outline'"
+            class="flex-1 justify-center"
+            :aria-label="option.tooltip"
+            :aria-pressed="str(option.prop) === option.value"
+            @click="emit('set', option.prop, str(option.prop) === option.value ? undefined : option.value)"
+          />
+        </UTooltip>
+      </UFieldGroup>
+    </UFormField>
+    <UFormField :label="t('designer.inspector.style.textColor')">
+      <StyleSwatches
+        :model-value="str('textColor')"
+        :options="TEXT_COLOR_OPTIONS"
+        @update:model-value="emit('set', 'textColor', $event)"
       />
     </UFormField>
     <USeparator :label="t('designer.inspector.style.appearance')" />

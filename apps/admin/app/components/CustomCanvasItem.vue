@@ -139,8 +139,11 @@ function startResize(axis: 'x' | 'y', event: PointerEvent) {
   event.stopPropagation()
   const areaWidth = el.value?.parentElement?.clientWidth ?? 0
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  const unit = (areaWidth + 12) / 12 // 12px: the area's gap
+  // A fitting widget (Fit content, gridW 0) dragged by its edge takes columns: from the columns it covers now.
+  const from = props.field.gridW > 0 ? props.field.gridW : Math.max(1, Math.round((el.value?.clientWidth ?? unit) / unit))
   resizing.value = axis === 'x'
-    ? { axis, start: event.clientX, from: props.field.gridW || 12, unit: (areaWidth + 12) / 12 } // 12px: the area's gap
+    ? { axis, start: event.clientX, from, unit }
     : { axis, start: event.clientY, from: rows.value, unit: LAYOUT_ROW_PX }
 }
 function resizedValue(event: PointerEvent): number {

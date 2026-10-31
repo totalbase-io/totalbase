@@ -5,6 +5,7 @@ import {
   COMMON_WIDGET_PROPS,
   PAGE_FOOTER_WIDGETS,
   PAGE_HEADER_WIDGETS,
+  SPACING_LEGEND,
   VALUE_TYPES,
   VARIABLE_CATALOG,
   WIDGET_COLORS,
@@ -65,6 +66,16 @@ export function pagePropLine(name: string, prop: WidgetProp): string {
   return parts.join(" ");
 }
 
+/** The Style props and their values, names with the same values grouped: "margin, marginTop, ... (xs | s | ... | 24); border (muted | accented | primary); ...". */
+function styleProps(): string {
+  const groups = new Map<string, string[]>();
+  for (const [name, prop] of Object.entries(COMMON_STYLE_PROPS)) {
+    const values = (prop.options as readonly string[]).join(" | ");
+    groups.set(values, [...(groups.get(values) ?? []), name]);
+  }
+  return [...groups.entries()].map(([values, names]) => `${names.join(", ")} (${values}${names.includes("margin") ? ` - ${SPACING_LEGEND}` : ""})`).join("; ");
+}
+
 function variableKind(kind: string, definition: VariableKindDefinition): string {
   const props = Object.entries(definition.props).map(([name, p]) => `${name}${p.required ? " (required)" : ""}${p.options ? `: ${p.options.join(" | ")}` : ""}${p.description ? ` - ${p.description}` : ""}`);
   return [
@@ -103,7 +114,14 @@ ${(Object.entries(VARIABLE_CATALOG) as [string, VariableKindDefinition][]).map((
 - **record** exists when the page has a record table: the row the page edits - form fields bound to its columns (UFormField column) edit record.data.<column>; record.save() writes it through the Data API (CREATE or UPDATE, permissions, audit, data events). ?pk=<key> in the page's URL opens a row; without it a new one starts.
 
 ## Widgets (add_page_widgets; totalbase://guide/widgets has every prop)
-- Areas: the page, and each slot of a container (a Form's fields, a Card's header / default / footer, a Tab's content:<tab value>). In an area, widgets flow in order, several to a row: width is columns of 12 (12 by default, 6 = half). Only sizable widgets (tables, editors, maps, embeds) take a height.
+- Areas: the page, and each slot of a container (a Form's fields, a Card's header / default / footer, a Tab's content:<tab value>). In an area, widgets flow in order, several to a row: width is columns of 12 (6 = half) - an input, a text, a table or a container fills its columns (default 12); a button, a badge, an icon, a switch or a checkbox takes its content's width by default (width 0, "fit") and sits beside what precedes it, so two buttons in a row need nothing; a button's block true fills its row instead (the whole row at Fit content, its columns when given some). Only sizable widgets (tables, editors, maps, embeds) take a height: height in add_page_widgets and update_page_widget, rows of 40 px (2-30, 6 when placed), or props.fillHeight true for what the screen has left - in any area (a tab's content, a Box, a Card), measured from the page's body: the page then fits the screen with the widget taking the slack; inside a Card or a Box that itself has fillHeight, that box; in an overlay, its body.
+- Inputs in a Box stack (each fills it); side by side, give each its width: three in a row = width 4 each, two = 6, a short one beside a long one = 3 + 9 (a line is 12). A button after them sits beside the last one at its own width.
+- Side by side parts (a photo | fields | buttons): one TColumns, props.items one per column ({ value, label, span } - spans summing to 12), children placed in slot column:<value> - not Boxes sized by hand. Buttons go in an overlay's or a Card's footer (gathered at the right) or after the fields; a container's Style align places the fitting widgets of its rows.
+- **Style** is props every widget has - literals in props, beside its own: ${styleProps()}. They replace cssClass for spacing and aligning (the theme's scales, light and dark): margin* and padding* on the widget whose box moves; align on a widget moves its content (its text, a button, an upload area; a form field's input follows its field's), on a container it places the fitting widgets of every row of its areas (an overlay's and a Card's footer gather theirs at the right by themselves); verticalAlign on a widget beside a taller one. Recipes:
+  - A button beside a form field: nothing - a fitting widget sits at the bottom of its row, level with the input. Only a field's help (drawn under its input) lowers it: give the text as the field's description (drawn under its label, over the input) instead, or verticalAlign "center" on the button.
+  - A block centered in its column (an upload area, a camera, a framed image): align "center" on its UFormField - label and input alike - or on the widget itself when it has no field.
+  - A button at the right of a row, outside a footer: align "end" on the container holding it (a TBox, a Card's default slot) - the page itself has no Style, so there put the button in a TBox. Only a widget at Fit content moves; one given columns stays.
+  - check_app notes a cssClass whose classes Style has (mt-6, text-center: STYLE_IN_CSS_CLASS, info) - keep cssClass for what Style doesn't offer.
 - Inputs take no placeholder prop (a hint inside a field vanishes as one types): give the UFormField a help or description; an input bound to a column shows that column's presentation placeholder (set_column_presentation), the one example value an input carries.
 - A **form field** (UFormField) holds exactly one input in its default slot. With props.column it edits that column of the record (its label, description, help, required, read-only and a CHECK list's options come from the column - set label, description or help to "" for none, e.g. a Card whose title already names the field); without, its input binds modelValue to a Value.
 - A foreign key column's input is a USelectMenu whose items bind to a Resource of the referenced table (valueKey its key, labelKey the field shown). labelKey names a field the Resource reads; a formula over the option's fields goes in bindings: {"labelKey": {"kind": "formula", "formula": "{{tipo}} + \\" \\" + {{numero}}"}} - a literal with {{ is refused. For a long list, props.searchWindow: true adds a 🔍 opening the Resource as a searchable, paged table (searchWindowAs: sidebar (default) | modal) - its columns are the Resource's fields, so give its query.fields what to search and compare by (code, document, city).
@@ -173,7 +191,15 @@ show({ color (success, error, warning, info, neutral, primary, secondary), icon,
 
 **Search screen**: a Value search, a UInput bound to it, a Resource over the table whose where reads {{vars.search.value}} with watch on, a UTable whose data binds to the Resource (its own search and pager drive the Resource), and a row click (emits select) opening the record: dataview.openDataView('customers', { pk: event.row.id }).
 
-**An action over a row**: a Call to a function or a MANUAL workflow with input {"data": {"id": "{{controls.grid.row.id}}"}} and a button whose loading binds {{vars.call.status}} == "pending"; on success refresh the Resource (dataview.vars.items.refresh()).`;
+**An action over a row**: a Call to a function or a MANUAL workflow with input {"data": {"id": "{{controls.grid.row.id}}"}} and a button whose loading binds {{vars.call.status}} == "pending"; on success refresh the Resource (dataview.vars.items.refresh()).
+
+## Check how it looks
+check_app proves the structure, not the drawing: a crowded row, a label cut short, a block out of place only show rendered. After publish_dataview - or before it, for a CUSTOM page's draft - open the page in a browser when you have one (a browser tool, Playwright); when you don't, ask the person to look, and say what to look at.
+- **Sign in**: the App's session is a cookie - POST /admin/api/auth/login with {"email", "password", "mode": "session"} and an Origin header of the instance's own URL (without it the request is refused as cross-site: CROSS_SITE_REQUEST_REFUSED), or the form at /login (the fields with autocomplete username and current-password). The credentials are the person's: ask for them, never keep them; an account with MFA signs in through the form. Keep one session for every page (Playwright: context.request.post(url, { headers: { origin }, data }), then storageState).
+- **Open**: a record form at /app/dataviews/<slug>/new and /app/dataviews/<slug>/<pk>/edit; a CUSTOM page at /app/dataviews/<slug> - ?pk=<key> a row, without it a new one, ?draft=true the draft before publishing (administrators only). A modal or a slideover: click the button that opens it, by its label; or have the page's Code read a parameter - in onLoad, if (dataview.params.open) dataview.controls[dataview.params.open].open() - and open ?open=<name>.
+- **Look as the role** that will use it, never as yourself: See as - POST /admin/api/view-as {"data": {"kind": "role", "id": "<role id>"}} (list_roles), then, in the tab before the page loads, sessionStorage "totalbase-view-as" = {"kind":"role","id":"<id>","name":"<name>"} (the App's menu has an eye that does the same). The App shows what the role sees - its rows, its buttons - and the server refuses every write (VIEW_AS_READ_ONLY): nothing is saved, nothing to clean up. Prefer it to a test user.
+- **Find a widget** by [data-widget="<kind>"] (UTabs, UModal, TColumns) and [data-name="<its Name>"] on its box - never by Nuxt UI's classes. A hidden widget isn't in the DOM.
+- **Look at**: desktop and a phone (a 390 px viewport: the widgets that fill stack, Fit content ones stay in line), every tab of a UTabs, every overlay, one record of each kind a visible formula tells apart (a field shown for one type only - open one of each, or change the field that drives it), a long value in a narrow column, the page with no rows yet. What's wrong is fixed with Style, widths and TColumns (above), published and looked at again.`;
 }
 
 export function widgetsGuide(): string {
@@ -185,13 +211,14 @@ export function widgetsGuide(): string {
       ...(w.formField ? ["a form field's input"] : []),
       ...(w.sizable ? ["sizable (height)"] : []),
       ...(w.fillable ? ["fillable"] : []),
+      ...(w.fit ? ["fits its content (width 0 by default, beside what precedes it)"] : []),
     ];
     const lines = [`## ${name} - ${w.label} (${traits.join("; ")})`, w.description];
     const props = Object.entries(w.props).map(([prop, p]) => pagePropLine(prop, p));
     if (props.length > 0) lines.push("Props:", ...props);
     const slots = Object.entries(w.slots).map(
       ([slot, s]) =>
-        `- ${slot}${s.perItem ? ":<item value>" : ""} - ${s.label}${s.holds === "input" ? " (one input only)" : ""}${s.canvas === "own" ? " (its own canvas)" : ""}${s.slotProps?.length ? ` - {{slot.${s.slotProps.join("}}, {{slot.")}}}` : ""}`,
+        `- ${slot}${s.perItem ? ":<item value>" : ""} - ${s.label}${s.holds === "input" ? " (one input only)" : ""}${s.canvas === "own" ? " (its own canvas)" : ""}${s.inline ? " (its widgets gathered at the right)" : ""}${s.slotProps?.length ? ` - {{slot.${s.slotProps.join("}}, {{slot.")}}}` : ""}`,
     );
     if (slots.length > 0) lines.push("Slots:", ...slots);
     const emits = Object.entries(w.emits).map(([emit, e]) => `${emit}${e.payload ? ` ${e.payload}` : ""}`);

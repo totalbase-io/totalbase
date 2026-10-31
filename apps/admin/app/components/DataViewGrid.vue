@@ -619,15 +619,27 @@ const sourcePath = () => dataApi.resourcePath(props.schema, props.resourceName, 
 /** A Gantt's bars by start date - a capped timeline keeps its earliest tasks, not arbitrary ones. */
 const ganttOrderParams = computed(() => (isGantt.value && props.ganttLayout?.startDateColumn ? { order_by: props.ganttLayout.startDateColumn } : {}))
 
+// --- Column visibility/order (useGridColumnPrefs) - part of the auto-saved user prefs, seeded from
+// `userPrefsConfig.columnPrefs`; kept in sync going forward by the autosave further down. Before the
+// rows' read: the conditional formatting it asks for is the shown columns'.
+const columnPrefs = useGridColumnPrefs({
+  fields,
+  rawFields: () => props.fields,
+  fixedColumns: () => props.fixedColumns,
+  initial: userPrefsConfig.columnPrefs,
+  defaultState: () => effectiveDefaultState.value
+})
+const { colPrefs, orderedFields, colsOpen, hiddenColCount } = columnPrefs
+
 /**
- * Conditional formatting (DataViews.md §15.7): the shown columns' conditions, sent as `flags` - PostgreSQL
- * answers which each row meets (`meta.flags`); the grid only paints it.
+ * Conditional formatting (DataViews.md §15.7): the shown columns' conditions - the viewer's, a hidden column
+ * they showed included, one they hid left out (§4.1) -, sent as `flags`; PostgreSQL answers which each row
+ * meets (`meta.flags`); the grid only paints it.
  */
 /** The DataView's own actions this viewer may run (DataViews.md §3.7) - a row's shown where its condition holds, a flag too. */
 const runnable = computed(() => runnableActions(props.dataview?.viewConfig, props.dataview?.actionTargets))
 const rowActionFlags = computed(() => actionFlags(runnable.value, ['row']))
-const conditionPlanned = computed(() => conditionPlan(fields.value
-  .filter(f => (f.kind === 'COLUMN' || f.kind === 'RELATED') && f.visible && f.columnName)
+const conditionPlanned = computed(() => conditionPlan(orderedFields.value
   .map(f => ({ column: f.columnName!, conditions: (f.config as { conditions?: ColumnCondition[] }).conditions })), MAX_FLAGS - Object.keys(rowActionFlags.value).length))
 const flagParams = computed(() => {
   const flags = { ...rowActionFlags.value, ...conditionPlanned.value.flags }
@@ -738,17 +750,6 @@ const rowMeta = computed(() => ({
   style: { tr: (row: { original: Record<string, unknown> }) => rowAttrs(row.original)?.style ?? {} }
 }))
 const total = computed(() => (data.value as { meta?: { count?: number } })?.meta?.count ?? rows.value.length)
-
-// --- Column visibility/order (useGridColumnPrefs) - part of the auto-saved user prefs, seeded from
-// `userPrefsConfig.columnPrefs`; kept in sync going forward by the autosave further down.
-const columnPrefs = useGridColumnPrefs({
-  fields,
-  rawFields: () => props.fields,
-  fixedColumns: () => props.fixedColumns,
-  initial: userPrefsConfig.columnPrefs,
-  defaultState: () => effectiveDefaultState.value
-})
-const { colPrefs, orderedFields, colsOpen, hiddenColCount } = columnPrefs
 
 // --- A column's width, dragged at its header's right edge (DataViews.md §5.2, §5.9) - with a mouse; a finger scrolls.
 const isTouch = useIsTouch()

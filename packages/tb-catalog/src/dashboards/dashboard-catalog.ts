@@ -987,7 +987,7 @@ function presentationIssues(definition: DashboardWidgetDefinition, page: WidgetN
 
 /**
  * A widget's Styles (`config.style`, Dashboards.md §5): the page catalog's common style block - its
- * card's spacing, alignment, background, border, radius and shadow - each one of its listed values.
+ * card's spacing, alignment, background, border, radius, shadow and text - each one of its listed values.
  */
 function styleErrors(label: string, value: unknown): string[] {
   if (value === null || value === undefined) return [];

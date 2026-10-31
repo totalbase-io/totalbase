@@ -54,6 +54,7 @@ import {
 } from '#components'
 import WidgetHeading from '~/components/WidgetHeading.vue'
 import WidgetBox from '~/components/WidgetBox.vue'
+import WidgetColumns from '~/components/WidgetColumns.vue'
 import WidgetTable from '~/components/WidgetTable.vue'
 import WidgetInputDate from '~/components/WidgetInputDate.vue'
 import WidgetInputTime from '~/components/WidgetInputTime.vue'
@@ -106,6 +107,7 @@ export const WIDGET_COMPONENTS: Record<WidgetName, Component> = {
   TImage: defineAsyncComponent(() => import('~/components/WidgetImage.vue')),
   THeading: WidgetHeading,
   TBox: WidgetBox,
+  TColumns: WidgetColumns,
   TText: WidgetText,
   // Nuxt UI's table plus TotalBase's Search and Pager around it.
   UTable: WidgetTable,

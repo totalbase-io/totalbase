@@ -41,6 +41,39 @@ describe("Execute JavaScript sandbox", () => {
     });
   });
 
+  it("offers V8's own globals and URLSearchParams - what Workflows.md §5.8 lists - and nothing of the browser's or Node's", async () => {
+    const present = ["JSON", "Math", "Date", "Intl", "String", "Number", "Array", "Object", "RegExp", "Map", "Set", "Promise", "BigInt", "Uint8Array", "encodeURIComponent", "decodeURIComponent", "encodeURI", "decodeURI", "parseInt", "parseFloat", "URLSearchParams"];
+    const absent = ["URL", "TextEncoder", "TextDecoder", "atob", "btoa", "setTimeout", "setInterval", "crypto", "fetch", "structuredClone", "console.log"];
+    const outcome = await run(`return {
+      missing: ${JSON.stringify(present)}.filter((name) => typeof globalThis[name] === "undefined"),
+      found: ${JSON.stringify(absent)}.filter((name) => { const [a, b] = name.split("."); return typeof globalThis[a] !== "undefined" && (!b || typeof globalThis[a][b] !== "undefined"); }),
+      money: new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(1234.5),
+      day: new Date(Date.UTC(2026, 0, 2, 3)).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }),
+    }`);
+    // console exists in V8 but writes nowhere: a script may call it; nothing offers it.
+    expect(outcome.result).toEqual({ missing: [], found: ["console.log"], money: "$\u00a01.234,50", day: "2/1/2026" });
+  });
+
+  it("builds a query string with URLSearchParams, as a browser would", async () => {
+    const outcome = await run(`
+      const q = new URLSearchParams({ q: "Av. Corrientes 1234, Buenos Aires", format: "json" });
+      q.append("limit", 5);
+      q.set("format", "jsonv2");
+      const parsed = new URLSearchParams("?a=1&b=x+y&b=%C3%B1&empty");
+      return { text: q.toString(), has: q.has("limit"), get: parsed.get("b"), all: parsed.getAll("b"), empty: parsed.get("empty"), entries: [...parsed], size: parsed.size, json: JSON.stringify({ q }) }
+    `);
+    expect(outcome.result).toEqual({
+      text: "q=Av.+Corrientes+1234%2C+Buenos+Aires&format=jsonv2&limit=5",
+      has: true,
+      get: "x y",
+      all: ["x y", "ñ"],
+      empty: "",
+      entries: [["a", "1"], ["b", "x y"], ["b", "ñ"], ["empty", ""]],
+      size: 4,
+      json: '{"q":"q=Av.+Corrientes+1234%2C+Buenos+Aires&format=jsonv2&limit=5"}',
+    });
+  });
+
   it("can't reach the host through a copied-in value's prototype chain", async () => {
     // trigger is a copy, not a reference: its constructor is the isolate's own Object, whose Function can't see the host.
     const outcome = await run("return trigger.constructor.constructor('return typeof process')()", { a: 1 });

@@ -58,7 +58,7 @@ The database role should not be a superuser: TotalBase can do exactly what its r
 | Tag | |
 |---|---|
 | `beta` | the latest beta, moved to it once the published image passed its checks on both architectures |
-| `0.1.0-beta.10` | this version - pin one in production |
+| `0.1.0-beta.11` | this version - pin one in production |
 
 Both for `linux/amd64` and `linux/arm64`. `latest` arrives with the first stable release. Earlier betas keep their tags; they get no more fixes - upgrade to the latest. From `0.1.0-beta.5` the default port is `3030` (it was `3050`).
 

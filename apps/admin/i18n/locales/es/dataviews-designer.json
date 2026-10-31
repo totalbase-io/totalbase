@@ -72,7 +72,7 @@
           "label": "Acciones de fila"
         },
         "align": {
-          "description": "Su texto y sus botones, de izquierda a derecha.",
+          "description": "Su contenido - texto, un botón, un área de subida - a la izquierda, al centro o a la derecha; la entrada de un campo de formulario sigue la de su campo.",
           "label": "Alinear contenido"
         },
         "alt": {
@@ -127,7 +127,7 @@
           "label": "Campo de color"
         },
         "column": {
-          "description": "Una columna del registro de la página: su entrada edita record.data.<column>. El NOT NULL de PostgreSQL lo hace obligatorio, y es de solo lectura donde el usuario no puede escribirla.",
+          "description": "Una columna del registro de la página: su entrada edita record.data.column. El NOT NULL de PostgreSQL lo hace obligatorio, y es de solo lectura donde el usuario no puede escribirla.",
           "label": "Vinculado por"
         },
         "columnSettings": {
@@ -187,6 +187,10 @@
           "description": "Se cierra cuando el usuario hace clic fuera.",
           "label": "Cerrar al hacer clic fuera"
         },
+        "editInline": {
+          "label": "Editar en la grilla",
+          "description": "Vinculado por una columna: sus filas se editan en el lugar (Tab pasa de celda en celda; Tab después de la última agrega una) y se guardan con el registro de la página, en una transacción. Apagado: cada fila en su propio formulario."
+        },
         "empty": {
           "label": "Texto vacío"
         },
@@ -204,6 +208,18 @@
         "filter": {
           "description": "Un cuadro de búsqueda sobre las opciones.",
           "label": "Cuadro de filtro"
+        },
+        "fontSize": {
+          "description": "El tamaño de su texto, en la escala del tema: M es el de la página.",
+          "label": "Tamaño del texto"
+        },
+        "fontStyle": {
+          "description": "Su texto en cursiva.",
+          "label": "Estilo del texto"
+        },
+        "fontWeight": {
+          "description": "El peso de su texto.",
+          "label": "Peso del texto"
         },
         "fullscreen": {
           "description": "Cubre toda la pantalla.",
@@ -280,7 +296,8 @@
           "label": "Ocupado al enviar"
         },
         "margin": {
-          "label": "Margen"
+          "label": "Margen",
+          "description": "Espacio fuera de su caja, en todos los lados: XS 4, S 8, M 16, L 24, XL 32 px, o un paso de 4 px. El valor propio de un lado le gana."
         },
         "marginBottom": {
           "label": "Margen inferior"
@@ -337,7 +354,8 @@
           "label": "Orientación"
         },
         "padding": {
-          "label": "Relleno"
+          "label": "Relleno",
+          "description": "Espacio dentro de su caja, alrededor de su contenido, en todos los lados: XS 4, S 8, M 16, L 24, XL 32 px, o un paso de 4 px. El valor propio de un lado le gana."
         },
         "paddingBottom": {
           "label": "Relleno inferior"
@@ -358,10 +376,6 @@
         "paging": {
           "description": "Desactivado: todas las filas a la vez - las líneas de un registro.",
           "label": "Páginas"
-        },
-        "editInline": {
-          "label": "Editar en la grilla",
-          "description": "Vinculado por una columna: sus filas se editan en el lugar (Tab pasa de celda en celda; Tab después de la última agrega una) y se guardan con el registro de la página, en una transacción. Apagado: cada fila en su propio formulario."
         },
         "pattern": {
           "description": "Una expresión regular (JavaScript) que todo el valor debe cumplir - se comprueba mientras el usuario escribe, junto con el propio CHECK de la columna. PostgreSQL sigue decidiendo al guardar; un valor vacío queda en manos de Obligatorio.",
@@ -418,6 +432,10 @@
           "label": "Ventana de búsqueda como",
           "description": "Dónde se abre la ventana de búsqueda - un panel lateral (por defecto, con lugar para una lista larga) o un modal. Pantalla completa en un teléfono."
         },
+        "searchWindowSize": {
+          "label": "Tamaño de la ventana de búsqueda",
+          "description": "Su ancho - sin definir, el propio de Nuxt UI (un panel o un modal estrechos); de sm a xl como los tamaños del formulario de registro, xl para una tabla ancha. Pantalla completa en un teléfono desde md."
+        },
         "shadow": {
           "description": "Despega su caja de la página.",
           "label": "Sombra"
@@ -453,6 +471,14 @@
         },
         "text": {
           "label": "Iniciales"
+        },
+        "textColor": {
+          "description": "El color de su texto, el del tema en claro y oscuro: los grises (atenuado, tenue, entonado, resaltado) o un significado (primario a error).",
+          "label": "Color del texto"
+        },
+        "textDecoration": {
+          "description": "Su texto subrayado o tachado.",
+          "label": "Decoración del texto"
         },
         "title": {
           "description": "Lo que muestra el marco, para lectores de pantalla.",
@@ -495,12 +521,8 @@
           "label": "Alineación vertical"
         },
         "visible": {
-          "description": "Apagado - o una fórmula que da false - sale de la página: no ocupa lugar, y sus métodos (dataview.controls.<nombre>.open()) y lo que escucha (el lector USB de un Escáner) se detienen. Oculto, sigue activo lo mantiene funcionando sin verse.",
+          "description": "Apagado - o una fórmula que da false - sale de la página: no ocupa lugar, y sus métodos (dataview.controls.nombre.open()) y lo que escucha (el lector USB de un Escáner) se detienen. Oculto, sigue activo lo mantiene funcionando sin verse.",
           "label": "Visible"
-        },
-        "searchWindowSize": {
-          "label": "Tamaño de la ventana de búsqueda",
-          "description": "Su ancho - sin definir, el propio de Nuxt UI (un panel o un modal estrechos); de sm a xl como los tamaños del formulario de registro, xl para una tabla ancha. Pantalla completa en un teléfono desde md."
         }
       },
       "snippetGroups": {
@@ -910,7 +932,7 @@
           "label": "Registro",
           "state": {
             "data": {
-              "description": "Los valores de la fila, con las ediciones - data.<column>.",
+              "description": "Los valores de la fila, con las ediciones - data.column.",
               "label": "Datos"
             },
             "dirty": {
@@ -1102,6 +1124,19 @@
             "update:modelValue": "Valor cambiado"
           },
           "label": "Color"
+        },
+        "TColumns": {
+          "description": "Áreas lado a lado, cada una con su ancho en las 12 columnas de la fila - lo que contiene cada una se apila dentro; un teléfono apila las columnas.",
+          "label": "Columnas",
+          "props": {
+            "items": {
+              "description": "Una por columna - su etiqueta la nombra en el lienzo y en Estructura; su ancho en las 12 columnas de la fila, con los anchos sumando 12 (cambiar uno reparte el resto).",
+              "label": "Columnas"
+            }
+          },
+          "slots": {
+            "column": "Contenido"
+          }
         },
         "TDashboard": {
           "description": "Un Dashboard publicado, con sus variables fijadas desde la página - por ejemplo, las cifras de un cliente.",
@@ -1332,7 +1367,7 @@
           "label": "Botón",
           "props": {
             "block": {
-              "description": "Ocupa el ancho de su contenedor."
+              "description": "Llena su fila: toda la fila en Ajustar al contenido, sus columnas cuando tiene."
             },
             "type": {
               "description": "Submit envía el formulario en el que está."
@@ -1420,25 +1455,29 @@
               "description": "Con Mostrar la imagen: original mantiene la forma de la imagen; una proporción la enmarca (3:4 vertical - una foto carnet).",
               "label": "Forma de la imagen"
             },
-            "height": {
-              "description": "En píxeles, sea cual sea la pantalla: el del área vacía - para igualarla con las cards vecinas - y, con Mostrar la imagen, el de la imagen (con una forma su ancho la sigue, centrada; sin ella ocupa el campo; cubre el marco).",
-              "label": "Alto"
-            },
-            "preview": {
-              "description": "Una imagen se muestra a lo ancho del campo en lugar de su nombre - al tocarla se elige otra. En solo lectura, es solo la imagen.",
-              "label": "Mostrar la imagen"
-            },
-            "label": {
-              "label": "Etiqueta",
-              "description": "El texto del campo vacío - el del área, o el de la variante botón. Sin valor: Suelta un archivo aquí o elige uno."
+            "buttonLabel": {
+              "label": "Botón",
+              "description": "Variante área: un botón debajo de su texto (Cargar archivo), para quien no sabe que el área se puede tocar."
             },
             "description": {
               "label": "Descripción",
               "description": "Una línea debajo del texto del área."
             },
-            "buttonLabel": {
-              "label": "Botón",
-              "description": "Variante área: un botón debajo de su texto (Cargar archivo), para quien no sabe que el área se puede tocar."
+            "height": {
+              "description": "En píxeles, sea cual sea la pantalla: el del área vacía - para igualarla con las cards vecinas - y, con Mostrar la imagen, el de la imagen (con una forma su ancho la sigue, centrada; sin ella ocupa el campo; cubre el marco).",
+              "label": "Alto"
+            },
+            "label": {
+              "label": "Etiqueta",
+              "description": "El texto del campo vacío - el del área, o el de la variante botón. Sin valor: Suelta un archivo aquí o elige uno."
+            },
+            "preview": {
+              "description": "Una imagen se muestra a lo ancho del campo en lugar de su nombre - al tocarla se elige otra. En solo lectura, es solo la imagen.",
+              "label": "Mostrar la imagen"
+            },
+            "variant": {
+              "description": "area: un área de soltar con borde punteado; soft: el área en el tinte de su color, sin borde; subtle: tinte y borde; button: solo un botón.",
+              "label": "Variante"
             }
           }
         },
@@ -1850,7 +1889,7 @@
           }
         },
         "TResult": {
-          "description": "Un panel grande con un resultado a simple vista - un color, un ícono, un título y una descripción, con un tono y una vibración - que muestra el Código de la página con dataview.controls.<nombre>.show(); vuelve solo a la espera después de Volver tras segundos.",
+          "description": "Un panel grande con un resultado a simple vista - un color, un ícono, un título y una descripción, con un tono y una vibración - que muestra el Código de la página con dataview.controls.nombre.show(); vuelve solo a la espera después de Volver tras segundos.",
           "emits": {
             "reset": "Vuelve a la espera"
           },
@@ -2652,12 +2691,15 @@
     },
     "designPage": {
       "descriptionWithSource": "Diseño · {source}",
+      "draftChanged": "A las {time} lo reescribió un agente u otra pestaña. Recargalo para verlo; las ediciones hechas acá desde entonces se pierden.",
+      "draftChangedTitle": "El borrador cambió en otra sesión",
       "externalFrame": "Un marco externo no tiene página que diseñar.",
       "previewTooltip": "Vista previa del borrador con datos reales",
       "publishConfirm": "¿Publicar como v{version}?",
       "publishConfirmDescription": "Desde ahora, quienes la vean verán el borrador actual.",
       "publishError": "No se pudo publicar",
       "published": "Publicado como v{version}",
+      "reload": "Recargar",
       "title": "Diseño"
     },
     "designerClassListEditor": {
@@ -2777,31 +2819,58 @@
         "alignment": "Alineación",
         "appearance": "Apariencia",
         "background": "Fondo",
+        "bold": "Negrita",
         "border": "Borde",
         "bottom": "Abajo en su fila",
         "center": "Centro",
         "content": "Contenido",
+        "dimmed": "Tenue",
         "elevated": "Elevado",
+        "error": "Error",
         "full": "Completo",
+        "highlighted": "Resaltado",
         "inItsRow": "En su fila",
+        "info": "Información",
+        "italic": "Cursiva",
         "largeShadow": "Sombra grande",
         "left": "Izquierda",
+        "lineThrough": "Tachado",
+        "medium": "Medio",
         "mediumShadow": "Sombra mediana",
         "middle": "En el medio de su fila",
         "muted": "Atenuado",
+        "normal": "Normal",
         "pill": "Píldora o círculo",
         "primary": "Primario",
         "primarySoft": "Primario, suave",
         "radius": "Radio",
         "right": "Derecha",
         "rounded": "Redondeado",
+        "secondary": "Secundario",
+        "semibold": "Seminegrita",
         "shadow": "Sombra",
+        "size": "Tamaño",
+        "size2xl": "El doble de la página",
+        "size3xl": "El triple de la página",
+        "sizeL": "Grande",
+        "sizeM": "Medio, el de la página",
+        "sizeS": "Chico",
+        "sizeXl": "Muy grande",
+        "sizeXs": "Muy chico",
         "slightlyRounded": "Levemente redondeado",
         "smallShadow": "Sombra pequeña",
         "spacing": "Espaciado",
         "stretch": "El alto de su fila (una Card o un Box)",
+        "success": "Éxito",
+        "text": "Texto",
+        "textColor": "Color",
+        "textStyle": "Estilo",
+        "toned": "Entonado",
         "top": "Arriba en su fila",
-        "veryRounded": "Muy redondeado"
+        "underline": "Subrayado",
+        "veryRounded": "Muy redondeado",
+        "warning": "Advertencia",
+        "weight": "Peso"
       },
       "stylesApplied": "{n} estilo aplicado | {n} estilos aplicados",
       "tabs": {
@@ -2899,6 +2968,9 @@
       "noVariable": "Esta página todavía no tiene una variable {kind} - crea una en Variables."
     },
     "styleBoxModel": {
+      "custom": "Personalizado - un paso de la escala",
+      "customAria": "{ring} todos los lados - paso personalizado",
+      "customSideAria": "{ring} {side} - paso personalizado",
       "allSidesAria": "{ring} todos los lados",
       "allSidesTitle": "{ring} - todos los lados",
       "rings": {
@@ -2916,6 +2988,7 @@
     },
     "useCustomCanvasContext": {
       "columns": "{n} columna | {n} columnas",
+      "fitContent": "Ajustar al contenido",
       "rename": "Renombrar",
       "moveUp": "Subir",
       "moveDown": "Bajar",
@@ -3018,7 +3091,10 @@
       "collapsible": "Plegable",
       "itemSize": "Tamaño del elemento {n}",
       "itemMinSize": "Tamaño mínimo del elemento {n}",
-      "sizeSum": "Los tamaños suman {sum}% de 100"
+      "sizeSum": "Los tamaños suman {sum}% de 100",
+      "span": "Ancho",
+      "itemSpan": "Ancho de la columna {n}",
+      "spanSum": "Los anchos suman {sum} de 12 columnas"
     },
     "widgetJsonEditor": {
       "invalid": "JSON no válido - aún no se guardó."

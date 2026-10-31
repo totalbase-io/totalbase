@@ -39,10 +39,13 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   /** Shown, never changed: no remove, no pick - an empty one says so. */
   readonly?: boolean
+  /** Where a frame narrower than the field sits (Style's Align): the empty area at the start unless said otherwise, a shown image centered. */
+  align?: 'start' | 'center' | 'end'
   accept?: string
   icon?: string | false
   color?: 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
-  variant?: 'area' | 'button'
+  /** area: outlined, dashed; soft and subtle: the area in its color's tint (app.config.ts adds them to Nuxt UI's theme); button: a button alone. */
+  variant?: 'area' | 'soft' | 'subtle' | 'button'
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   /** An image shows itself across the field, framed in `aspect` - tapping it picks another. */
   preview?: boolean
@@ -142,6 +145,8 @@ function pickAnother() {
   if (!locked.value) picker.value?.click()
 }
 /** The empty area's height (`height`) - to line it up with the cards beside it - with or without Show the image. */
+const emptyAlignClass = computed(() => (props.align === 'center' ? 'mx-auto' : props.align === 'end' ? 'ms-auto' : undefined))
+const imageAlignClass = computed(() => (props.align === 'start' ? undefined : props.align === 'end' ? 'ms-auto' : 'mx-auto'))
 const emptyStyle = computed(() => (props.preview ? frameStyle.value : Number(props.height) > 0 ? { height: `${Number(props.height)}px` } : undefined))
 defineExpose({ open: pickAnother })
 function onPicked(event: Event) {
@@ -156,7 +161,8 @@ function onPicked(event: Event) {
     <!-- Show the image: the image itself, across the field - tapping it picks another. -->
     <div
       v-if="modelValue && !loadFailed && showsImage"
-      class="relative mx-auto w-full overflow-hidden rounded-lg border border-default bg-elevated"
+      class="relative w-full overflow-hidden rounded-lg border border-default bg-elevated"
+      :class="imageAlignClass"
       :style="frameStyle"
     >
       <button
@@ -295,6 +301,7 @@ function onPicked(event: Event) {
     <div
       v-else
       class="flex w-full flex-col"
+      :class="emptyAlignClass"
       :style="emptyStyle"
     >
       <UFileUpload
@@ -303,7 +310,7 @@ function onPicked(event: Event) {
         :loading="uploading"
         :accept="accept"
         :color="color"
-        :variant="variant"
+        :variant="(variant as 'area' | 'button' | undefined)"
         :icon="icon === false ? false : (icon ?? 'i-lucide-upload')"
         :size="size"
         :label="label || t('dataviews.widgetFileUpload.dropzone')"

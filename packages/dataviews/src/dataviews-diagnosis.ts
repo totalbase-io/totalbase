@@ -25,6 +25,7 @@ export type DiagnosisCode =
   | "ROLE_SEES_KEY"
   | "ROLE_VARIABLE_REFUSED"
   | "ROLE_CANNOT_WRITE"
+  | "STYLE_IN_CSS_CLASS"
   | "WIDGET_IGNORES_ROW_FILTER";
 
 export interface DiagnosisIssue {
@@ -37,11 +38,11 @@ export interface DiagnosisIssue {
   resource: { id: string; name: string } | null;
   /** ROLE_CANNOT_WRITE: the actions the role lacks among those the DataView allows. */
   actions: ("CREATE" | "UPDATE" | "DELETE")[] | null;
-  /** ROLE_FIELDS_HIDDEN, ROLE_SEES_KEY, ROLE_VARIABLE_REFUSED, BROKEN_REFERENCE: the columns or paths. */
+  /** ROLE_FIELDS_HIDDEN, ROLE_SEES_KEY, ROLE_VARIABLE_REFUSED, BROKEN_REFERENCE: the columns or paths; CONSTRAINT_WITHOUT_MESSAGE: the constraints; STYLE_IN_CSS_CLASS: the classes. */
   columns: string[] | null;
   /** ROLE_VARIABLE_REFUSED: the variable's name. */
   variable: string | null;
-  /** WIDGET_IGNORES_ROW_FILTER: the dashboard's widget. */
+  /** WIDGET_IGNORES_ROW_FILTER: the dashboard's widget; STYLE_IN_CSS_CLASS: the page's widget (its Name, else its kind). */
   widget: { id: string; name: string } | null;
 }
 
@@ -95,6 +96,20 @@ export function looksLikeSecretColumn(name: string): boolean {
   return SECRET_NAME.test(name);
 }
 
+/**
+ * A Tailwind class a widget's CSS classes carry that the Style tab already offers (COMMON_STYLE_PROPS, DataViews.md
+ * §12.2): a margin or padding on any side or all - every step of the scale is a Style value -, an alignment of its
+ * content or in its row, a border, a radius, a background of the theme's, a shadow, or its text's size, weight,
+ * italics, underline or a color of the theme's. A class with a variant (`md:mt-4`, `hover:shadow-md`) is left
+ * alone: Style has no breakpoints.
+ */
+const STYLE_CLASS = /^(?:[mp][trblxy]?-\d+(?:\.5)?|text-(?:left|center|right|xs|sm|base|lg|xl|2xl|3xl|muted|dimmed|toned|highlighted|primary|secondary|success|info|warning|error)|font-(?:normal|medium|semibold|bold)|italic|underline|line-through|self-(?:start|center|end|stretch)|border|rounded(?:-(?:sm|md|lg|full))?|bg-(?:muted|elevated|accented)|shadow(?:-(?:sm|md|lg))?)$/;
+/** The classes of a widget's `cssClass` that a Style value replaces - an agent's `mt-6`, `text-center`. */
+export function styleClassesInCssClass(cssClass: unknown): string[] {
+  if (typeof cssClass !== "string") return [];
+  return [...new Set(cssClass.split(/\s+/).filter((c) => STYLE_CLASS.test(c)))];
+}
+
 const WRITES = [["create", "CREATE"], ["update", "UPDATE"], ["delete", "DELETE"]] as const;
 
 export async function diagnoseDataView(ctx: DataViewsContext, permissions: EffectivePermissionService, dataviewId: string): Promise<DiagnosisIssue[]> {
@@ -139,6 +154,19 @@ export async function diagnoseDataView(ctx: DataViewsContext, permissions: Effec
     issues.push(issue({
       code: "SECRET_COLUMN_SHOWN", severity: "info", resource: source, columns: secrets,
       message: `${secrets.join(", ")} look like secrets and are shown in its grid. Hide them (update_dataview fields visible false) or take them out; to keep a role from reading them at all, deny the field (grant_permission fields).`,
+    }));
+  }
+  // A page's widget styled through its CSS classes where the Style tab has the value: it works, and Style is the
+  // intended way - reads in the inspector, the theme's scales, no Tailwind to know.
+  for (const field of fields) {
+    if (field.kind !== "WIDGET" || !field.widget) continue;
+    const props = (field.config as { props?: Record<string, unknown> }).props;
+    const classes = styleClassesInCssClass(props?.cssClass);
+    if (classes.length === 0) continue;
+    const name = field.label || field.widget;
+    issues.push(issue({
+      code: "STYLE_IN_CSS_CLASS", severity: "info", widget: { id: field.id, name }, columns: classes,
+      message: `The widget ${name} sets ${classes.join(", ")} in its CSS classes: Style has them (margin*, padding*, align, verticalAlign, border, radius, background, shadow, fontSize, fontWeight, fontStyle, textDecoration, textColor - update_page_widget props). Keep CSS classes for what Style doesn't offer.`,
     }));
   }
   // What the DataView lets its viewers write - never more than their grants (its Allow; every write when unset).

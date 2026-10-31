@@ -14,7 +14,7 @@
 import { PAGE_FOOTER_SLOT, PAGE_HEADER_SLOT } from '@totalbase/tb-catalog'
 import type { DataView, DataViewField } from '~/types/dataview'
 import { useCustomPage, WIDGET_RUNTIME_KEY, type WidgetRuntime } from '~/composables/useWidgetRuntime'
-import { areaWidgets, widgetCellStyle } from '~/utils/widget-layout'
+import { areaWidgets, widgetCellClass, widgetCellStyle } from '~/utils/widget-layout'
 import WidgetRenderer from '~/components/WidgetRenderer.vue'
 
 const props = defineProps<{
@@ -104,12 +104,13 @@ onMounted(async () => {
     </Teleport>
     <div
       v-if="rootWidgets.length"
-      class="widget-area widget-area--live grid grid-cols-12 gap-3"
+      class="widget-area widget-area--live"
     >
       <WidgetRenderer
         v-for="widget in rootWidgets"
         :key="widget.id"
         :field="widget"
+        :class="widgetCellClass(widget)"
         :style="widgetCellStyle(widget)"
       />
     </div>
@@ -127,13 +128,14 @@ onMounted(async () => {
       defer
     >
       <div
-        class="widget-area widget-area--live grid grid-cols-12 items-center gap-3"
+        class="widget-area widget-area--live items-center"
         :class="footerTarget ? undefined : 'sticky bottom-0 z-10 border-t border-default bg-default py-3'"
       >
         <WidgetRenderer
           v-for="widget in footerWidgets"
           :key="widget.id"
           :field="widget"
+          :class="widgetCellClass(widget)"
           :style="widgetCellStyle(widget)"
         />
       </div>

@@ -1,4 +1,4 @@
-import type { ComputedRef } from 'vue'
+import { computed, reactive, ref, watch, type ComputedRef } from 'vue'
 import type { ColPref, DataViewField, SavedViewConfig } from '~/types/dataview'
 
 /** A row of the Columns panel - display order + checkbox state, kept in sync with `colPrefs.prefs`. */

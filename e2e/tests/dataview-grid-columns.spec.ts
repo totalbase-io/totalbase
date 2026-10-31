@@ -30,7 +30,7 @@ async function removeOurs(page: Page) {
   const existing = await apiRequest<{ id: string, name: string }[]>(page, token, 'GET', '/admin/api/dataviews')
   for (const dv of existing.filter(d => d.name === NAME || d.name === CARDS)) await apiRequest(page, token, 'DELETE', `/admin/api/dataviews/${dv.id}`)
 }
-type Prefs = { columnPrefs?: Record<string, { order: number, width?: number, align?: string }>, sort?: string }
+type Prefs = { columnPrefs?: Record<string, { order: number, visible?: boolean, width?: number, align?: string }>, sort?: string }
 const prefs = async (page: Page) => (await apiRequest<{ config: Prefs } | null>(page, token, 'GET', `/app/api/dataviews/${dataview.id}/user-prefs`))?.config
 const headerBox = (page: Page, column: string) => page.locator(`[data-col-box="${column}"]`)
 const headerTitles = async (page: Page) => (await page.locator('[data-col-box]').evaluateAll(els => els.map(el => el.getAttribute('data-col-box'))))
@@ -165,6 +165,35 @@ test('a column the table gains reaches the DataView by itself - shown, and at th
   expect(fields.find(f => f.kind === 'COLUMN' && f.columnName === 'extra')).toMatchObject({ visible: true })
   const form = fields.filter(f => f.kind === 'WIDGET' && f.widget === 'UFormField').sort((a, b) => a.gridY - b.gridY).map(f => f.config.props?.column)
   expect(form.at(-1)).toBe('extra')
+})
+
+// DataViews.md §4.1: a column the DataView hides is read but not shown, and the viewer shows it from the Columns panel.
+test('a column the DataView hides is shown from the Columns panel - with a header, and kept after a reload', async ({ page }) => {
+  token = await login(page)
+  const fields = await apiRequest<{ id: string, kind: string, columnName: string | null }[]>(page, token, 'GET', `/admin/api/dataviews/${dataview.id}/fields`)
+  const notes = fields.find(f => f.kind === 'COLUMN' && f.columnName === 'notes')!
+  await apiRequest(page, token, 'PATCH', `/admin/api/dataviews/${dataview.id}/fields/${notes.id}`, { data: { visible: false } })
+  await publishDataView(page, token, dataview.id)
+
+  // A fresh viewer's state (openGrid's, already signed in here).
+  await apiRequest(page, token, 'PUT', `/app/api/dataviews/${dataview.id}/user-prefs`, { data: { config: {} } })
+  await page.goto(`/app/dataviews/${dataview.slug}`)
+  await expect(headerBox(page, 'code')).toBeVisible()
+  await expect(headerBox(page, 'notes')).toHaveCount(0)
+
+  // The toolbar's "⋮" (compact, the instance's default), then the Columns panel.
+  await page.getByRole('button', { name: 'Actions', exact: true }).click()
+  await page.getByRole('menuitem', { name: /^Columns/ }).click()
+  const columns = page.getByRole('dialog', { name: 'Columns' })
+  await columns.getByRole('checkbox', { name: 'Notes' }).click()
+  await columns.getByRole('button', { name: 'Close' }).last().click()
+  await expect(headerBox(page, 'notes')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'A short note.' })).toBeVisible()
+  await expect.poll(async () => (await prefs(page))?.columnPrefs?.notes?.visible).toBe(true)
+
+  await page.reload()
+  await expect(page.getByRole('cell', { name: 'Alpha', exact: true })).toBeVisible()
+  await expect(headerBox(page, 'notes')).toBeVisible()
 })
 
 test('a card\'s description takes at most 3 lines, its whole text on hover', async ({ page }) => {

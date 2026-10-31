@@ -361,6 +361,29 @@ describe("CUSTOM DataViews (integration)", () => {
     await expect(dataviewsAdmin.addWidget(dataview.id, { widget: "UBadge", parent: card.id, config: { slot: "default:x" } })).rejects.toMatchObject({
       code: "DATAVIEW_WIDGET_SLOT_INVALID",
     });
+    // A Columns' columns the same: one area per column, never the bare slot.
+    const columns = await dataviewsAdmin.addWidget(dataview.id, { widget: "TColumns" });
+    expect(columns.config).toMatchObject({ props: { items: [{ value: "col1", span: 4 }, { value: "col2", span: 4 }, { value: "col3", span: 4 }] } });
+    const inColumn = await dataviewsAdmin.addWidget(dataview.id, { widget: "UButton", parent: columns.id, config: { slot: "column:col2" } });
+    expect(inColumn.config).toMatchObject({ slot: "column:col2" });
+    await expect(dataviewsAdmin.addWidget(dataview.id, { widget: "UButton", parent: columns.id, config: { slot: "column" } })).rejects.toMatchObject({
+      code: "DATAVIEW_WIDGET_SLOT_INVALID",
+    });
+  });
+
+  it("places a button at Fit content and an input at the whole row, and refuses Fit content on what fills", async () => {
+    const dataview = await custom("widths");
+    const button = await dataviewsAdmin.addWidget(dataview.id, { widget: "UButton" });
+    expect(button.gridW).toBe(0);
+    const input = await dataviewsAdmin.addWidget(dataview.id, { widget: "UInput" });
+    expect(input.gridW).toBe(12);
+    await dataviewsAdmin.updateField(dataview.id, button.id, { gridW: 6 });
+    await dataviewsAdmin.updateField(dataview.id, button.id, { gridW: 0 });
+    for (const gridW of [13, -1, 2.5]) {
+      await expect(dataviewsAdmin.updateField(dataview.id, input.id, { gridW })).rejects.toMatchObject({ code: "DATAVIEW_WIDGET_INVALID" });
+    }
+    await expect(dataviewsAdmin.updateField(dataview.id, input.id, { gridW: 0 })).rejects.toMatchObject({ code: "DATAVIEW_WIDGET_INVALID" });
+    await expect(dataviewsAdmin.addWidget(dataview.id, { widget: "UCard", gridW: 0 })).rejects.toMatchObject({ code: "DATAVIEW_WIDGET_INVALID" });
   });
 
   it("places widgets on a page - CUSTOM, a FORM, a grid's record form - never on an external frame", async () => {

@@ -52,7 +52,7 @@ export function useDesignerSteps(options: {
     if (step.value?.mode !== 'own' || !field?.widget) return []
     return Object.entries(widgetDefinition(field.widget as WidgetName).slots)
       .filter(([, slot]) => slot.canvas === 'own')
-      .map(([slot, meta]) => ({ slot, label: options.slotLabel(field.widget!, slot, meta.label) }))
+      .map(([slot, meta]) => ({ slot, label: options.slotLabel(field.widget!, slot, meta.label), inline: meta.inline === true }))
   })
   const ownFrameClass = computed(() => {
     const widget = stepField.value?.widget

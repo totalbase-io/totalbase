@@ -72,7 +72,7 @@
           "label": "Row actions"
         },
         "align": {
-          "description": "Its text and buttons, left to right.",
+          "description": "Its content - text, a button, an upload area - left, center or right; a form field's input follows its field's.",
           "label": "Align content"
         },
         "alt": {
@@ -127,7 +127,7 @@
           "label": "Color field"
         },
         "column": {
-          "description": "A column of the page's record: its input edits record.data.<column>. PostgreSQL's NOT NULL makes it required, and it's read-only where the viewer may not write it.",
+          "description": "A column of the page's record: its input edits record.data.column. PostgreSQL's NOT NULL makes it required, and it's read-only where the viewer may not write it.",
           "label": "Linked by"
         },
         "columnSettings": {
@@ -187,6 +187,10 @@
           "description": "Closes when the viewer clicks outside it.",
           "label": "Close on outside click"
         },
+        "editInline": {
+          "label": "Edit in the grid",
+          "description": "Linked by a column: its rows edited in place - Tab from cell to cell, Tab past the last adds one - and saved with the page's record, in one transaction. Off: each row in its own form."
+        },
         "empty": {
           "label": "Empty text"
         },
@@ -204,6 +208,18 @@
         "filter": {
           "description": "A search box above the options.",
           "label": "Filter box"
+        },
+        "fontSize": {
+          "description": "Its text's size, the theme's scale - M is the page's.",
+          "label": "Text size"
+        },
+        "fontStyle": {
+          "description": "Its text in italics.",
+          "label": "Text style"
+        },
+        "fontWeight": {
+          "description": "Its text's weight.",
+          "label": "Text weight"
         },
         "fullscreen": {
           "description": "Covers the whole screen.",
@@ -280,7 +296,8 @@
           "label": "Busy while submitting"
         },
         "margin": {
-          "label": "Margin"
+          "label": "Margin",
+          "description": "Space outside its box, all sides - XS 4, S 8, M 16, L 24, XL 32 px, or a step of 4 px. A side's own value wins over it."
         },
         "marginBottom": {
           "label": "Margin bottom"
@@ -337,7 +354,8 @@
           "label": "Orientation"
         },
         "padding": {
-          "label": "Padding"
+          "label": "Padding",
+          "description": "Space inside its box, around its content, all sides - XS 4, S 8, M 16, L 24, XL 32 px, or a step of 4 px. A side's own value wins over it."
         },
         "paddingBottom": {
           "label": "Padding bottom"
@@ -358,10 +376,6 @@
         "paging": {
           "description": "Off: every row at once - a record's items.",
           "label": "Pages"
-        },
-        "editInline": {
-          "label": "Edit in the grid",
-          "description": "Linked by a column: its rows edited in place - Tab from cell to cell, Tab past the last adds one - and saved with the page's record, in one transaction. Off: each row in its own form."
         },
         "pattern": {
           "description": "A regular expression (JavaScript) the whole value must match - checked as the viewer types, with the column's own CHECK. PostgreSQL still decides on save; an empty value is left to Required.",
@@ -418,6 +432,10 @@
           "label": "Search window as",
           "description": "Where the search window opens - a sidebar (the default, room for a long list) or a modal. Full screen on a phone."
         },
+        "searchWindowSize": {
+          "label": "Search window size",
+          "description": "Its width - unset, Nuxt UI's own (a narrow sidebar or modal); sm to xl as a record form's sizes, xl for a wide table. Full screen on a phone from md."
+        },
         "shadow": {
           "description": "Lifts its box off the page.",
           "label": "Shadow"
@@ -453,6 +471,14 @@
         },
         "text": {
           "label": "Initials"
+        },
+        "textColor": {
+          "description": "Its text's color - the theme's, light and dark: the grays (muted, dimmed, toned, highlighted) or a meaning (primary to error).",
+          "label": "Text color"
+        },
+        "textDecoration": {
+          "description": "Its text underlined or struck through.",
+          "label": "Text decoration"
         },
         "title": {
           "description": "What the frame shows, for screen readers.",
@@ -495,12 +521,8 @@
           "label": "Vertical align"
         },
         "visible": {
-          "description": "Off - or a formula giving false - it leaves the page: no space, and its methods (dataview.controls.<name>.open()) and what it listens to (a Scanner's USB reader) stop. Hidden, still active keeps it working unseen.",
+          "description": "Off - or a formula giving false - it leaves the page: no space, and its methods (dataview.controls.name.open()) and what it listens to (a Scanner's USB reader) stop. Hidden, still active keeps it working unseen.",
           "label": "Visible"
-        },
-        "searchWindowSize": {
-          "label": "Search window size",
-          "description": "Its width - unset, Nuxt UI's own (a narrow sidebar or modal); sm to xl as a record form's sizes, xl for a wide table. Full screen on a phone from md."
         }
       },
       "snippetGroups": {
@@ -910,7 +932,7 @@
           "label": "Record",
           "state": {
             "data": {
-              "description": "The row's values, edits included - data.<column>.",
+              "description": "The row's values, edits included - data.column.",
               "label": "Data"
             },
             "dirty": {
@@ -1102,6 +1124,19 @@
             "update:modelValue": "Value changed"
           },
           "label": "Color"
+        },
+        "TColumns": {
+          "description": "Side by side areas, each with its width in the row's 12 columns - what each holds stacks inside it; a phone stacks the columns.",
+          "label": "Columns",
+          "props": {
+            "items": {
+              "description": "One per column - its label names it on the canvas and in Structure; its width in the row's 12 columns, the widths summing to 12 (changing one reshares the rest).",
+              "label": "Columns"
+            }
+          },
+          "slots": {
+            "column": "Content"
+          }
         },
         "TDashboard": {
           "description": "A published Dashboard, its variables set from the page - a customer's own figures, for one.",
@@ -1332,7 +1367,7 @@
           "label": "Button",
           "props": {
             "block": {
-              "description": "Fills the width of its container."
+              "description": "Fills its row: the whole row at Fit content, its columns when given some."
             },
             "type": {
               "description": "Submit sends the form it is in."
@@ -1420,25 +1455,29 @@
               "description": "With Show the image: original keeps the image's own shape; a ratio frames it (3:4 portrait - a carnet photo).",
               "label": "Image shape"
             },
-            "height": {
-              "description": "In pixels, whatever the screen: the empty area's - to line it up with the cards beside it - and, with Show the image, the image's (with a shape its width follows, centered; without, it spans the field; it covers the frame).",
-              "label": "Height"
-            },
-            "preview": {
-              "description": "An image shows itself across the field instead of its name - tapping it picks another. Read only, it is only the image.",
-              "label": "Show the image"
-            },
-            "label": {
-              "label": "Label",
-              "description": "The empty field's text - the area's, or the button variant's. Unset: Drop a file here or click to browse."
+            "buttonLabel": {
+              "label": "Button",
+              "description": "The area variant: a button under its text (Upload file), for whoever doesn't know the area can be tapped."
             },
             "description": {
               "label": "Description",
               "description": "A line under the area's text."
             },
-            "buttonLabel": {
-              "label": "Button",
-              "description": "The area variant: a button under its text (Upload file), for whoever doesn't know the area can be tapped."
+            "height": {
+              "description": "In pixels, whatever the screen: the empty area's - to line it up with the cards beside it - and, with Show the image, the image's (with a shape its width follows, centered; without, it spans the field; it covers the frame).",
+              "label": "Height"
+            },
+            "label": {
+              "label": "Label",
+              "description": "The empty field's text - the area's, or the button variant's. Unset: Drop a file here or click to browse."
+            },
+            "preview": {
+              "description": "An image shows itself across the field instead of its name - tapping it picks another. Read only, it is only the image.",
+              "label": "Show the image"
+            },
+            "variant": {
+              "description": "area: an outlined, dashed drop area; soft: the area in its color's tint, no border; subtle: tint and border; button: a button alone.",
+              "label": "Variant"
             }
           }
         },
@@ -1850,7 +1889,7 @@
           }
         },
         "TResult": {
-          "description": "A large panel for an outcome at a glance - a color, an icon, a title and a description, with a tone and a vibration - shown by the page's Code with dataview.controls.<name>.show(); it goes back to waiting on its own after Reset after seconds.",
+          "description": "A large panel for an outcome at a glance - a color, an icon, a title and a description, with a tone and a vibration - shown by the page's Code with dataview.controls.name.show(); it goes back to waiting on its own after Reset after seconds.",
           "emits": {
             "reset": "Back to waiting"
           },
@@ -2652,12 +2691,15 @@
     },
     "designPage": {
       "descriptionWithSource": "Design · {source}",
+      "draftChanged": "At {time}, an agent or another tab rewrote it. Reload to see it; edits made here since are lost.",
+      "draftChangedTitle": "The draft changed in another session",
       "externalFrame": "An external frame has no page to design.",
       "previewTooltip": "Preview the draft with live data",
       "publishConfirm": "Publish as v{version}?",
       "publishConfirmDescription": "Viewers see the current draft from now on.",
       "publishError": "Could not publish",
       "published": "Published as v{version}",
+      "reload": "Reload",
       "title": "Design"
     },
     "designerClassListEditor": {
@@ -2777,31 +2819,58 @@
         "alignment": "Alignment",
         "appearance": "Appearance",
         "background": "Background",
+        "bold": "Bold",
         "border": "Border",
         "bottom": "Bottom of its row",
         "center": "Center",
         "content": "Content",
+        "dimmed": "Dimmed",
         "elevated": "Elevated",
+        "error": "Error",
         "full": "Full",
+        "highlighted": "Highlighted",
         "inItsRow": "In its row",
+        "info": "Info",
+        "italic": "Italic",
         "largeShadow": "Large shadow",
         "left": "Left",
+        "lineThrough": "Strike through",
+        "medium": "Medium",
         "mediumShadow": "Medium shadow",
         "middle": "Middle of its row",
         "muted": "Muted",
+        "normal": "Normal",
         "pill": "Pill or circle",
         "primary": "Primary",
         "primarySoft": "Primary, soft",
         "radius": "Radius",
         "right": "Right",
         "rounded": "Rounded",
+        "secondary": "Secondary",
+        "semibold": "Semibold",
         "shadow": "Shadow",
+        "size": "Size",
+        "size2xl": "Twice the page's",
+        "size3xl": "Three times the page's",
+        "sizeL": "Large",
+        "sizeM": "Medium - the page's",
+        "sizeS": "Small",
+        "sizeXl": "Extra large",
+        "sizeXs": "Extra small",
         "slightlyRounded": "Slightly rounded",
         "smallShadow": "Small shadow",
         "spacing": "Spacing",
         "stretch": "The height of its row (a Card or a Box)",
+        "success": "Success",
+        "text": "Text",
+        "textColor": "Color",
+        "textStyle": "Style",
+        "toned": "Toned",
         "top": "Top of its row",
-        "veryRounded": "Very rounded"
+        "underline": "Underline",
+        "veryRounded": "Very rounded",
+        "warning": "Warning",
+        "weight": "Weight"
       },
       "stylesApplied": "{n} style applied | {n} styles applied",
       "tabs": {
@@ -2899,6 +2968,9 @@
       "noVariable": "This page has no {kind} yet - create one in Variables."
     },
     "styleBoxModel": {
+      "custom": "Custom - a step of the scale",
+      "customAria": "{ring} all sides - custom step",
+      "customSideAria": "{ring} {side} - custom step",
       "allSidesAria": "{ring} all sides",
       "allSidesTitle": "{ring} - all sides",
       "rings": {
@@ -2916,6 +2988,7 @@
     },
     "useCustomCanvasContext": {
       "columns": "{n} column | {n} columns",
+      "fitContent": "Fit content",
       "rename": "Rename",
       "moveUp": "Move up",
       "moveDown": "Move down",
@@ -3018,7 +3091,10 @@
       "collapsible": "Collapsible",
       "itemSize": "Item {n} size",
       "itemMinSize": "Item {n} minimum size",
-      "sizeSum": "Sizes sum {sum}% of 100"
+      "sizeSum": "Sizes sum {sum}% of 100",
+      "span": "Width",
+      "itemSpan": "Column {n} width",
+      "spanSum": "Widths sum {sum} of 12 columns"
     },
     "widgetJsonEditor": {
       "invalid": "Invalid JSON - not saved yet."

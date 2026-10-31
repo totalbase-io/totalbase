@@ -14,15 +14,15 @@ import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
  */
 const NAMED = object({ id: UUID, name: { type: "string" } }, ["id", "name"]);
 const ISSUE = object({
-  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "SECRET_COLUMN_SHOWN", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "WIDGET_IGNORES_ROW_FILTER"] },
+  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "SECRET_COLUMN_SHOWN", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "STYLE_IN_CSS_CLASS", "WIDGET_IGNORES_ROW_FILTER"] },
   severity: { type: "string", enum: ["warning", "info"] },
   message: { type: "string", description: "The issue in English." },
   role: { ...NAMED, type: ["object", "null"], description: "The role it is about - null for the object itself." },
   resource: { ...NAMED, type: ["object", "null"], description: "The source, or a Resource variable's resource." },
   actions: { type: ["array", "null"], items: { type: "string", enum: ["CREATE", "UPDATE", "DELETE"] }, description: "ROLE_CANNOT_WRITE: what the role lacks." },
-  columns: { type: ["array", "null"], items: { type: "string" }, description: "The columns or related paths." },
+  columns: { type: ["array", "null"], items: { type: "string" }, description: "The columns or related paths; CONSTRAINT_WITHOUT_MESSAGE: the constraints; STYLE_IN_CSS_CLASS: the classes." },
   variable: { type: ["string", "null"], description: "ROLE_VARIABLE_REFUSED: the variable." },
-  widget: { ...NAMED, type: ["object", "null"], description: "WIDGET_IGNORES_ROW_FILTER: the dashboard's widget." },
+  widget: { ...NAMED, type: ["object", "null"], description: "WIDGET_IGNORES_ROW_FILTER: the dashboard's widget; STYLE_IN_CSS_CLASS: the page's widget." },
 }, ["code", "severity", "message", "role", "resource", "actions", "columns", "variable", "widget"]);
 
 export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppContext): void {

@@ -573,7 +573,7 @@ A workflow is a tree of steps starting at one Start step (its trigger), saved as
 - totalbase.delete-records: resource, where, emitEvents.
 - totalbase.execute-function: function (FUNCTION id), arguments (named).
 - totalbase.execute-sql: statement, executeAs (optional: the run's executor - its Start's execute_as, or who invoked it - attribution only) - raw SQL as TotalBase's PostgreSQL role, no permission checks.
-- totalbase.execute-javascript: code - a function body receiving trigger (the trigger input) and results: every earlier step's envelope by its key (results.read_people.data[0].name) and by its operation id; returns JSON; 5 s, no network or database.
+- totalbase.execute-javascript: code - a function body receiving trigger (the trigger input) and results: every earlier step's envelope by its key (results.read_people.data[0].name) and by its operation id; returns JSON; 5 s, no network or database. It has V8's globals - JSON, Math, Date, Intl (locales and time zones: new Intl.NumberFormat("es-AR"), toLocaleDateString(..., { timeZone })), String, RegExp, Map, Set, Promise, BigInt, encodeURIComponent, parseInt... - and URLSearchParams (new URLSearchParams({ q, format: "json" }).toString()); nothing of the browser's or Node's beyond that: no URL, TextEncoder, atob/btoa, crypto, fetch, timers or console output - a name that isn't there fails the step with "X is not defined".
 - totalbase.condition: input, filter (the filter grammar over input's fields) -> true / false.
 - totalbase.validate-data: input, rules [{filter, message}] -> next, or fails with every failed message.
 - totalbase.select-case: input, cases [{output, filter}], hasDefault.

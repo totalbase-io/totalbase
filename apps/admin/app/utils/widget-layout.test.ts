@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DataViewField } from '~/types/dataview'
-import { areaWidgets, dropIndex, sizableHeight, slotHasWidgets, widgetCellStyle } from '~/utils/widget-layout'
+import { areaWidgets, dropIndex, sizableHeight, slotHasWidgets, widgetCellClass, widgetCellStyle } from '~/utils/widget-layout'
 
 const field = (id: string, parent: string | null, slot: string | undefined, order: number, width = 12, height = 1): DataViewField =>
   ({ id, kind: 'WIDGET', parent, config: slot ? { slot } : {}, gridX: 0, gridY: order, gridW: width, gridH: height }) as unknown as DataViewField
@@ -25,7 +25,16 @@ describe('slotHasWidgets()', () => {
 
 describe('layout', () => {
   it('gives a widget its width in columns, and a sizable one its height in rows', () => {
-    expect(widgetCellStyle(field('a', null, undefined, 0, 6))).toEqual({ 'grid-column': 'span 6 / span 6' })
+    expect(widgetCellStyle(field('a', null, undefined, 0, 6))).toEqual({ flex: '0 0 calc(6 / 12 * (100% + 0.75rem) - 0.75rem)' })
+    expect(widgetCellStyle(field('b', null, undefined, 0, 0))).toEqual({ 'flex': '0 0 auto', 'max-width': '100%', 'min-width': '0', 'align-self': 'flex-end' })
+    expect(widgetCellClass(field('b', null, undefined, 0, 0))).toBe('widget-fit')
+    // In a form field's input row (an input's height), a fitting input sits centered, like an input's text.
+    expect(widgetCellStyle(field('b', null, undefined, 0, 0), { centered: true })['align-self']).toBe('center')
+    expect(widgetCellClass(field('a', null, undefined, 0, 6))).toBeUndefined()
+    // A fitting widget with Full width on (a Button's block) fills its row - the whole row, stacking on a phone like any filling widget.
+    const block = { ...field('c', null, undefined, 0, 0), config: { props: { block: true } } }
+    expect(widgetCellStyle(block)).toEqual({ flex: '0 0 calc(12 / 12 * (100% + 0.75rem) - 0.75rem)' })
+    expect(widgetCellClass(block)).toBeUndefined()
     expect(sizableHeight(field('m', null, undefined, 0, 12, 8))).toBe(320)
     expect(sizableHeight(field('m', null, undefined, 0, 12, 1))).toBe(240)
   })

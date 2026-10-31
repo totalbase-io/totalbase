@@ -60,6 +60,7 @@ import {
   type PageContentWidth
 } from '~/types/dataview'
 import type { AutosaveStatus } from '~/composables/useAutosave'
+import { AdminApiError } from '~/utils/admin-api-error'
 import { useCatalogText } from '~/utils/catalog-text'
 import { CUSTOM_CANVAS_CONTEXT_KEY, widgetMenu, type CanvasArea, type CanvasDrag, type CanvasDropTarget, type CustomCanvasContext } from '~/composables/useCustomCanvasContext'
 import { designRuntime, queryFields, WIDGET_RUNTIME_KEY } from '~/composables/useWidgetRuntime'
@@ -98,7 +99,7 @@ const view = defineModel<DesignerView>('view', { default: 'design' })
 const visitedViews = reactive(new Set<DesignerView>())
 watch(view, v => visitedViews.add(v), { immediate: true })
 /** A form field's column's presentation saved in the table (its inspector) - the host reads the DataView again. */
-const emit = defineEmits<{ presentationSaved: [], openSaved: [] }>()
+const emit = defineEmits<{ presentationSaved: [], openSaved: [], draftChanged: [] }>()
 
 const api = useAdminApi()
 const toast = useToast()
@@ -109,6 +110,12 @@ const notifyError = useErrorToast()
 const writes = useAutosave(async () => {})
 
 function failed(title: string, error: unknown) {
+  // A widget the server no longer has: the draft was rebuilt elsewhere (an agent by MCP, another tab) - the host
+  // offers to reload it (DataViews.md §12.6); the technical error would say nothing to the person.
+  if (error instanceof AdminApiError && error.code === 'DATAVIEW_FIELD_NOT_FOUND') {
+    emit('draftChanged')
+    return
+  }
   notifyError(error, title)
 }
 
@@ -758,8 +765,9 @@ async function wrap(id: string, container: 'UCard' | 'TBox') {
     const { data } = await writes.track(api.post<DataViewField>(`/dataviews/${props.dataview.id}/widgets`, {
       data: { widget: container, parent: field.parent, config: { props: config.props, bindings: config.bindings, emits: config.emits, ...(slot ? { slot } : {}) } }
     }))
-    localFields.value = [...localFields.value, { ...data, gridW: field.gridW }]
-    await saveField(data.id, { gridW: field.gridW })
+    // The container takes the widget's place and width - a fitting widget's (0) becomes the whole row: a container fills.
+    localFields.value = [...localFields.value, { ...data, gridW: field.gridW || 12 }]
+    await saveField(data.id, { gridW: field.gridW || 12 })
     await insertAt(data, { parent: field.parent, slot, index: Math.max(index, 0) })
     await move(id, { parent: data.id, slot: 'default', index: 0 })
     selectedId.value = id
@@ -1077,7 +1085,7 @@ defineExpose({ flush, hasUnsavedWork, saveStatus })
                   :parent="null"
                   :slot-name="PAGE_HEADER_SLOT"
                   :label="t('designer.customDesigner.pageHeader')"
-                  inline
+                  justify="end"
                 />
               </div>
               <CustomCanvasArea
@@ -1101,11 +1109,11 @@ defineExpose({ flush, hasUnsavedWork, saveStatus })
             </template>
             <div
               v-else-if="step.mode === 'focus' && stepField"
-              class="widget-area grid grid-cols-12"
+              class="widget-area"
             >
               <CustomCanvasItem
                 :field="stepField"
-                class="col-span-12"
+                class="basis-full"
               />
             </div>
             <div
@@ -1126,6 +1134,7 @@ defineExpose({ flush, hasUnsavedWork, saveStatus })
                   :parent="stepField.id"
                   :slot-name="area.slot"
                   :label="area.label"
+                  :justify="area.inline ? 'end' : undefined"
                 />
               </div>
             </div>

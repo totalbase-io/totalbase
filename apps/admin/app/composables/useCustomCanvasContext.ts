@@ -1,4 +1,4 @@
-import type { WidgetName } from '@totalbase/tb-catalog'
+import { widgetDefinition, type WidgetName } from '@totalbase/tb-catalog'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
 import type { DataViewField } from '~/types/dataview'
@@ -72,20 +72,32 @@ export function isAreaTarget(target: CanvasDropTarget | null, area: CanvasArea):
 
 /**
  * A placed widget's "⋮" - the same on its canvas chrome and in the
- * inspector: its width in columns (where the canvas is editable),
- * Duplicate, Delete.
+ * inspector: its width in columns (where the canvas is editable) - and
+ * Fit content, for a widget with a width of its own -, Duplicate, Delete.
  */
 export function widgetMenu(ctx: CustomCanvasContext, field: DataViewField): DropdownMenuItem[][] {
   const { t } = useNuxtApp().$i18n
+  const fits = field.widget ? widgetDefinition(field.widget as WidgetName).fit === true : false
   return [
     ...(ctx.editable.value
-      ? [COLUMN_LAYOUTS.map(option => ({
-          label: t('designer.useCustomCanvasContext.columns', option.columns),
-          icon: option.icon,
-          type: 'checkbox' as const,
-          checked: (field.gridW || 12) === option.width,
-          onSelect: () => ctx.resize(field.id, { gridW: option.width }, true)
-        }))]
+      ? [[
+          ...(fits
+            ? [{
+                label: t('designer.useCustomCanvasContext.fitContent'),
+                icon: 'i-lucide-shrink',
+                type: 'checkbox' as const,
+                checked: field.gridW === 0,
+                onSelect: () => ctx.resize(field.id, { gridW: 0 }, true)
+              }]
+            : []),
+          ...COLUMN_LAYOUTS.map(option => ({
+            label: t('designer.useCustomCanvasContext.columns', option.columns),
+            icon: option.icon,
+            type: 'checkbox' as const,
+            checked: field.gridW === option.width,
+            onSelect: () => ctx.resize(field.id, { gridW: option.width }, true)
+          }))
+        ]]
       : []),
     [
       { label: t('designer.useCustomCanvasContext.rename'), icon: 'i-lucide-pencil', kbds: ['f2'], onSelect: () => ctx.rename(field.id) },

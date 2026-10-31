@@ -2,8 +2,8 @@ import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { UUID_PATTERN } from "@totalbase/shared";
 import { parseFilter } from "@totalbase/query-engine";
-import { isWidgetName, LIST_VIEW_TYPES, slotBase, widgetDefinition, type TableCallAction, type VariableDefinition, type WidgetName } from "@totalbase/tb-catalog";
-import { assertWidgetConfigValid, assertWidgetName, assertWidgetPlacement, variableRefs, widgetRelatedDashboard, widgetRelatedDataview, type WidgetFieldConfig } from "./widget-fields.js";
+import { defaultWidgetWidth, isWidgetName, LIST_VIEW_TYPES, slotBase, widgetDefinition, type TableCallAction, type VariableDefinition, type WidgetName } from "@totalbase/tb-catalog";
+import { assertWidgetConfigValid, assertWidgetName, assertWidgetPlacement, assertWidgetWidth, variableRefs, widgetRelatedDashboard, widgetRelatedDataview, type WidgetFieldConfig } from "./widget-fields.js";
 import { isPageViewType, type AddWidgetInput, type AddWidgetTreeInput, type AdminDataView, type AdminDataViewField, type DataViewFieldRow, type DataViewsContext, type UpdateFieldInput } from "./dataviews-types.js";
 import { getDataView } from "./dataviews-read.js";
 import { getField, listFields, updateFieldOn } from "./dataviews-fields.js";
@@ -95,6 +95,7 @@ export async function addWidgetOn(ctx: DataViewsContext, on: Queryable, dataview
     throw new TotalBaseError("DATAVIEW_WIDGET_NOT_ALLOWED", "An external frame has no page to place widgets on.");
   }
   assertWidgetName(input.widget);
+  if (input.gridW !== undefined) assertWidgetWidth(input.widget, input.gridW);
   // A widget placed here starts as the Design form places it: the catalog's defaults (a Tabs' two tabs) under what was sent.
   const defaults = widgetDefinition(input.widget).defaults;
   const config: WidgetFieldConfig = defaults ? { ...input.config, props: { ...defaults, ...input.config?.props } } : input.config ?? {};
@@ -115,7 +116,7 @@ export async function addWidgetOn(ctx: DataViewsContext, on: Queryable, dataview
     `INSERT INTO totalbase.dataviews_fields (dataview, kind, widget, label, config, parent, grid_x, grid_y, grid_w, grid_h, related_dataview, related_dashboard)
      VALUES ($1, 'WIDGET', $2, $3, $4::jsonb, $5, 0, $6, $9, $10, $7, $8)
      RETURNING *`,
-    [dataviewId, input.widget, input.label ?? null, JSON.stringify(config), parentId, yRows[0]?.next ?? 0, widgetRelatedDataview(input.widget, config), widgetRelatedDashboard(input.widget, config), input.gridW ?? 12, input.gridH ?? 1],
+    [dataviewId, input.widget, input.label ?? null, JSON.stringify(config), parentId, yRows[0]?.next ?? 0, widgetRelatedDataview(input.widget, config), widgetRelatedDashboard(input.widget, config), input.gridW ?? defaultWidgetWidth(input.widget), input.gridH ?? 1],
   );
   return getField(ctx, dataviewId, rows[0]!.id, on);
 }
@@ -232,6 +233,7 @@ export async function assertWidgetPatch(ctx: DataViewsContext, dataview: AdminDa
     if (!isWidgetName(patch.widget) || !widgetDefinition(patch.widget).formField) throw new TotalBaseError("DATAVIEW_WIDGET_INVALID", `A form field holds an input, not ${patch.widget}.`);
     widget = patch.widget;
   }
+  if (patch.gridW !== undefined) assertWidgetWidth(widget, patch.gridW);
   const config = (patch.config ?? row.config) as WidgetFieldConfig;
   if (patch.config !== undefined || patch.widget !== undefined) {
     assertWidgetConfigValid(widget, config, variableRefs(dataview.viewConfig), await ctx.ownOrigin());

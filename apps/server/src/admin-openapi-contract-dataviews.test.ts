@@ -166,8 +166,12 @@ describe("Admin OpenAPI matches real responses - dataviews and app menu", () => 
     expect(code.statusCode, code.body).toBe(204);
     expect(contract.spec.paths["/admin/api/dataviews/{id}/code"]!.post!.responses["204"]).toBeDefined();
 
+    // The draft's revision (DataViews.md §2.1): a field write moves the DataView's updatedAt, through the trigger.
+    const before = (await contract.get(`/admin/api/dataviews/${customDv}`)).json().data.updatedAt as string;
     const widget = await call("POST", `/admin/api/dataviews/${customDv}/widgets`, { data: { widget: "UCard" } });
     expect(widget.statusCode, widget.body).toBe(201);
+    const after = (await contract.get(`/admin/api/dataviews/${customDv}`)).json().data.updatedAt as string;
+    expect(new Date(after).getTime()).toBeGreaterThan(new Date(before).getTime());
     expectDocumented(widget.json().data, contract.dataSchema("/admin/api/dataviews/{id}/widgets", "post", "201"), "POST widgets");
 
     // A tree in one call: a card holding a heading; then the heading moved first among the card's content.
@@ -225,8 +229,16 @@ describe("Admin OpenAPI matches real responses - dataviews and app menu", () => 
     expect(table.statusCode, table.body).toBe(200);
     expect(table.json().data).toEqual(expect.arrayContaining([expect.objectContaining({ code: "NOT_PUBLISHED" }), issue("ROLE_CANNOT_READ")]));
     for (const entry of table.json().data) contract.expectKeys(entry, items(contract.dataSchema("/admin/api/dataviews/{id}/diagnosis")), "diagnosis entry");
+    // A page widget styled through its CSS classes where Style has the value (STYLE_IN_CSS_CLASS, info): the classes
+    // Style offers, never one with a variant; the widget by its Name.
+    const styled = await call("POST", `/admin/api/dataviews/${customDv}/widgets`, { data: { widget: "UButton", label: "go", config: { props: { label: "Go", cssClass: "mt-6 text-center md:mt-4 w-full" } } } });
+    expect(styled.statusCode, styled.body).toBe(201);
     const page = await contract.get(`/admin/api/dataviews/${customDv}/diagnosis`);
-    expect(page.json().data).toEqual(expect.arrayContaining([issue("ROLE_VARIABLE_REFUSED", { variable: "items" })]));
+    expect(page.json().data).toEqual(expect.arrayContaining([
+      issue("ROLE_VARIABLE_REFUSED", { variable: "items" }),
+      expect.objectContaining({ code: "STYLE_IN_CSS_CLASS", severity: "info", widget: { id: styled.json().data.id, name: "go" }, columns: ["mt-6", "text-center"] }),
+    ]));
+    expect((await call("DELETE", `/admin/api/dataviews/${customDv}/fields/${styled.json().data.id}`)).statusCode).toBe(204);
     const board = await contract.get(`/admin/api/dashboards/${dashboardId}/diagnosis`);
     expect(board.json().data).toEqual(expect.arrayContaining([expect.objectContaining({ code: "NOT_PUBLISHED" })]));
     const all = await contract.get(`/admin/api/diagnosis`);

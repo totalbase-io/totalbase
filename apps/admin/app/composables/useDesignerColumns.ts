@@ -34,7 +34,8 @@ export function useDesignerColumns(options: {
       if (inner.length === 0) break
       widgets = inner
     }
-    return widgets
+    // A fitting widget (Fit content) keeps its own width: the columns lay out the ones that fill.
+    return widgets.filter(f => f.gridW !== 0)
   })
   /** What `field`'s slots hold, in order - its own-canvas slots' (a Modal's) only when it's the one open. */
   function slotWidgets(field: DataViewField, ownCanvas: boolean): DataViewField[] {
@@ -49,7 +50,7 @@ export function useDesignerColumns(options: {
   }
   /** The width every laid-out widget shares, if they share one - its button shows as the current layout. */
   const currentWidth = computed(() => {
-    const widths = new Set(layoutWidgets.value.map(f => f.gridW || 12))
+    const widths = new Set(layoutWidgets.value.map(f => f.gridW))
     return widths.size === 1 ? [...widths][0]! : null
   })
   /** The widths before the last columns layout - its Undo, until the canvas shows another area. */

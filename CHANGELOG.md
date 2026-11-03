@@ -2,6 +2,30 @@
 
 What changes from one TotalBase version to the next: what's new, and what an upgrade asks of you. Each version's section is also its [GitHub release](https://github.com/totalbase-io/totalbase/releases)'s notes (`scripts/release-notes.sh`). The step-by-step upgrade guide is in the [documentation](https://docs.totalbase.io/operations/upgrading).
 
+## 0.1.0-beta.12 - 2026-11-03
+
+### Highlights
+
+- **The standalone App.** **App shell: Standalone** (Arrange menu › Menu settings) takes the rail away for everyone who is not an administrator: the App menu is the only sidebar, your logo and name at its head as **Menu header** says, the signed-in user at its foot with the account menu the rail had. Administrators always keep the rail, and **See as** shows the App as a user gets it.
+- **Modules in the menu.** Standalone, the App menu holds the admin's own screens too - **Users**, **Roles**, **Files**, **Templates** and **Logs** -, a switch each in the menu's settings, each once, with a label and an icon of its own. A viewer sees a module by the rail's rule - READ on its table - never by a grant; while its screen is open, its own panel (Users' **Invite**, the roles tree, the log filters) shows under the menu. The MCP server's `get_app_menu` and `set_app_menu` carry the modules, the shell and the menu header.
+- **The menu's settings beside the tree.** Arrange menu's settings move to a column to the right of the tree (behind ⚙ on a phone or a tablet): a short line under each label and a "?" with the full text, the display as a segmented control, the shell as cards, the rest as icon radios and switches. Every change applies at once.
+- **A date range to the minute.** A dashboard's **Date range** variable takes a **Precision**: **Day** (the default) or **Minute**, so a custom range is two dates or two times of day in the viewer's time zone - *between 22:30 last night and 09:00 today*. The widgets' SQL never changes (`$VAR.period.from` and `.to` stay `timestamptz`), and every value a day range accepted stays valid: a date alone still means the whole day.
+- **One range picker.** In the bar, a date range is one button reading the range in effect - a preset's name or the custom range in the viewer's regional format, what `{{vars.period.label}}` shows too. It opens the quick ranges beside the custom range: both bounds typed or picked on a calendar, **Apply**, and at its foot the time zone the times are read in. A drawer on a phone.
+- **Which time zone ran.** Every dashboard run answers which time zone the query ran in and where it came from (the request, the user's preference, the instance, PostgreSQL's own), and the editor says it under the bar - a warning when PostgreSQL's own did.
+- **A time zone as PostgreSQL names it.** A browser reports some twenty zones under IANA's older alias (`America/Buenos_Aires`, `Asia/Calcutta`, `Europe/Kiev`), which the official images' PostgreSQL doesn't know, so the zone was dropped in silence and a widget's SQL ran in UTC under a grid shown in the viewer's zone. The header, a user's preference and **Timezone** in Settings › General now resolve to PostgreSQL's own name.
+- **Descriptions on a dashboard.** A variable's **Description** shows behind an ⓘ beside its label, a widget's beside its title; the dashboard's **Show descriptions** (Settings › General) decides whether viewers see them - off, they stay as documentation for the editor and the agent. The App header's auto-refresh is a short badge ("1 min", the sentence and "Updated 2 min ago" in its tooltip) beside an icon-only **Refresh**.
+- **The admin says which version it runs.** Settings › General ends with **About this instance** - TotalBase's version, the environment, PostgreSQL's version and the database, from the new `GET /admin/api/system` (administrators only) - and the account menu carries the version under the email. Nothing of it is public.
+- **A guessed address lands somewhere.** `/admin` redirects to the root, where the sign-in is; a mistyped address or an old bookmark gets the admin's own *Page not found*, in the UI's language, with a button to the home or the sign-in, instead of Nuxt's generic error page.
+- **A warning when `CREATE TABLE` would land in the reserved schema.** The server warns at start when the connection role's `current_schema()` is `totalbase` - a role named `totalbase` with PostgreSQL's default `search_path` -, since a `CREATE` without a schema name in the SQL Console would land there, unseen by the catalog. The installation guide's role setup now sets the role's `search_path` to `public`.
+- **A workflow's `revision` is checked.** A draft, publish, restore or PATCH with a non-integer `revision` answers 400 `INVALID_QUERY` on the four routes; two of them passed it straight to PostgreSQL. The Admin API reference says where a workflow's revision and a resource's or a user's id come from, and `DashboardVariable.default`'s real shape.
+- **For scripts and agents**: an HTTP request step's Basic authentication (the whole `Basic <base64>` value as a secret header) and a Schedule trigger's **Execute as** are documented where the pages left them out.
+
+### Before you upgrade
+
+- **Two migrations apply on start**, on the `totalbase` schema only: `totalbase.menus` gets a `module` column and the `MODULE` kind, `totalbase.dashboards` gets `show_descriptions` (on by default). Nothing changes in what people see until you set the App's shell or add a module.
+- **An Admin API change**: a workflow's draft, publish, restore and PATCH refuse a non-integer `revision` with 400 `INVALID_QUERY` (two of them answered a PostgreSQL error before). `GET /admin/api/auth/me` carries `app` (the shell and the menu header) and `version`.
+- **A time zone is applied as PostgreSQL names it**: an instance's or a user's zone stored under IANA's alias (`America/Buenos_Aires`) runs as PostgreSQL's name (`America/Argentina/Buenos_Aires`), the same offset, where it was dropped before.
+
 ## 0.1.0-beta.11 - 2026-10-31
 
 ### Highlights

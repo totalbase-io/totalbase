@@ -24,7 +24,19 @@ export function optionalData<T extends object>(body: { data?: T | Partial<T> } |
   return (isObject(data) ? data : {}) as Partial<T>;
 }
 
-/** A `:version` path parameter: a positive integer (400 otherwise); a version that doesn't exist is the service's 404. */
+/**
+ * A body's `revision` (optimistic concurrency - the object's current one, an
+ * integer as a string): 400 when missing or not digits, so a stray value
+ * never reaches PostgreSQL's bigint; a stale one is the service's 409.
+ */
+export function revisionOf(body: { data?: { revision?: unknown } } | null | undefined): string {
+  const raw = body?.data?.revision;
+  if (typeof raw !== "string" || !/^\d{1,18}$/.test(raw)) {
+    throw new TotalBaseError("INVALID_QUERY", "revision must be the object's current revision, an integer as a string.");
+  }
+  return raw;
+}
+
 /** The publisher's note on a publish body (Foundations.md §13.3): trimmed, at most 128 characters, else null. */
 export function publishNote(body: { data?: { note?: unknown } } | null | undefined): string | null {
   const raw = body?.data?.note;
@@ -35,6 +47,7 @@ export function publishNote(body: { data?: { note?: unknown } } | null | undefin
   return note || null;
 }
 
+/** A `:version` path parameter: a positive integer (400 otherwise); a version that doesn't exist is the service's 404. */
 export function versionParam(raw: string): number {
   if (!/^[1-9]\d{0,8}$/.test(raw)) throw new TotalBaseError("INVALID_QUERY", `Invalid version number: ${raw}`);
   return Number(raw);

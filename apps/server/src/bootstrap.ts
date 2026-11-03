@@ -48,6 +48,19 @@ export async function bootstrap(env: ServerEnv, logger: pino.Logger): Promise<Bo
   );
   // A migration's report - what it moved, what it left out (RAISE NOTICE).
   for (const notice of migrationResult.notices) logger.warn(notice, "migration notice");
+  // Where an unqualified CREATE lands for this role. PostgreSQL's default
+  // search_path is "$user", public: a role named totalbase - the installation
+  // guide's - resolves it to TotalBase's reserved schema, so tables created in
+  // the SQL Console never reach the catalog (Foundations.md §9.1, §14).
+  const { rows: [session] } = await database.query<{ schema: string | null; role: string }>("SELECT current_schema() AS schema, current_user AS role");
+  if (session?.schema === "totalbase") {
+    logger.warn(
+      { role: session.role },
+      "the connection role's default schema is \"totalbase\", TotalBase's reserved schema (PostgreSQL's search_path resolves \"$user\" to it): " +
+        "a table or function created without a schema name in the SQL Console lands there and the catalog never sees it - " +
+        "run ALTER ROLE <role> SET search_path = public, or name the schema in every CREATE",
+    );
+  }
 
   // 5b. Rebuild the pool from the pool.* settings, now that the settings
   //     table exists (AGENTS.md section 19B: pool configuration is a

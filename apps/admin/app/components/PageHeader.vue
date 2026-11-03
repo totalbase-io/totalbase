@@ -10,6 +10,9 @@
  *   already is, and away from the actions;
  * - `actions`: secondary actions (Refresh, Logs, Variables) - buttons on
  *   desktop, items of the "⋮" menu on a phone;
+ * - `#actions-status`: the state of a secondary action (a dashboard's
+ *   auto-refresh interval beside its Refresh) - a badge the height of the
+ *   buttons (`h-8`), right before the actions on desktop, hidden on a phone;
  * - `menu`: actions on the object itself (Settings…, Delete…) - a "⋮" at
  *   the right end on desktop, the last groups of the "⋮" on a phone.
  *
@@ -271,6 +274,7 @@ function goBack() {
         </template>
         <slot name="search" />
         <template v-if="!isCompact">
+          <slot name="actions-status" />
           <HeaderActionButton
             v-for="(action, index) in visibleActions"
             :key="`action-${index}-${action.label}`"

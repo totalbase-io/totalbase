@@ -18,6 +18,8 @@ export interface DashboardSpec {
   color?: string | null | undefined;
   scope?: "LISTED" | "EMBEDDED_ONLY" | undefined;
   refreshIntervalSeconds?: number | null | undefined;
+  /** Whether viewers see the descriptions (§4.1) - unset: true. */
+  showDescriptions?: boolean | undefined;
   variables?: DashboardVariable[] | undefined;
   tabs?: DashboardTab[] | undefined;
   widgets: DashboardSpecWidget[];
@@ -80,7 +82,7 @@ export function emptyDiff(diff: DashboardSpecDiff): boolean {
     && !diff.tabs && diff.widgets.created.length === 0 && diff.widgets.changed.length === 0 && diff.widgets.deleted.length === 0;
 }
 
-const DASHBOARD_SPEC_KEYS = ["name", "slug", "description", "icon", "menuLabel", "color", "scope", "refreshIntervalSeconds"] as const;
+const DASHBOARD_SPEC_KEYS = ["name", "slug", "description", "icon", "menuLabel", "color", "scope", "refreshIntervalSeconds", "showDescriptions"] as const;
 const WIDGET_SPEC_KEYS = ["type", "label", "tab", "grid", "query", "config"] as const;
 
 /** A spec with nothing left implicit: every key the draft has, so two specs compare key by key. */

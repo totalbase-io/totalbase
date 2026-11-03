@@ -48,9 +48,9 @@ export function storedAppLocation(userId: string): AppLocation | undefined {
   }
 }
 
-/** The objects of the menu in reading order - groups walked depth-first. */
+/** The objects of the menu in reading order - groups walked depth-first; a module entry is not a place the App opens on. */
 export function menuObjects(nodes: readonly MenuNode[]): MenuObject[] {
-  return nodes.flatMap(node => (node.kind === 'GROUP' ? menuObjects(node.children) : [node]))
+  return nodes.flatMap(node => (node.kind === 'GROUP' ? menuObjects(node.children) : node.kind === 'MODULE' ? [] : [node]))
 }
 
 /** Where the App opens for this viewer, given their menu: the last visited object it still shows, else the home, else its first object. */

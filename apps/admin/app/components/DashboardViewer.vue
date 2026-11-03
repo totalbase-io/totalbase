@@ -8,6 +8,7 @@
 import { useDashboardCatalogText, type Dashboard, type DashboardVariable } from '~/types/dashboard'
 import { decodeVariableValues, encodeVariableValues } from '~/utils/dashboard-variables'
 import { DASHBOARD_REFRESH_INTERVALS } from '@totalbase/tb-catalog'
+import { formatDistanceToNow } from 'date-fns'
 
 const props = defineProps<{ slug: string }>()
 
@@ -54,10 +55,32 @@ watch(() => route.query, (query) => {
 })
 
 const refreshKey = ref(0)
-// Tells the viewer the cards re-run on their own (Dashboards.md §9.4).
-const autoRefreshLabel = computed(() => {
-  const interval = DASHBOARD_REFRESH_INTERVALS.find(i => i.seconds === dashboard.value?.refreshIntervalSeconds)
-  return interval ? catalog.refreshLabel(interval.seconds, interval.label) : undefined
+// Tells the viewer the cards re-run on their own (Dashboards.md §9.4): a badge beside Refresh with the interval
+// short ("1 min"), the whole sentence and "Updated 2 min ago" (D23) in its tooltip.
+const autoRefreshInterval = computed(() => DASHBOARD_REFRESH_INTERVALS.find(i => i.seconds === dashboard.value?.refreshIntervalSeconds))
+const autoRefreshShort = computed(() => {
+  const seconds = autoRefreshInterval.value?.seconds
+  if (!seconds) return undefined
+  if (seconds < 60) return t('dashboards.viewer.shortSeconds', { n: seconds })
+  if (seconds < 3600) return t('dashboards.viewer.shortMinutes', { n: seconds / 60 })
+  return t('dashboards.viewer.shortHours', { n: seconds / 3600 })
+})
+const ui = useUiLocale()
+const updatedAt = ref<number | null>(null)
+const now = ref(Date.now())
+let clock: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  clock = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
+})
+onBeforeUnmount(() => clearInterval(clock))
+const autoRefreshTooltip = computed(() => {
+  const interval = autoRefreshInterval.value
+  if (!interval) return ''
+  void now.value
+  const sentence = t('dashboards.viewer.autoRefresh', { interval: catalog.refreshLabel(interval.seconds, interval.label).toLowerCase() })
+  return updatedAt.value === null ? sentence : `${sentence} · ${t('dashboards.view.updatedAgo', { ago: formatDistanceToNow(updatedAt.value, { addSuffix: true, locale: ui.dateFns.value }) })}`
 })
 </script>
 
@@ -68,17 +91,23 @@ const autoRefreshLabel = computed(() => {
         :title="dashboard?.name ?? 'Dashboard'"
         :description="dashboard?.description ?? undefined"
         :icon="dashboard?.icon ?? 'i-lucide-layout-dashboard'"
-        :actions="[{ label: t('common.refresh'), icon: 'i-lucide-refresh-cw', onSelect: () => { refreshKey++ } }]"
+        :actions="[{ label: t('common.refresh'), icon: 'i-lucide-refresh-cw', iconOnly: true, onSelect: () => { refreshKey++ } }]"
       >
-        <UBadge
-          v-if="autoRefreshLabel"
-          color="neutral"
-          variant="subtle"
-          icon="i-lucide-timer"
-          class="max-md:hidden"
-        >
-          {{ t('dashboards.viewer.autoRefresh', { interval: autoRefreshLabel.toLowerCase() }) }}
-        </UBadge>
+        <template #actions-status>
+          <UTooltip
+            v-if="autoRefreshShort"
+            :text="autoRefreshTooltip"
+          >
+            <UBadge
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-timer"
+              :label="autoRefreshShort"
+              class="h-8 whitespace-nowrap px-2.5 max-md:hidden"
+              :aria-label="autoRefreshTooltip"
+            />
+          </UTooltip>
+        </template>
       </PageHeader>
     </template>
 
@@ -94,7 +123,9 @@ const autoRefreshLabel = computed(() => {
       v-model:tab="tab"
       :slug="slug"
       :refresh-key="refreshKey"
+      :show-updated="!autoRefreshShort"
       @filter="pushNext = true"
+      @updated="(at: number) => { updatedAt = at; now = at }"
     />
   </PageShell>
 </template>

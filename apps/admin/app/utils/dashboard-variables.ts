@@ -1,5 +1,7 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
-import type { DashboardVariable, DateRangeValue } from '~/types/dashboard'
+import type { DashboardVariable, DateRangePreset, DateRangeValue } from '~/types/dashboard'
+import { DATE_RANGE_PRESETS } from '~/types/dashboard'
+import { clockOptions, SHORT_DATE, SHORT_TIME } from '~/utils/datetime-local'
 
 /**
  * `$VAR.*` values <-> the page's URL query (Dashboards.md §3.7:
@@ -9,7 +11,8 @@ import type { DashboardVariable, DateRangeValue } from '~/types/dashboard'
  * cleared" (binds NULL even when a default exists).
  */
 
-const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/
+/** `from..to` - each a date, or a date and time (`2026-11-02T22:30`) at minute precision; the server decides whether it fits. */
+const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?)\.\.(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?)$/
 
 function first(raw: LocationQuery[string] | undefined): string | null {
   const value = Array.isArray(raw) ? raw[0] : raw
@@ -81,4 +84,28 @@ export function effectiveVariableValue(variable: DashboardVariable, values: Reco
 
 export function isCustomRange(value: unknown): value is Exclude<DateRangeValue, string> {
   return typeof value === 'object' && value !== null && 'from' in value && 'to' in value
+}
+
+/**
+ * A custom range as the viewer reads it, in their regional format (Admin_UI.md §14) - the picker's button and
+ * `{{vars.<name>.label}}` alike: `02/11/2026 – 03/11/2026` for days (the last day included, as written),
+ * `02/11/2026 22:30 – 03/11/2026 09:00` at minute precision. Wall-clock parts formatted as written - no zone
+ * is involved: PostgreSQL reads them in the viewer's zone (Dashboards.md §3.5).
+ */
+export function formatCustomRange(value: { from: string, to: string }, precision: 'day' | 'minute' | undefined, locale: string | undefined): string {
+  const part = (text: string) => {
+    const [, y, m, d, hh, mm] = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(text) ?? []
+    if (!y) return text
+    const date = new Date(Number(y), Number(m) - 1, Number(d), Number(hh ?? 0), Number(mm ?? 0))
+    if (precision !== 'minute') return date.toLocaleDateString(locale, SHORT_DATE)
+    return date.toLocaleString(locale, { ...clockOptions(), ...SHORT_DATE, ...SHORT_TIME })
+  }
+  return `${part(value.from)} – ${part(value.to)}`
+}
+
+/** What a DATE_RANGE reads as: a preset's name (unset reads as All time - no bounds), or its custom range formatted. */
+export function dateRangeLabel(variable: DashboardVariable, value: unknown, locale: string | undefined, presetLabel: (preset: { value: DateRangePreset, label: string }) => string): string {
+  if (isCustomRange(value)) return formatCustomRange(value, variable.precision, locale)
+  const preset = DATE_RANGE_PRESETS.find(p => p.value === (typeof value === 'string' ? value : 'all'))
+  return preset ? presetLabel(preset) : String(value ?? '')
 }

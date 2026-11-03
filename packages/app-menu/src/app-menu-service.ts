@@ -11,6 +11,21 @@ import { TotalBaseError } from "@totalbase/errors";
 
 export type MenuObjectKind = "DATAVIEW" | "DASHBOARD";
 
+/** The portal modules the menu can hold as entries - the delegated modules of Security.md §9.2, by the names `GET /auth/me`'s `modules` uses. */
+export const MENU_MODULES = ["users", "roles", "files", "templates", "logs"] as const;
+export type MenuModuleName = (typeof MENU_MODULES)[number];
+
+/** A delegated module placed in the menu (Security.md §8.2): shown to a viewer whose roles read its table, like the rail. */
+export interface MenuModule {
+  kind: "MODULE";
+  id: string;
+  module: MenuModuleName;
+  /** What the menu shows - null: the module's own name. */
+  name: string | null;
+  /** null: the module's own icon. */
+  icon: string | null;
+}
+
 /** A published object the menu can show. */
 export interface MenuObject {
   kind: MenuObjectKind;
@@ -42,11 +57,14 @@ export interface MenuGroup {
 export const MENU_GROUP_OPEN_STATES = ["DEFAULT", "OPEN", "CLOSED"] as const;
 export type MenuGroupOpenState = (typeof MENU_GROUP_OPEN_STATES)[number];
 
-export type MenuNode = MenuGroup | MenuObject;
+/** What a viewer opens: an object, or a module. */
+export type MenuEntry = MenuObject | MenuModule;
+export type MenuNode = MenuGroup | MenuEntry;
 
-/** What the administrator saves: groups (new ones without an id) and items by object id. */
+/** What the administrator saves: groups and modules (new ones without an id) and items by object id. */
 export type MenuInput =
   | { kind: "GROUP"; id?: string; name: string; icon?: string | null; iconOpen?: string | null; openState?: MenuGroupOpenState; children: MenuInput[] }
+  | { kind: "MODULE"; id?: string; module: MenuModuleName; name?: string | null; icon?: string | null }
   | { kind: MenuObjectKind; id: string };
 
 /** How deep groups may nest - bounds the recursion over a saved arrangement (the UI offers two levels). */
@@ -55,9 +73,10 @@ export const MENU_MAX_DEPTH = 8;
 interface MenuRow {
   id: string;
   parent: string | null;
-  kind: "GROUP" | MenuObjectKind;
+  kind: "GROUP" | "MODULE" | MenuObjectKind;
   dataview: string | null;
   dashboard: string | null;
+  module: MenuModuleName | null;
   name: string | null;
   icon: string | null;
   icon_open: string | null;
@@ -75,12 +94,12 @@ export class AppMenuService {
    */
   async tree(published: MenuObject[]): Promise<MenuNode[]> {
     const { rows } = await this.database.query<MenuRow>(
-      `SELECT id, parent, kind, dataview, dashboard, name, icon, icon_open, open_state, position FROM totalbase.menus ORDER BY position, created_at`,
+      `SELECT id, parent, kind, dataview, dashboard, module, name, icon, icon_open, open_state, position FROM totalbase.menus ORDER BY position, created_at`,
     );
     return buildMenuTree(rows, published);
   }
 
-  /** Replaces the whole arrangement in one transaction. PostgreSQL rejects an unknown object (FK) or one placed twice (UNIQUE). */
+  /** Replaces the whole arrangement in one transaction. PostgreSQL rejects an unknown object (FK), an unknown module (CHECK) or one placed twice (UNIQUE). */
   async setArrangement(nodes: MenuInput[]): Promise<void> {
     validateArrangement(nodes, 1);
     await this.database.transaction(async (client) => {
@@ -99,6 +118,12 @@ async function insertNodes(client: Queryable, nodes: MenuInput[], parent: string
         [node.id ?? null, parent, node.name.trim(), node.icon ?? null, node.iconOpen ?? null, node.openState ?? "DEFAULT", position],
       );
       await insertNodes(client, node.children, rows[0]!.id);
+    } else if (node.kind === "MODULE") {
+      await client.query(
+        `INSERT INTO totalbase.menus (id, parent, kind, module, name, icon, position)
+         VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, 'MODULE', $3, $4, $5, $6)`,
+        [node.id ?? null, parent, node.module, node.name?.trim() || null, node.icon ?? null, position],
+      );
     } else {
       await client.query(
         `INSERT INTO totalbase.menus (parent, kind, dataview, dashboard, position) VALUES ($1, $2, $3, $4, $5)`,
@@ -121,10 +146,15 @@ function validateArrangement(nodes: unknown, depth: number): asserts nodes is Me
       if (node.iconOpen !== undefined && node.iconOpen !== null && typeof node.iconOpen !== "string") throw new TotalBaseError("INVALID_MENU_PAYLOAD", "Invalid menu group open icon.");
       if (node.openState !== undefined && !(MENU_GROUP_OPEN_STATES as readonly unknown[]).includes(node.openState)) throw new TotalBaseError("INVALID_MENU_PAYLOAD", "A menu group's openState is DEFAULT, OPEN or CLOSED.");
       validateArrangement(node.children, depth + 1);
+    } else if (node.kind === "MODULE") {
+      if (!(MENU_MODULES as readonly unknown[]).includes(node.module)) throw new TotalBaseError("INVALID_MENU_PAYLOAD", `A menu module is one of ${MENU_MODULES.join(", ")}.`);
+      if (node.id !== undefined && typeof node.id !== "string") throw new TotalBaseError("INVALID_MENU_PAYLOAD", "Invalid menu module id.");
+      if (node.name !== undefined && node.name !== null && typeof node.name !== "string") throw new TotalBaseError("INVALID_MENU_PAYLOAD", "Invalid menu module name.");
+      if (node.icon !== undefined && node.icon !== null && typeof node.icon !== "string") throw new TotalBaseError("INVALID_MENU_PAYLOAD", "Invalid menu module icon.");
     } else if (node.kind === "DATAVIEW" || node.kind === "DASHBOARD") {
       if (typeof node.id !== "string") throw new TotalBaseError("INVALID_MENU_PAYLOAD", "A menu item needs its object's id.");
     } else {
-      throw new TotalBaseError("INVALID_MENU_PAYLOAD", "A menu entry is a GROUP, a DATAVIEW or a DASHBOARD.");
+      throw new TotalBaseError("INVALID_MENU_PAYLOAD", "A menu entry is a GROUP, a MODULE, a DATAVIEW or a DASHBOARD.");
     }
   }
 }
@@ -148,6 +178,10 @@ export function buildMenuTree(rows: MenuRow[], published: MenuObject[]): MenuNod
         nodes.push({ kind: "GROUP", id: row.id, name: row.name ?? "", icon: row.icon, iconOpen: row.icon_open, openState: row.open_state ?? "DEFAULT", children: build(row.id) });
         continue;
       }
+      if (row.kind === "MODULE") {
+        if (row.module) nodes.push({ kind: "MODULE", id: row.id, module: row.module, name: row.name, icon: row.icon });
+        continue;
+      }
       const key = objectKey(row.kind, (row.kind === "DATAVIEW" ? row.dataview : row.dashboard)!);
       const object = objects.get(key);
       if (!object) continue;
@@ -164,17 +198,17 @@ export function buildMenuTree(rows: MenuRow[], published: MenuObject[]): MenuNod
 }
 
 /**
- * Pure: the menu as one viewer sees it - only the objects they may open
- * (`visible`, decided by the caller through both access levels), and no
- * group left without anything to show.
+ * Pure: the menu as one viewer sees it - only the entries they may open
+ * (`visible`, decided by the caller: an object through both access levels,
+ * a module by READ on its table), and no group left without anything to show.
  */
-export function pruneMenu(nodes: MenuNode[], visible: (kind: MenuObjectKind, id: string) => boolean): MenuNode[] {
+export function pruneMenu(nodes: MenuNode[], visible: (entry: MenuEntry) => boolean): MenuNode[] {
   const pruned: MenuNode[] = [];
   for (const node of nodes) {
     if (node.kind === "GROUP") {
       const children = pruneMenu(node.children, visible);
       if (children.length > 0) pruned.push({ ...node, children });
-    } else if (visible(node.kind, node.id)) {
+    } else if (visible(node)) {
       pruned.push(node);
     }
   }

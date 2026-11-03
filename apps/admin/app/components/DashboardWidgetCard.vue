@@ -9,7 +9,7 @@
  * Runs the widget's saved draft query (admin-only endpoint) and hands
  * the result to DashboardWidgetView.vue, which draws it.
  */
-import type { DashboardQueryResult } from '~/types/dashboard'
+import type { DashboardQueryResult, DashboardRunMeta } from '~/types/dashboard'
 import { DASHBOARD_TITLE_BINDING, dashboardWidgetDefinition } from '@totalbase/tb-catalog'
 import { DASHBOARD_SLOW_QUERY_MS, DASHBOARD_WIDGET_META, useDashboardCatalogText } from '~/types/dashboard'
 import { dashboardFormulaVars, evaluateDashboardFormula } from '~/utils/dashboard-formula'
@@ -72,13 +72,13 @@ async function runQuery(fresh: boolean) {
   error.value = null
   errorDetail.value = null
   try {
-    const { data } = await api.post<DashboardQueryResult>(ctx!.dataPath(current), {
+    const { data, meta } = await api.post<DashboardQueryResult>(ctx!.dataPath(current), {
       data: { variables: ctx!.variableValues.value },
       // The header's Refresh: past the server's cache (D24).
       ...(fresh && { fresh: true })
     })
     result.value = data
-    ctx!.onLoaded?.()
+    ctx!.onLoaded?.(meta as DashboardRunMeta | undefined)
   } catch (err) {
     result.value = null
     // A failed or slow query reads as a sentence in the viewer's language; the editor also gets PostgreSQL's message.
@@ -277,9 +277,9 @@ const menuItems = computed(() => (ctx.readOnly.value ? (ctx.onFilter ? viewerMen
       >
         {{ title || (widget && !ctx.readOnly.value ? catalog.widgetLabel(widget.type) : '') }}
       </p>
-      <!-- The widget's description: a click or a tap opens it (never hover-only - AGENTS.md section 25). -->
+      <!-- The widget's description: a click or a tap opens it (never hover-only - AGENTS.md section 25); hidden for a viewer when the dashboard says so (§4.1). -->
       <UPopover
-        v-if="description"
+        v-if="description && (ctx.showDescriptions?.value ?? true)"
         :content="{ side: 'top', align: 'start' }"
       >
         <UButton

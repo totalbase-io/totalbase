@@ -56,8 +56,9 @@ describe("Admin OpenAPI matches real responses - dashboards and audit", () => {
     const patched = await expectWrite("PATCH", `${base}/${dashboardId}`, `${base}/{id}`, 200, {
       data: { refreshIntervalSeconds: 300, variables: [
         { name: "region", label: "Region", type: "SELECT", options: { source: "STATIC", values: ["North", "South"] }, default: { source: "constant", value: "North" } },
-        // A dependent variable carries every documented key, dependsOn included.
-        { name: "city", label: "City", type: "SELECT", options: { source: "QUERY", query: "SELECT 'Rosario' WHERE $VAR.region IS NOT NULL" }, default: { source: "constant", value: "Rosario" } },
+        // Between them, a dependent variable (dependsOn) and a DATE_RANGE (precision) carry every documented key.
+        { name: "city", label: "City", description: "A city of the region", type: "SELECT", options: { source: "QUERY", query: "SELECT 'Rosario' WHERE $VAR.region IS NOT NULL" }, default: { source: "constant", value: "Rosario" } },
+        { name: "period", label: "Period", type: "DATE_RANGE", precision: "minute", default: { source: "constant", value: "today" } },
       ] },
     });
     expect(patched.refreshIntervalSeconds).toBe(300);
@@ -112,7 +113,9 @@ describe("Admin OpenAPI matches real responses - dashboards and audit", () => {
     // A version's widgets carry the widget schema's keys too.
     const snapshot = (await contract.get(`${base}/${dashboardId}/versions/1`)).json().data;
     contract.expectKeys(snapshot.widgets[0], { $ref: "#/components/schemas/DashboardWidgetContent" }, "version widget");
-    contract.expectKeys(snapshot.variables.find((v: { name: string }) => v.name === "city"), { $ref: "#/components/schemas/DashboardVariable" }, "version variable");
+    // A variable's optional keys are left out when unset, and no one variable has them all (precision is a DATE_RANGE's): the two together.
+    const variableOf = (name: string) => snapshot.variables.find((v: { name: string }) => v.name === name);
+    contract.expectKeys({ ...variableOf("city"), ...variableOf("period") }, { $ref: "#/components/schemas/DashboardVariable" }, "version variable");
   });
 
   it("dashboard embeds", async () => {

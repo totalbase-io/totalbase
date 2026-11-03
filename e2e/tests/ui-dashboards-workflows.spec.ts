@@ -154,7 +154,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   await main.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.waitForURL(new RegExp(`/dashboards/${id}/settings`))
   await main.getByLabel('Name').fill(`${DASHBOARD} Renamed`)
-  await main.getByLabel('Description').fill('Edited through the UI')
+  await main.getByLabel('Description', { exact: true }).fill('Edited through the UI')
   await expect.poll(async () => (await apiRequest<{ name: string, description: string }>(page, token, 'GET', `/admin/api/dashboards/${id}`))).toMatchObject({ name: `${DASHBOARD} Renamed`, description: 'Edited through the UI' })
   const saved = await apiRequest<{ slug: string }>(page, token, 'GET', `/admin/api/dashboards/${id}`)
   await main.getByRole('link', { name: 'Security' }).click()
@@ -414,7 +414,8 @@ test('a dashboard\'s auto-refresh: set in Settings › Data, the App re-runs its
   await page.clock.install()
   await page.goto(`/app/dashboards/${slug}`)
   await expect(main.getByText('42', { exact: true })).toBeVisible()
-  await expect(page.getByText('Auto-refresh: every 30 seconds')).toBeVisible()
+  // The App header's badge ("30 s"); the sentence is its label and tooltip.
+  await expect(page.getByLabel('Auto-refresh: every 30 seconds')).toBeVisible()
   await expect.poll(() => runs, POLL).toBe(1)
   await page.clock.fastForward(29_000)
   await page.waitForTimeout(500)

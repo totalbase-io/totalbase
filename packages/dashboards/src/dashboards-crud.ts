@@ -27,7 +27,7 @@ export function remapDashboardUniqueViolation(error: unknown): never {
   );
 }
 
-export const DASHBOARD_COLUMNS = "id, name, slug, description, menu_label, icon, color, scope, refresh_interval_seconds, embedding_enabled, delegable, variables, tabs, created_at, updated_at";
+export const DASHBOARD_COLUMNS = "id, name, slug, description, menu_label, icon, color, scope, refresh_interval_seconds, show_descriptions, embedding_enabled, delegable, variables, tabs, created_at, updated_at";
 
 /** Every dashboard with its versioning status - the admin's Dashboards list marks drafts and unpublished changes. */
 export async function listDashboards(ctx: DashboardsContext): Promise<AdminDashboard[]> {
@@ -119,10 +119,10 @@ export async function createDashboard(ctx: DashboardsContext, input: CreateDashb
 
   try {
     const { rows } = await ctx.database.query<DashboardRow>(
-      `INSERT INTO totalbase.dashboards (name, slug, description, icon, color, scope, refresh_interval_seconds)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO totalbase.dashboards (name, slug, description, icon, color, scope, refresh_interval_seconds, show_descriptions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${DASHBOARD_COLUMNS}`,
-      [name, slug, description, input.icon ?? null, color, input.scope ?? "LISTED", refreshIntervalSeconds],
+      [name, slug, description, input.icon ?? null, color, input.scope ?? "LISTED", refreshIntervalSeconds, input.showDescriptions !== false],
     );
     return toAdminDashboard(rows[0]!);
   } catch (error) {
@@ -151,6 +151,7 @@ export async function updateDashboard(ctx: DashboardsContext, id: string, patch:
     ["color", color],
     ["scope", patch.scope],
     ["refresh_interval_seconds", refreshIntervalSeconds],
+    ["show_descriptions", typeof patch.showDescriptions === "boolean" ? patch.showDescriptions : undefined],
     ["embedding_enabled", typeof patch.embeddingEnabled === "boolean" ? patch.embeddingEnabled : undefined],
     ["delegable", typeof patch.delegable === "boolean" ? patch.delegable : undefined],
   ] as const) {

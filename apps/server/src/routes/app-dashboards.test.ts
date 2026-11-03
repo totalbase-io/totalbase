@@ -26,6 +26,8 @@ describe("App dashboards (/app/api/dashboards)", () => {
   let otherToken: string;
   let dashboardId: string;
   let widgetId: string;
+  /** A published widget that reports the transaction's TimeZone. */
+  let zoneWidgetId: string;
   let draftOnlyId: string;
   /** What this file creates - removed by primary key. */
   const created = { dashboards: [] as string[], users: [] as string[], roles: [] as string[] };
@@ -33,8 +35,8 @@ describe("App dashboards (/app/api/dashboards)", () => {
   const get = (url: string, token?: string) =>
     app.inject({ method: "GET", url, headers: token ? { authorization: `Bearer ${token}` } : {} });
   /** `payload` is the request's content - sent as `{ data: payload }` (Data_API.md §2.5). */
-  const post = (url: string, token: string, payload: unknown) =>
-    app.inject({ method: "POST", url, headers: { authorization: `Bearer ${token}` }, payload: { data: payload } });
+  const post = (url: string, token: string, payload: unknown, headers: Record<string, string> = {}) =>
+    app.inject({ method: "POST", url, headers: { authorization: `Bearer ${token}`, ...headers }, payload: { data: payload } });
 
   async function viewer(email: string, roleId: string): Promise<string> {
     const user = await context.auth.users.create({ email, name: email.split("@")[0]!, passwordHash: await hashPassword(PASSWORD), emailVerified: true });
@@ -66,6 +68,8 @@ describe("App dashboards (/app/api/dashboards)", () => {
     });
     widgetId = (await dashboards.addWidget(dashboardId, { type: "TABLE", gridX: 0, gridY: 0, gridW: 6, gridH: 4 })).id;
     await dashboards.updateWidget(dashboardId, widgetId, { query: QUERY });
+    zoneWidgetId = (await dashboards.addWidget(dashboardId, { type: "TABLE", gridX: 6, gridY: 0, gridW: 6, gridH: 4 })).id;
+    await dashboards.updateWidget(dashboardId, zoneWidgetId, { query: `SELECT current_setting('TimeZone') AS tz` });
     await dashboards.setRoles(dashboardId, [grantedRole]);
     await dashboards.publish(dashboardId, null);
     // A draft edit after publishing: viewers must keep getting the published query.
@@ -134,9 +138,11 @@ describe("App dashboards (/app/api/dashboards)", () => {
     const dashboard = (await get(`/app/api/dashboards/${PREFIX}-live`, grantedToken)).json().data;
     expect(dashboard).not.toHaveProperty("variables");
     const widgets = (await get(`/app/api/dashboards/${PREFIX}-live/widgets`, grantedToken)).json().data;
-    expect(widgets).toHaveLength(1);
-    expect(widgets[0]).not.toHaveProperty("query");
-    expect(widgets[0].configured).toBe(true);
+    expect(widgets).toHaveLength(2);
+    for (const widget of widgets) {
+      expect(widget).not.toHaveProperty("query");
+      expect(widget.configured).toBe(true);
+    }
     const variables = (await get(`/app/api/dashboards/${PREFIX}-live/variables`, grantedToken)).json().data;
     expect(variables[0].options).toEqual({ source: "QUERY", query: "" });
     const body = JSON.stringify([dashboard, widgets, variables]);
@@ -151,6 +157,44 @@ describe("App dashboards (/app/api/dashboards)", () => {
     });
     expect(res.statusCode, res.body).toBe(200);
     expect(res.json().data.rows).toEqual([{ me: `${PREFIX}-granted@example.com`, version: "published" }]);
+  });
+
+  it("runs in the viewer's zone - the browser's as a last resort, spelled as PostgreSQL knows it - and says which in meta.timezone", async () => {
+    const run = async (zone: string) => {
+      const res = await post(`/app/api/dashboards/${PREFIX}-live/widgets/${zoneWidgetId}/data`, grantedToken, {}, { "x-totalbase-timezone": zone });
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json() as { data: { rows: { tz: string }[] }; meta: { timezone: { name: string | null; source: string } } };
+    };
+    // With no instance zone (and the viewer no preference), the header decides; with one, it wins.
+    const instanceZone = await context.settings.get("system.timezone");
+    await context.settings.reset("system.timezone");
+    try {
+      const canonical = await run("America/Argentina/Salta");
+      expect(canonical.data.rows[0]!.tz).toBe("America/Argentina/Salta");
+      expect(canonical.meta.timezone).toEqual({ name: "America/Argentina/Salta", source: "BROWSER" });
+      // ICU's spelling of Buenos Aires is IANA's legacy alias - read as the zone PostgreSQL names, never dropped.
+      const alias = await run("America/Buenos_Aires");
+      expect(alias.data.rows[0]!.tz).toMatch(/^America\/(Argentina\/)?Buenos_Aires$/);
+      expect(alias.meta.timezone).toEqual({ name: alias.data.rows[0]!.tz, source: "BROWSER" });
+      // A zone nobody knows: PostgreSQL's own ran, and the answer says so instead of pretending.
+      const unknown = await run("Nowhere/Nope");
+      expect(unknown.meta.timezone).toEqual({ name: null, source: "POSTGRESQL" });
+      expect(unknown.data.rows[0]!.tz).not.toBe("Nowhere/Nope");
+      await context.settings.set("system.timezone", "Europe/Madrid");
+      const instance = await run("America/Argentina/Salta");
+      expect(instance.data.rows[0]!.tz).toBe("Europe/Madrid");
+      expect(instance.meta.timezone).toEqual({ name: "Europe/Madrid", source: "INSTANCE" });
+    } finally {
+      if (instanceZone) await context.settings.set("system.timezone", instanceZone);
+      else await context.settings.reset("system.timezone");
+    }
+  });
+
+  it("hands the viewer the dashboard's Show descriptions, live - presentation, never versioned", async () => {
+    expect((await get(`/app/api/dashboards/${PREFIX}-live`, grantedToken)).json().data.showDescriptions).toBe(true);
+    await context.dashboardsAdmin.update(dashboardId, { showDescriptions: false });
+    expect((await get(`/app/api/dashboards/${PREFIX}-live`, grantedToken)).json().data.showDescriptions).toBe(false);
+    await context.dashboardsAdmin.update(dashboardId, { showDescriptions: true });
   });
 
   it("serves a variable's options from its published options query", async () => {

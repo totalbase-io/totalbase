@@ -154,7 +154,7 @@ describe("Dashboards - tanda 3", () => {
     expect(kpi.json().data.referencedVariables).toEqual(["goal"]);
     // DB20: a variable's key it doesn't know, at its path.
     const variables = await call("PATCH", `/admin/api/dashboards/${dashboardId}`, { variables: [{ name: "goal", label: "Goal", type: "NUMBER", defecto: 1 }] });
-    expect(errorOf(variables)).toMatchObject({ code: "DASHBOARD_VARIABLE_INVALID", message: 'variables[0] has no "defecto" - it takes: name, label, type, multiple, options, default, dependsOn.' });
+    expect(errorOf(variables)).toMatchObject({ code: "DASHBOARD_VARIABLE_INVALID", message: 'variables[0] has no "defecto" - it takes: name, label, description, type, precision, multiple, options, default, dependsOn.' });
     // DB28: an embed's variable the dashboard doesn't have.
     const embed = await call("POST", `/admin/api/dashboards/${dashboardId}/embeds`, { name: "Other", type: "LINK", variables: { nope: { mode: "EDITABLE" } } });
     expect(errorOf(embed)).toMatchObject({ code: "DASHBOARD_EMBED_INVALID", message: expect.stringContaining('no variable "nope" - its variables: goal') });

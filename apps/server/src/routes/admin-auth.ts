@@ -4,10 +4,12 @@ import { managedRoleIds, portalAccessOf } from "@totalbase/permissions";
 import type { AppContext } from "../context.js";
 import { assignableRoleIds } from "@totalbase/mutations";
 import { COMPANIONS, delegatedModuleActions } from "../delegated-modules.js";
+import { appShell, menuHeader } from "./app-menu.js";
 import { ADMIN_SCHEMAS, adminDoc, object, ok, ref } from "../openapi-admin-docs.js";
 import { extractBearerToken, requireAdmin, requireAppAccess } from "../auth-guards.js";
 import { SESSION_MODE, SESSION_TOKEN, clearSessionCookie, deliverSession, requestedSessionMode } from "../session-cookie.js";
 import { effectiveDisplayPreferences } from "../display-preferences.js";
+import { TOTALBASE_VERSION } from "../version.js";
 import { auditMfaChallenge, recordSecondStep, recordSignInFailure } from "./api-auth.js";
 import type { SignInAdmission, User } from "@totalbase/auth";
 
@@ -162,6 +164,7 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         response: ok({
           allOf: [ref("AdminProfile"), object({
             environment: { type: "string" },
+            version: { type: "string", description: "This build of TotalBase - what the account menu shows." },
             publicUrl: { type: "string", format: "uri" },
             display: object({
               timezone: { type: "string", description: "IANA zone; empty = the browser's." },
@@ -169,6 +172,10 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
               regionalFormat: { type: "string", description: "BCP 47 tag numbers, dates and times are formatted in: the user's, else the instance's (Admin_UI.md §14); empty = the browser's." },
             }),
             modules: { type: "array", items: { type: "string", enum: ["users", "roles", "files", "templates", "logs"] }, description: "Delegated modules this user's rail shows." },
+            app: object({
+              shell: { type: "string", enum: ["SHARED", "STANDALONE"], description: "The `app.shell` setting - how the App is framed for a non-administrator (Admin_UI.md §3.1.1); an administrator always keeps the rail." },
+              menuHeader: { type: "string", enum: ["LOGO_AND_NAME", "LOGO", "NAME", "NONE"], description: "The `app.menu_header` setting - what heads the standalone App's menu." },
+            }),
             moduleActions: {
               type: "object",
               description: "Per delegated module, the actions the user may take on its table.",
@@ -185,7 +192,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
     // environment rides along with the admin profile rather than a
     // separate endpoint - the navbar's environment badge needs it exactly
     // when it already fetches the session, and it's not sensitive enough
-    // to warrant its own auth-gated route.
+    // to warrant its own auth-gated route. version likewise: the account
+    // menu's line (never public - /api/instance says nothing of it).
     // publicUrl likewise: system.public_url with its env fallback already
     // resolved, for screens that show absolute API URLs (Endpoints).
     // display: the caller's effective timezone/date formats (their My
@@ -196,8 +204,12 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         ...request.admin,
         access: request.access,
         environment: context.nodeEnv,
+        version: TOTALBASE_VERSION,
         publicUrl: await context.auth.mailer.publicUrl(),
         display: await effectiveDisplayPreferences(context, request.admin!.id),
+        // app: how the App is framed (app.shell, app.menu_header) - the layout decides rail or no rail before
+        // anything else loads, so it rides with the session rather than with the menu.
+        app: { shell: await appShell(context), menuHeader: await menuHeader(context) },
         // The delegated modules this user's rail shows, and what they may do in each (Security.md §9.2).
         // assignableRoles: for a non-administrator who may assign roles, the
         // ones the guardrails let them (Security.md §9.4) - so a screen offers only those.

@@ -104,6 +104,13 @@ export async function registerAdminUi(
     return;
   }
 
+  // Where other tools keep their admin, and where TotalBase's was before
+  // beta.5: the root is the admin itself (Foundations.md §4.1). Bare, never
+  // `/admin/*` - the old addresses under it were retired on purpose.
+  for (const path of ["/admin", "/admin/"]) {
+    app.get(path, async (_request, reply) => reply.redirect("/", 301));
+  }
+
   const dir = dirOverride ?? DEFAULT_ADMIN_UI_DIR;
   const built = !devProxyTarget && existsSync(join(dir, "index.html"));
   // The scripts the UI may run: the static build's own files and inline

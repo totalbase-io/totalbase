@@ -37,7 +37,7 @@ describe("routing: the server's paths and the SPA's", () => {
   });
 
   it("serves the SPA at the root: its files as they are, any other GET its index.html", async () => {
-    for (const url of ["/", "/status", "/app/dataviews/orders?view=1", "/admin", "/embed/tbe_x"]) {
+    for (const url of ["/", "/status", "/app/dataviews/orders?view=1", "/settings", "/embed/tbe_x"]) {
       const res = await spa.inject({ method: "GET", url });
       expect(res.statusCode, url).toBe(200);
       expect(res.body, url).toContain("<title>spa</title>");
@@ -50,6 +50,16 @@ describe("routing: the server's paths and the SPA's", () => {
   it("never logs a public embed's key, its path - the embed API's paths are no key", () => {
     expect(redactedUrl("/embed/tbe_secret?x=1")).toBe("/embed/[redacted]");
     expect(redactedUrl("/embed/api/dashboard?token=t")).toBe("/embed/api/dashboard");
+  });
+
+  it("redirects /admin - where other tools keep their admin - to the root, the admin itself", async () => {
+    for (const url of ["/admin", "/admin/"]) {
+      const res = await spa.inject({ method: "GET", url });
+      expect(res.statusCode, url).toBe(301);
+      expect(res.headers.location, url).toBe("/");
+    }
+    expect((await spa.inject({ method: "GET", url: "/admin/status" })).statusCode).toBe(200);
+    expect((await apiOnly.inject({ method: "GET", url: "/admin" })).statusCode).toBe(404);
   });
 
   it("answers an unknown path under a reserved prefix with a JSON 404, never the SPA", async () => {

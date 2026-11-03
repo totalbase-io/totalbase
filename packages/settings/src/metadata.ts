@@ -1303,6 +1303,24 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
       { label: "Never", value: "NEVER" },
     ],
   },
+  "app.shell": {
+    label: "App shell",
+    description: "What people who are not administrators get. Shared: the App beside the rail, as administrators see it. Standalone: the App's menu is the only sidebar - your logo and name at its head, their account at its foot, and the modules you place in the menu. Administrators always keep the rail.",
+    options: [
+      { label: "Shared", value: "SHARED", description: "The App beside the rail, as administrators see it." },
+      { label: "Standalone", value: "STANDALONE", description: "No rail: the menu is the only sidebar, with your logo, their account and the modules you place." },
+    ],
+  },
+  "app.menu_header": {
+    label: "Menu header",
+    description: "What heads the standalone App's menu: the instance's logo and name (Settings › General), one of them, or nothing.",
+    options: [
+      { label: "Logo and name", value: "LOGO_AND_NAME", description: "The instance's logo with its name beside it." },
+      { label: "Logo", value: "LOGO", description: "The logo alone - one that already carries the name." },
+      { label: "Name", value: "NAME", description: "The name alone, as text." },
+      { label: "Nothing", value: "NONE", description: "The menu starts at its first entry." },
+    ],
+  },
   "dashboards.query_timeout_ms": {
     label: "Widget query timeout",
     description: "Maximum time a dashboard widget's SQL may run (it always runs in a read-only transaction) before PostgreSQL cancels it.",

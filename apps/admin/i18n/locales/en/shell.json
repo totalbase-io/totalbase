@@ -210,7 +210,11 @@
     "BACKUP_ALREADY_QUEUED": "A backup is already queued or running - wait for it to finish.",
     "BACKUP_RUNNING": "The backup hasn't finished yet.",
     "BACKUP_NOT_FOUND": "The backup or its archive is no longer there.",
-    "BACKUPS_DISABLED": "Backups are off - turn them on under Settings › PostgreSQL › Backups."
+    "BACKUPS_DISABLED": "Backups are off - turn them on under Settings › PostgreSQL › Backups.",
+    "pageNotFound": "Page not found",
+    "pageNotFoundHint": "Nothing answers this address. The admin and the App start at the root of this instance.",
+    "pageFailed": "Something went wrong",
+    "backHome": "Go to the home page"
   },
   "account": {
     "preferences": {

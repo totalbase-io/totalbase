@@ -4,6 +4,8 @@ import type { MenuNode } from '~/types/app-menu'
 
 const object = (kind: 'DATAVIEW' | 'DASHBOARD', slug: string): MenuNode => ({ kind, id: slug, name: slug, slug, menuLabel: null, description: null, icon: null, color: null, viewType: null })
 const menu: MenuNode[] = [
+  // A module entry is never where the App opens - even first in the menu.
+  { kind: 'MODULE', id: 'm', module: 'users', name: null, icon: null },
   { kind: 'GROUP', id: 'g', name: 'Sales', icon: null, iconOpen: null, openState: 'DEFAULT', children: [object('DASHBOARD', 'sales'), object('DATAVIEW', 'orders')] },
   object('DATAVIEW', 'customers')
 ]

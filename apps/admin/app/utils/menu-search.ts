@@ -3,7 +3,7 @@
  * entry's menu label, its full name, its description (the tooltip) or its group's name, ignoring case and accents. A
  * group that matches keeps all its entries. Only the menu the server already filtered for the viewer is searched.
  */
-import type { MenuNode } from '~/types/app-menu'
+import type { MenuModule, MenuNode } from '~/types/app-menu'
 
 /** Past this many entries the viewer sees, an AUTO menu offers its search box. */
 export const MENU_SEARCH_THRESHOLD = 15
@@ -18,17 +18,21 @@ export function countEntries(nodes: readonly MenuNode[]): number {
   return nodes.reduce((sum, node) => sum + (node.kind === 'GROUP' ? countEntries(node.children) : 1), 0)
 }
 
-/** The menu with only what matches `term` - entries by their label, name or description; a matching group whole. Empty groups go. */
-export function filterMenu(nodes: readonly MenuNode[], term: string): MenuNode[] {
+/**
+ * The menu with only what matches `term` - entries by their label, name or description, a module by its
+ * label or its own name (`moduleLabel`, in the UI's language); a matching group whole. Empty groups go.
+ */
+export function filterMenu(nodes: readonly MenuNode[], term: string, moduleLabel?: (module: MenuModule) => string): MenuNode[] {
   const q = foldText(term.trim())
   if (!q) return [...nodes]
   const hit = (...texts: (string | null | undefined)[]) => texts.some(text => !!text && foldText(text).includes(q))
   return nodes.flatMap((node): MenuNode[] => {
     if (node.kind === 'GROUP') {
       if (hit(node.name)) return [node]
-      const children = filterMenu(node.children, term)
+      const children = filterMenu(node.children, term, moduleLabel)
       return children.length ? [{ ...node, children }] : []
     }
+    if (node.kind === 'MODULE') return hit(node.name, moduleLabel?.(node)) ? [node] : []
     return hit(node.menuLabel, node.name, node.description) ? [node] : []
   })
 }

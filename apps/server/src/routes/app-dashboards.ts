@@ -4,7 +4,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import { isUuid } from "@totalbase/shared";
 import type { AppContext } from "../context.js";
 import { callerRoles } from "../caller-roles.js";
-import { requestViewer } from "../display-preferences.js";
+import { requestViewer, runTimezone } from "../display-preferences.js";
 import { requireAppAccess } from "../auth-guards.js";
 import { appFileScope, dashboardQueryLimits, freshRun, variableValues, type VariableValues } from "./admin-dashboards.js";
 import { serveDashboardFile, verifyDashboardFile, withFileLinks } from "../dashboard-files.js";
@@ -171,14 +171,17 @@ export function registerAppDashboardsRoutes(app: FastifyInstance, context: AppCo
     { preHandler },
     async (request) => {
       const dashboard = await viewableDashboard(context, request, request.params.slug);
+      const viewer = await requestViewer(context, request);
       return {
         data: await withFileLinks(context, await context.dashboardsAdmin.executePublishedWidget(
           dashboard.id,
           request.params.widgetId,
           { ...(await dashboardQueryLimits(context)), ...freshRun(request.body) },
-          await requestViewer(context, request),
+          viewer,
           variableValues(request.body),
         ), appFileScope(dashboard.id, request.params.widgetId)),
+        // The zone the query ran in (Dashboards.md §2.3) - the picker's foot and the editor's line say it.
+        meta: { timezone: runTimezone(viewer) },
       };
     },
   );

@@ -156,9 +156,9 @@ test('a header dragged moves its column, kept after a reload - and opens no menu
 test('a column the table gains reaches the DataView by itself - shown, and at the end of its record form', async ({ page }) => {
   token = await login(page)
   await sql(page, `ALTER TABLE public.${TABLE} ADD COLUMN extra text`)
-  // The catalog sync - what the watch runs within seconds - brings it.
-  const synced = await apiRequest<{ dataviewsSynced: number }>(page, token, 'POST', '/admin/api/catalog/refresh')
-  expect(synced.dataviewsSynced).toBeGreaterThanOrEqual(1)
+  // The catalog sync brings it - the watch within seconds, or this explicit refresh first; whichever ran, the
+  // DataView has the column by now (the count this call answers is 0 when the watch got there before it).
+  await apiRequest(page, token, 'POST', '/admin/api/catalog/refresh')
   const fields = await apiRequest<{ kind: string, widget: string | null, columnName: string | null, visible: boolean, gridY: number, config: { props?: { column?: string } } }[]>(
     page, token, 'GET', `/admin/api/dataviews/${dataview.id}/fields`
   )

@@ -39,7 +39,8 @@ export const DASHBOARD_VARIABLE_VALUES: JsonSchema = {
   description:
     "Values by variable name, validated per the variable's type and bound as cast parameters (never interpolated). " +
     "A missing name uses the definition's default; an empty value binds NULL. DATE_RANGE: a preset or `{from, to}` " +
-    "(YYYY-MM-DD); SELECT: a string, or an array when `multiple`; TEXT: a string; NUMBER: a number.",
+    "(YYYY-MM-DD, the last day included; at precision `minute` YYYY-MM-DDTHH:MM in the viewer's local time, `to` exclusive); " +
+    "SELECT: a string, or an array when `multiple`; TEXT: a string; NUMBER: a number.",
 };
 
 const VARIABLE_OPTIONS: JsonSchema = {
@@ -53,6 +54,14 @@ const VARIABLE_OPTIONS: JsonSchema = {
 };
 
 /** A dashboard's tabs (D7, §7.2) - UTabs' items. */
+/** What `meta` carries on a run's response: the zone the query ran in (Dashboards.md §2.3). */
+export const DASHBOARD_RUN_META: JsonSchema = object({
+  timezone: object({
+    name: { type: ["string", "null"], description: "The transaction's TimeZone, as PostgreSQL names it - null when none applied (PostgreSQL's own zone ran)." },
+    source: { type: "string", enum: ["USER", "INSTANCE", "BROWSER", "POSTGRESQL"], description: "Which step of Security.md §4.2 gave it: the viewer's preference, the instance's zone, the browser's (X-TotalBase-Timezone), or none." },
+  }, ["name", "source"]),
+}, ["timezone"]);
+
 export const DASHBOARD_TABS: JsonSchema = {
   ...arrayOf(object({ value: { type: "string", pattern: "^[a-z][a-z0-9_-]{0,31}$" }, label: { type: "string", maxLength: 32 }, icon: { type: "string" } }, ["value", "label"])),
   description: `Its tabs, in order (${SPEC} §7.2) - none: one grid. The App keeps the open one in \`?tab=<value>\`. A tab with widgets can't be removed (DASHBOARD_TAB_NOT_EMPTY); [] joins every widget in one grid.`,
@@ -64,10 +73,15 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
       {
         name: { type: "string", pattern: "^[a-z][a-z0-9_]{0,31}$", description: "Referenced in widget SQL as `$VAR.<name>` (`$VAR.<name>.from`/`.to` for a DATE_RANGE)." },
         label: { type: "string" },
+        description: { type: "string", maxLength: 128, description: "What the variable means, for the viewer - the bar's ⓘ beside its label." },
         type: { type: "string", enum: [...DASHBOARD_VARIABLE_TYPES] },
+        precision: { type: "string", enum: ["day", "minute"], description: "DATE_RANGE only; absent = day. `minute`: a custom range takes `YYYY-MM-DDTHH:MM` bounds (the viewer's local time), `to` exclusive as written; a bare date still means the whole day." },
         multiple: { type: "boolean", description: "SELECT only: binds `text[]` instead of `text`." },
         options: { ...VARIABLE_OPTIONS, description: "SELECT only: a static list or an options query." },
-        default: { description: `Same shape as a value; absent = NULL. DATE_RANGE presets: ${DATE_RANGE_PRESETS.join(", ")}.` },
+        default: {
+          type: ["object", "null"],
+          description: `Absent or null = NULL. \`{ "source": "constant", "value": <a value of the variable's type> }\` - for DATE_RANGE a preset name (${DATE_RANGE_PRESETS.join(", ")}) or a custom range \`{ "from", "to" }\` - or \`{ "source": "user", "field": "<a column of totalbase.users>" }\`.`,
+        },
         dependsOn: { type: "array", items: { type: "string" }, readOnly: true, description: "SELECT with an options query: the variables the query reads as `$VAR.*`, derived from it - reload the options when one changes. Chains are acyclic." },
       },
       ["name", "label", "type"],
@@ -84,6 +98,7 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
     color: DASHBOARD_COLOR,
     scope: DASHBOARD_SCOPE,
     refreshIntervalSeconds: DASHBOARD_REFRESH_INTERVAL,
+    showDescriptions: { type: "boolean", description: "Whether viewers see the widgets' and variables' descriptions (an ⓘ by the title, by the label) - off, they stay as documentation. On by default; applies at once." },
     embeddingEnabled: { type: "boolean", description: "A signed embed token may show its published version outside TotalBase. Off by default." },
     delegable: { type: "boolean", description: "A manager may open it to the roles below theirs (Security.md §9.7). Off by default." },
     variables: { ...arrayOf(ref("DashboardVariable")), description: "The draft's variable definitions." },
@@ -116,7 +131,7 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
     config: {
       type: "object",
       additionalProperties: true,
-      description: `Column mapping and appearance - only the properties the widget type's catalog entry defines (${SPEC} §5.3); a presentation widget's page props and formulas (§5.11). Any widget's \`bindings.title\` is its title as a formula.`,
+      description: `Column mapping and appearance - only the properties the widget type's catalog entry defines (${SPEC} §5.3); a presentation widget's page props and formulas (§5.11); every card's own settings beside them - \`description\` (the ⓘ by the title), \`emptyText\`, \`mobile\` (§5.1). Any widget's \`bindings.title\` is its title as a formula.`,
     },
     tab: { type: ["string", "null"], description: "The tab it is on (a value of the dashboard's tabs) - null: the first." },
     referencedVariables: { ...arrayOf({ type: "string" }), description: "`$VAR.*` names the query uses - re-run only widgets a changed value affects." },
@@ -193,6 +208,7 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
       color: DASHBOARD_COLOR,
       scope: DASHBOARD_SCOPE,
       refreshIntervalSeconds: DASHBOARD_REFRESH_INTERVAL,
+      showDescriptions: { type: "boolean", description: "Whether viewers see the descriptions - unset: true." },
       variables: arrayOf(ref("DashboardVariable")),
       tabs: DASHBOARD_TABS,
       widgets: arrayOf(object({
@@ -202,7 +218,7 @@ export const DASHBOARD_SCHEMAS: Record<string, JsonSchema> = {
         tab: { type: ["string", "null"] },
         grid: { ...object({ x: INT, y: INT, w: INT, h: INT }, ["x", "y", "w", "h"]), description: "Unset: placed in order at its type's default size." },
         query: { type: ["string", "null"] },
-        config: { type: "object", additionalProperties: true },
+        config: { type: "object", additionalProperties: true, description: "The type's roles and props, and the card's own description, emptyText and mobile - never beside type and label." },
       }, ["type"])),
     }, ["name", "widgets"]),
     description: `A dashboard's whole draft as one document (${SPEC} §10.6, DM2) - who sees it isn't part of it.`,

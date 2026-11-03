@@ -25,7 +25,7 @@ import 'gridstack/dist/gridstack.css'
 import type { LocationQuery } from 'vue-router'
 import { formatDistanceToNow } from 'date-fns'
 import { dashboardWidgetDefinition } from '@totalbase/tb-catalog'
-import type { Dashboard, DashboardVariable } from '~/types/dashboard'
+import type { DashboardRunTimezone, Dashboard, DashboardVariable } from '~/types/dashboard'
 import { decodeVariableValues } from '~/utils/dashboard-variables'
 import { DASHBOARD_CANVAS_CONTEXT_KEY, type ViewerDashboardWidget } from '~/composables/useDashboardCanvasContext'
 import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
@@ -42,6 +42,8 @@ const props = withDefaults(defineProps<{
   hiddenVariables?: string[]
   /** No variables bar at all (an embed's `hide=variables`). */
   hideBar?: boolean
+  /** The "Updated 2 min ago" line under the bar - off where the host shows it itself (the App's header badge). */
+  showUpdated?: boolean
   /** The dashboard's name and description above it - unset, an embed's own setting (`display.titled`). */
   titled?: boolean
   /** Starting values in the URL's own form (`dashboard-variables.ts`) - read once, when the variables arrive, unless some are already set. */
@@ -54,6 +56,7 @@ const props = withDefaults(defineProps<{
   refreshKey: 0,
   hiddenVariables: () => [],
   hideBar: false,
+  showUpdated: true,
   titled: undefined,
   initialQuery: undefined,
   refreshOverride: undefined
@@ -65,6 +68,8 @@ const tab = defineModel<string | undefined>('tab', { default: undefined })
 const emit = defineEmits<{
   /** A click set a variable (D6) - the App's page pushes the URL, so Back undoes it. */
   filter: []
+  /** The last widget's run came back, at this time - a host that hides the "Updated" line shows it elsewhere. */
+  updated: [at: number]
 }>()
 const { t } = useI18n()
 
@@ -132,6 +137,10 @@ const displayedWidgets = computed(() => ((widgets.value ?? []) as ViewerDashboar
   .filter(widget => !tabs.value.length || (widget.tab ?? tabs.value[0]!.value) === activeTab.value))
 /** What the bar shows for each value - `{{vars.<name>.label}}`. */
 const variableLabels = ref<Record<string, string>>({})
+/** The zone the widgets' queries ran in (`meta.timezone`) - a range picker's foot says it. */
+const runTimezone = ref<DashboardRunTimezone | null>(null)
+/** The dashboard's "Show descriptions" (§4.1) - the cards' ⓘ and the bar's; a viewer's setting, on unless turned off. */
+const showDescriptions = computed(() => dashboard.value?.showDescriptions !== false)
 const session = useSession()
 // "Updated 2 min ago" (D23): when the last widget's run came back, re-read every 30 s.
 const updatedAt = ref<number | null>(null)
@@ -164,11 +173,14 @@ provide(DASHBOARD_CANVAS_CONTEXT_KEY, {
   variableValues,
   variables,
   variableLabels,
+  showDescriptions,
   // An embed has no viewer - nobody signed in sees it (Dashboards.md §9.5).
   user: computed(() => (props.embedToken ? null : session.admin.value)),
-  onLoaded: () => {
+  onLoaded: (meta) => {
     updatedAt.value = Date.now()
     now.value = updatedAt.value
+    emit('updated', updatedAt.value)
+    if (meta?.timezone) runTimezone.value = meta.timezone
   },
   readOnly: ref(true),
   dataPath: widget => `${base.value}/widgets/${widget.id}/data`,
@@ -271,10 +283,12 @@ defineExpose({ dashboard, singleWidget })
       v-model:labels="variableLabels"
       :variables="shownVariables"
       :load-options="loadVariableOptions"
+      :run-timezone="runTimezone"
+      :show-descriptions="showDescriptions"
       :style="{ paddingInline: `${GRID_MARGIN}px` }"
     />
     <p
-      v-if="updatedAgo && !hideBar"
+      v-if="updatedAgo && !hideBar && showUpdated"
       class="text-right text-xs text-dimmed"
       role="status"
       :style="{ paddingInline: `${GRID_MARGIN}px` }"

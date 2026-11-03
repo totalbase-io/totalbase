@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { buildMenuTree, pruneMenu, type MenuObject } from "./app-menu-service.js";
+import { buildMenuTree, pruneMenu, type MenuModule, type MenuObject } from "./app-menu-service.js";
 
 const dataview = (id: string, name = id): MenuObject => ({ kind: "DATAVIEW", id, name, slug: id, menuLabel: null, description: null, icon: null, color: null, viewType: "TABLE" });
 const dashboard = (id: string, name = id): MenuObject => ({ kind: "DASHBOARD", id, name, slug: id, menuLabel: null, description: null, icon: null, color: null, viewType: null });
 
 type Row = Parameters<typeof buildMenuTree>[0][number];
 const group = (id: string, name: string, position: number, parent: string | null = null): Row =>
-  ({ id, parent, kind: "GROUP", dataview: null, dashboard: null, name, icon: null, icon_open: null, open_state: "DEFAULT" as const, position });
+  ({ id, parent, kind: "GROUP", dataview: null, dashboard: null, module: null, name, icon: null, icon_open: null, open_state: "DEFAULT" as const, position });
+const moduleRow = (module: MenuModule, position: number, parent: string | null = null): Row =>
+  ({ id: module.id, parent, kind: "MODULE", dataview: null, dashboard: null, module: module.module, name: module.name, icon: module.icon, icon_open: null, open_state: "DEFAULT" as const, position });
+const users: MenuModule = { kind: "MODULE", id: "m-users", module: "users", name: "Team", icon: null };
 const item = (object: MenuObject, position: number, parent: string | null = null): Row => ({
   id: `row-${object.id}`,
   parent,
   kind: object.kind,
   dataview: object.kind === "DATAVIEW" ? object.id : null,
   dashboard: object.kind === "DASHBOARD" ? object.id : null,
+  module: null,
   name: null,
   icon: null,
   icon_open: null,
@@ -52,20 +56,29 @@ describe("buildMenuTree", () => {
       { kind: "GROUP", id: "g", name: "G", icon: null, iconOpen: null, openState: "DEFAULT", children: [b, { kind: "GROUP", id: "s", name: "Sub", icon: null, iconOpen: null, openState: "DEFAULT", children: [a] }] },
     ]);
   });
+
+  it("places a module where it was stored, with its own label and icon, and never appends one", () => {
+    const a = dataview("a");
+    expect(buildMenuTree([group("g", "G", 0), moduleRow(users, 0, "g"), item(a, 1)], [a])).toEqual([
+      { kind: "GROUP", id: "g", name: "G", icon: null, iconOpen: null, openState: "DEFAULT", children: [users] },
+      a,
+    ]);
+  });
 });
 
 describe("pruneMenu", () => {
   const a = dataview("a");
   const b = dataview("b");
   const d = dashboard("d");
-  const tree = buildMenuTree([group("g", "G", 0), group("s", "Sub", 0, "g"), item(a, 0, "s"), item(b, 1)], [a, b, d]);
+  const tree = buildMenuTree([group("g", "G", 0), group("s", "Sub", 0, "g"), item(a, 0, "s"), item(b, 1), moduleRow(users, 2)], [a, b, d]);
 
-  it("keeps only what the viewer may open", () => {
-    expect(pruneMenu(tree, (kind, id) => kind === "DATAVIEW" && id === "b")).toEqual([b]);
+  it("keeps only what the viewer may open - objects by access, modules by their table", () => {
+    expect(pruneMenu(tree, (entry) => entry.kind === "DATAVIEW" && entry.id === "b")).toEqual([b]);
+    expect(pruneMenu(tree, (entry) => entry.kind === "MODULE" && entry.module === "users")).toEqual([users]);
   });
 
   it("hides a group left with nothing visible, at any depth", () => {
-    const visibleA = pruneMenu(tree, (_kind, id) => id === "a");
+    const visibleA = pruneMenu(tree, (entry) => entry.id === "a");
     expect(visibleA).toEqual([
       { kind: "GROUP", id: "g", name: "G", icon: null, iconOpen: null, openState: "DEFAULT", children: [{ kind: "GROUP", id: "s", name: "Sub", icon: null, iconOpen: null, openState: "DEFAULT", children: [a] }] },
     ]);
@@ -74,6 +87,6 @@ describe("pruneMenu", () => {
 
   it("tells a DataView and a Dashboard with the same id apart", () => {
     const sameId = [dataview("x"), dashboard("x")];
-    expect(pruneMenu(sameId, (kind) => kind === "DASHBOARD")).toEqual([dashboard("x")]);
+    expect(pruneMenu(sameId, (entry) => entry.kind === "DASHBOARD")).toEqual([dashboard("x")]);
   });
 });

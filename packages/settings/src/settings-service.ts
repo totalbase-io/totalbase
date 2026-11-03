@@ -99,6 +99,8 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "app.menu_search": (value) => (value === "AUTO" || value === "ALWAYS" || value === "NEVER" ? null : 'Expected "AUTO", "ALWAYS" or "NEVER".'),
   "auth.mfa_required": (value) => (value === "NONE" || value === "ADMINISTRATORS" || value === "EVERYONE" ? null : 'Expected "NONE", "ADMINISTRATORS" or "EVERYONE".'),
   "app.menu_mode": (value) => (value === "TREE" || value === "SIDEBAR" ? null : 'Expected "TREE" or "SIDEBAR".'),
+  "app.shell": (value) => (value === "SHARED" || value === "STANDALONE" ? null : 'Expected "SHARED" or "STANDALONE".'),
+  "app.menu_header": (value) => (["LOGO_AND_NAME", "LOGO", "NAME", "NONE"].includes(value as string) ? null : 'Expected "LOGO_AND_NAME", "LOGO", "NAME" or "NONE".'),
   "files.storage_provider": (value) => (value === "local" || value === "s3" ? null : 'Expected "local" or "s3".'),
   "backups.destination": (value) => (value === "local" || value === "s3" ? null : 'Expected "local" or "s3".'),
   "backups.schedule": (value) => {

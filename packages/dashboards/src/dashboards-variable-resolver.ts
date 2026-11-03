@@ -81,7 +81,7 @@ export class VariableResolver {
         if (value === null) {
           bounds = { from: null, to: null, prev_from: null, prev_to: null };
         } else {
-          const { sql, params } = dateRangeBoundsSql(value as DateRangeValue);
+          const { sql, params } = dateRangeBoundsSql(value as DateRangeValue, variable.precision);
           const { rows } = await this.client.query<Record<DateRangePart, unknown>>(sql, params);
           bounds = rows[0]!;
         }

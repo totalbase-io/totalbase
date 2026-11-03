@@ -7,3 +7,4 @@ export * from "./notices.js";
 export * from "./identifiers.js";
 export * from "./day-zone.js";
 export * from "./versions.js";
+export * from "./timezone-names.js";

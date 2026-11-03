@@ -1,4 +1,5 @@
 import type { Database } from "@totalbase/database";
+import type { TimezoneSource } from "@totalbase/shared";
 import type { RoleColor } from "@totalbase/permissions";
 import type { DashboardRefreshInterval, DashboardWidgetType } from "@totalbase/tb-catalog";
 import type { TypedResultColumn } from "./typed-result.js";
@@ -28,6 +29,8 @@ export interface AdminDashboard {
   scope: DashboardScope;
   /** The App viewer's auto-refresh interval in seconds (Dashboards.md §9.4); null = off. Not versioned, like scope. */
   refreshIntervalSeconds: DashboardRefreshInterval | null;
+  /** Whether viewers see the widgets' and variables' descriptions (an ⓘ) - off, they stay as documentation. Not versioned; on by default. */
+  showDescriptions: boolean;
   /** Whether a signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). Not versioned; off by default, and a copy starts off. */
   embeddingEnabled: boolean;
   /** Whether a manager may open it to the roles below theirs (Security.md §9.7) - an administrator's word that its SQL is written with $USER.*. Not versioned; off by default. */
@@ -141,6 +144,8 @@ export interface DashboardViewer {
   userId: string | null;
   /** Their effective time zone (profile, else instance, else browser) - the transaction's `TimeZone`, so `now()`, `date_trunc` and a timestamptz cast to a date cut days where they see them. Unset: PostgreSQL's own. */
   timezone?: string | undefined;
+  /** Which step of Security.md §4.2 gave `timezone` - a run's `meta.timezone` says it. */
+  timezoneSource?: TimezoneSource | undefined;
 }
 
 export interface DashboardQueryContext extends DashboardViewer {
@@ -163,6 +168,7 @@ export interface CreateDashboardInput {
   color?: string | null | undefined;
   scope?: DashboardScope | undefined;
   refreshIntervalSeconds?: number | null | undefined;
+  showDescriptions?: boolean | undefined;
 }
 
 export interface UpdateDashboardInput {
@@ -175,6 +181,7 @@ export interface UpdateDashboardInput {
   color?: string | null | undefined;
   scope?: DashboardScope | undefined;
   refreshIntervalSeconds?: number | null | undefined;
+  showDescriptions?: boolean | undefined;
   embeddingEnabled?: boolean | undefined;
   delegable?: boolean | undefined;
   /** Replaces the whole definition list - validated by validateVariables(). */
@@ -221,6 +228,7 @@ export interface DashboardRow {
   color: string | null;
   scope: DashboardScope;
   refresh_interval_seconds: DashboardRefreshInterval | null;
+  show_descriptions: boolean;
   embedding_enabled: boolean;
   delegable: boolean;
   variables: DashboardVariable[];
@@ -240,6 +248,7 @@ export function toAdminDashboard(row: DashboardRow): AdminDashboard {
     color: row.color as RoleColor | null,
     scope: row.scope,
     refreshIntervalSeconds: row.refresh_interval_seconds,
+    showDescriptions: row.show_descriptions,
     embeddingEnabled: row.embedding_enabled,
     delegable: row.delegable,
     variables: row.variables,

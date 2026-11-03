@@ -76,6 +76,14 @@ describe("Admin workflows (/admin/api/workflows)", () => {
     expect(conflict.json().errors[0].code).toBe("WORKFLOW_REVISION_CONFLICT");
   });
 
+  it("refuses a revision that isn't an integer with 400, before PostgreSQL sees it", async () => {
+    for (const [method, url, extra] of [["PUT", `/${id}/draft`, { definition: definitionReturning({ from: "v1" }) }], ["POST", `/${id}/publish`, {}], ["PATCH", `/${id}`, { enabled: false }]] as const) {
+      const response = await call(method, url, { data: { revision: "abc", ...extra } });
+      expect(response.statusCode, `${method} ${url}: ${response.body}`).toBe(400);
+      expect(response.json().errors[0]).toMatchObject({ source: "TOTALBASE", code: "INVALID_QUERY" });
+    }
+  });
+
   it("test-runs the draft", async () => {
     const res = await call("POST", `/${id}/test-run`, { data: {} });
     expect(res.statusCode, res.body).toBe(200);

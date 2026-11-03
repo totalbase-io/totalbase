@@ -26,6 +26,14 @@ export const DATE_RANGE_PRESETS = [
 ] as const;
 export type DateRangePreset = (typeof DATE_RANGE_PRESETS)[number];
 
+/**
+ * How fine a DATE_RANGE's custom range is (Dashboards.md §3.3): `day` (the default) takes two dates and includes
+ * the last day; `minute` takes `YYYY-MM-DDTHH:MM` bounds, `to` exclusive as written - "between 22:30 last night
+ * and 09:00". Minute is a superset of day: a bare date is still valid and means the same.
+ */
+export const DATE_RANGE_PRECISIONS = ["day", "minute"] as const;
+export type DateRangePrecision = (typeof DATE_RANGE_PRECISIONS)[number];
+
 /** A fixed list's option: its value, and the text the viewer reads (its value when absent) - "Yes" for `true`. */
 export interface DashboardStaticOption {
   value: string;
@@ -51,7 +59,11 @@ export type DashboardVariableDefault = { source: "constant"; value: unknown } | 
 export interface DashboardVariable {
   name: string;
   label: string;
+  /** What the variable means, for the viewer (at most 128) - the bar's ⓘ beside its label. */
+  description?: string;
   type: DashboardVariableType;
+  /** DATE_RANGE only; absent = day. */
+  precision?: DateRangePrecision;
   /** SELECT only. */
   multiple?: boolean;
   /** SELECT only. */
@@ -70,7 +82,9 @@ export type DateRangeValue = DateRangePreset | { from: string; to: string };
 
 const NAME = /^[a-z][a-z0-9_]{0,31}$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_MINUTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const MAX_VARIABLES = 20;
+const MAX_DESCRIPTION_LENGTH = 128;
 const MAX_TEXT_LENGTH = 200;
 const MAX_STATIC_OPTIONS = 200;
 
@@ -81,6 +95,27 @@ function invalid(message: string): never {
 function validateDate(raw: unknown, what: string): string {
   if (typeof raw !== "string" || !ISO_DATE.test(raw) || Number.isNaN(Date.parse(raw))) {
     invalid(`${what} must be a YYYY-MM-DD date.`);
+  }
+  return raw;
+}
+
+/** The calendar day after `date` (YYYY-MM-DD) - a date computation, no zone involved. */
+function nextDay(date: string): string {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * A minute-precision bound (Dashboards.md §3.4): `YYYY-MM-DDTHH:MM` as written - the viewer's wall-clock time,
+ * read by PostgreSQL in the transaction's TimeZone - or a bare date, widened to what day precision means by it:
+ * the start of that day for `from`, the start of the next day for `to`.
+ */
+function validateMinute(raw: unknown, what: string, side: "from" | "to"): string {
+  if (typeof raw === "string" && ISO_DATE.test(raw) && !Number.isNaN(Date.parse(raw))) {
+    return `${side === "from" ? raw : nextDay(raw)}T00:00`;
+  }
+  if (typeof raw !== "string" || !ISO_MINUTE.test(raw) || Number.isNaN(Date.parse(`${raw}:00Z`))) {
+    invalid(`${what} must be a YYYY-MM-DDTHH:MM date and time (or a YYYY-MM-DD date).`);
   }
   return raw;
 }
@@ -100,6 +135,12 @@ export function normalizeVariableValue(variable: DashboardVariable, raw: unknown
         return raw;
       }
       if (!isRecord(raw)) invalid(`${label} must be a preset or {from, to}.`);
+      if (variable.precision === "minute") {
+        const from = validateMinute(raw.from, `${label}.from`, "from");
+        const to = validateMinute(raw.to, `${label}.to`, "to");
+        if (from >= to) invalid(`${label}: from must be before to.`);
+        return { from, to };
+      }
       const from = validateDate(raw.from, `${label}.from`);
       const to = validateDate(raw.to, `${label}.to`);
       if (from > to) invalid(`${label}: from is after to.`);
@@ -146,7 +187,7 @@ export function validateVariables(raw: unknown): DashboardVariable[] {
   const variables = raw.map((item, index): DashboardVariable => {
     if (!isRecord(item)) invalid("Each variable must be an object.");
     // Every key at every level, a refusal naming its path (DB20) - never ignored in silence.
-    onlyKeys(`variables[${index}]`, item, ["name", "label", "type", "multiple", "options", "default", "dependsOn"]);
+    onlyKeys(`variables[${index}]`, item, ["name", "label", "description", "type", "precision", "multiple", "options", "default", "dependsOn"]);
     if (isRecord(item.options)) {
       const source = item.options.source;
       onlyKeys(`variables[${index}].options`, item.options, source === "STATIC" ? ["source", "values"] : source === "QUERY" ? ["source", "query"] : ["source", "resource", "filters"]);
@@ -168,6 +209,17 @@ export function validateVariables(raw: unknown): DashboardVariable[] {
     const label = typeof item.label === "string" && item.label.trim() ? item.label.trim().slice(0, 64) : name;
 
     const variable: DashboardVariable = { name, label, type };
+    if (item.description !== undefined && item.description !== null) {
+      if (typeof item.description !== "string") invalid(`Variable "${name}": description is text.`);
+      const description = item.description.trim();
+      if (description.length > MAX_DESCRIPTION_LENGTH) invalid(`Variable "${name}": description is longer than ${MAX_DESCRIPTION_LENGTH} characters.`);
+      if (description) variable.description = description;
+    }
+    if (item.precision !== undefined && item.precision !== null) {
+      if (type !== "DATE_RANGE") invalid(`Variable "${name}": only a DATE_RANGE has a precision.`);
+      if (!DATE_RANGE_PRECISIONS.includes(item.precision as DateRangePrecision)) invalid(`Variable "${name}": precision must be one of ${DATE_RANGE_PRECISIONS.join(", ")}.`);
+      variable.precision = item.precision as DateRangePrecision;
+    }
     if (type === "SELECT") {
       variable.multiple = item.multiple === true;
       const options = item.options;
@@ -259,19 +311,23 @@ function resolveDependencies(variables: DashboardVariable[]): void {
 /**
  * A DATE_RANGE value -> the SQL that computes its bounds, run by
  * PostgreSQL itself so the session time zone decides where "this month"
- * starts. Presets are fixed strings; a custom range binds its two dates
- * ($1/$2). `to` is exclusive: a custom range's last day is included.
+ * starts. Presets are fixed strings; a custom range binds its two bounds
+ * ($1/$2). `to` is exclusive: at day precision a custom range's last day is
+ * included (`to::date + 1`); at minute precision both bounds are the wall-clock
+ * times as written, read in the session time zone (`timestamp` → `timestamptz`).
  *
  * With them, the **previous period** (D22): `prev_from`/`prev_to`, as long and
  * just before - a calendar preset's previous unit (this month → last month,
  * today → yesterday), any other range shifted back by its own length.
  */
-export function dateRangeBoundsSql(value: DateRangeValue): { sql: string; params: unknown[] } {
+export function dateRangeBoundsSql(value: DateRangeValue, precision: DateRangePrecision = "day"): { sql: string; params: unknown[] } {
   const shifted = (from: string, to: string) => `SELECT f AS "from", t AS "to", f - (t - f) AS prev_from, f AS prev_to FROM (SELECT ${from} AS f, ${to} AS t) b`;
   const calendar = (period: "today" | "this_month" | "last_month" | "this_year", unit: string) =>
     `SELECT f AS "from", t AS "to", f - interval '${unit}' AS prev_from, f AS prev_to FROM (SELECT ${periodSql(period, "from")} AS f, ${periodSql(period, "to")} AS t) b`;
   if (typeof value !== "string") {
-    return { sql: shifted("$1::date::timestamptz", "($2::date + 1)::timestamptz"), params: [value.from, value.to] };
+    return precision === "minute"
+      ? { sql: shifted("$1::timestamp::timestamptz", "$2::timestamp::timestamptz"), params: [value.from, value.to] }
+      : { sql: shifted("$1::date::timestamptz", "($2::date + 1)::timestamptz"), params: [value.from, value.to] };
   }
   const presets: Record<DateRangePreset, string> = {
     last_hour: shifted("now() - interval '1 hour'", "now()"),

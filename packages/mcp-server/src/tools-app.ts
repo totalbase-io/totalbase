@@ -11,9 +11,14 @@ import { IDEMPOTENT, READ_ONLY, result } from "./tool-helpers.js";
  */
 
 interface MenuObject { kind: "DATAVIEW" | "DASHBOARD"; id: string; name: string; slug: string; menuLabel: string | null; description: string | null }
+interface MenuModule { kind: "MODULE"; id: string; module: MenuModuleName; name: string | null; icon: string | null }
 interface MenuGroup { kind: "GROUP"; id: string; name: string; icon: string | null; iconOpen: string | null; openState: "DEFAULT" | "OPEN" | "CLOSED"; children: MenuNode[] }
-type MenuNode = MenuGroup | MenuObject;
-interface AdminMenu { mode: string; groupsOpen: string; search: string; nodes: MenuNode[]; hidden: MenuObject[] }
+type MenuNode = MenuGroup | MenuObject | MenuModule;
+interface AdminMenu { mode: string; groupsOpen: string; search: string; shell: string; menuHeader: string; nodes: MenuNode[]; hidden: MenuObject[] }
+
+const MENU_MODULES = ["users", "roles", "files", "templates", "logs"] as const;
+type MenuModuleName = (typeof MENU_MODULES)[number];
+const MENU_HEADERS = ["logo_and_name", "logo", "name", "none"] as const;
 
 interface NodeInput {
   group?: string | undefined;
@@ -24,6 +29,7 @@ interface NodeInput {
   children?: NodeInput[] | undefined;
   dataview?: string | undefined;
   dashboard?: string | undefined;
+  module?: MenuModuleName | undefined;
   label?: string | null | undefined;
   description?: string | null | undefined;
 }
@@ -42,26 +48,35 @@ const nodeInput: z.ZodType<NodeInput> = z.lazy(() =>
     children: z.array(nodeInput).optional(),
     dataview: z.string().optional().describe("A published DataView's slug (or id)"),
     dashboard: z.string().optional().describe("A published dashboard's slug (or id)"),
-    label: z.string().max(32).nullable().optional().describe("An item's label in the menu (its menu_label) - left out, it stays; null: its name"),
+    module: z.enum(MENU_MODULES).optional().describe("A portal module as an entry of the menu - Users, Roles, Files, Templates or Logs; each at most once. A viewer sees it when their roles may read its table (never a grant). Its icon: `icon`"),
+    label: z.string().max(32).nullable().optional().describe("An item's label in the menu (its menu_label) - left out, it stays; null: its name. On a module: its label (null: the module's name)"),
     description: z.string().max(128).nullable().optional().describe("An item's description, the menu's tooltip - left out, it stays"),
   }),
 );
 
 const compact = (nodes: MenuNode[]): unknown[] =>
-  nodes.map((n) => (n.kind === "GROUP" ? { group: n.name, id: n.id, ...(n.icon && { icon: n.icon }), ...(n.iconOpen && { icon_open: n.iconOpen }), ...(n.openState !== "DEFAULT" && { open: n.openState.toLowerCase() }), children: compact(n.children) } : { [n.kind === "DATAVIEW" ? "dataview" : "dashboard"]: n.slug, name: n.name, ...(n.menuLabel && { label: n.menuLabel }), ...(n.description && { description: n.description }) }));
+  nodes.map((n) =>
+    n.kind === "GROUP"
+      ? { group: n.name, id: n.id, ...(n.icon && { icon: n.icon }), ...(n.iconOpen && { icon_open: n.iconOpen }), ...(n.openState !== "DEFAULT" && { open: n.openState.toLowerCase() }), children: compact(n.children) }
+      : n.kind === "MODULE"
+        ? { module: n.module, id: n.id, ...(n.name && { label: n.name }), ...(n.icon && { icon: n.icon }) }
+        : { [n.kind === "DATAVIEW" ? "dataview" : "dashboard"]: n.slug, name: n.name, ...(n.menuLabel && { label: n.menuLabel }), ...(n.description && { description: n.description }) },
+  );
+/** The menu's settings as the tools show them. */
+const settingsOf = (menu: AdminMenu) => ({ mode: menu.mode, groups_open: menu.groupsOpen.toLowerCase(), search: menu.search.toLowerCase(), shell: menu.shell.toLowerCase(), menu_header: menu.menuHeader.toLowerCase() });
 
 export function registerAppTools(server: McpServer, client: AdminClient): void {
   server.registerTool(
     "get_app_menu",
     {
       title: "Get App menu",
-      description: "The App menu as administrators arrange it: groups and, in order, every published LISTED DataView and dashboard (by slug); hidden lists the published EMBEDDED_ONLY ones (scope - update_dataview / update_dashboard - shows them). Each viewer sees only what they may open.",
+      description: "The App menu as administrators arrange it: groups and, in order, every published LISTED DataView and dashboard (by slug) and the modules placed in it ({module: users|roles|files|templates|logs}); hidden lists the published EMBEDDED_ONLY ones (scope - update_dataview / update_dashboard - shows them). Each viewer sees only what they may open. shell says how non-administrators get the App: shared (beside the rail) or standalone (the menu as the only sidebar, headed as menu_header says).",
       inputSchema: {},
       annotations: READ_ONLY,
     },
     async () => {
       const menu = await client.get<AdminMenu>("/app/menu");
-      return result({ mode: menu.mode, groups_open: menu.groupsOpen.toLowerCase(), search: menu.search.toLowerCase(), nodes: compact(menu.nodes), hidden: menu.hidden.map((h) => ({ [h.kind === "DATAVIEW" ? "dataview" : "dashboard"]: h.slug, name: h.name })) });
+      return result({ ...settingsOf(menu), nodes: compact(menu.nodes), hidden: menu.hidden.map((h) => ({ [h.kind === "DATAVIEW" ? "dataview" : "dashboard"]: h.slug, name: h.name })) });
     },
   );
 
@@ -96,26 +111,35 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
     {
       title: "Set App menu",
       description:
-        "Replace the App menu's arrangement in one go: an ordered list of groups ({group, icon?, icon_open?, open? default|open|closed, id? to keep one, children}) and items ({dataview: slug} or {dashboard: slug}, with label? and description? - what the menu shows and its tooltip). Only published, LISTED objects are placed; one left out goes at the end of the root; one placed twice is refused. Answers the resulting menu.",
+        "Replace the App menu's arrangement in one go: an ordered list of groups ({group, icon?, icon_open?, open? default|open|closed, id? to keep one, children}), items ({dataview: slug} or {dashboard: slug}, with label? and description? - what the menu shows and its tooltip) and modules ({module: users|roles|files|templates|logs, label?, icon?} - the portal screens a viewer's permissions open, from the App's own menu; needed in the standalone shell, which has no rail). Only published, LISTED objects are placed; one left out goes at the end of the root; a module left out leaves the menu; one placed twice is refused. Answers the resulting menu.",
       inputSchema: {
         nodes: z.array(nodeInput),
         groups_open: z.enum(["current", "open", "closed"]).optional().describe("How the tree menu's groups start when a group says default: current - only the one holding the page (the default), open, closed"),
         search: z.enum(["auto", "always", "never"]).optional().describe("The menu's search box: auto - once a viewer sees more than 15 entries (the default), always, never"),
+        shell: z.enum(["shared", "standalone"]).optional().describe("How non-administrators get the App: shared - beside the rail, as administrators see it (the default); standalone - the App menu is the only sidebar: the instance's logo and name at its head, their account at its foot, and the modules placed in the menu. Administrators always keep the rail"),
+        menu_header: z.enum(MENU_HEADERS).optional().describe("What heads the standalone App's menu: logo_and_name (the default), logo, name or none"),
       },
       annotations: IDEMPOTENT,
     },
-    async ({ nodes, groups_open, search }) => {
-      if (groups_open) await client.patch("/settings/app", { data: { menu_groups_open: groups_open.toUpperCase() } });
-      if (search) await client.patch("/settings/app", { data: { menu_search: search.toUpperCase() } });
+    async ({ nodes, groups_open, search, shell, menu_header }) => {
+      const settings = {
+        ...(groups_open && { menu_groups_open: groups_open.toUpperCase() }),
+        ...(search && { menu_search: search.toUpperCase() }),
+        ...(shell && { shell: shell.toUpperCase() }),
+        ...(menu_header && { menu_header: menu_header.toUpperCase() }),
+      };
+      if (Object.keys(settings).length > 0) await client.patch("/settings/app", { data: settings });
       const [dataviews, dashboards, current] = await Promise.all([
         client.get<{ id: string; slug: string }[]>("/dataviews"),
         client.get<{ id: string; slug: string }[]>("/dashboards"),
         client.get<AdminMenu>("/app/menu"),
       ]);
-      // A group kept by id keeps its icon unless one is sent - rearranging never drops it.
+      // A group kept by id keeps its icon unless one is sent - rearranging never drops it; a module placed again keeps its id, label and icon the same way.
       const iconsById = new Map<string, { icon: string | null; iconOpen: string | null; openState: string }>();
+      const modules = new Map<MenuModuleName, MenuModule>();
       const collect = (list: MenuNode[]): void => {
         for (const n of list) {
+          if (n.kind === "MODULE") modules.set(n.module, n);
           if (n.kind !== "GROUP") continue;
           iconsById.set(n.id, { icon: n.icon, iconOpen: n.iconOpen, openState: n.openState });
           collect(n.children);
@@ -131,7 +155,11 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
         if (node.group !== undefined) return { kind: "GROUP", ...(node.id && { id: node.id }), name: node.group, icon: node.icon !== undefined ? node.icon : (node.id ? iconsById.get(node.id)?.icon ?? null : null), iconOpen: node.icon_open !== undefined ? node.icon_open : (node.id ? iconsById.get(node.id)?.iconOpen ?? null : null), openState: node.open !== undefined ? node.open.toUpperCase() : (node.id ? iconsById.get(node.id)?.openState ?? "DEFAULT" : "DEFAULT"), children: (node.children ?? []).map(toInput) };
         if (node.dataview) return { kind: "DATAVIEW", id: idOf(dataviews, node.dataview, "dataview") };
         if (node.dashboard) return { kind: "DASHBOARD", id: idOf(dashboards, node.dashboard, "dashboard") };
-        throw new Error("Each node is a group, a dataview or a dashboard.");
+        if (node.module) {
+          const kept = modules.get(node.module);
+          return { kind: "MODULE", ...(kept && { id: kept.id }), module: node.module, name: node.label !== undefined ? node.label : (kept?.name ?? null), icon: node.icon !== undefined ? node.icon : (kept?.icon ?? null) };
+        }
+        throw new Error("Each node is a group, a dataview, a dashboard or a module.");
       };
       await client.put<AdminMenu>("/app/menu", { data: { nodes: nodes.map(toInput) } });
       // An item's label and description are its own (a DataView's or a dashboard's, live - no publish): set where sent.
@@ -148,7 +176,7 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
       walk(nodes);
       await Promise.all(patches);
       const menu = await client.get<AdminMenu>("/app/menu");
-      return result({ mode: menu.mode, groups_open: menu.groupsOpen.toLowerCase(), nodes: compact(menu.nodes) });
+      return result({ ...settingsOf(menu), nodes: compact(menu.nodes) });
     },
   );
 }

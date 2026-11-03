@@ -50,7 +50,8 @@ async function loadHomeOptions() {
   try {
     // Each with where it sits in the menu - two "New" in different groups read apart.
     const objects: { object: MenuObject, path: string[] }[] = []
-    const walk = (nodes: MenuNode[], path: string[]) => nodes.forEach(node => node.kind === 'GROUP' ? walk(node.children, [...path, node.name]) : objects.push({ object: node, path }))
+    // A home is a DataView or a dashboard - never a module entry.
+    const walk = (nodes: MenuNode[], path: string[]) => nodes.forEach(node => node.kind === 'GROUP' ? walk(node.children, [...path, node.name]) : node.kind === 'MODULE' ? undefined : objects.push({ object: node, path }))
     walk((await api.get<AppMenu>('/app/menu')).data.nodes, [])
     homeOptions.value = objects.map(({ object, path }) => ({
       value: `${object.kind}:${object.id}`,

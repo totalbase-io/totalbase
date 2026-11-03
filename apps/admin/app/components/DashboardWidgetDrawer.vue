@@ -156,7 +156,7 @@ const formulaFields = computed<CatalogColumn[]>(() => [
   ...props.variables.flatMap(v => [
     field(`vars.${v.name}`, v.type.toLowerCase()),
     field(`vars.${v.name}.label`, 'text'),
-    ...(v.type === 'DATE_RANGE' ? [field(`vars.${v.name}.from`, 'date'), field(`vars.${v.name}.to`, 'date')] : [])
+    ...(v.type === 'DATE_RANGE' ? [field(`vars.${v.name}.from`, v.precision === 'minute' ? 'timestamp' : 'date'), field(`vars.${v.name}.to`, v.precision === 'minute' ? 'timestamp' : 'date')] : [])
   ]),
   field('user.id', 'uuid'),
   field('user.email', 'text'),

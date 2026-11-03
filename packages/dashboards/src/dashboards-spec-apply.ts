@@ -43,7 +43,7 @@ export function referencePathOf(config: Record<string, unknown>, message: string
 export async function normalizedDraft(ctx: DashboardsContext, dashboard: AdminDashboard): Promise<NormalizedSpec> {
   const widgets = await listWidgets(ctx, dashboard.id);
   return {
-    dashboard: { name: dashboard.name, slug: dashboard.slug, description: dashboard.description, icon: dashboard.icon, menuLabel: dashboard.menuLabel, color: dashboard.color, scope: dashboard.scope, refreshIntervalSeconds: dashboard.refreshIntervalSeconds },
+    dashboard: { name: dashboard.name, slug: dashboard.slug, description: dashboard.description, icon: dashboard.icon, menuLabel: dashboard.menuLabel, color: dashboard.color, scope: dashboard.scope, refreshIntervalSeconds: dashboard.refreshIntervalSeconds, showDescriptions: dashboard.showDescriptions },
     variables: dashboard.variables,
     tabs: dashboard.tabs,
     widgets: widgets.map((w) => ({ id: w.id, type: w.type, label: w.label, tab: w.tab, grid: { x: w.gridX, y: w.gridY, w: w.gridW, h: w.gridH }, query: w.query, config: w.config })),
@@ -111,7 +111,7 @@ export async function applySpec(
   const raw = input.spec;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new TotalBaseError("DASHBOARD_SPEC_INVALID", "spec must be an object: {name, variables, tabs, widgets, ...}.");
   const spec = raw as Record<string, unknown>;
-  const SPEC_KEYS = ["name", "slug", "description", "icon", "menuLabel", "color", "scope", "refreshIntervalSeconds", "variables", "tabs", "widgets"];
+  const SPEC_KEYS = ["name", "slug", "description", "icon", "menuLabel", "color", "scope", "refreshIntervalSeconds", "showDescriptions", "variables", "tabs", "widgets"];
   for (const key of Object.keys(spec)) {
     if (!SPEC_KEYS.includes(key)) errors.push({ path: key, code: "DASHBOARD_SPEC_INVALID", message: `spec has no "${key}" - it takes: ${SPEC_KEYS.join(", ")}.` });
   }
@@ -131,6 +131,8 @@ export async function applySpec(
   const refreshIntervalSeconds = await attempt("refreshIntervalSeconds", () => validateRefreshInterval(spec.refreshIntervalSeconds ?? null));
   const scope = spec.scope ?? "LISTED";
   if (scope !== "LISTED" && scope !== "EMBEDDED_ONLY") errors.push({ path: "scope", code: "DASHBOARD_SPEC_INVALID", message: `scope is LISTED or EMBEDDED_ONLY - got ${JSON.stringify(scope)}.` });
+  const showDescriptions = spec.showDescriptions ?? true;
+  if (typeof showDescriptions !== "boolean") errors.push({ path: "showDescriptions", code: "DASHBOARD_SPEC_INVALID", message: `showDescriptions is true (the default) or false - got ${JSON.stringify(showDescriptions)}.` });
   if (spec.icon !== undefined && spec.icon !== null && typeof spec.icon !== "string") errors.push({ path: "icon", code: "DASHBOARD_SPEC_INVALID", message: "icon takes a Lucide icon name, e.g. i-lucide-chart-pie." });
   if (name !== undefined || slug !== undefined) {
     const { rows } = await ctx.database.query<{ name: string; slug: string }>(
@@ -194,7 +196,7 @@ export async function applySpec(
     }
     const widget = item as Record<string, unknown>;
     for (const key of Object.keys(widget)) {
-      if (!WIDGET_KEYS.includes(key)) errors.push({ path: `${path}.${key}`, code: "DASHBOARD_WIDGET_INVALID", message: `A widget has no "${key}" - it takes: ${WIDGET_KEYS.join(", ")}.` });
+      if (!WIDGET_KEYS.includes(key)) errors.push({ path: `${path}.${key}`, code: "DASHBOARD_WIDGET_INVALID", message: `A widget has no "${key}" - it takes: ${WIDGET_KEYS.join(", ")} (description, emptyText and mobile go inside config, beside the type's props).` });
     }
     const widgetId = typeof widget.id === "string" ? widget.id : undefined;
     if (widget.id !== undefined && widget.id !== null && (!widgetId || !own.has(widgetId))) {
@@ -269,12 +271,12 @@ export async function applySpec(
   // Widgets without a grid: placed in order, at their type's default size.
   const places = placeWidgets(checked.map((w) => ({ grid: w.grid, size: dashboardWidgetDefinition(w.type).size })));
   const next: NormalizedSpec = {
-    dashboard: { name, slug, description, icon: (spec.icon ?? null) as string | null, menuLabel, color, scope, refreshIntervalSeconds },
+    dashboard: { name, slug, description, icon: (spec.icon ?? null) as string | null, menuLabel, color, scope, refreshIntervalSeconds, showDescriptions },
     variables,
     tabs,
     widgets: checked.map((w, i) => ({ id: w.id, type: w.type, label: w.label, tab: w.tab, grid: places[i]!, query: w.query, config: w.config })),
   };
-  const diff = diffSpecs(draft ?? { dashboard: { name: null, slug: null, description: null, icon: null, menuLabel: null, color: null, scope: null, refreshIntervalSeconds: null }, variables: [], tabs: [], widgets: [] }, next);
+  const diff = diffSpecs(draft ?? { dashboard: { name: null, slug: null, description: null, icon: null, menuLabel: null, color: null, scope: null, refreshIntervalSeconds: null, showDescriptions: null }, variables: [], tabs: [], widgets: [] }, next);
   const planned = checked.map((w) => ({ path: w.path, id: w.id ?? null, columns: w.columns, roles: w.roles ? roleDecisions(w.type, w.roles, language) : null }));
   if (input.dryRun || (current && emptyDiff(diff))) {
     return { id, created: false, applied: false, draftVersion: draft ? draftVersion(draft) : null, diff, widgets: planned };
@@ -282,16 +284,16 @@ export async function applySpec(
 
   try {
     const result = await ctx.database.transaction(async (client) => {
-      const values = [name, slug, description, next.dashboard.icon, menuLabel, color, scope, refreshIntervalSeconds, JSON.stringify(variables), JSON.stringify(tabs)];
+      const values = [name, slug, description, next.dashboard.icon, menuLabel, color, scope, refreshIntervalSeconds, showDescriptions, JSON.stringify(variables), JSON.stringify(tabs)];
       const dashboardId = current
         ? (await client.query<{ id: string }>(
             `UPDATE totalbase.dashboards SET name = $2, slug = $3, description = $4, icon = $5, menu_label = $6, color = $7, scope = $8,
-               refresh_interval_seconds = $9, variables = $10::jsonb, tabs = $11::jsonb, updated_at = now() WHERE id = $1 RETURNING id`,
+               refresh_interval_seconds = $9, show_descriptions = $10, variables = $11::jsonb, tabs = $12::jsonb, updated_at = now() WHERE id = $1 RETURNING id`,
             [current.id, ...values],
           )).rows[0]!.id
         : (await client.query<{ id: string }>(
-            `INSERT INTO totalbase.dashboards (name, slug, description, icon, menu_label, color, scope, refresh_interval_seconds, variables, tabs)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) RETURNING id`,
+            `INSERT INTO totalbase.dashboards (name, slug, description, icon, menu_label, color, scope, refresh_interval_seconds, show_descriptions, variables, tabs)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb) RETURNING id`,
             values,
           )).rows[0]!.id;
       const deleted = diff.widgets.deleted.map((w) => w.id);

@@ -64,6 +64,33 @@ describe("dashboard variables (D22, integration)", () => {
     expect(await run("today")).toMatchObject({ adjacent: true });
   });
 
+  it("cuts a minute-precision range at the wall-clock times written, in the viewer's zone, `to` exclusive", async () => {
+    const variables = [{ name: "p", label: "P", type: "DATE_RANGE", precision: "minute" }];
+    const run = async (value: unknown, timezone?: string) => (await dashboards.executeQuery(
+      `SELECT to_char($VAR.p.from AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS from_utc, to_char($VAR.p.to AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS to_utc,
+              ($VAR.p.to - $VAR.p.from)::text AS length, ($VAR.p.prev_to = $VAR.p.from) AS adjacent, ($VAR.p.to - $VAR.p.from = $VAR.p.prev_to - $VAR.p.prev_from) AS same_length,
+              pg_typeof($VAR.p.from)::text AS type`,
+      LIMITS,
+      { userId: null, variables: variables as never, values: { p: value }, timezone },
+    )).rows[0]!;
+    // 22:30 in Salta (UTC-3) is 01:30 UTC; 09:00 is 12:00 UTC. The bounds are exactly what was written - no +1 day.
+    expect(await run({ from: "2026-11-02T22:30", to: "2026-11-03T09:00" }, "America/Argentina/Salta")).toEqual({
+      from_utc: "2026-11-03 01:30", to_utc: "2026-11-03 12:00", length: "10:30:00", adjacent: true, same_length: true, type: "timestamp with time zone",
+    });
+    // The same wall-clock range in another zone is another instant.
+    expect(await run({ from: "2026-11-02T22:30", to: "2026-11-03T09:00" }, "Europe/Madrid")).toMatchObject({ from_utc: "2026-11-02 21:30", to_utc: "2026-11-03 08:00" });
+    // A bare date part still means the whole day, as day precision does.
+    expect(await run({ from: "2026-11-02", to: "2026-11-02" }, "UTC")).toMatchObject({ from_utc: "2026-11-02 00:00", to_utc: "2026-11-03 00:00", length: "1 day" });
+    // Day precision is untouched by the option's existence.
+    const asDays = (await dashboards.executeQuery(
+      `SELECT to_char($VAR.p.to AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS to_utc`,
+      LIMITS,
+      { userId: null, variables: [{ name: "p", label: "P", type: "DATE_RANGE" }] as never, values: { p: { from: "2026-11-02", to: "2026-11-02" } }, timezone: "UTC" },
+    )).rows[0]!;
+    expect(asDays).toEqual({ to_utc: "2026-11-03 00:00" });
+    await expect(run({ from: "2026-11-02T22:30", to: "2026-11-02T22:30" })).rejects.toMatchObject({ code: "DASHBOARD_VARIABLE_INVALID" });
+  });
+
   it("takes a default from the viewer's own user row, and refuses a raw value that isn't a default's shape", async () => {
     await expect(dashboards.update(dashboardId, { variables: [{ name: "who", label: "Who", type: "TEXT", default: "$USER.email" }] })).rejects.toMatchObject({ code: "DASHBOARD_VARIABLE_INVALID" });
     await expect(dashboards.update(dashboardId, { variables: [{ name: "who", label: "Who", type: "TEXT", default: { source: "user", field: "no_such_column" } }] })).rejects.toMatchObject({ code: "DASHBOARD_VARIABLE_INVALID" });

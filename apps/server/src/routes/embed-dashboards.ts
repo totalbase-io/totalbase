@@ -15,7 +15,7 @@ import {
 } from "@totalbase/dashboards";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
-import { effectiveTimezone } from "../display-preferences.js";
+import { resolveTimezone, runTimezone } from "../display-preferences.js";
 import { dashboardQueryLimits, freshRun, variableValues, type VariableValues } from "./admin-dashboards.js";
 import { recordWidgetExport, withoutOptionsQuery, withoutQuery, type ExportAuditBody } from "./app-dashboards.js";
 import { serveDashboardFile, verifyDashboardFile, withFileLinks } from "../dashboard-files.js";
@@ -178,7 +178,8 @@ function boundValues(embed: Embed, body: DataBody<VariableValues> | undefined): 
 
 /** Nobody signed in: no `$USER.*` (a widget using it fails), the instance's zone or the browser's. */
 async function embedViewer(context: AppContext, request: FastifyRequest) {
-  return { userId: null, timezone: await effectiveTimezone(context, undefined, request.headers["x-totalbase-timezone"]) };
+  const zone = await resolveTimezone(context, undefined, request.headers["x-totalbase-timezone"]);
+  return { userId: null, timezone: zone.name, timezoneSource: zone.source };
 }
 
 /**
@@ -214,6 +215,7 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
         name: embed.dashboard.name,
         description: embed.dashboard.description,
         refreshIntervalSeconds: embed.dashboard.refreshIntervalSeconds,
+        showDescriptions: embed.dashboard.showDescriptions,
         display: embed.display,
         // One widget: the card alone - no tabs to pick between.
         widget: embed.widget,
@@ -289,12 +291,14 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
   app.post<{ Params: { widgetId: string }; Body: DataBody<VariableValues> & { fresh?: boolean } }>("/embed/api/dashboard/widgets/:widgetId/data", async (request) => {
     const embed = await embedOf(context, request);
     assertServed(embed, request.params.widgetId);
+    const viewer = await embedViewer(context, request);
+    const meta = { timezone: runTimezone(viewer) };
     // Its files' links (D14): one that isn't PUBLIC only where the embed allows files.
     const result = await withFileLinks(context, await context.dashboardsAdmin.executePublishedWidget(
       embed.dashboard.id,
       request.params.widgetId,
       { ...(await dashboardQueryLimits(context)), ...freshRun(request.body) },
-      await embedViewer(context, request),
+      viewer,
       boundValues(embed, request.body),
     ), {
       dashboardId: embed.dashboard.id,
@@ -305,13 +309,14 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
     // The _ columns only a click reads that doesn't run here never leave the server (D6).
     const widget = embed.snapshot.widgets.find((w) => w.id === request.params.widgetId);
     const hidden = widget ? embedHiddenColumns(widget.config, editableNames(embed)) : new Set<string>();
-    if (hidden.size === 0) return { data: result };
+    if (hidden.size === 0) return { data: result, meta };
     return {
       data: {
         ...result,
         columns: result.columns.filter((c) => !hidden.has(c.name)),
         rows: result.rows.map((row) => Object.fromEntries(Object.entries(row).filter(([name]) => !hidden.has(name)))),
       },
+      meta,
     };
   });
 }

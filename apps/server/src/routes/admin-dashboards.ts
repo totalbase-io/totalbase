@@ -2,13 +2,13 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { embedClick, type DashboardQueryLimits, type DashboardScope, type DashboardWidgetType, type TypedResultColumn } from "@totalbase/dashboards";
 import { TotalBaseError } from "@totalbase/errors";
 import { dashboardDecision, dashboardValueKind, decisionLanguage, type DashboardDecisionLanguage } from "@totalbase/tb-catalog";
-import { dataEnvelope } from "@totalbase/openapi";
+import { dataEnvelope, type JsonSchema } from "@totalbase/openapi";
 import type { AppContext } from "../context.js";
 import { withFileLinks } from "../dashboard-files.js";
-import { requestViewer } from "../display-preferences.js";
+import { requestViewer, runTimezone } from "../display-preferences.js";
 import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
-import {
+import { DASHBOARD_RUN_META,
   DASHBOARD_COLOR,
   DASHBOARD_REFRESH_INTERVAL,
   DASHBOARD_SCHEMAS,
@@ -21,6 +21,9 @@ import {
 import { type DataBody, optionalData, publishNote, versionParam } from "../request-body.js";
 import { registerDeleteVersionsRoute } from "./delete-versions.js";
 
+/** A run's `200`: the result as `data`, the zone it ran in as `meta.timezone` (Dashboards.md §2.3). */
+const okRun = (schema: JsonSchema) => ({ status: "200" as const, schema: { type: "object", required: ["data"], properties: { data: schema, meta: DASHBOARD_RUN_META } } as JsonSchema });
+
 interface CreateDashboardBody {
   name: string;
   slug?: string;
@@ -29,6 +32,7 @@ interface CreateDashboardBody {
   color?: string | null;
   scope?: DashboardScope;
   refreshIntervalSeconds?: number | null;
+  showDescriptions?: boolean;
 }
 
 interface ApplySpecBody {
@@ -48,6 +52,7 @@ interface UpdateDashboardBody {
   color?: string | null;
   scope?: DashboardScope;
   refreshIntervalSeconds?: number | null;
+  showDescriptions?: boolean;
   embeddingEnabled?: boolean;
   delegable?: boolean;
   variables?: unknown;
@@ -150,6 +155,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     color: DASHBOARD_COLOR,
     scope: { ...DASHBOARD_SCOPE, description: `${DASHBOARD_SCOPE.description} Default LISTED.` },
     refreshIntervalSeconds: { ...DASHBOARD_REFRESH_INTERVAL, description: `${DASHBOARD_REFRESH_INTERVAL.description} Default null.` },
+    showDescriptions: { type: "boolean", description: "Whether viewers see the widgets' and variables' descriptions (an ⓘ) - off, they stay as documentation. Applies at once. Default true." },
   };
   const GRID = {
     gridX: { type: "integer", description: "Column on the 12-column canvas." },
@@ -326,6 +332,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
       color: body.color,
       scope: body.scope,
       refreshIntervalSeconds: body.refreshIntervalSeconds,
+      showDescriptions: body.showDescriptions,
     });
     reply.code(201);
     return { data: dashboard };
@@ -338,7 +345,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     ...adminDoc("dashboards", {
       summary: "Update a dashboard",
       description:
-        "Identity, `refreshIntervalSeconds` and `embeddingEnabled` changes apply at once (they are not versioned). `variables` replaces the draft's whole definition " +
+        "Identity, `refreshIntervalSeconds`, `showDescriptions` and `embeddingEnabled` changes apply at once (they are not versioned). `variables` replaces the draft's whole definition " +
         "list - versioned with the widgets, so it reaches Apps on the next publish.",
       pathParameters: ID,
       requestBody: {
@@ -366,6 +373,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
         color: body.color,
         scope: body.scope,
         refreshIntervalSeconds: body.refreshIntervalSeconds,
+        showDescriptions: body.showDescriptions,
         embeddingEnabled: body.embeddingEnabled,
         delegable: body.delegable,
         variables: body.variables,
@@ -532,20 +540,18 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
       description: `Executes \`query\` (not saved) with the draft's variable definitions. ${WIDGET_SQL_SEMANTICS}`,
       pathParameters: ID,
       requestBody: { schema: dataEnvelope(object({ query: { type: "string", description: "One SELECT-like statement; trailing semicolons are stripped." }, variables: DASHBOARD_VARIABLE_VALUES }, ["query"])) },
-      response: ok(ref("DashboardQueryResult")),
+      response: okRun(ref("DashboardQueryResult")),
       errors: ["422"],
       schemas,
     }),
   },
-    async (request) => ({
-      data: await context.dashboardsAdmin.executeDraftQuery(
-        request.params.id,
-        optionalData(request.body).query ?? "",
-        await dashboardQueryLimits(context),
-        await requestViewer(context, request),
-        variableValues(request.body),
-      ),
-    }),
+    async (request) => {
+      const viewer = await requestViewer(context, request);
+      return {
+        data: await context.dashboardsAdmin.executeDraftQuery(request.params.id, optionalData(request.body).query ?? "", await dashboardQueryLimits(context), viewer, variableValues(request.body)),
+        meta: { timezone: runTimezone(viewer) },
+      };
+    },
   );
 
   // The editor canvas - a widget's saved draft query, with the variables bar's current values.
@@ -558,21 +564,25 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
       description: `422 DASHBOARD_WIDGET_NOT_CONFIGURED when it has no query yet. ${WIDGET_SQL_SEMANTICS}`,
       pathParameters: WIDGET,
       requestBody: VALUES_BODY,
-      response: ok(ref("DashboardDraftRun")),
+      response: okRun(ref("DashboardDraftRun")),
       errors: ["422"],
       schemas,
     }),
   },
-    async (request) => ({
-      data: await withFileLinks(context, await context.dashboardsAdmin.executeDraftWidget(
-        request.params.id,
-        request.params.widgetId,
-        await dashboardQueryLimits(context),
-        await requestViewer(context, request),
-        variableValues(request.body),
-        await appLanguage(context),
-      ), appFileScope(request.params.id, request.params.widgetId)),
-    }),
+    async (request) => {
+      const viewer = await requestViewer(context, request);
+      return {
+        data: await withFileLinks(context, await context.dashboardsAdmin.executeDraftWidget(
+          request.params.id,
+          request.params.widgetId,
+          await dashboardQueryLimits(context),
+          viewer,
+          variableValues(request.body),
+          await appLanguage(context),
+        ), appFileScope(request.params.id, request.params.widgetId)),
+        meta: { timezone: runTimezone(viewer) },
+      };
+    },
   );
 
   // A SELECT variable's options for the editor's variables bar (draft definitions).
@@ -756,20 +766,24 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
       description: `The widget's query and variable definitions come from that version's snapshot, never the caller. ${WIDGET_SQL_SEMANTICS}`,
       pathParameters: { ...VERSION, widgetId: WIDGET.widgetId },
       requestBody: VALUES_BODY,
-      response: ok(ref("DashboardQueryResult")),
+      response: okRun(ref("DashboardQueryResult")),
       errors: ["422"],
       schemas,
     }),
   },
-    async (request) => ({
-      data: await withFileLinks(context, await context.dashboardsAdmin.executeVersionWidget(
-        request.params.id,
-        versionParam(request.params.version),
-        request.params.widgetId,
-        await dashboardQueryLimits(context),
-        await requestViewer(context, request),
-        variableValues(request.body),
-      ), appFileScope(request.params.id, request.params.widgetId)),
-    }),
+    async (request) => {
+      const viewer = await requestViewer(context, request);
+      return {
+        data: await withFileLinks(context, await context.dashboardsAdmin.executeVersionWidget(
+          request.params.id,
+          versionParam(request.params.version),
+          request.params.widgetId,
+          await dashboardQueryLimits(context),
+          viewer,
+          variableValues(request.body),
+        ), appFileScope(request.params.id, request.params.widgetId)),
+        meta: { timezone: runTimezone(viewer) },
+      };
+    },
   );
 }

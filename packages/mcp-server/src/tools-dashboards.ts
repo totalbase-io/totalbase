@@ -80,7 +80,9 @@ function strict<T extends z.ZodRawShape>(shape: T) {
 const variableSchema = strict({
   name: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/).describe("Used in widget SQL as $VAR.<name> - a DATE_RANGE as $VAR.<name>.from / .to, its previous period (as long, just before) as .prev_from / .prev_to"),
   label: z.string().describe("Shown above the filter"),
+  description: z.string().max(128).optional().describe("What it means, for the viewer - an ⓘ beside the label (at most 128)"),
   type: z.enum(["DATE_RANGE", "SELECT", "TEXT", "NUMBER"]),
+  precision: z.enum(["day", "minute"]).optional().describe("DATE_RANGE only, default day. minute: a custom range is {from:'YYYY-MM-DDTHH:MM', to:'…'} in the viewer's local time, to exclusive as written ('between 22:30 last night and 09:00'); a bare date still means the whole day"),
   multiple: z.boolean().optional().describe("SELECT only: binds text[] instead of text - filter with = ANY($VAR.<name>)"),
   // By its source - an unknown key is named in the branch it belongs to (DB20), not a bare "Invalid input".
   options: z
@@ -155,7 +157,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       inputSchema: {
         id: z.string().optional().describe("The dashboard to replace - omit to create one"),
         draft_version: z.string().optional().describe("From get_dashboard - refused if the draft changed since"),
-        spec: z.record(z.string(), z.unknown()).describe("{name, slug?, description?, icon?, menuLabel?, scope?, refreshIntervalSeconds?, variables, tabs, widgets: [{id?, type, label, tab?, grid?, query, config}]} - totalbase://guide/dashboards"),
+        spec: z.record(z.string(), z.unknown()).describe("{name, slug?, description?, icon?, menuLabel?, scope?, refreshIntervalSeconds?, showDescriptions?, variables, tabs, widgets: [{id?, type, label, tab?, grid?, query, config}]} - totalbase://guide/dashboards"),
         dry_run: z.boolean().optional().describe("Check and answer the difference - nothing applied"),
         rows: z.number().int().min(0).max(50).optional().describe("Each widget's first rows in the answer (0, the default: none run)"),
       },
@@ -220,6 +222,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         menu_label: z.string().max(32).nullable().optional().describe("What the App menu shows, when it should read differently from its name (e.g. a short one) - applies at once, no publish; empty or null: its name"),
         scope: z.enum(["LISTED", "EMBEDDED_ONLY"]).optional().describe("LISTED shows it in the App menu once published"),
         refresh_interval_seconds: z.union([...REFRESH, z.null()]).optional(),
+        show_descriptions: z.boolean().optional().describe("Whether viewers see the widgets' and variables' descriptions (an ⓘ) - off, they stay as documentation; applies at once"),
         variables: z.array(variableSchema).optional().describe("Replaces every variable - none named tab (the App's ?tab=)"),
         tabs: z
           .array(tabSchema)
@@ -230,7 +233,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       },
       annotations: IDEMPOTENT,
     },
-    async ({ id, name, description, menu_label, scope, refresh_interval_seconds, variables, tabs, embedding_enabled, role_ids }) => {
+    async ({ id, name, description, menu_label, scope, refresh_interval_seconds, show_descriptions, variables, tabs, embedding_enabled, role_ids }) => {
       if (role_ids) await client.put(`/dashboards/${id}/roles`, { data: { roleIds: role_ids } });
       const updated = await client.patch<Dashboard>(`/dashboards/${id}`, {
         data: {
@@ -239,6 +242,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
           ...(menu_label !== undefined && { menuLabel: menu_label }),
           ...(scope !== undefined && { scope }),
           ...(refresh_interval_seconds !== undefined && { refreshIntervalSeconds: refresh_interval_seconds }),
+          ...(show_descriptions !== undefined && { showDescriptions: show_descriptions }),
           ...(variables !== undefined && { variables }),
           ...(tabs !== undefined && { tabs }),
           ...(embedding_enabled !== undefined && { embeddingEnabled: embedding_enabled }),

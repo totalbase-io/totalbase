@@ -11,21 +11,26 @@
  * for each value (an option's text, a preset's name) - the dashboard's
  * formulas read it as `{{vars.<name>.label}}` (D3).
  */
-import type { DashboardVariable, DashboardVariableOption } from '~/types/dashboard'
-import { DATE_RANGE_PRESETS, useDashboardCatalogText } from '~/types/dashboard'
+import type { DashboardRunTimezone, DashboardVariable, DashboardVariableOption, DateRangeValue } from '~/types/dashboard'
+import { useDashboardCatalogText } from '~/types/dashboard'
 import { useApiErrorMessage } from '~/utils/api-error-message'
-import { effectiveVariableValue, isCustomRange } from '~/utils/dashboard-variables'
+import { dateRangeLabel, effectiveVariableValue } from '~/utils/dashboard-variables'
 
 const props = defineProps<{
   variables: DashboardVariable[]
   /** `values`: the current ones - an options query may read other variables (`dependsOn`). */
   loadOptions: (name: string, values: Record<string, unknown>) => Promise<DashboardVariableOption[]>
+  /** The zone the last run used (`meta.timezone`, Dashboards.md §2.3) - a range picker's foot says it. */
+  runTimezone?: DashboardRunTimezone | null
+  /** The dashboard's "Show descriptions" (§4.1): off, no ⓘ beside the labels. Default on. */
+  showDescriptions?: boolean
 }>()
 const values = defineModel<Record<string, unknown>>({ required: true })
 const labels = defineModel<Record<string, string>>('labels', { default: () => ({}) })
 const { t } = useI18n()
 const errorMessage = useApiErrorMessage()
 const catalog = useDashboardCatalogText()
+const ui = useUiLocale()
 
 function set(name: string, value: unknown) {
   values.value = { ...values.value, [name]: value }
@@ -84,24 +89,10 @@ function onSelect(variable: DashboardVariable, value: string | string[]) {
   set(variable.name, variable.multiple ? value : value === ALL ? null : value)
 }
 
-// --- DATE_RANGE: a preset, or a custom from/to pair ---
-const CUSTOM = 'custom'
-const rangeItems = computed(() => [...DATE_RANGE_PRESETS.map(p => ({ value: p.value, label: catalog.presetLabel(p) })), { value: CUSTOM, label: t('dashboards.variablesBar.customRange') }])
-function rangeMode(variable: DashboardVariable): string {
+// --- DATE_RANGE: one control (DateRangePicker) - a preset, or a custom range by the variable's precision ---
+function rangeValue(variable: DashboardVariable): DateRangeValue | null {
   const value = current(variable)
-  if (isCustomRange(value)) return CUSTOM
-  return typeof value === 'string' ? value : 'all'
-}
-function onRangeMode(variable: DashboardVariable, mode: string) {
-  if (mode !== CUSTOM) return set(variable.name, mode)
-  const today = new Date().toISOString().slice(0, 10)
-  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
-  set(variable.name, { from: monthAgo, to: today })
-}
-function onRangeDate(variable: DashboardVariable, part: 'from' | 'to', date: string) {
-  const value = current(variable)
-  if (!isCustomRange(value) || !date) return
-  set(variable.name, { ...value, [part]: date })
+  return typeof value === 'string' || (typeof value === 'object' && value !== null) ? value as DateRangeValue : null
 }
 
 // What each variable reads as - an option's label for a SELECT (several joined), a preset's name for a DATE_RANGE.
@@ -114,7 +105,8 @@ watchEffect(() => {
       const chosen = (Array.isArray(value) ? value : value === null || value === undefined ? [] : [value]).map(v => byValue.get(String(v)) ?? String(v))
       next[variable.name] = chosen.length ? chosen.join(', ') : t('common.all')
     } else if (variable.type === 'DATE_RANGE') {
-      next[variable.name] = isCustomRange(value) ? `${value.from} – ${value.to}` : rangeItems.value.find(i => i.value === value)?.label ?? ''
+      // As the picker's button reads it: a preset's name, a custom range in the viewer's regional format.
+      next[variable.name] = dateRangeLabel(variable, value, ui.intlLocale.value, catalog.presetLabel)
     } else {
       next[variable.name] = value === null || value === undefined ? '' : String(value)
     }
@@ -143,38 +135,23 @@ function commitText(variable: DashboardVariable) {
       :key="variable.name"
       class="flex flex-col gap-1"
     >
-      <span class="text-xs text-muted">{{ variable.label }}</span>
-
-      <div
-        v-if="variable.type === 'DATE_RANGE'"
-        class="flex items-center gap-1"
-      >
-        <USelect
-          :model-value="rangeMode(variable)"
-          :items="rangeItems"
-          :aria-label="variable.label"
-          size="sm"
-          class="w-40"
-          @update:model-value="(v: string) => onRangeMode(variable, v)"
+      <span class="flex items-center gap-1 text-xs text-muted">
+        {{ variable.label }}
+        <!-- What the variable means (§3.3): a toggletip, never hover-only (Admin_UI.md §7.1). -->
+        <FieldHelp
+          v-if="variable.description && showDescriptions !== false"
+          :text="variable.description"
+          :label="variable.label"
         />
-        <template v-if="isCustomRange(current(variable))">
-          <UInput
-            type="date"
-            size="sm"
-            :model-value="(current(variable) as { from: string }).from"
-            :aria-label="t('dashboards.variablesBar.from', { label: variable.label })"
-            @update:model-value="(v: string | number) => onRangeDate(variable, 'from', String(v))"
-          />
-          <span class="text-xs text-muted">–</span>
-          <UInput
-            type="date"
-            size="sm"
-            :model-value="(current(variable) as { to: string }).to"
-            :aria-label="t('dashboards.variablesBar.to', { label: variable.label })"
-            @update:model-value="(v: string | number) => onRangeDate(variable, 'to', String(v))"
-          />
-        </template>
-      </div>
+      </span>
+
+      <DateRangePicker
+        v-if="variable.type === 'DATE_RANGE'"
+        :variable="variable"
+        :model-value="rangeValue(variable)"
+        :run-timezone="runTimezone"
+        @update:model-value="(v: DateRangeValue) => set(variable.name, v)"
+      />
 
       <UTooltip
         v-else-if="variable.type === 'SELECT'"

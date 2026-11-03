@@ -736,9 +736,13 @@
     "variablesBar": {
       "loadOptionsFailed": "No se pudieron cargar las opciones",
       "customRange": "Rango personalizado",
-      "from": "{label} desde",
-      "to": "{label} hasta",
       "reset": "Restablecer"
+    },
+    "rangePicker": {
+      "open": "{label}: elegir un período",
+      "quickRanges": "Rangos rápidos",
+      "timesIn": "Horas en {zone}",
+      "timesInDatabase": "Horas en el huso horario propio de la base de datos"
     },
     "variablesModal": {
       "defaultLabel": "Variable {n}",
@@ -754,6 +758,13 @@
       "add": "Agregar variable",
       "nameHelp": "Minúsculas, dígitos y guiones bajos.",
       "labelHelp": "Se muestra en la barra de variables.",
+      "descriptionHelp": "Qué significa, para quien mira - se muestra tras una ⓘ junto a la etiqueta. Hasta 128 caracteres.",
+      "precision": "Precisión",
+      "precisionHelp": "Qué tan fino es un rango personalizado. Los rangos rápidos son los mismos.",
+      "precisionDay": "Día",
+      "precisionDayHelp": "Dos fechas; el último día queda incluido.",
+      "precisionMinute": "Minuto",
+      "precisionMinuteHelp": "Dos fechas con hora, en el huso horario de quien mira; el fin es exacto, no el final de su día.",
       "allowSeveral": "Permitir varios valores",
       "options": "Opciones",
       "values": "Valores",
@@ -791,7 +802,10 @@
       "updatedAgo": "Actualizado {ago}"
     },
     "viewer": {
-      "autoRefresh": "Actualización automática: {interval}"
+      "autoRefresh": "Actualización automática: {interval}",
+      "shortSeconds": "{n} s",
+      "shortMinutes": "{n} min",
+      "shortHours": "{n} h"
     },
     "tabs": {
       "add": "Agregar pestaña",
@@ -1024,6 +1038,13 @@
       "deleteWidgetHelp": "{name} y su consulta salen del borrador - publica para quitarlo del dashboard publicado.",
       "duplicate": "Duplicar…",
       "editVariables": "Editar variables",
+      "queriesRunIn": "Las consultas corren en {zone} · {source}",
+      "queriesRunInPostgres": "Las consultas corren en el huso propio de PostgreSQL: PostgreSQL no conoce el huso de tu navegador \"{zone}\". Fija Configuración › General › Zona horaria.",
+      "timezoneSource": {
+        "USER": "tu cuenta",
+        "INSTANCE": "el huso de la instancia",
+        "BROWSER": "tu navegador"
+      },
       "brokenWidgetEmbeds": "Detiene la inserción {names}: el widget que muestra ya no está en el dashboard. Actualízala en Compartir. | Detiene {n} inserciones {names}: el widget que muestra cada una ya no está en el dashboard. Actualízalas en Compartir."
     },
     "tree": {
@@ -1285,6 +1306,8 @@
         "versions": "Versiones"
       },
       "delegable": "Los gestores pueden compartirlo",
+      "showDescriptions": "Mostrar descripciones",
+      "showDescriptionsHelp": "La ⓘ junto al título de cada widget y a la etiqueta de cada variable, para quien mira. Apagado, las descripciones quedan como documentación - el editor las sigue mostrando.",
       "delegableHelp": "Los gestores lo abren a los roles que tienen debajo. Actívalo solo si sus consultas filtran por la persona ($USER.*): el SQL de un dashboard no pasa por los permisos.",
       "delegableError": "No se pudo cambiar si los gestores pueden compartirlo"
     }

@@ -5,7 +5,17 @@
       "displayError": "No se pudo cambiar la presentación",
       "tree": "Árbol",
       "sidebar": "Barra lateral",
-      "display": "Presentación: {mode}",
+      "settings": "Configuración del menú",
+      "settingsDescription": "Cómo muestra la App el menú, y cómo se presenta la App a quienes no son administradores. Cada cambio se aplica al instante.",
+      "short": {
+        "mode": "Cómo se muestran los grupos del menú.",
+        "groupsOpen": "Cómo empiezan los grupos al entrar.",
+        "search": "Cuándo se ofrece buscar en el menú.",
+        "shell": "Lo que ven quienes no son administradores.",
+        "menuHeader": "Qué encabeza el menú independiente.",
+        "modules": "Qué pantallas del admin tiene el menú."
+      },
+      "moduleStandaloneOnly": "Solo en una App independiente",
       "newGroup": "Nuevo grupo",
       "newSubgroup": "Nuevo subgrupo",
       "description": "Agrupa y ordena lo que muestra la App. Cada persona solo ve las entradas que puede abrir; un grupo vacío se oculta.",
@@ -56,7 +66,15 @@
       "searchBoxHelp": "Sobre el menú: por la etiqueta, el nombre completo, la descripción o el grupo de una entrada. Automático: cuando una persona ve más de 15 entradas. \"/\" lo trae desde cualquier pantalla.",
       "searchAuto": "Automático",
       "searchAlways": "Siempre",
-      "searchNever": "Nunca"
+      "searchNever": "Nunca",
+      "modules": "Módulos en el menú",
+      "modulesHelp": "Las pantallas propias del admin como entradas del menú - el camino a ellas en la App independiente. Encendido lo pone al final del menú, para arrastrarlo a su lugar; apagado lo quita. Una persona lo ve cuando sus roles pueden leer su tabla, como con el riel - la entrada no otorga nada.",
+      "moduleBadge": "Módulo",
+      "moduleLabel": "Etiqueta en el menú",
+      "moduleLabelHelp": "Vacío: {name}.",
+      "moduleIcon": "Icono",
+      "moduleIconHelp": "Vacío: el icono propio del módulo.",
+      "removeModuleHelp": "Sale del menú - su interruptor en la configuración lo vuelve a poner. Quién puede abrirlo lo deciden sus permisos, como siempre."
     },
     "authProviders": {
       "title": "Proveedores",
@@ -153,6 +171,14 @@
       },
       "showOnSignIn": "Mostrar en el inicio de sesión",
       "showOnSignInDescription": "Un botón en la página de inicio de sesión del portal: se entra al admin o a la App con este proveedor. Su propio callback no necesita una URL de redirección permitida."
+    },
+    "instanceAbout": {
+      "title": "Acerca de esta instancia",
+      "description": "Lo que corre esta instancia: para las notas de actualización y al reportar un problema.",
+      "totalbase": "TotalBase",
+      "environment": "Entorno",
+      "postgres": "PostgreSQL",
+      "database": "Base de datos"
     },
     "maintenance": {
       "title": "Mantenimiento",
@@ -1437,6 +1463,35 @@
             "AUTO": "Automático",
             "ALWAYS": "Siempre",
             "NEVER": "Nunca"
+          }
+        },
+        "app__shell": {
+          "label": "Estructura de la App",
+          "description": "Lo que ven quienes no son administradores. Compartida: la App junto al riel, como la ven los administradores. Independiente: el menú de la App es la única barra lateral - tu logo y nombre en la cabecera, su cuenta al pie, y los módulos que pongas en el menú. Los administradores conservan siempre el riel.",
+          "options": {
+            "SHARED": "Compartida",
+            "STANDALONE": "Independiente"
+          }
+,
+          "optionDescriptions": {
+            "SHARED": "La App junto al riel, como la ven los administradores.",
+            "STANDALONE": "Sin riel: el menú es la única barra lateral, con tu logo, su cuenta y los módulos que pongas."
+          }
+        },
+        "app__menu_header": {
+          "label": "Cabecera del menú",
+          "description": "Qué encabeza el menú de la App independiente: el logo y el nombre de la instancia (Configuración › General), uno de los dos, o nada.",
+          "options": {
+            "LOGO_AND_NAME": "Logo y nombre",
+            "LOGO": "Logo",
+            "NAME": "Nombre",
+            "NONE": "Nada"
+          },
+          "optionDescriptions": {
+            "LOGO_AND_NAME": "El logo de la instancia con su nombre al lado.",
+            "LOGO": "Solo el logo - uno que ya lleva el nombre.",
+            "NAME": "Solo el nombre, como texto.",
+            "NONE": "El menú empieza en su primera entrada."
           }
         },
         "backups__enabled": {

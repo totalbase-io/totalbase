@@ -348,6 +348,10 @@ export interface SettingsRegistry {
   /** How the tree menu's groups start: CURRENT (only the one holding the page), OPEN or CLOSED. A group may set its own. */
   "app.menu_groups_open": "CURRENT" | "OPEN" | "CLOSED";
   "app.menu_search": "AUTO" | "ALWAYS" | "NEVER";
+  /** The App's shell for non-administrators (Admin_UI.md §3.1.1): SHARED - beside the rail, as administrators see it; STANDALONE - the App menu is the only sidebar. */
+  "app.shell": "SHARED" | "STANDALONE";
+  /** What heads the standalone App's menu: the instance's logo and name, one of them, or nothing. */
+  "app.menu_header": "LOGO_AND_NAME" | "LOGO" | "NAME" | "NONE";
 
   // Workflows execution engine (specs/Workflows.md §8.5).
   // max_operations_per_run/max_run_duration_ms are read from Fase 1
@@ -621,6 +625,8 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "app.menu_mode": "TREE",
   "app.menu_groups_open": "CURRENT",
   "app.menu_search": "AUTO",
+  "app.shell": "SHARED",
+  "app.menu_header": "LOGO_AND_NAME",
 
   // Workflows (see the registry interface's own comment just above).
   "workflows.max_sync_wait_ms": 30_000,

@@ -1,5 +1,5 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
-import type { DashboardTab, DashboardVariable, DashboardWidgetContent } from '~/types/dashboard'
+import type { DashboardRunMeta, DashboardTab, DashboardVariable, DashboardWidgetContent } from '~/types/dashboard'
 
 /**
  * Bridges the Dashboard editor's canvas state into DashboardWidgetCard.vue
@@ -23,8 +23,10 @@ export interface DashboardCanvasContext {
   refreshIntervalSeconds?: Ref<number | null>
   /** The variables' definitions - a card's empty text reads whether it filters by a period (D23). */
   variables?: Readonly<Ref<DashboardVariable[]>>
-  /** A card's run came back - the viewer's "Updated 2 min ago" (D23). */
-  onLoaded?: () => void
+  /** The dashboard's "Show descriptions" (§4.1): off, a card's ⓘ stays hidden for a viewer. Unset: shown - the editor always shows what the author wrote. */
+  showDescriptions?: Readonly<Ref<boolean>>
+  /** A card's run came back - the viewer's "Updated 2 min ago" (D23), and the zone it ran in (`meta.timezone`, §2.3). */
+  onLoaded?: (meta?: DashboardRunMeta) => void
   /** The variables bar's explicitly-set `$VAR.*` values - sent with every data request. */
   variableValues: Ref<Record<string, unknown>>
   /** What the bar shows for each variable's value (an option's label, a preset's name) - `{{vars.<name>.label}}` (D3). */
@@ -38,7 +40,7 @@ export interface DashboardCanvasContext {
   /** Which API `dataPath` is on: the editor's Admin API, or the App's (a viewer, never shown SQL - a widget carries `configured` instead of its query). Default admin. */
   plane?: 'admin' | 'app'
   /** The client `dataPath` is called with, when it isn't the plane's own - a signed embed's (useEmbedApi). */
-  client?: { post: <T>(path: string, body?: unknown) => Promise<{ data: T }> }
+  client?: { post: <T>(path: string, body?: unknown) => Promise<{ data: T, meta?: unknown }> }
   /**
    * A viewer's clicks (D6): a widget's `config.click` runs - a FILTER sets a variable through `onFilter` (the App's
    * page pushes it to the URL, so Back undoes it), the rest navigate. Unset: the editor's canvas - no click runs.

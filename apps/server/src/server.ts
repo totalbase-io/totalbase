@@ -45,6 +45,7 @@ import { registerAdminAuditRoutes } from "./routes/admin-audit.js";
 import { registerAdminAuthProvidersRoutes } from "./routes/admin-auth-providers.js";
 import { registerAdminSecretsRoutes } from "./routes/admin-secrets.js";
 import { registerAdminMaintenanceRoutes } from "./routes/admin-maintenance.js";
+import { registerAdminSystemRoutes } from "./routes/admin-system.js";
 import { registerAdminBackupsRoutes } from "./routes/admin-backups.js";
 import { registerAdminSettingsRoutes } from "./routes/admin-settings.js";
 import { registerAdminSystemEmailsRoutes } from "./routes/admin-system-emails.js";
@@ -247,6 +248,7 @@ export async function buildServer(
   registerAdminSchemaRoutes(app, context);
   registerAdminSqlConsoleRoutes(app, context);
   registerAdminMaintenanceRoutes(app, context);
+  registerAdminSystemRoutes(app, context);
   registerAdminBackupsRoutes(app, context);
   registerAdminWorkflowsRoutes(app, context);
   registerMcpEndpoint(app, context, internalKey);

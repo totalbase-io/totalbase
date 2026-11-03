@@ -15,8 +15,9 @@ import type { ComponentPublicInstance } from 'vue'
  */
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { DATAVIEW_TYPE_META, type DataViewType } from '~/types/dataview'
-import { menuObjectPath, type MenuGroup, type MenuNode, type MenuObject } from '~/types/app-menu'
+import type { MenuEntry, MenuGroup, MenuNode, MenuObject } from '~/types/app-menu'
 import { isValidColorValue, roleColorShade } from '~/types/permission'
+import { menuEntryLabel, menuEntryPath, moduleNav } from '~/utils/app-menu-modules'
 import { countEntries, filterMenu, foldText, MENU_SEARCH_THRESHOLD } from '~/utils/menu-search'
 
 const { menu, loading, error, refresh } = useAppMenu()
@@ -49,7 +50,13 @@ function objectItem(object: MenuObject): NavigationMenuItem {
     ? roleColorShade(object.color, surfaceTone.value)
     : undefined
   // Its menu label, else its name; its description is the item's tooltip.
-  return { label: object.menuLabel || object.name, icon: objectIcon(object), to: menuObjectPath(object), iconColor, tooltipText: object.description ?? undefined, fullName: object.menuLabel ? object.name : undefined }
+  return { label: object.menuLabel || object.name, icon: objectIcon(object), to: menuEntryPath(object), iconColor, tooltipText: object.description ?? undefined, fullName: object.menuLabel ? object.name : undefined }
+}
+/** A module entry (Security.md §8.2): its own label and icon, else its rail group's; opens the module's page. */
+function entryItem(entry: MenuEntry): NavigationMenuItem {
+  if (entry.kind !== 'MODULE') return objectItem(entry)
+  const nav = moduleNav(entry.module)
+  return { label: menuEntryLabel(entry, t), icon: entry.icon ?? nav.icon, to: nav.to, fullName: entry.name ? t(nav.labelKey) : undefined }
 }
 
 // --- How the tree's groups start, and what this device remembers. ---
@@ -74,7 +81,7 @@ const currentGroups = computed(() => {
   const found: string[] = []
   const walk = (list: MenuNode[], trail: string[]): boolean => list.some((n) => {
     if (n.kind === 'GROUP') return walk(n.children, [...trail, n.id])
-    const path = menuObjectPath(n)
+    const path = menuEntryPath(n)
     if (route.path === path || route.path.startsWith(`${path}/`)) {
       found.push(...trail)
       return true
@@ -124,7 +131,7 @@ const offersSearch = computed(() => {
   const setting = menu.value?.search ?? 'AUTO'
   return setting === 'ALWAYS' || (setting === 'AUTO' && countEntries(menu.value?.nodes ?? []) > MENU_SEARCH_THRESHOLD)
 })
-const shownNodes = computed(() => (searching.value ? filterMenu(menu.value?.nodes ?? [], term.value) : menu.value?.nodes ?? []))
+const shownNodes = computed(() => (searching.value ? filterMenu(menu.value?.nodes ?? [], term.value, module => t(moduleNav(module.module).labelKey)) : menu.value?.nodes ?? []))
 const searchInput = ref<{ inputRef?: HTMLInputElement } | null>(null)
 const panelEl = ref<HTMLElement | null>(null)
 /** The result links on screen, in order. */
@@ -179,16 +186,16 @@ function treeItems(nodes: MenuNode[]): NavigationMenuItem[] {
         defaultOpen: searching.value || startsOpen(node),
         children: treeItems(node.children)
       }
-    : objectItem(node))
+    : entryItem(node))
 }
 
 /** SIDEBAR: root items first, then one section per root group - its items, and each subgroup as a sub-heading. */
 function sidebarSections(nodes: MenuNode[]): NavigationMenuItem[][] {
-  const rootItems = nodes.filter((n): n is MenuObject => n.kind !== 'GROUP').map(objectItem)
+  const rootItems = nodes.filter((n): n is MenuEntry => n.kind !== 'GROUP').map(entryItem)
   const sections: NavigationMenuItem[][] = rootItems.length ? [rootItems] : []
   const flatten = (children: MenuNode[]): NavigationMenuItem[] => children.flatMap(child => child.kind === 'GROUP'
     ? [{ label: child.name, type: 'label' as const }, ...flatten(child.children)]
-    : [objectItem(child)])
+    : [entryItem(child)])
   for (const node of nodes) {
     if (node.kind === 'GROUP') sections.push([{ label: node.name, type: 'label' }, ...flatten(node.children)])
   }

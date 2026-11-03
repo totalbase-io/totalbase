@@ -8,7 +8,7 @@
  * Definitions are versioned with the widgets: a change reaches Apps on
  * the next Publish.
  */
-import type { Dashboard, DashboardVariable, DashboardVariableType } from '~/types/dashboard'
+import type { Dashboard, DashboardVariable, DashboardVariableType, DateRangePrecision } from '~/types/dashboard'
 import { DASHBOARD_VARIABLE_TYPES, DATE_RANGE_PRESETS, useDashboardCatalogText } from '~/types/dashboard'
 
 const props = defineProps<{ dashboard: Dashboard }>()
@@ -22,7 +22,11 @@ const catalog = useDashboardCatalogText()
 interface DraftVariable {
   name: string
   label: string
+  /** What it means, for the viewer - the bar's ⓘ (§3.3). */
+  description: string
   type: DashboardVariableType
+  /** A DATE_RANGE's custom range: days, or times of day (§3.4). */
+  precision: DateRangePrecision
   multiple: boolean
   source: 'STATIC' | 'QUERY' | 'TABLE'
   /** A fixed list's options - each a value and the text the viewer reads ("Yes" for true). */
@@ -42,7 +46,9 @@ function toDraft(variable: DashboardVariable): DraftVariable {
   return {
     name: variable.name,
     label: variable.label,
+    description: variable.description ?? '',
     type: variable.type,
+    precision: variable.precision ?? 'day',
     multiple: variable.multiple === true,
     source: options?.source ?? 'STATIC',
     staticOptions: options?.source === 'STATIC' ? options.values.map(o => ({ value: o.value, label: o.label ?? '' })) : [],
@@ -57,6 +63,8 @@ function toDraft(variable: DashboardVariable): DraftVariable {
 
 function fromDraft(draft: DraftVariable): DashboardVariable {
   const variable: DashboardVariable = { name: draft.name.trim(), label: draft.label.trim() || draft.name.trim(), type: draft.type }
+  if (draft.description.trim()) variable.description = draft.description.trim()
+  if (draft.type === 'DATE_RANGE' && draft.precision === 'minute') variable.precision = 'minute'
   if (draft.type === 'SELECT') {
     variable.multiple = draft.multiple
     variable.options = draft.source === 'STATIC'
@@ -90,7 +98,7 @@ function addVariable() {
   const taken = new Set(drafts.value.map(d => d.name))
   let n = drafts.value.length + 1
   while (taken.has(`variable_${n}`)) n++
-  drafts.value.push({ name: `variable_${n}`, label: t('dashboards.variablesModal.defaultLabel', { n }), type: 'SELECT', multiple: false, source: 'STATIC', staticOptions: [], query: '', tableResource: null, tableFilters: [], defaultSource: 'none', default: null, defaultField: '' })
+  drafts.value.push({ name: `variable_${n}`, label: t('dashboards.variablesModal.defaultLabel', { n }), description: '', type: 'SELECT', precision: 'day', multiple: false, source: 'STATIC', staticOptions: [], query: '', tableResource: null, tableFilters: [], defaultSource: 'none', default: null, defaultField: '' })
   selectedIndex.value = drafts.value.length - 1
 }
 
@@ -119,6 +127,10 @@ function usage(draft: DraftVariable): string {
 }
 
 const typeItems = computed(() => DASHBOARD_VARIABLE_TYPES.map(type => ({ label: catalog.variableTypeLabel(type), value: type.value, description: catalog.variableTypeDescription(type) })))
+const precisionItems = computed(() => [
+  { label: t('dashboards.variablesModal.precisionDay'), value: 'day', description: t('dashboards.variablesModal.precisionDayHelp') },
+  { label: t('dashboards.variablesModal.precisionMinute'), value: 'minute', description: t('dashboards.variablesModal.precisionMinuteHelp') }
+])
 // Reka UI's SelectItem rejects an empty-string value (reserved for "clear the selection"), so "unset" needs a sentinel.
 const NO_DEFAULT = '__none__'
 const presetItems = computed(() => [{ label: t('dashboards.variablesModal.noDefault'), value: NO_DEFAULT }, ...DATE_RANGE_PRESETS.map(p => ({ label: catalog.presetLabel(p), value: p.value }))])
@@ -238,6 +250,17 @@ async function save() {
           </UFormField>
         </div>
 
+        <UFormField
+          :label="t('common.description')"
+          :description="t('dashboards.variablesModal.descriptionHelp')"
+        >
+          <UInput
+            v-model="selected.description"
+            maxlength="128"
+            class="w-full"
+          />
+        </UFormField>
+
         <UFormField :label="t('common.type')">
           <USelectMenu
 
@@ -246,6 +269,20 @@ async function save() {
             value-key="value"
             class="w-full"
             @update:model-value="(v: DashboardVariableType) => reshape('type', v)"
+          />
+        </UFormField>
+
+        <!-- A DATE_RANGE's precision (§3.4): changing it keeps the default - every day value is a minute value. -->
+        <UFormField
+          v-if="selected.type === 'DATE_RANGE'"
+          :label="t('dashboards.variablesModal.precision')"
+          :description="t('dashboards.variablesModal.precisionHelp')"
+        >
+          <USelectMenu
+            v-model="selected.precision"
+            :items="precisionItems"
+            value-key="value"
+            class="w-full"
           />
         </UFormField>
 

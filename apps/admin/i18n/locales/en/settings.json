@@ -5,7 +5,17 @@
       "displayError": "Could not change the display",
       "tree": "Tree",
       "sidebar": "Sidebar",
-      "display": "Display: {mode}",
+      "settings": "Menu settings",
+      "settingsDescription": "How the App shows the menu, and how the App is framed for people who are not administrators. Every change applies at once.",
+      "short": {
+        "mode": "How the menu's groups are shown.",
+        "groupsOpen": "How the groups start when the App opens.",
+        "search": "When the menu offers a search box.",
+        "shell": "What people who are not administrators get.",
+        "menuHeader": "What heads the standalone menu.",
+        "modules": "Which of the admin's screens the menu holds."
+      },
+      "moduleStandaloneOnly": "Only in a standalone App",
       "newGroup": "New group",
       "newSubgroup": "New subgroup",
       "description": "Group and order what the App shows. Everyone only sees the entries they may open; an empty group is hidden.",
@@ -56,7 +66,15 @@
       "searchBoxHelp": "Over the menu - by an entry's label, full name, description or group. Automatic: once a viewer sees more than 15 entries. \"/\" brings it from any screen.",
       "searchAuto": "Automatic",
       "searchAlways": "Always",
-      "searchNever": "Never"
+      "searchNever": "Never",
+      "modules": "Modules in the menu",
+      "modulesHelp": "The admin's own screens as entries of the menu - the standalone App's way to them. On puts one at the end of the menu, to drag into place; off takes it out. A user sees one when their roles may read its table, as with the rail - the entry grants nothing.",
+      "moduleBadge": "Module",
+      "moduleLabel": "Label in the menu",
+      "moduleLabelHelp": "Empty: {name}.",
+      "moduleIcon": "Icon",
+      "moduleIconHelp": "Empty: the module's own icon.",
+      "removeModuleHelp": "It leaves the menu - its switch in the settings puts it back. Who may open it is their permissions, as always."
     },
     "authProviders": {
       "title": "Providers",
@@ -153,6 +171,14 @@
       },
       "showOnSignIn": "Show on the sign-in page",
       "showOnSignInDescription": "A button on the portal's sign-in page; people sign in to the admin or the App with this provider. Its own callback needs no allowed redirect URL."
+    },
+    "instanceAbout": {
+      "title": "About this instance",
+      "description": "What this instance runs - for the upgrade notes, and when reporting a problem.",
+      "totalbase": "TotalBase",
+      "environment": "Environment",
+      "postgres": "PostgreSQL",
+      "database": "Database"
     },
     "maintenance": {
       "title": "Maintenance",
@@ -1437,6 +1463,35 @@
             "AUTO": "Automatic",
             "ALWAYS": "Always",
             "NEVER": "Never"
+          }
+        },
+        "app__shell": {
+          "label": "App shell",
+          "description": "What people who are not administrators get. Shared: the App beside the rail, as administrators see it. Standalone: the App's menu is the only sidebar - your logo and name at its head, their account at its foot, and the modules you place in the menu. Administrators always keep the rail.",
+          "options": {
+            "SHARED": "Shared",
+            "STANDALONE": "Standalone"
+          }
+,
+          "optionDescriptions": {
+            "SHARED": "The App beside the rail, as administrators see it.",
+            "STANDALONE": "No rail: the menu is the only sidebar, with your logo, their account and the modules you place."
+          }
+        },
+        "app__menu_header": {
+          "label": "Menu header",
+          "description": "What heads the standalone App's menu: the instance's logo and name (Settings › General), one of them, or nothing.",
+          "options": {
+            "LOGO_AND_NAME": "Logo and name",
+            "LOGO": "Logo",
+            "NAME": "Name",
+            "NONE": "Nothing"
+          },
+          "optionDescriptions": {
+            "LOGO_AND_NAME": "The instance's logo with its name beside it.",
+            "LOGO": "The logo alone - one that already carries the name.",
+            "NAME": "The name alone, as text.",
+            "NONE": "The menu starts at its first entry."
           }
         },
         "backups__enabled": {

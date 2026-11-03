@@ -1,4 +1,4 @@
-import { quoteIdentifier, type Database, type Queryable } from "@totalbase/database";
+import { quoteIdentifier, timezoneNames, type Database, type Queryable } from "@totalbase/database";
 import { isProjectUserColumn } from "@totalbase/shared";
 import { TotalBaseError } from "@totalbase/errors";
 import { WORKFLOWS_SYSTEM_USER_EMAIL } from "@totalbase/shared";
@@ -587,7 +587,7 @@ export class UsersService {
    * Applies a parsed patch (parsePreferencesPatch) in one UPDATE: set keys
    * merge in, `null` keys are removed - never a read-modify-write, so two
    * concurrent changes to different keys both stick. A timezone must be
-   * one PostgreSQL knows (pg_timezone_names); the column's CHECK decides
+   * one PostgreSQL knows, stored as it names it (timezoneNames); the column's CHECK decides
    * the rest.
    */
   async updatePreferences(userId: string, patch: UserPreferencesPatch): Promise<UserPreferences> {
@@ -595,11 +595,11 @@ export class UsersService {
     const set = Object.fromEntries(stored.filter(([, value]) => value !== null));
     const clear = stored.filter(([, value]) => value === null).map(([key]) => key);
     if (typeof set.timezone === "string") {
-      const { rows } = await this.database.query<{ known: boolean }>(
-        `SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = $1) AS known`,
-        [set.timezone],
-      );
-      if (!rows[0]?.known) throw new TotalBaseError("INVALID_QUERY", `Unknown timezone: ${set.timezone}.`);
+      // Stored as PostgreSQL names it: the picker offers ICU's spellings (America/Buenos_Aires), some of which a
+      // PostgreSQL built without tzdata's legacy aliases doesn't know (Security.md §4.2).
+      const canonical = (await timezoneNames(this.database)).canonical(set.timezone);
+      if (!canonical) throw new TotalBaseError("INVALID_QUERY", `Unknown timezone: ${set.timezone}.`);
+      set.timezone = canonical;
     }
     const { rows } = await this.database.query<{ preferences: unknown }>(
       `UPDATE totalbase.users

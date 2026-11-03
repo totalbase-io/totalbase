@@ -214,6 +214,24 @@ describe("My account: /app/api/me", () => {
       await expect(database.query(`UPDATE totalbase.users SET preferences = '{"language": "Spanish"}'::jsonb WHERE id = $1`, [userId])).rejects.toMatchObject({ code: "CHECK_VIOLATION" });
     });
 
+    it("stores a zone as PostgreSQL names it - the picker offers ICU's spelling, which may be a legacy alias PostgreSQL lacks", async () => {
+      const token = await login(`${PREFIX}-user@example.com`);
+      // A user may choose a zone only while the instance doesn't set everyone's.
+      const instanceZone = await context.settings.get("system.timezone");
+      await context.settings.reset("system.timezone");
+      try {
+        const set = await send("PATCH", "/app/api/me/preferences", token, { timezone: "America/Buenos_Aires" });
+        expect(set.statusCode, set.body).toBe(200);
+        const stored = set.json().data.preferences.timezone as string;
+        expect(stored).toMatch(/^America\/(Argentina\/)?Buenos_Aires$/);
+        const { rows } = await database.query<{ known: boolean }>(`SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = $1) AS known`, [stored]);
+        expect(rows[0]!.known).toBe(true);
+        await send("PATCH", "/app/api/me/preferences", token, { timezone: null });
+      } finally {
+        if (instanceZone) await context.settings.set("system.timezone", instanceZone);
+      }
+    });
+
     it("rejects unknown keys, off-list formats and timezones PostgreSQL doesn't know", async () => {
       const token = await login(`${PREFIX}-user@example.com`);
       for (const body of [{ language: "fr" }, { locale: "es" }, { dateFormat: "dd/MM/yyyy" }, { regionalFormat: "es" }, { regionalFormat: "xx-YY" }, { regional_format: "es-AR" }, { timezone: "Mars/Olympus" }, { timezone: 3 }, []]) {

@@ -1,7 +1,7 @@
 import { viewAsHeader } from '~/utils/view-as'
 
 /** The browser's IANA zone - resolved once. */
-const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
+export const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 /**
  * Every API request's headers: the browser's zone - the server's last

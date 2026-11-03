@@ -240,6 +240,14 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     sizeBytes: { type: "integer" },
     tables: arrayOf(ref("MaintenanceTable")),
   }),
+  SystemInfo: object({
+    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.12)." },
+    environment: { type: "string", description: "NODE_ENV: development, staging or production." },
+    postgres: object({
+      version: { type: "string", description: "The server's version, e.g. 17.2." },
+      database: { type: "string" },
+    }),
+  }),
   AdminProfile: object({
     id: UUID,
     email: { type: "string", format: "email" },

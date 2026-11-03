@@ -736,9 +736,13 @@
     "variablesBar": {
       "loadOptionsFailed": "Could not load options",
       "customRange": "Custom range",
-      "from": "{label} from",
-      "to": "{label} to",
       "reset": "Reset"
+    },
+    "rangePicker": {
+      "open": "{label}: choose a period",
+      "quickRanges": "Quick ranges",
+      "timesIn": "Times in {zone}",
+      "timesInDatabase": "Times in the database's own time zone"
     },
     "variablesModal": {
       "defaultLabel": "Variable {n}",
@@ -754,6 +758,13 @@
       "add": "Add variable",
       "nameHelp": "Lowercase, digits, underscores.",
       "labelHelp": "Shown in the variables bar.",
+      "descriptionHelp": "What it means, for the viewer - shown behind an ⓘ beside the label. Up to 128 characters.",
+      "precision": "Precision",
+      "precisionHelp": "How fine a custom range is. The presets are the same either way.",
+      "precisionDay": "Day",
+      "precisionDayHelp": "Two dates; the last day is included.",
+      "precisionMinute": "Minute",
+      "precisionMinuteHelp": "Two dates with a time of day, in the viewer's time zone; the end is exact, not the end of its day.",
       "allowSeveral": "Allow several values",
       "options": "Options",
       "values": "Values",
@@ -791,7 +802,10 @@
       "updatedAgo": "Updated {ago}"
     },
     "viewer": {
-      "autoRefresh": "Auto-refresh: {interval}"
+      "autoRefresh": "Auto-refresh: {interval}",
+      "shortSeconds": "{n} s",
+      "shortMinutes": "{n} min",
+      "shortHours": "{n} h"
     },
     "tabs": {
       "add": "Add tab",
@@ -1024,6 +1038,13 @@
       "deleteWidgetHelp": "{name} and its query leave the draft - publish to take it off the live dashboard.",
       "duplicate": "Duplicate…",
       "editVariables": "Edit variables",
+      "queriesRunIn": "Queries run in {zone} · {source}",
+      "queriesRunInPostgres": "Queries run in PostgreSQL's own time zone: your browser's zone \"{zone}\" is unknown to PostgreSQL. Set Settings › General › Timezone.",
+      "timezoneSource": {
+        "USER": "your account",
+        "INSTANCE": "the instance's zone",
+        "BROWSER": "your browser"
+      },
       "brokenWidgetEmbeds": "Stops the embed {names}: the widget it shows is no longer in the dashboard. Update it in Share. | Stops {n} embeds {names}: the widget each shows is no longer in the dashboard. Update them in Share."
     },
     "tree": {
@@ -1285,6 +1306,8 @@
         "versions": "Versions"
       },
       "delegable": "Managers may share it",
+      "showDescriptions": "Show descriptions",
+      "showDescriptionsHelp": "The ⓘ by each widget's title and each variable's label, for viewers. Off, the descriptions stay as documentation - the editor still shows them.",
       "delegableHelp": "Managers open it to the roles below theirs. Turn it on only when its queries filter by the person ($USER.*): a dashboard's SQL doesn't go through permissions.",
       "delegableError": "Could not change whether managers may share it"
     }

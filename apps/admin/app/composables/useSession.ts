@@ -1,4 +1,5 @@
 import type { DelegatedModule, PortalAccess } from '~/utils/role-access'
+import type { AppShell, MenuHeader } from '~/types/app-menu'
 import { isAppPath, viewAsState } from '~/utils/view-as'
 
 /**
@@ -21,8 +22,12 @@ export interface AdminAccount {
   avatarUrl?: string | null
   /** ADMIN or APP (an API-only user never gets a portal session) - a routing hint only: the server re-checks access on every request. */
   access?: PortalAccess
+  /** This build of TotalBase - the account menu's line under the email (Administration.md §7.10). */
+  version?: string
   /** The delegated modules the rail shows (users, roles, files, templates, logs) - every one for an administrator. */
   modules?: DelegatedModule[]
+  /** How the App is framed for a non-administrator (app.shell, app.menu_header - Admin_UI.md §3.1.1); an administrator keeps the rail whatever it says. */
+  app?: { shell: AppShell, menuHeader: MenuHeader }
   /** Per delegated module, the actions the user may take on its table (READ/CREATE/UPDATE/DELETE). */
   moduleActions?: Partial<Record<DelegatedModule | 'folders' | 'assignments', Array<'READ' | 'CREATE' | 'UPDATE' | 'DELETE'>>>
   /** A non-administrator's roles they may assign or remove - created by them, or managed by one of their roles. */

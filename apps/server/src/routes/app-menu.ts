@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { callerRoles } from "../caller-roles.js";
-import { pruneMenu, type MenuInput, type MenuObject } from "@totalbase/app-menu";
+import { pruneMenu, type MenuEntry, type MenuInput, type MenuObject } from "@totalbase/app-menu";
 import type { AdminDashboard } from "@totalbase/dashboards";
 import type { AdminDataView } from "@totalbase/dataviews";
 import type { AppContext } from "../context.js";
@@ -10,6 +10,7 @@ import { adminDoc, arrayOf, object, ok, ref } from "../openapi-admin-docs.js";
 import { APP_MENU_SCHEMAS } from "../openapi-admin-docs-dataviews.js";
 import { listableDataViews } from "./app-dataviews.js";
 import { requestData, type DataBody } from "../request-body.js";
+import { COMPANIONS, delegatedModuleActions } from "../delegated-modules.js";
 
 function dataviewObject(view: AdminDataView): MenuObject {
   return { kind: "DATAVIEW", id: view.id, name: view.name, slug: view.slug, menuLabel: view.menuLabel, description: view.description, icon: view.icon, color: view.color, viewType: view.viewType };
@@ -30,10 +31,21 @@ async function hiddenObjects(context: AppContext): Promise<MenuObject[]> {
   return [...dataviews.map(dataviewObject), ...dashboards.map(dashboardObject)];
 }
 
-/** The administrator's view of the menu: the whole arrangement, plus what is hidden from it. */
+/** The administrator's view of the menu: the whole arrangement, its settings, plus what is hidden from it. */
 async function adminMenu(context: AppContext) {
-  const [{ objects }, hidden, mode, groupsOpen, search] = await Promise.all([publishedObjects(context), hiddenObjects(context), menuMode(context), menuGroupsOpen(context), menuSearch(context)]);
-  return { mode, groupsOpen, search, nodes: await context.appMenu.tree(objects), hidden };
+  const [{ objects }, hidden, mode, groupsOpen, search, shell, header] = await Promise.all([
+    publishedObjects(context), hiddenObjects(context), menuMode(context), menuGroupsOpen(context), menuSearch(context), appShell(context), menuHeader(context),
+  ]);
+  return { mode, groupsOpen, search, shell, menuHeader: header, nodes: await context.appMenu.tree(objects), hidden };
+}
+
+/** The App's shell for non-administrators (app.shell, Admin_UI.md §3.1.1) - read by /auth/me too, where the layout takes it from. */
+export async function appShell(context: AppContext): Promise<"SHARED" | "STANDALONE"> {
+  return context.settings.get("app.shell");
+}
+/** What heads the standalone App's menu (app.menu_header). */
+export async function menuHeader(context: AppContext): Promise<"LOGO_AND_NAME" | "LOGO" | "NAME" | "NONE"> {
+  return context.settings.get("app.menu_header");
 }
 
 async function menuMode(context: AppContext): Promise<"TREE" | "SIDEBAR"> {
@@ -69,27 +81,34 @@ async function homeOf(context: AppContext, roleIds: string[], objects: MenuObjec
 export function registerAppMenuRoutes(app: FastifyInstance, context: AppContext): void {
   app.get("/app/api/menu", { preHandler: requireAppAccess(context) }, async (request) => {
     const { dataviews, objects } = await publishedObjects(context);
-    const nodes = await context.appMenu.tree(objects);
+    // Module entries are the standalone shell's rail (Security.md §8.2): in the shared shell the rail is
+    // there for everyone, so the menu shows none - the arrangement keeps them for when the shell changes.
+    const standalone = (await appShell(context)) === "STANDALONE";
+    const nodes = standalone ? await context.appMenu.tree(objects) : pruneMenu(await context.appMenu.tree(objects), (entry) => entry.kind !== "MODULE");
     const { roleIds, administrator } = await callerRoles(context, request);
     if (administrator) {
       return { data: { mode: await menuMode(context), groupsOpen: await menuGroupsOpen(context), search: await menuSearch(context), nodes, home: await homeOf(context, roleIds, objects, () => true) } };
     }
 
-    const [openableDataviews, openableDashboards] = await Promise.all([
+    // A module entry follows the rail's rule (Security.md §9.2): READ on its table - never a grant of its own.
+    const [openableDataviews, openableDashboards, moduleActions] = await Promise.all([
       listableDataViews(context, roleIds, dataviews),
       context.dashboardsAdmin.listPublished(roleIds),
+      delegatedModuleActions(context, roleIds),
     ]);
     const visible = new Set([
       ...openableDataviews.map((view) => `DATAVIEW:${view.id}`),
       ...openableDashboards.map((dashboard) => `DASHBOARD:${dashboard.id}`),
+      ...Object.keys(moduleActions).filter((key) => !(COMPANIONS as string[]).includes(key)).map((module) => `MODULE:${module}`),
     ]);
+    const canOpen = (entry: MenuEntry) => visible.has(entry.kind === "MODULE" ? `MODULE:${entry.module}` : `${entry.kind}:${entry.id}`);
     return {
       data: {
         mode: await menuMode(context),
         groupsOpen: await menuGroupsOpen(context),
         search: await menuSearch(context),
-        nodes: pruneMenu(nodes, (kind, id) => visible.has(`${kind}:${id}`)),
-        home: await homeOf(context, roleIds, objects, (object) => visible.has(`${object.kind}:${object.id}`)),
+        nodes: pruneMenu(nodes, canOpen),
+        home: await homeOf(context, roleIds, objects, canOpen),
       },
     };
   });
@@ -101,9 +120,10 @@ export function registerAppMenuRoutes(app: FastifyInstance, context: AppContext)
     ...adminDoc("app-menu", {
       summary: "Get the App menu",
       description:
-        "The whole arrangement, unfiltered - every published LISTED DataView and Dashboard (viewers get it pruned through " +
-        "/app/api/menu) - and `hidden`: the published EMBEDDED_ONLY ones that could be shown (a Detail's own DataView never is). " +
-        "Hiding or showing one is its `scope` (PATCH /admin/api/dataviews/{id} or /admin/api/dashboards/{id}).",
+        "The whole arrangement, unfiltered - every published LISTED DataView and Dashboard, and the modules placed in it " +
+        "(viewers get it pruned through /app/api/menu) - its settings, and `hidden`: the published EMBEDDED_ONLY ones that " +
+        "could be shown (a Detail's own DataView never is). Hiding or showing one is its `scope` (PATCH /admin/api/dataviews/{id} " +
+        "or /admin/api/dashboards/{id}); the settings are PATCH /admin/api/settings/app.",
       response: ok(ref("AdminAppMenu")),
       schemas: APP_MENU_SCHEMAS,
     }),
@@ -115,8 +135,9 @@ export function registerAppMenuRoutes(app: FastifyInstance, context: AppContext)
       summary: "Replace the App menu arrangement",
       description:
         "Replaces the whole stored arrangement in one transaction: groups (keep an existing group's `id`, omit it for a new " +
-        "one) nesting up to 8 levels, and items by object id. An unknown object or one placed twice is refused by PostgreSQL " +
-        "(409); published objects left out are appended to the root on read. Returns the resulting menu.",
+        "one) nesting up to 8 levels, items by object id, and modules (users, roles, files, templates, logs - each at most " +
+        "once, with an optional label and icon of its own). An unknown object or one placed twice is refused by PostgreSQL " +
+        "(409); published objects left out are appended to the root on read, a module left out leaves the menu. Returns the resulting menu.",
       requestBody: { schema: dataEnvelope(object({ nodes: arrayOf(ref("AppMenuInput")) }, ["nodes"])) },
       response: ok(ref("AdminAppMenu")),
       schemas: APP_MENU_SCHEMAS,

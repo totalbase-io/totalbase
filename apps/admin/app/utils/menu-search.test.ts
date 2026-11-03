@@ -12,8 +12,17 @@ describe('menu search', () => {
     group('Sucursales', [item('Sucursales'), item('Mapa de sucursales', 'Mapa'), item('Sucursales habilitadas')]),
     group('Equipos', [item('Dispositivos', null, 'Celulares lectores de cada sucursal'), item('Impresoras')]),
     item('Clientes'),
-    group('Ventas', [group('Facturación', [item('Facturas'), item('Notas de crédito')])])
+    group('Ventas', [group('Facturación', [item('Facturas'), item('Notas de crédito')])]),
+    group('Equipo', [{ kind: 'MODULE', id: 'm-users', module: 'users', name: null, icon: null }, { kind: 'MODULE', id: 'm-logs', module: 'logs', name: 'Actividad', icon: null }])
   ]
+  const moduleLabel = (module: { module: string }) => ({ users: 'Usuarios', logs: 'Registros' })[module.module] ?? module.module
+
+  it('finds a module by its own label or its rail name in the UI language', () => {
+    expect(filterMenu(menu, 'usuar', moduleLabel).map(n => n.name)).toEqual(['Equipo'])
+    expect((filterMenu(menu, 'activid', moduleLabel)[0] as { children: MenuNode[] }).children.map(n => n.id)).toEqual(['m-logs'])
+    // Without labels only a module's own label matches.
+    expect(filterMenu(menu, 'usuar')).toEqual([])
+  })
 
   it('finds an entry by its label, full name or description, and a group whole - case and accents aside', () => {
     const found = filterMenu(menu, 'SUCURSAL')
@@ -24,7 +33,7 @@ describe('menu search', () => {
     const credit = filterMenu(menu, 'credito')
     expect(credit.map(n => n.name)).toEqual(['Ventas'])
     expect(filterMenu(menu, 'zzz')).toEqual([])
-    expect(countEntries(menu)).toBe(8)
+    expect(countEntries(menu)).toBe(10)
   })
 
   it('marks what matched, accents and case as written', () => {

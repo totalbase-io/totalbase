@@ -67,6 +67,12 @@ async function pick(page: Page, variable: string, option: string) {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
+/** A date range: one button reading the range in effect, which opens the quick ranges beside a custom range. */
+async function pickRange(page: Page, variable: string, preset: string) {
+  await page.locator('main').getByRole('button', { name: `${variable}: choose a period` }).click()
+  await page.getByRole('group', { name: 'Quick ranges' }).getByRole('button', { name: preset, exact: true }).click()
+}
+
 test('each variable filters the widgets that use it, and the defaults apply on open', async ({ page, token: _ }) => {
   await page.goto(`/app/dashboards/${dashboard.slug}`)
   // No value set: every order, every customer.
@@ -79,7 +85,7 @@ test('each variable filters the widgets that use it, and the defaults apply on o
   expect(recent).toBeLessThan(22)
 
   // A date range preset.
-  await pick(page, 'Rango', 'All time')
+  await pickRange(page, 'Rango', 'All time')
   await expect(value(page, 'Por rango')).toHaveText('22')
   // A static list.
   await pick(page, 'Estado', 'CONFIRMADO')

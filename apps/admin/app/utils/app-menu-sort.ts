@@ -1,4 +1,4 @@
-import type { MenuNode, MenuObject } from '~/types/app-menu'
+import type { MenuEntry, MenuNode } from '~/types/app-menu'
 
 export type MenuSortKey = 'NAME' | 'TYPE'
 export type MenuSortDirection = 'ASC' | 'DESC'
@@ -7,15 +7,17 @@ export type MenuSortDirection = 'ASC' | 'DESC'
  * The App menu sorted at every level - the root, each group, each
  * subgroup - by the same key and direction (Security.md
  * §8.2). Groups come first, ordered by name (they have no type); then the
- * entries, by name, or by `typeOf` (the label the editor shows) and name
- * for ties. DESC reverses the whole order. Returns a new tree.
+ * entries, by name (`nameOf` - a module's own label, else its rail name), or
+ * by `typeOf` (the label the editor shows) and name for ties. DESC reverses
+ * the whole order. Returns a new tree.
  */
 export function sortMenu(
   nodes: MenuNode[],
   key: MenuSortKey,
   direction: MenuSortDirection,
-  typeOf: (object: MenuObject) => string,
-  locale?: string
+  typeOf: (entry: MenuEntry) => string,
+  locale?: string,
+  nameOf: (entry: MenuEntry) => string = entry => entry.name ?? ''
 ): MenuNode[] {
   const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true })
   const sign = direction === 'ASC' ? 1 : -1
@@ -27,7 +29,7 @@ export function sortMenu(
       const byType = collator.compare(typeOf(a), typeOf(b))
       if (byType !== 0) return sign * byType
     }
-    return sign * collator.compare(a.name, b.name)
+    return sign * collator.compare(a.kind === 'GROUP' ? a.name : nameOf(a), b.kind === 'GROUP' ? b.name : nameOf(b))
   }
   const walk = (list: MenuNode[]): MenuNode[] =>
     list

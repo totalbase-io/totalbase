@@ -377,12 +377,24 @@ export const APP_MENU_SCHEMAS: Record<string, JsonSchema> = {
     },
     ["kind", "id", "name", "icon", "iconOpen", "openState", "children"],
   ),
-  AppMenuNode: { oneOf: [ref("AppMenuGroup"), ref("AppMenuObject")] },
+  AppMenuModule: object(
+    {
+      kind: { type: "string", enum: ["MODULE"] },
+      id: UUID,
+      module: { type: "string", enum: ["users", "roles", "files", "templates", "logs"], description: "The delegated module it opens (Security.md §9.2) - shown to a viewer whose roles read its table." },
+      name: { ...TEXT_OR_NULL, description: "What the menu shows - null: the module's own name." },
+      icon: { ...TEXT_OR_NULL, description: "null: the module's own icon." },
+    },
+    ["kind", "id", "module", "name", "icon"],
+  ),
+  AppMenuNode: { oneOf: [ref("AppMenuGroup"), ref("AppMenuObject"), ref("AppMenuModule")] },
   AdminAppMenu: object(
     {
       mode: { type: "string", enum: ["TREE", "SIDEBAR"], description: "The `app.menu_mode` setting." },
       groupsOpen: { type: "string", enum: ["CURRENT", "OPEN", "CLOSED"], description: "The `app.menu_groups_open` setting: how the tree menu's groups start - CURRENT, only the one holding the page." },
       search: { type: "string", enum: ["AUTO", "ALWAYS", "NEVER"], description: "The `app.menu_search` setting: whether the menu offers its search box - AUTO, once a viewer sees more than 15 entries." },
+      shell: { type: "string", enum: ["SHARED", "STANDALONE"], description: "The `app.shell` setting: what non-administrators get - the App beside the rail, or its menu as the only sidebar (Admin_UI.md §3.1.1)." },
+      menuHeader: { type: "string", enum: ["LOGO_AND_NAME", "LOGO", "NAME", "NONE"], description: "The `app.menu_header` setting: what heads the standalone App's menu." },
       nodes: {
         ...arrayOf(ref("AppMenuNode")),
         description:
@@ -396,7 +408,7 @@ export const APP_MENU_SCHEMAS: Record<string, JsonSchema> = {
           "their `scope` to LISTED. A DataView another one owns (a Master-detail's items) is never listed.",
       },
     },
-    ["mode", "groupsOpen", "search", "nodes", "hidden"],
+    ["mode", "groupsOpen", "search", "shell", "menuHeader", "nodes", "hidden"],
   ),
   AppMenuInput: {
     oneOf: [
@@ -413,6 +425,16 @@ export const APP_MENU_SCHEMAS: Record<string, JsonSchema> = {
         ["kind", "name", "children"],
       ),
       object({ kind: { type: "string", enum: ["DATAVIEW", "DASHBOARD"] }, id: { ...UUID, description: "The DataView's or Dashboard's id." } }, ["kind", "id"]),
+      object(
+        {
+          kind: { type: "string", enum: ["MODULE"] },
+          id: { ...UUID, description: "Keep an existing entry's id; omit for a new one." },
+          module: { type: "string", enum: ["users", "roles", "files", "templates", "logs"] },
+          name: { ...TEXT_OR_NULL, description: "A label of its own, at most 32 characters; omitted or null: the module's name." },
+          icon: { ...TEXT_OR_NULL, description: "Omitted or null: the module's icon." },
+        },
+        ["kind", "module"],
+      ),
     ],
   },
 };

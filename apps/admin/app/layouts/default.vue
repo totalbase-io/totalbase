@@ -54,7 +54,16 @@ function groupHasPanel(key: string) {
 // breakpoint: a CSS-hidden aside still mounts its tree (and fetches its
 // data), and on a compact screen the same panel lives in the slideover.
 const isCompact = useCompactUi()
-const showAside = computed(() => !isCompact.value && !isFullWidthEditor.value && groupHasPanel(activeGroupKey.value))
+// The standalone App shell (Admin_UI.md §3.1.1, app.shell): for a non-administrator - an administrator
+// seeing the App as one included - no rail; the App menu is the only sidebar, headed as app.menu_header says
+// and footed by the account, whatever page is open. A delegated module's own panel (Roles' tree, Users'
+// Invite, Logs' filters) shows under the menu while its page is open, so nothing the rail reached is lost.
+const standalone = computed(() => !isAdmin.value && session.admin.value?.app?.shell === 'STANDALONE')
+const menuHeader = computed(() => session.admin.value?.app?.menuHeader ?? 'LOGO_AND_NAME')
+const standaloneModuleGroup = computed(() => (standalone.value
+  ? navGroups.value.find(g => g.key !== 'app' && groupHasPanel(g.key) && g.routePrefixes?.some(p => route.path.startsWith(p)))
+  : undefined))
+const showAside = computed(() => !isCompact.value && (standalone.value || (!isFullWidthEditor.value && groupHasPanel(activeGroupKey.value))))
 
 // The group panel (UDashboardSidebar, Nuxt UI's dashboard template): resizable, its width remembered per
 // browser - one for Database, whose tree nests four levels deep, one for every other group, so resizing one
@@ -159,8 +168,9 @@ const themeItem = (choice: ColorModeChoice | null, label: string, icon: string) 
   label, icon, type: 'checkbox' as const, checked: colorModeChoice.choice.value === choice, onSelect: () => colorModeChoice.choose(choice)
 })
 
+// The build's version under the email, muted (the item's description): always at hand, never in the way.
 const userMenuItems = computed(() => [
-  [{ label: session.admin.value?.email, type: 'label' as const }],
+  [{ label: session.admin.value?.email, description: session.admin.value?.version ? `${PRODUCT_NAME} ${session.admin.value.version}` : undefined, type: 'label' as const }],
   [{ label: t('shell.userMenu.myAccount'), icon: 'i-lucide-circle-user', to: '/account' }],
   [
     themeItem(null, t('shell.userMenu.instanceDefault'), 'i-lucide-building-2'),
@@ -228,7 +238,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
     account cluster is anchored at the bottom of the rail. -->
       <!-- data-shell: the anchors the operator's CSS may target (Admin_UI.md §4.1.1) - rail, panel, header, main. -->
       <nav
-        v-if="!isCompact"
+        v-if="!isCompact && !standalone"
         data-shell="rail"
         :aria-label="t('shell.railLabel')"
         class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-default bg-elevated/50"
@@ -279,7 +289,18 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
         :toggle="false"
       >
         <template #header>
+          <AppMenuBrand
+            v-if="standalone"
+            :header="menuHeader"
+          >
+            <UDashboardSidebarCollapse
+              class="ms-auto"
+              color="neutral"
+              variant="ghost"
+            />
+          </AppMenuBrand>
           <SidebarHeader
+            v-else
             :title="activeGroup?.label ?? ''"
             :icon="activeGroup?.icon"
           >
@@ -290,13 +311,74 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
             />
           </SidebarHeader>
         </template>
+        <template v-if="standalone">
+          <AppMenuPanel />
+          <template v-if="standaloneModuleGroup">
+            <USeparator
+              :label="standaloneModuleGroup.label"
+              class="my-2"
+            />
+            <NavGroupPanel
+              :group="standaloneModuleGroup"
+              :is-admin="false"
+            />
+          </template>
+        </template>
         <NavGroupPanel
-          v-if="activeGroup"
+          v-else-if="activeGroup"
           :group="activeGroup"
           :is-admin="isAdmin"
         />
+        <template
+          v-if="standalone"
+          #footer
+        >
+          <AppMenuAccount
+            :environment="environment"
+            :environment-color="environmentBadgeColor"
+            :items="userMenuItems"
+          />
+        </template>
         <template #content>
-          <ShellSurface class="flex h-full min-h-0">
+          <ShellSurface
+            v-if="standalone"
+            class="flex h-full min-h-0 flex-col"
+          >
+            <AppMenuBrand :header="menuHeader">
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                class="ms-auto"
+                :aria-label="t('shell.mobileNav.close')"
+                @click="isMobileNavOpen = false"
+              />
+            </AppMenuBrand>
+            <div class="flex-1 overflow-y-auto p-2">
+              <AppMenuPanel />
+              <template v-if="standaloneModuleGroup">
+                <USeparator
+                  :label="standaloneModuleGroup.label"
+                  class="my-2"
+                />
+                <NavGroupPanel
+                  :group="standaloneModuleGroup"
+                  :is-admin="false"
+                />
+              </template>
+            </div>
+            <div class="border-t border-default p-2">
+              <AppMenuAccount
+                :environment="environment"
+                :environment-color="environmentBadgeColor"
+                :items="userMenuItems"
+              />
+            </div>
+          </ShellSurface>
+          <ShellSurface
+            v-else
+            class="flex h-full min-h-0"
+          >
             <nav
               data-shell="rail"
               :aria-label="t('shell.railLabel')"

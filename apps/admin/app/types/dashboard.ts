@@ -24,6 +24,8 @@ export interface Dashboard {
   scope: 'LISTED' | 'EMBEDDED_ONLY'
   /** The App viewer's auto-refresh interval in seconds (one of DASHBOARD_REFRESH_INTERVALS); null = off. Not versioned. */
   refreshIntervalSeconds: number | null
+  /** Whether viewers see the widgets' and variables' descriptions (an ⓘ) - off, they stay as documentation (§4.1). */
+  showDescriptions?: boolean
   /** A signed embed token may show its published version outside TotalBase (Dashboards.md §9.5). */
   embeddingEnabled?: boolean
   /** Whether a manager may open it to the roles below theirs (Security.md §9.7). */
@@ -43,6 +45,8 @@ export interface Dashboard {
 export type DashboardVariableType = 'DATE_RANGE' | 'SELECT' | 'TEXT' | 'NUMBER'
 export type DateRangePreset = 'last_hour' | 'today' | 'last_7_days' | 'last_30_days' | 'last_90_days' | 'this_month' | 'last_month' | 'this_year' | 'all'
 export type DateRangeValue = DateRangePreset | { from: string, to: string }
+/** How fine a DATE_RANGE's custom range is: two dates (the last day included), or `YYYY-MM-DDTHH:MM` bounds, `to` exclusive as written. */
+export type DateRangePrecision = 'day' | 'minute'
 
 /** A fixed list's option: its value and, optionally, the text the viewer reads. */
 export interface DashboardStaticOption {
@@ -62,7 +66,11 @@ export type DashboardVariableDefault = { source: 'constant', value: unknown } | 
 export interface DashboardVariable {
   name: string
   label: string
+  /** What it means, for the viewer - the bar's ⓘ beside the label. */
+  description?: string
   type: DashboardVariableType
+  /** DATE_RANGE only; absent = day. */
+  precision?: DateRangePrecision
   multiple?: boolean
   options?: DashboardVariableOptions
   default?: DashboardVariableDefault
@@ -140,6 +148,15 @@ export interface DashboardQueryColumn {
   fileReference?: boolean
   /** A numeric/bigint value too long for a number arrives as its exact text. */
   lossy?: boolean
+}
+
+/** The zone a run used (`meta.timezone`, Dashboards.md §2.3): PostgreSQL's name, and which step of Security.md §4.2 gave it - `POSTGRESQL`: none applied, PostgreSQL's own zone ran. */
+export interface DashboardRunTimezone {
+  name: string | null
+  source: 'USER' | 'INSTANCE' | 'BROWSER' | 'POSTGRESQL'
+}
+export interface DashboardRunMeta {
+  timezone?: DashboardRunTimezone
 }
 
 export interface DashboardQueryResult {

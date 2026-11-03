@@ -11,7 +11,7 @@ import type { JsonSchema } from "@totalbase/openapi";
 import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 import { WORKFLOW_SCHEMAS } from "../openapi-admin-docs-workflows.js";
 import { registerDeleteVersionsRoute } from "./delete-versions.js";
-import { type DataBody, optionalData, publishNote, versionParam } from "../request-body.js";
+import { type DataBody, optionalData, publishNote, revisionOf, versionParam } from "../request-body.js";
 
 function defined<T extends Record<string, unknown>>(input: T): Partial<T> {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
@@ -25,7 +25,11 @@ interface UpdateWorkflowBody { revision: string; name: string; description: stri
 
 const ID_PARAMS = { id: { ...UUID_PARAM, description: "The workflow's id." } };
 const VERSION_PARAMS = { ...ID_PARAMS, version: { schema: { type: "integer", minimum: 1 }, description: "The version NUMBER (1, 2, ...), not its id." } };
-const REVISION: JsonSchema = { type: "string", description: "The workflow's current `revision` (optimistic concurrency)." };
+const REVISION: JsonSchema = {
+  type: "string",
+  pattern: "^[0-9]+$",
+  description: "The workflow's current `revision` (optimistic concurrency): `data.revision` of GET /admin/api/workflows/{id}, or `data.workflow.revision` of its draft. 400 INVALID_QUERY unless an integer as a string; 409 WORKFLOW_REVISION_CONFLICT when stale.",
+};
 /** `{ data: <schema> }` - every request body (Data_API.md §2.5). */
 const dataBody = (schema: JsonSchema): JsonSchema => object({ data: schema }, ["data"]);
 const REVISION_BODY = dataBody(object({ revision: REVISION }, ["revision"]));
@@ -168,7 +172,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request) => {
     const body = optionalData<UpdateWorkflowBody>(request.body);
-    return { data: await context.workflowsAdmin.update(request.params.id, { revision: body.revision ?? "", ...defined({ name: body.name, description: body.description, slug: body.slug, historyEnabled: body.historyEnabled, historyLevel: body.historyLevel, enabled: body.enabled }) }) };
+    return { data: await context.workflowsAdmin.update(request.params.id, { revision: revisionOf(request.body), ...defined({ name: body.name, description: body.description, slug: body.slug, historyEnabled: body.historyEnabled, historyLevel: body.historyLevel, enabled: body.enabled }) }) };
   });
   app.put<{ Params: { id: string }; Body: DataBody<{ revision: string; definition: Record<string, unknown> }> }>("/admin/api/workflows/:id/draft", {
     preHandler,
@@ -189,7 +193,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request) => {
     const body = optionalData<{ revision: string; definition: Record<string, unknown> }>(request.body);
-    return { data: await context.workflowsAdmin.saveDraft(request.params.id, body.revision ?? "", body.definition as Record<string, unknown>) };
+    return { data: await context.workflowsAdmin.saveDraft(request.params.id, revisionOf(request.body), body.definition as Record<string, unknown>) };
   });
   app.delete<{ Params: { id: string } }>("/admin/api/workflows/:id", {
     preHandler,
@@ -215,7 +219,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
       response: ok(ref("Workflow")),
     }),
   }, async (request) => ({
-    data: await context.workflowsAdmin.publish(request.params.id, optionalData<{ revision: string }>(request.body).revision ?? "", (definition) => validateExecutionReadiness(definition, context), request.admin?.id ?? null, publishNote(request.body)),
+    data: await context.workflowsAdmin.publish(request.params.id, revisionOf(request.body), (definition) => validateExecutionReadiness(definition, context), request.admin?.id ?? null, publishNote(request.body)),
   }));
 
   // Runs the current DRAFT synchronously, as the requesting admin - "Probar"
@@ -335,7 +339,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
       response: ok(ref("Workflow")),
     }),
   }, async (request) => ({
-    data: await context.workflowsAdmin.restore(request.params.id, optionalData<{ revision: string }>(request.body).revision ?? "", versionParam(request.params.version)),
+    data: await context.workflowsAdmin.restore(request.params.id, revisionOf(request.body), versionParam(request.params.version)),
   }));
   app.post<{ Params: { id: string; version: string }; Body: DataBody<{ name: string; slug: string }> }>("/admin/api/workflows/:id/versions/:version/duplicate", {
     preHandler,

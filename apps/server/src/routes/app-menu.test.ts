@@ -235,6 +235,68 @@ describe("App menu (/app/api/menu, /admin/api/app/menu)", () => {
     expect(await hiddenIds()).not.toContain(dv.draft);
   });
 
+  it("places a module as an entry a viewer sees only in the standalone shell with READ on its table, once, with its own label - and refuses an unknown one", async () => {
+    const usersResource = (await database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'users'`)).rows[0]!.id;
+    const before = (await call("GET", "/admin/api/app/menu", adminToken)).json().data.nodes;
+    const saved = await call("PUT", "/admin/api/app/menu", adminToken, {
+      data: { nodes: [{ kind: "GROUP", name: "Team", children: [{ kind: "MODULE", module: "users", name: "People", icon: "i-lucide-contact" }] }, { kind: "MODULE", module: "logs" }, ...asInput(before)] },
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    const adminNodes: Node[] = saved.json().data.nodes;
+    expect(adminNodes[0]!.children).toEqual([expect.objectContaining({ kind: "MODULE", module: "users", name: "People", icon: "i-lucide-contact" })]);
+    expect(adminNodes[1]).toEqual(expect.objectContaining({ kind: "MODULE", module: "logs", name: null, icon: null }));
+    const { shell, menuHeader } = saved.json().data;
+    expect([shell, menuHeader]).toEqual(["SHARED", "LOGO_AND_NAME"]);
+
+    // In the shared shell the rail reaches the modules: the menu shows none, to the administrator either.
+    const hasModule = (nodes: Node[]): boolean => nodes.some((n) => n.kind === "MODULE" || (n.children !== undefined && hasModule(n.children)));
+    await context.permissions.set(viewerRole, usersResource, "READ", { effect: "ALLOW" });
+    try {
+      expect(hasModule((await call("GET", "/app/api/menu", viewerToken)).json().data.nodes)).toBe(false);
+      expect(hasModule((await call("GET", "/app/api/menu", adminToken)).json().data.nodes)).toBe(false);
+      await context.settings.set("app.shell", "STANDALONE");
+      // Standalone: the viewer reads users, not logs - one module, and the group left empty goes with the other.
+      const nodes: Node[] = (await call("GET", "/app/api/menu", viewerToken)).json().data.nodes;
+      expect(nodes[0]!.children).toEqual([expect.objectContaining({ kind: "MODULE", module: "users", name: "People" })]);
+      expect(nodes.some((n) => n.kind === "MODULE" && (n as { module?: string }).module === "logs")).toBe(false);
+      await context.permissions.delete(viewerRole, usersResource, "READ");
+      expect(hasModule((await call("GET", "/app/api/menu", viewerToken)).json().data.nodes)).toBe(false);
+      expect(hasModule((await call("GET", "/app/api/menu", adminToken)).json().data.nodes)).toBe(true);
+    } finally {
+      await context.permissions.delete(viewerRole, usersResource, "READ").catch(() => undefined);
+      await context.settings.set("app.shell", "SHARED");
+    }
+
+    // Each module once; only the five; the id of a kept entry stays.
+    const usersEntryId = adminNodes[0]!.children![0]!.id;
+    const twice = await call("PUT", "/admin/api/app/menu", adminToken, { data: { nodes: [{ kind: "MODULE", module: "users" }, { kind: "MODULE", module: "users" }] } });
+    expect(twice.statusCode).toBe(409);
+    const unknown = await call("PUT", "/admin/api/app/menu", adminToken, { data: { nodes: [{ kind: "MODULE", module: "settings" }] } });
+    expect(unknown.statusCode).toBe(400);
+    const kept = await call("PUT", "/admin/api/app/menu", adminToken, { data: { nodes: [{ kind: "MODULE", id: usersEntryId, module: "users" }, ...asInput(before)] } });
+    expect(kept.statusCode, kept.body).toBe(200);
+    expect(kept.json().data.nodes[0]).toEqual(expect.objectContaining({ kind: "MODULE", id: usersEntryId, module: "users", name: null }));
+    // Left out of an arrangement, a module leaves the menu - nothing appends it.
+    expect((await call("PUT", "/admin/api/app/menu", adminToken, { data: { nodes: asInput(before) } })).statusCode).toBe(200);
+    expect((await call("GET", "/admin/api/app/menu", adminToken)).json().data.nodes.some((n: Node) => n.kind === "MODULE")).toBe(false);
+  });
+
+  it("reports the App's shell to every portal user, and the menu's header to the administrator", async () => {
+    const me = async (token: string) => (await call("GET", "/admin/api/auth/me", token)).json().data.app;
+    expect(await me(viewerToken)).toEqual({ shell: "SHARED", menuHeader: "LOGO_AND_NAME" });
+    await context.settings.set("app.shell", "STANDALONE");
+    await context.settings.set("app.menu_header", "NAME");
+    try {
+      expect(await me(viewerToken)).toEqual({ shell: "STANDALONE", menuHeader: "NAME" });
+      expect((await call("GET", "/admin/api/app/menu", adminToken)).json().data).toEqual(expect.objectContaining({ shell: "STANDALONE", menuHeader: "NAME" }));
+    } finally {
+      await context.settings.set("app.shell", "SHARED");
+      await context.settings.set("app.menu_header", "LOGO_AND_NAME");
+    }
+    await expect(context.settings.set("app.shell", "RAIL" as never)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(context.settings.set("app.menu_header", "TITLE" as never)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+  });
+
   it("reports the display mode", async () => {
     expect((await call("GET", "/app/api/menu", viewerToken)).json().data.mode).toBe("TREE");
     await context.settings.set("app.menu_mode", "SIDEBAR");

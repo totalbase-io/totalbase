@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { MenuGroup, MenuNode, MenuObject } from '~/types/app-menu'
+import type { MenuEntry, MenuGroup, MenuModule, MenuNode, MenuObject } from '~/types/app-menu'
 import { sortMenu } from './app-menu-sort'
 
 const entry = (name: string, kind: MenuObject['kind'] = 'DATAVIEW', viewType: string | null = 'TABLE'): MenuObject =>
   ({ kind, id: name, name, slug: name, menuLabel: null, description: null, icon: null, color: null, viewType })
 const group = (name: string, children: MenuNode[]): MenuGroup => ({ kind: 'GROUP', id: name, name, icon: null, iconOpen: null, openState: 'DEFAULT', children })
-const typeOf = (object: MenuObject) => (object.kind === 'DASHBOARD' ? 'Dashboard' : `DataView · ${object.viewType}`)
+const typeOf = (object: MenuEntry) => (object.kind === 'MODULE' ? 'Module' : object.kind === 'DASHBOARD' ? 'Dashboard' : `DataView · ${object.viewType}`)
 const names = (nodes: MenuNode[]) => nodes.map(n => n.name)
 
 describe('sortMenu', () => {
@@ -27,6 +27,13 @@ describe('sortMenu', () => {
     expect(names((sales.children[0] as MenuGroup).children)).toEqual(['Annual', 'Monthly'])
     // A new tree: the input is untouched.
     expect(names((tree[0] as MenuGroup).children)).toEqual(['Orders', 'Reports', 'Invoices'])
+  })
+
+  it('sorts a module by its own label, else by the name the caller gives it', () => {
+    const users: MenuModule = { kind: 'MODULE', id: 'users', module: 'users', name: null, icon: null }
+    const logs: MenuModule = { kind: 'MODULE', id: 'logs', module: 'logs', name: 'Activity', icon: null }
+    const nameOf = (e: MenuEntry) => (e.kind === 'MODULE' ? e.name ?? 'People' : e.name)
+    expect(sortMenu([entry('Zoo'), users, entry('Apps'), logs], 'NAME', 'ASC', typeOf, 'en', nameOf).map(n => n.id)).toEqual(['logs', 'Apps', 'users', 'Zoo'])
   })
 
   it('sorts by type, then by name for the same type, and reverses both in DESC', () => {

@@ -85,6 +85,8 @@ const color = ref<RoleColor | undefined>(undefined)
 const scope = ref<'LISTED' | 'EMBEDDED_ONLY'>('LISTED')
 /** 0 = off (a select item can't hold null); sent as null. */
 const refreshInterval = ref(0)
+/** Whether viewers see the widgets' and variables' descriptions (§4.1) - the editor always does. */
+const showDescriptions = ref(true)
 const refreshIntervalOptions = computed(() => [{ label: t('dashboards.detailsModal.refreshOff'), value: 0 }, ...DASHBOARD_REFRESH_INTERVALS.map(i => ({ label: catalog.refreshLabel(i.seconds, i.label), value: i.seconds }))])
 
 let seeded = false
@@ -99,6 +101,7 @@ watch(dashboard, (value) => {
   color.value = value.color ?? undefined
   scope.value = value.scope ?? 'LISTED'
   refreshInterval.value = value.refreshIntervalSeconds ?? 0
+  showDescriptions.value = value.showDescriptions !== false
 }, { immediate: true })
 
 const body = computed(() => ({
@@ -109,7 +112,8 @@ const body = computed(() => ({
   icon: icon.value ?? null,
   color: color.value ?? null,
   scope: scope.value,
-  refreshIntervalSeconds: refreshInterval.value || null
+  refreshIntervalSeconds: refreshInterval.value || null,
+  showDescriptions: showDescriptions.value
 }))
 let lastSaved = ''
 watch(dashboard, (value) => {
@@ -260,6 +264,12 @@ async function backToDesign() {
             v-model:icon="icon"
             v-model:color="color"
             kind="Dashboard"
+          />
+          <!-- Presentation, not content (§4.1): the ⓘ by each widget's title and each variable's label, for viewers. -->
+          <USwitch
+            v-model="showDescriptions"
+            :label="t('dashboards.settings.showDescriptions')"
+            :description="t('dashboards.settings.showDescriptionsHelp')"
           />
         </SettingsSection>
 

@@ -35,13 +35,15 @@ import type {
   DashboardVersionSnapshot,
   DashboardWidget,
   DashboardWidgetContent,
-  DashboardWidgetPaletteEntry
+  DashboardWidgetPaletteEntry,
+  DashboardRunTimezone
 } from '~/types/dashboard'
 import { useDashboardCatalogText } from '~/types/dashboard'
 import { dashboardWidgetDefinition, newWidgetControlConfig } from '@totalbase/tb-catalog'
 import { slugify } from '@totalbase/shared'
 import { DASHBOARD_CANVAS_CONTEXT_KEY } from '~/composables/useDashboardCanvasContext'
 import { decodeVariableValues, encodeVariableValues } from '~/utils/dashboard-variables'
+import { BROWSER_TIMEZONE } from '~/utils/api-headers'
 import { DASHBOARD_DESIGN_COLUMNS, dashboardFlowLayout } from '~/utils/dashboard-layout'
 import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
 import type { GridStack as GridStackCore, GridStackNode, GridStackWidget } from 'gridstack'
@@ -416,12 +418,25 @@ function onWidgetSaved(saved: DashboardWidget) {
   refreshStatus()
 }
 
+// The zone the queries ran in (Dashboards.md §2.3): the author sees where "today" is cut before a viewer does,
+// and a warning when PostgreSQL's own zone ran because it doesn't know the browser's.
+const queryTimezone = ref<DashboardRunTimezone | null>(null)
+const queryTimezoneLine = computed(() => {
+  const zone = queryTimezone.value
+  if (!zone) return ''
+  if (zone.source === 'POSTGRESQL') return t('dashboards.editor.queriesRunInPostgres', { zone: BROWSER_TIMEZONE })
+  return t('dashboards.editor.queriesRunIn', { zone: zone.name ?? '', source: t(`dashboards.editor.timezoneSource.${zone.source}`) })
+})
+
 provide(DASHBOARD_CANVAS_CONTEXT_KEY, {
   dashboardId,
   widgets: displayedWidgets,
   onEdit: editWidget,
   onDelete: askDeleteWidget,
   onDuplicate: duplicateWidget,
+  onLoaded: (meta) => {
+    if (meta?.timezone) queryTimezone.value = meta.timezone
+  },
   refreshKey,
   variableValues,
   variables,
@@ -700,6 +715,7 @@ const unconfiguredCount = computed(() => (widgets.value ?? []).filter(w => !w.qu
               v-model:labels="variableLabels"
               :variables="variables"
               :load-options="loadVariableOptions"
+              :run-timezone="queryTimezone"
             />
             <!-- Its variables are edited in Settings › Variables (D26). -->
             <UTooltip
@@ -737,6 +753,17 @@ const unconfiguredCount = computed(() => (widgets.value ?? []).filter(w => !w.qu
             </UTooltip>
           </UFieldGroup>
         </div>
+        <p
+          v-if="queryTimezoneLine"
+          class="flex items-center gap-1 text-xs"
+          :class="queryTimezone?.source === 'POSTGRESQL' ? 'text-warning' : 'text-muted'"
+        >
+          <UIcon
+            :name="queryTimezone?.source === 'POSTGRESQL' ? 'i-lucide-triangle-alert' : 'i-lucide-globe'"
+            class="size-3.5 shrink-0"
+          />
+          {{ queryTimezoneLine }}
+        </p>
         <DashboardTabsBar
           v-if="tabs.length || !readOnly"
           v-model="activeTab"

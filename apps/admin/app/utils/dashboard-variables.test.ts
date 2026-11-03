@@ -31,6 +31,7 @@ describe('what a DATE_RANGE reads as', () => {
   it('a preset\'s name, unset reading as All time', () => {
     expect(dateRangeLabel(day, 'last_7_days', 'es-AR', presetLabel)).toBe('L:Last 7 days')
     expect(dateRangeLabel(day, null, 'es-AR', presetLabel)).toBe('L:All time')
-    expect(dateRangeLabel(minute, { from: '2026-11-02', to: '2026-11-03' }, 'en-US', presetLabel)).toMatch(/^11\/02\/2026,? 00:00 – 11\/04\/2026|^11\/02\/2026,? 00:00 – 11\/03\/2026/)
+    // en-US writes its own 12-hour clock (regionalHourCycle); the space before AM is ICU's (a narrow one lately).
+    expect(dateRangeLabel(minute, { from: '2026-11-02', to: '2026-11-03' }, 'en-US', presetLabel)).toMatch(/^11\/02\/2026,? 12:00\sAM – 11\/03\/2026,? 12:00\sAM$/)
   })
 })

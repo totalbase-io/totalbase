@@ -1,7 +1,8 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import type { DashboardVariable, DateRangePreset, DateRangeValue } from '~/types/dashboard'
 import { DATE_RANGE_PRESETS } from '~/types/dashboard'
-import { clockOptions, SHORT_DATE, SHORT_TIME } from '~/utils/datetime-local'
+import { regionalClockOptions } from '@totalbase/shared'
+import { SHORT_DATE, SHORT_TIME } from '~/utils/datetime-local'
 
 /**
  * `$VAR.*` values <-> the page's URL query (Dashboards.md §3.7:
@@ -98,7 +99,9 @@ export function formatCustomRange(value: { from: string, to: string }, precision
     if (!y) return text
     const date = new Date(Number(y), Number(m) - 1, Number(d), Number(hh ?? 0), Number(mm ?? 0))
     if (precision !== 'minute') return date.toLocaleDateString(locale, SHORT_DATE)
-    return date.toLocaleString(locale, { ...clockOptions(), ...SHORT_DATE, ...SHORT_TIME })
+    // The clock is the given locale's (regionalHourCycle), not the viewer state's: the same in the App, and
+    // what the test's locale says outside it - the runtime's default locale differs from one machine to another.
+    return date.toLocaleString(locale, { ...regionalClockOptions(locale), ...SHORT_DATE, ...SHORT_TIME })
   }
   return `${part(value.from)} – ${part(value.to)}`
 }

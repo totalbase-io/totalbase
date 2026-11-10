@@ -33,9 +33,9 @@ jobs:
       # The admin's `nuxt typecheck` (vue-tsc) peaks around 2.6 GB, over Node's default heap.
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -57,34 +57,42 @@ jobs:
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
+        # The image's superuser only prepares the server; TotalBase connects as the role an installation gives it.
         env:
-          POSTGRES_USER: totalbase
-          POSTGRES_PASSWORD: totalbase
-          POSTGRES_DB: totalbase_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         # A free host port, read back below: a self-hosted runner's machine may already use 5432.
         ports: ["5432"]
         options: >-
-          --health-cmd "pg_isready -U totalbase"
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # TotalBase's role as the installation guide and the local matrix give it (Foundations.md §6): never SUPERUSER
+      # nor BYPASSRLS - PostgreSQL applies no Row Level Security policy to either, so the RLS suite needs a real
+      # role -, CREATEDB and CREATEROLE for the ownership tests, REPLICATION for Realtime; owner of the test database.
+      - name: TotalBase's role
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE totalbase LOGIN PASSWORD 'totalbase' CREATEDB CREATEROLE REPLICATION" \
+            -c "CREATE DATABASE totalbase_test OWNER totalbase"
       # Realtime subscriptions read the WAL through logical replication (Data_API.md §16.1): a service container
-      # takes no command line, so wal_level is set with ALTER SYSTEM and the container restarted. The image's
-      # role is a superuser, REPLICATION included. The restart maps the container to a new free host port: it's read
-      # back here, not from job.services (the port it had when the job started).
+      # takes no command line, so wal_level is set with ALTER SYSTEM, as the superuser, and the container restarted.
+      # The restart maps the container to a new free host port: it's read back here, not from job.services (the port
+      # it had when the job started).
       - name: Logical replication
         run: |
-          docker exec ${{ job.services.postgres.id }} psql -U totalbase -d totalbase_test -c "ALTER SYSTEM SET wal_level = logical"
+          docker exec ${{ job.services.postgres.id }} psql -U postgres -c "ALTER SYSTEM SET wal_level = logical"
           docker restart ${{ job.services.postgres.id }}
-          for i in $(seq 1 60); do docker exec ${{ job.services.postgres.id }} pg_isready -U totalbase && break; sleep 1; done
+          for i in $(seq 1 60); do docker exec ${{ job.services.postgres.id }} pg_isready -U postgres && break; sleep 1; done
           echo "POSTGRES_PORT=$(docker port ${{ job.services.postgres.id }} 5432/tcp | head -1 | sed 's/.*://')" >> "$GITHUB_ENV"
       # PostgreSQL 18's client tools, as the image carries them - the built-in backups' tests run pg_dump and pg_restore.
       - name: PostgreSQL 18 client tools

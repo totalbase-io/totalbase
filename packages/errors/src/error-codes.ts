@@ -40,6 +40,8 @@ export const TOTALBASE_ERROR_CODES = [
   "VIEW_AS_READ_ONLY",
   /** X-TotalBase-View-As names no active role or user, or comes from a caller who isn't an administrator. */
   "INVALID_VIEW_AS",
+  /** X-TotalBase-On-Behalf-Of names a user the caller may not act for: no ACT_ON_BEHALF capability, or a user their grants on users don't let them read (Security.md §10.3). */
+  "ON_BEHALF_OF_DENIED",
   /** "Payload checks" (totalbase.permissions.payload_checks) - a role-scoped CREATE/UPDATE business-rule check failed. Not a PostgreSQL CHECK constraint (see CHECK_VIOLATION for that); this is TotalBase's own, application-level equivalent. */
   "PAYLOAD_CHECK_FAILED",
 
@@ -410,6 +412,7 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
   VIEW_AS_READ_ONLY: 403,
   INVALID_SETUP_CODE: 403,
   INVALID_VIEW_AS: 400,
+  ON_BEHALF_OF_DENIED: 403,
   PAYLOAD_CHECK_FAILED: 422,
 
   RESOURCE_NOT_FOUND: 404,

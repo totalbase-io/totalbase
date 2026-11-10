@@ -19,6 +19,8 @@ export interface OutboxEventInput {
    * emitting events; omitted on any other source.
    */
   workflowAncestry?: string[] | null;
+  /** The user the write was made for (X-TotalBase-On-Behalf-Of, Security.md §10.3) - `outbox.on_behalf_of`. */
+  onBehalfOf?: string | undefined;
 }
 
 /**
@@ -57,20 +59,22 @@ export async function enqueueOutboxEvents(client: Queryable, inputs: OutboxEvent
     changedColumns: input.changedColumns ?? null,
     source: input.source ?? "api",
     workflowAncestry: input.workflowAncestry ?? null,
+    onBehalfOf: input.onBehalfOf ?? null,
   }));
   const { rows } = await client.query<{ id: string }>(
     `WITH input AS (
        SELECT gen_random_uuid() AS id, e.ord, e.doc
        FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS e(doc, ord)
      ), inserted AS (
-       INSERT INTO totalbase.outbox (id, request_id, resource, event, payload, old_payload, changed_columns, source, workflow_ancestry)
+       INSERT INTO totalbase.outbox (id, request_id, resource, event, payload, old_payload, changed_columns, source, workflow_ancestry, on_behalf_of)
        SELECT id, (doc ->> 'requestId')::uuid, (doc ->> 'resource')::uuid, doc ->> 'event',
               (doc ->> 'payload')::jsonb, (doc ->> 'oldPayload')::jsonb,
               CASE WHEN doc -> 'changedColumns' IS NULL OR jsonb_typeof(doc -> 'changedColumns') = 'null' THEN NULL
                    ELSE ARRAY(SELECT jsonb_array_elements_text(doc -> 'changedColumns')) END,
               doc ->> 'source',
               CASE WHEN doc -> 'workflowAncestry' IS NULL OR jsonb_typeof(doc -> 'workflowAncestry') = 'null' THEN NULL
-                   ELSE ARRAY(SELECT jsonb_array_elements_text(doc -> 'workflowAncestry'))::uuid[] END
+                   ELSE ARRAY(SELECT jsonb_array_elements_text(doc -> 'workflowAncestry'))::uuid[] END,
+              (doc ->> 'onBehalfOf')::uuid
        FROM input
        ORDER BY ord
      )

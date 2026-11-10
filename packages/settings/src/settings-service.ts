@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { isAbsolute } from "node:path";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { COLOR_MODES, HEX_COLOR, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
+import { COLOR_MODES, HEX_COLOR, isProjectUserColumn, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
 import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistry } from "./registry.js";
 import {
   SYSTEM_EMAIL_SLOTS,
@@ -142,6 +142,10 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
     }
   },
   "auth.registration_default_role": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a role id, or empty for none."),
+  "auth.registration_columns": (value) =>
+    Array.isArray(value) && value.every((column) => typeof column === "string" && /^[a-z_][a-z0-9_]*$/.test(column)) && new Set(value).size === value.length
+      ? null
+      : "Expected a list of distinct column names.",
   "auth.links.invitation": validateLinkTemplate,
   "auth.links.password_reset": validateLinkTemplate,
   "auth.links.email_verification": validateLinkTemplate,
@@ -195,6 +199,28 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
     if (value !== "s3") return null;
     const { rows } = await client.query(`SELECT 1 FROM totalbase.settings WHERE key = 's3.enabled' AND value = 'true'::jsonb`);
     return rows[0] ? null : "Enable S3 storage (Settings › S3 storage) before writing backups to it.";
+  },
+  // Security.md §2.7: the columns a stranger's registration form may write - the project's own columns of
+  // users, never TotalBase's (the account's identity and security state) nor a Password column (its hashing is
+  // the write paths', not a registration's).
+  "auth.registration_columns": async (client, value) => {
+    const columns = value as string[];
+    if (columns.length === 0) return null;
+    const { rows } = await client.query<{ name: string; password: boolean }>(
+      `SELECT a.attname AS name,
+              EXISTS (SELECT 1 FROM totalbase.resources_columns rc JOIN totalbase.resources r ON r.id = rc.resource
+                       WHERE r."schema" = 'totalbase' AND r.name = 'users' AND rc.name = a.attname AND rc.config ->> 'input' = 'password') AS password
+         FROM pg_attribute a
+        WHERE a.attrelid = 'totalbase.users'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND a.attname = ANY($1::text[])`,
+      [columns],
+    );
+    for (const column of columns) {
+      const row = rows.find((r) => r.name === column);
+      if (!row) return `${column} is not a column of the users table.`;
+      if (!isProjectUserColumn(column)) return `${column} is TotalBase's own column - a registration sets the project's columns only.`;
+      if (row.password) return `${column} is a Password column - never set on registration.`;
+    }
+    return null;
   },
   // Security.md §2.7: a role a self-registered account may
   // be given - never one that grants administration.

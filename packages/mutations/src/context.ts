@@ -31,6 +31,8 @@ export interface DataPrincipal {
   actorUserId?: string | undefined;
   /** The caller's effective time zone - its transactions' `TimeZone` (DatabaseTransactionContext.timezone). Unset: PostgreSQL's own. */
   timezone?: string | undefined;
+  /** The user the request is made for (X-TotalBase-On-Behalf-Of, Security.md §10.3): recorded in every audit entry and outbox event and handed to triggers; it lends no permission - the request is the caller's. */
+  onBehalfOf?: string | undefined;
 }
 
 /**
@@ -44,7 +46,16 @@ export async function dataApiTimeout(context: Pick<MutationsContext, "settings">
   return { statementTimeoutMs: await context.settings.get("api.request_timeout_ms"), timezone: dataPrincipal?.timezone };
 }
 
-/** A Data API write's transaction context: the request timeout, plus who is writing (`totalbase.actor_user_id`). */
-export async function writeTransactionContext(context: Pick<MutationsContext, "settings">, dataPrincipal: DataPrincipal): Promise<DatabaseTransactionContext> {
-  return { ...(await dataApiTimeout(context, dataPrincipal)), actorUserId: dataPrincipal.actorUserId };
+/**
+ * A Data API transaction's context - a read's or a write's, since every operation TotalBase runs for a principal
+ * tells PostgreSQL who it is (Security.md §10.3): the request timeout and the caller's time zone, the real user as
+ * `totalbase.actor_user_id` (a session's user, a token's owner, a workflow's executor) and the principal as
+ * `totalbase.user_id` / `totalbase.principal_type`. A Row Level Security policy keys on the actor in a read as in a
+ * write; it is unset where TotalBase itself acts (the Admin API's composed reads, the SQL Console, workers).
+ */
+export async function dataApiTransactionContext(context: Pick<MutationsContext, "settings">, dataPrincipal: DataPrincipal): Promise<DatabaseTransactionContext> {
+  return { ...(await dataApiTimeout(context, dataPrincipal)), actorUserId: dataPrincipal.actorUserId, principal: dataPrincipal.principal, onBehalfOfUserId: dataPrincipal.onBehalfOf };
 }
+
+/** A Data API write's transaction context - the same as a read's (`dataApiTransactionContext`); the name says which side calls it. */
+export const writeTransactionContext = dataApiTransactionContext;

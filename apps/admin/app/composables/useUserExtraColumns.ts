@@ -79,12 +79,12 @@ export function useUserExtraColumns() {
   }
 
   /**
-   * The columns a delegated user may set when inviting (CREATE on users, each granted) - from the
-   * App API, which also hands each column's presentation, foreign key target and CHECK list, so nothing here
-   * needs the Admin API.
+   * The columns a delegated user may set when inviting (CREATE on users, each granted) - from the Data
+   * API's built-in action on users, which also hands each column's presentation, foreign key target and CHECK
+   * list, so nothing here needs the Admin API.
    */
   async function loadInvitable(): Promise<UserExtraColumn[]> {
-    const { data: entries } = await useAppApi().get<InvitableColumn[]>('/users/invitation-columns')
+    const { data: entries } = await useDataApi().get<InvitableColumn[]>('/totalbase/table/users/invitations/columns')
     return Promise.all(entries.map(async (entry): Promise<UserExtraColumn> => {
       const presentation = entry.presentation ?? {}
       const base = {

@@ -13,6 +13,8 @@ export interface DatabaseTransactionContext {
   ip?: string | undefined;
   /** The real user behind the write (a session's user, a token's owner, a workflow's execute_as) - `totalbase.actor_user_id`, read by the triggers that record who created a role or folder. */
   actorUserId?: string | undefined;
+  /** The user the request was made for (X-TotalBase-On-Behalf-Of, Security.md §10.3) - `totalbase.on_behalf_of_user_id`, for a project's triggers; never the actor. */
+  onBehalfOfUserId?: string | undefined;
   /** Overrides the default statement_timeout for this transaction only. */
   statementTimeoutMs?: number | undefined;
   /**

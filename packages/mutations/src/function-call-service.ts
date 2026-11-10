@@ -110,6 +110,7 @@ export async function authorizeFunctionCall(
     await context.audit.record(context.database, {
       requestId: audit.requestId,
       principal: dataPrincipal.principal,
+      onBehalfOf: dataPrincipal.onBehalfOf,
       resourceId: resource.id,
       action: "EXECUTE",
       status: "DENIED",
@@ -156,6 +157,7 @@ export async function executeFunctionCall(
       await context.audit.record(client, {
         requestId: audit.requestId,
         principal: dataPrincipal.principal,
+      onBehalfOf: dataPrincipal.onBehalfOf,
         resourceId: resource.id,
         action: "EXECUTE",
         status: "EXECUTED",
@@ -169,6 +171,7 @@ export async function executeFunctionCall(
       });
       const outboxEventId = await enqueueOutboxEvent(client, {
         requestId: audit.requestId,
+        ...(dataPrincipal.onBehalfOf !== undefined && { onBehalfOf: dataPrincipal.onBehalfOf }),
         resource: resource.id,
         event: "EXECUTE",
         // A password argument never reaches a webhook.
@@ -187,6 +190,7 @@ export async function executeFunctionCall(
       await context.audit.record(context.database, {
         requestId: audit.requestId,
         principal: dataPrincipal.principal,
+      onBehalfOf: dataPrincipal.onBehalfOf,
         resourceId: resource.id,
         action: "EXECUTE",
         status: "FAILED",

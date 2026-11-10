@@ -19,6 +19,7 @@ interface HardeningSettings {
   rateLimitEnabled: boolean;
   rateLimitPerMinute: number;
   signInPerMinute: number;
+  perUserPerMinute: number;
   corsEnabled: boolean;
   corsOrigins: string[];
 }
@@ -32,6 +33,7 @@ function baseSettings(overrides: Partial<HardeningSettings> = {}): HardeningSett
     rateLimitEnabled: true,
     rateLimitPerMinute: 300,
     signInPerMinute: 2,
+    perUserPerMinute: 2,
     corsEnabled: true,
     corsOrigins: ["https://allowed.example.com"],
     ...overrides,
@@ -46,6 +48,7 @@ function sourceOf(values: HardeningSettings): HardeningSettingsSource {
     "security.rate_limit_enabled": "rateLimitEnabled",
     "security.rate_limit_per_minute": "rateLimitPerMinute",
     "security.rate_limit_sign_in_per_minute": "signInPerMinute",
+    "security.rate_limit_per_user_per_minute": "perUserPerMinute",
     "security.cors_enabled": "corsEnabled",
     "security.cors_origins": "corsOrigins",
   };
@@ -63,6 +66,9 @@ async function buildTestApp(settings: HardeningSettings) {
   });
   registerHardeningHooks(app, sourceOf(settings));
   app.get("/api/ping", async () => ({ ok: true }));
+  // A credentialed route: the bearer "good" is a credential that resolves, anything else is refused.
+  app.get("/api/mine", async (request, reply) =>
+    /^Bearer good/.test(request.headers.authorization ?? "") ? { ok: true } : reply.code(401).send({ errors: [{ code: "AUTHENTICATION_REQUIRED" }] }));
   app.post("/mcp", async () => ({ ok: true }));
   app.post("/api/echo", async (request) => ({ size: JSON.stringify(request.body).length }));
   // A sign-in route: the password "right" signs in, anything else is refused.
@@ -120,6 +126,30 @@ describe("registerHardeningHooks", () => {
       expect((await app.inject({ method: "GET", url: "/api/ping" })).statusCode).toBe(200);
       expect((await app.inject({ method: "POST", url: "/mcp" })).statusCode).toBe(200);
       expect((await app.inject({ method: "POST", url: "/mcp" })).statusCode).toBe(429);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("counts a request with a credential in that credential's bucket, never the address's; a refused credential counts against the address", async () => {
+    const app = await buildTestApp(baseSettings({ rateLimitPerMinute: 4, perUserPerMinute: 2 }));
+    try {
+      const mine = (token: string) => app.inject({ method: "GET", url: "/api/mine", headers: { authorization: `Bearer ${token}` } });
+      // Two credentials from one address: two buckets of perUserPerMinute each, the address's untouched.
+      expect((await mine("good-a")).statusCode).toBe(200);
+      expect((await mine("good-a")).statusCode).toBe(200);
+      const third = await mine("good-a");
+      expect(third.statusCode).toBe(429);
+      expect(Number(third.headers["retry-after"])).toBeGreaterThan(0);
+      expect((await mine("good-b")).statusCode).toBe(200);
+      expect((await app.inject({ method: "GET", url: "/api/ping" })).statusCode).toBe(200);
+
+      // Invented credentials: each is refused (401) and counted against the address, whose bucket (3) then
+      // refuses everything from it - a flood of made-up tokens opens no fresh buckets (the anonymous ping above took one).
+      for (const token of ["bad-1", "bad-2", "bad-3"]) expect((await mine(token)).statusCode).toBe(401);
+      expect((await mine("bad-4")).statusCode).toBe(429);
+      expect((await mine("good-b")).statusCode).toBe(429);
+      expect((await app.inject({ method: "GET", url: "/api/ping" })).statusCode).toBe(429);
     } finally {
       await app.close();
     }

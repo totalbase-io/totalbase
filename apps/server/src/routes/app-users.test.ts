@@ -3,25 +3,26 @@ import { hashPassword } from "@totalbase/auth";
 import type { Database } from "@totalbase/database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AppContext } from "../context.js";
-import { setupTestApp } from "../test-support.js";
+import { createTestApiToken, setupTestApp } from "../test-support.js";
 
 const P = "app-users-test";
 const PASSWORD = "a-strong-enough-password";
 
 /**
  * Delegated user administration (Security.md §9.3 and
- * 6.8): inviting through /app/api/users, authorized like a Data API write
+ * 6.8): inviting through the Data API's built-in actions on users, authorized like a Data API write
  * and limited to roles the caller may assign; and an administrator's
  * account, which no delegated user may change, delete or send a link to -
  * on any write path, enforced by PostgreSQL.
  */
-describe("App users (/app/api/users) and administrator accounts", () => {
+describe("Invitations and resets on the Data API, and administrator accounts", () => {
   let app: FastifyInstance;
   let context: AppContext;
   let database: Database;
   let delegateToken: string;
   let noneToken: string;
   let ownRoleId: string;
+  let delegateRoleId: string;
   let foreignRoleId: string;
   let adminUserId: string;
   let plainUserId: string;
@@ -57,7 +58,8 @@ describe("App users (/app/api/users) and administrator accounts", () => {
     const users = await resource("users");
     const roles = await resource("roles");
     const assignments = await resource("users_roles");
-    const delegateRole = (await context.roles.create(`${P}-delegates`, { appAccess: true })).id;
+    const delegateRole = (await context.roles.create(`${P}-delegates`, { appAccess: true, apiAccess: true })).id;
+    delegateRoleId = delegateRole;
     const noneRole = (await context.roles.create(`${P}-none`, { appAccess: true })).id;
     foreignRoleId = (await context.roles.create(`${P}-foreign`, { appAccess: true })).id;
     // Deliberately generous: every user, every column - the fixed rules must hold the line.
@@ -89,33 +91,84 @@ describe("App users (/app/api/users) and administrator accounts", () => {
   });
 
   it("refuses an invitation without CREATE on users", async () => {
-    expect((await call("POST", "/app/api/users/invitations", noneToken, { data: { email: `${P}-nope@example.com` } })).statusCode).toBe(403);
+    expect((await call("POST", "/api/totalbase/table/users/invitations", noneToken, { data: { email: `${P}-nope@example.com` } })).statusCode).toBe(403);
   });
 
   it("invites with a role the caller may assign - the account exists even when the email can't go out", async () => {
-    const res = await call("POST", "/app/api/users/invitations", delegateToken, { data: { email: `${P}-new@example.com`, name: "New", roles: [ownRoleId] } });
+    const res = await call("POST", "/api/totalbase/table/users/invitations", delegateToken, { data: { email: `${P}-new@example.com`, name: "New", roles: [ownRoleId] } });
     expect(res.statusCode, res.body).toBe(201);
     expect(res.json().meta).toMatchObject({ delivered: false, error: { code: "SMTP_NOT_CONFIGURED" } });
     expect(await context.roleAssignments.listRolesForUser(res.json().data.id)).toEqual([ownRoleId]);
   });
 
+  it("a personal token invites as its owner, and a session of a role with API access alone invites too - the routes are the Data API's", async () => {
+    const { plainKey } = await createTestApiToken(context, { name: `${P}-token`, roleId: delegateRoleId, email: `${P}-token-owner@example.com` });
+    const byToken = await call("POST", "/api/totalbase/table/users/invitations", plainKey, { data: { email: `${P}-by-token@example.com`, name: "By token" } });
+    expect(byToken.statusCode, byToken.body).toBe(201);
+    expect(byToken.json().meta.delivered).toBe(false);
+
+    const apiOnly = (await context.roles.create(`${P}-api-only`, { apiAccess: true })).id;
+    const users = (await database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'users'`)).rows[0]!.id;
+    await context.permissions.set(apiOnly, users, "CREATE", { effect: "ALLOW", fields: fields("email", "name") });
+    const { token } = await login(`${P}-api-only@example.com`, apiOnly);
+    const bySession = await call("POST", "/api/totalbase/table/users/invitations", token, { data: { email: `${P}-by-api-only@example.com` } });
+    expect(bySession.statusCode, bySession.body).toBe(201);
+    // The columns route answers the grant's columns - none added here - and the OpenAPI document lists the routes for the role.
+    expect((await call("GET", "/api/totalbase/table/users/invitations/columns", token)).statusCode).toBe(200);
+    const openapi = await call("GET", "/api/openapi.json", token);
+    expect(openapi.statusCode).toBe(200);
+    expect(Object.keys(openapi.json().paths)).toContain("/api/totalbase/table/users/invitations");
+    expect(Object.keys(openapi.json().paths)).not.toContain("/api/totalbase/table/users/{id}/invite");
+  });
+
+  it("a users_roles grant whose row filter follows the relation to the user (user.<tenant>) holds on an invitation with roles, both ways (regression)", async () => {
+    // The Multitenancy guide's grants: users by the caller's tenant, users_roles through the assignment's user.
+    const tenant = `${P.replace(/-/g, "_")}_tenant`;
+    const [mine, theirs] = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
+    await database.query(`ALTER TABLE totalbase.users ADD COLUMN IF NOT EXISTS ${tenant} uuid`);
+    try {
+      const resource = async (name: string) =>
+        (await database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = $1`, [name])).rows[0]!.id;
+      const ownerRole = (await context.roles.create(`${P}-owner`, { apiAccess: true })).id;
+      // CREATE on users deliberately unscoped: only the users_roles filter can refuse the other tenant below.
+      await context.permissions.set(ownerRole, await resource("users"), "CREATE", { effect: "ALLOW", fields: fields("email", "name", tenant) });
+      await context.permissions.set(ownerRole, await resource("users_roles"), "CREATE", { effect: "ALLOW", fields: fields("user", "role"), where: { [`user.${tenant}`]: { _eq: `$USER.${tenant}` } } });
+      await context.permissions.set(ownerRole, await resource("roles"), "CREATE", { effect: "ALLOW", fields: fields("name") });
+      const owner = await login(`${P}-owner@example.com`, ownerRole);
+      await database.query(`UPDATE totalbase.users SET ${tenant} = $1 WHERE id = $2`, [mine, owner.id]);
+      const handed = await call("POST", "/api/totalbase/table/roles", owner.token, { data: { name: `${P}-handed` } });
+      expect(handed.statusCode, handed.body).toBe(201);
+
+      const ok = await call("POST", "/api/totalbase/table/users/invitations", owner.token, { data: { email: `${P}-tenant-ok@example.com`, roles: [handed.json().data.id], extra: { [tenant]: mine } } });
+      expect(ok.statusCode, ok.body).toBe(201);
+      expect(await context.roleAssignments.listRolesForUser(ok.json().data.id)).toEqual([handed.json().data.id]);
+
+      const other = await call("POST", "/api/totalbase/table/users/invitations", owner.token, { data: { email: `${P}-tenant-other@example.com`, roles: [handed.json().data.id], extra: { [tenant]: theirs } } });
+      expect(other.statusCode, other.body).toBe(403);
+      // One transaction: neither the account nor the assignment survives.
+      expect((await database.query(`SELECT 1 FROM totalbase.users WHERE email = $1`, [`${P}-tenant-other@example.com`])).rowCount).toBe(0);
+    } finally {
+      await database.query(`ALTER TABLE totalbase.users DROP COLUMN IF EXISTS ${tenant}`);
+    }
+  });
+
   it("refuses a role the caller may not assign, and a copied link - creating nothing", async () => {
-    const foreign = await call("POST", "/app/api/users/invitations", delegateToken, { data: { email: `${P}-foreign@example.com`, roles: [foreignRoleId] } });
+    const foreign = await call("POST", "/api/totalbase/table/users/invitations", delegateToken, { data: { email: `${P}-foreign@example.com`, roles: [foreignRoleId] } });
     expect(foreign.statusCode).toBe(403);
     const administrators = await context.roles.getAdministratorsRoleId();
-    const admin = await call("POST", "/app/api/users/invitations", delegateToken, { data: { email: `${P}-escalate@example.com`, roles: [administrators] } });
+    const admin = await call("POST", "/api/totalbase/table/users/invitations", delegateToken, { data: { email: `${P}-escalate@example.com`, roles: [administrators] } });
     expect(admin.statusCode).toBe(403);
-    const link = await call("POST", "/app/api/users/invitations", delegateToken, { data: { email: `${P}-link@example.com`, delivery: "link" } });
+    const link = await call("POST", "/api/totalbase/table/users/invitations", delegateToken, { data: { email: `${P}-link@example.com`, delivery: "link" } });
     expect(link.statusCode).toBe(403);
     const { rows } = await database.query(`SELECT 1 FROM totalbase.users WHERE email IN ($1, $2, $3)`, [`${P}-foreign@example.com`, `${P}-escalate@example.com`, `${P}-link@example.com`]);
     expect(rows).toHaveLength(0);
   });
 
   it("sends links to a user in scope, never to an administrator", async () => {
-    const plain = await call("POST", `/app/api/users/${plainUserId}/reset-password`, delegateToken);
+    const plain = await call("POST", `/api/totalbase/table/users/${plainUserId}/reset-password`, delegateToken);
     expect(plain.json().errors?.[0]?.code).toBe("SMTP_NOT_CONFIGURED"); // authorized - only the mail server is missing
     for (const action of ["invite", "reset-password"]) {
-      expect((await call("POST", `/app/api/users/${adminUserId}/${action}`, delegateToken)).statusCode).toBe(403);
+      expect((await call("POST", `/api/totalbase/table/users/${adminUserId}/${action}`, delegateToken)).statusCode).toBe(403);
     }
   });
 

@@ -245,10 +245,16 @@ export class Database implements Queryable {
    * SESSION) - which a later request served by the same connection would
    * inherit. Nothing is committed: there is nothing to commit.
    */
-  async readOnlyTransaction<T>(fn: (client: Queryable) => Promise<T>): Promise<T> {
+  async readOnlyTransaction<T>(fn: (client: Queryable) => Promise<T>, context?: ReadOnlyTransactionContext): Promise<T> {
     const client = await this.pool.connect();
     try {
       await runQuery(client, "BEGIN READ ONLY", [], null);
+      // Who runs it (the viewer of a dashboard widget), transaction-local as a Data API transaction's
+      // (applyContext): a Row Level Security policy keyed on totalbase.actor_user_id decides for the viewer.
+      if (context?.actorUserId) {
+        const settings: [string, string][] = [["totalbase.actor_user_id", context.actorUserId], ["totalbase.user_id", context.actorUserId], ["totalbase.principal_type", "USER"]];
+        await runQuery(client, `SELECT ${settings.map((_, i) => `set_config($${i * 2 + 1}, $${i * 2 + 2}, true)`).join(", ")}`, settings.flat(), null);
+      }
       return await fn({
         query: (sql, params = []) => runQuery(client, sql, params, null),
       });
@@ -299,6 +305,11 @@ export class Database implements Queryable {
   }
 }
 
+/** Who runs a read-only transaction: the user it is run for (a dashboard's viewer), or nobody. */
+export interface ReadOnlyTransactionContext {
+  actorUserId?: string | undefined;
+}
+
 async function applyContext(
   client: pg.PoolClient,
   context: DatabaseTransactionContext,
@@ -312,6 +323,7 @@ async function applyContext(
   if (context.requestId) settings.push(["totalbase.request_id", context.requestId]);
   if (context.principal?.id) settings.push(["totalbase.user_id", context.principal.id]);
   if (context.actorUserId) settings.push(["totalbase.actor_user_id", context.actorUserId]);
+  if (context.onBehalfOfUserId) settings.push(["totalbase.on_behalf_of_user_id", context.onBehalfOfUserId]);
   if (context.principal) settings.push(["totalbase.principal_type", context.principal.type]);
   if (context.timezone) settings.push(["TimeZone", context.timezone]);
   if (context.applicationName) settings.push(["application_name", context.applicationName]);

@@ -25,7 +25,7 @@ describe("delegated invitation scoped by a project column", () => {
   let roleId: string;
 
   const invite = (data: Record<string, unknown>) =>
-    app.inject({ method: "POST", url: "/app/api/users/invitations", headers: { authorization: `Bearer ${token}` }, payload: { data } });
+    app.inject({ method: "POST", url: "/api/totalbase/table/users/invitations", headers: { authorization: `Bearer ${token}` }, payload: { data } });
   const branchOf = async (id: string) =>
     (await database.query<{ branch: string | null }>(`SELECT ${COLUMN} AS branch FROM totalbase.users WHERE id = $1`, [id])).rows[0]?.branch;
 
@@ -61,7 +61,7 @@ describe("delegated invitation scoped by a project column", () => {
   });
 
   it("lists the project columns the caller may set when inviting", async () => {
-    const res = await app.inject({ method: "GET", url: "/app/api/users/invitation-columns", headers: { authorization: `Bearer ${token}` } });
+    const res = await app.inject({ method: "GET", url: "/api/totalbase/table/users/invitations/columns", headers: { authorization: `Bearer ${token}` } });
     expect(res.statusCode, res.body).toBe(200);
     expect(res.json().data).toEqual([expect.objectContaining({ name: COLUMN, dataType: "text", nullable: true, relation: null, values: null })]);
   });

@@ -24,7 +24,7 @@ How things fit together:
 - The API's own contract: get_openapi - the Data API as a role sees it, or the Admin API.
 - Errors are TotalBase's CODE: message, PostgreSQL's when it decided (totalbase://guide/errors), most ending with "- fix:" and the tool that fixes it: fix the cause, don't retry blindly. Destructive calls need confirm=true - ask the user first.
 
-Guides (read the ones your task touches): totalbase://guide/build (the order of things), modeling, permissions, data-api, totalbase-tables, files, dataviews, pages, widgets, dashboards, pdf-templates, workflows, errors.`;
+Guides (read the ones your task touches): totalbase://guide/build (the order of things), modeling, permissions, multitenancy, data-api, totalbase-tables, files, dataviews, pages, widgets, dashboards, pdf-templates, workflows, errors.`;
 
 export const BUILD = `# Building an application on TotalBase
 
@@ -593,3 +593,40 @@ A workflow is a tree of steps starting at one Start step (its trigger), saved as
 
 ## Lifecycle
 create_workflow (trigger) -> save_workflow (steps, with the revision) -> run_workflow mode=test (the draft, for real: its writes happen) -> publish_workflow (readiness checked; enabled=true; role_ids) -> run_workflow mode=production / its trigger -> get_workflow_runs. Each failed step's error names its code; an error output connected to a step handles it instead of failing the run.`;
+
+export const MULTITENANCY = `# Multitenancy
+
+Many customer organizations (tenants) in one instance, each with its users and rows. TotalBase has no tenant concept: the pattern is a few PostgreSQL columns and the rules you already use.
+
+## The model
+- A tenants table; \`totalbase.users.tenant uuid REFERENCES tenants\` (every column you add to users is kept, shown as Additional data, and read live as $USER.tenant).
+- Every business table carries \`tenant uuid NOT NULL REFERENCES tenants\`, denormalized (not only through a parent), indexed, filled by a BEFORE INSERT OR UPDATE trigger from the parent row so a client can't send the wrong one.
+
+## One row filter, everywhere
+- Roles are global (Owner, Member, Readonly, Billing, Service), never one set per tenant. Every grant on a business table carries \`{"tenant": {"_eq": "$USER.tenant"}}\` - grant_permissions once per role with every table. It holds on reads, on a CREATE's resulting row (after the trigger), on an UPDATE's row before and after, on DELETE and on Realtime deliveries.
+
+## Inside the tenant
+- Everyone sees the tenant: the filter is enough.
+- Some people see some things (a member assigned to a few projects): a membership table and PostgreSQL Row Level Security on the table, keyed on \`current_setting('totalbase.actor_user_id', true)\` - set on every Data API operation. Pattern: ENABLE + FORCE ROW LEVEL SECURITY; policy \`NULLIF(current_setting('totalbase.actor_user_id', true), '') IS NULL OR EXISTS (SELECT 1 FROM projects_members m WHERE m.project = projects.id AND m."user" = NULLIF(current_setting('totalbase.actor_user_id', true), '')::uuid)\`. Use NULLIF, never a bare cast. The policy applies to administrators too; a hidden row reads as missing, a refused insert is 403 INSUFFICIENT_PRIVILEGE.
+- One user in several tenants: \`users.tenants uuid[]\` kept by a trigger and \`{"tenant": {"_in": "$USER.tenants"}}\` (an array $USER column feeds an _in list), or the policy above.
+
+## The tenant's Owner manages its people (delegated administration)
+- Owner grants: users READ / UPDATE (name, active, avatar_url) / DELETE / CREATE (email, name, tenant) with the tenant filter; users_roles READ / CREATE / DELETE with \`{"user.tenant": {"_eq": "$USER.tenant"}}\`; roles READ with \`{"_or": [{"created_by.tenant": {"_null": true}}, {"created_by.tenant": {"_eq": "$USER.tenant"}}]}\` (global roles plus the tenant's own; created_by is set from the actor for administrators too).
+- On each role the Owner hands out: Managed by = Owner (roles_managers, administrator-written). Never a reserved or admin role.
+- Inviting: POST /api/totalbase/table/users/invitations with \`{"data": {"email", "name", "roles": [...], "extra": {"tenant": "<id>"}}}\` - a Data API route, so the application's own frontend uses it with the Owner's session or token. Resend / reset: POST /api/totalbase/table/users/{id}/invite, .../reset-password.
+
+## Sign-up creates the tenant
+- A BEFORE INSERT trigger on totalbase.users creates the tenant when NEW.tenant IS NULL (from NEW.company_name, say) and sets it.
+- Settings: auth.registration_enabled, auth.registration_columns = ["company_name", ...] (the project's columns a registration may set, written in the same INSERT), auth.registration_default_role = the Owner role. POST /api/auth/register takes \`extra: {"company_name": "Acme"}\`; its answer, login's and me's carry the user's own columns under \`extra\`.
+
+## A backend of your own
+- A service account: a user with can_login false, a Service role, a personal token. With a tenant and the filter it serves one tenant; without, it serves them all.
+- When it writes because a user asked: header X-TotalBase-On-Behalf-Of: <user id>. The write runs with the service's permissions; the audit entry (logs.on_behalf_of), the outbox event (initiator.onBehalfOf) and triggers (totalbase.on_behalf_of_user_id) record the user. The role needs the ACT_ON_BEHALF capability (set_capability) and may name only users it can read.
+- Browsers never talk to TotalBase in this shape: the server holds the session, forwards requests; Realtime from a page uses a ticket (POST /api/auth/realtime-ticket, then auth {ticket}). Name the server in security.trusted_proxies, forward X-Forwarded-For, turn security.rate_limit_enabled on: each signed-in user is limited on their own credential.
+
+## What stays with administrators
+Tables and exposure, roles' permissions beyond what a managing role hands down, capabilities, Managed by, settings, system emails, dashboards' SQL. A tenant never sees the admin.
+
+## Order of work
+1 tables + tenant columns + triggers (create_table / apply migrations); 2 expose_resource; 3 roles; 4 grant_permissions with the filter; 5 Managed by; 6 set_capability (ACT_ON_BEHALF for the service, TRANSACTIONS where a frontend batches); 7 settings (auth.*, security.*, realtime.*); 8 the service account and its token. Read each role's OpenAPI (GET /admin/api/openapi/data?role=<id>) to check what it reaches.
+`;

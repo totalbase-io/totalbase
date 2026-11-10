@@ -64,6 +64,7 @@ export class DashboardsAdminService {
       gates: new KeyedSemaphore(),
       snapshots: new Map(),
       plans: new Map(),
+      rowSecured: new Map(),
     };
   }
 

@@ -3,7 +3,7 @@
  * A user's page for a delegated user (pages/users/[id].vue;
  * Security.md §9.3, §9.4): name and status through the
  * Data API, the roles they may assign through users_roles, and
- * invitation / password reset emails through /app/api/users. The server
+ * invitation / password reset emails through the Data API's built-in actions on users. The server
  * decides every write (an administrator's account is never theirs to
  * change); this only hides what their grants rule out.
  */
@@ -61,7 +61,7 @@ async function save(patch: Partial<Pick<UserRow, 'name' | 'active'>>, done: stri
 // --- Links: emailed to the user's own address. ---
 async function sendLink(action: 'invite' | 'reset-password', done: string) {
   try {
-    await appApi.post(`/users/${props.userId}/${action}`)
+    await dataApi.post(`/totalbase/table/users/${props.userId}/${action}`)
     toast.add({ title: done, color: 'success' })
   } catch (err) {
     notifyError(err, t('users.userDelegated.sendError'))

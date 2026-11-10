@@ -1,4 +1,4 @@
-import { buildCatalogSnapshot, getCatalogFingerprint } from "@totalbase/pg-catalog";
+import { buildCatalogSnapshot, getCatalogFingerprint, type CatalogScope } from "@totalbase/pg-catalog";
 import { brokenDataViewReferences } from "@totalbase/dataviews";
 import { reconcileResources, syncAllResourceColumns, syncResourceDescriptions } from "@totalbase/resources";
 import type { AppContext } from "./context.js";
@@ -15,9 +15,15 @@ import { catalogChanged } from "./invalidations.js";
  * decision) - in this process and, by the CATALOG signal, in every other
  * (invalidations.ts).
  */
+/** What the catalog leaves out (`catalog.excluded_schemas`, Foundations.md §12.3) - read live for every sync, snapshot and fingerprint. */
+export async function catalogScope(context: Pick<AppContext, "settings">): Promise<CatalogScope> {
+  return { excludedSchemas: await context.settings.get("catalog.excluded_schemas") };
+}
+
 export async function reconcileCatalog(context: AppContext) {
-  const snapshot = await buildCatalogSnapshot(context.database);
-  const result = await reconcileResources(context.database, snapshot);
+  const scope = await catalogScope(context);
+  const snapshot = await buildCatalogSnapshot(context.database, scope);
+  const result = await reconcileResources(context.database, snapshot, scope);
   // Published widgets' planned columns too: DDL may have changed what a query returns.
   await catalogChanged(context);
   return result;
@@ -77,8 +83,8 @@ export async function syncCatalog(context: AppContext, options: { autoPresentati
  * (catalog.track_comments) must not count as the next change.
  */
 export async function syncCatalogIfChanged(context: AppContext, previous: string) {
-  const current = await getCatalogFingerprint(context.database);
+  const current = await getCatalogFingerprint(context.database, await catalogScope(context));
   if (current === previous) return { fingerprint: current, result: null };
   const result = await syncCatalog(context);
-  return { fingerprint: await getCatalogFingerprint(context.database), result };
+  return { fingerprint: await getCatalogFingerprint(context.database, await catalogScope(context)), result };
 }

@@ -54,7 +54,7 @@ function roleFromRow(row: Record<string, unknown>): Role {
  * managers, the reserved roles - stays on the Admin API.
  */
 /** What a role may be granted beyond row operations (roles_capabilities). */
-export type Capability = 'TRANSACTIONS' | 'SEND_EMAIL' | 'MANAGE_ROLES'
+export type Capability = 'TRANSACTIONS' | 'SEND_EMAIL' | 'MANAGE_ROLES' | 'ACT_ON_BEHALF'
 
 /** An attestation that a role's members were reviewed (roles_reviews, Security.md §1.8). */
 export interface AccessReview {

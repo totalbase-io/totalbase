@@ -86,7 +86,7 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(mcp.getInstructions()).toMatch(/never bytea/);
     const { resources } = await mcp.listResources();
     expect(resources.map((r) => r.uri).sort()).toEqual(
-      ["build", "dashboards", "data-api", "dataviews", "errors", "files", "modeling", "pages", "pdf-templates", "permissions", "totalbase-tables", "widgets", "workflows"].map((g) => `totalbase://guide/${g}`),
+      ["build", "dashboards", "data-api", "dataviews", "errors", "files", "modeling", "multitenancy", "pages", "pdf-templates", "permissions", "totalbase-tables", "widgets", "workflows"].map((g) => `totalbase://guide/${g}`),
     );
     const read = async (guide: string) => ((await mcp.readResource({ uri: `totalbase://guide/${guide}` })).contents[0] as { text: string }).text;
     const dashboards = await read("dashboards");

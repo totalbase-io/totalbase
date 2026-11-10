@@ -389,18 +389,31 @@ export class UsersService {
    * an administrator creating it with a password vouches for it. Left out,
    * it is unverified (registration; an invitation or OAuth verifies later).
    */
+  /**
+   * `extra`: the project's own columns of the row (Security.md §1.2), written **in the INSERT itself** - an
+   * invitation's Additional data, a registration's `extra` - so a BEFORE INSERT trigger reads them from NEW (one
+   * that creates a tenant from the sign-up form's company name). A column that isn't the project's is refused;
+   * PostgreSQL validates the values.
+   */
   async create(
-    input: { email?: string | null; name?: string | null; passwordHash?: string | null; owner?: boolean; emailVerified?: boolean },
+    input: { email?: string | null; name?: string | null; passwordHash?: string | null; owner?: boolean; emailVerified?: boolean; extra?: Record<string, unknown> | undefined },
     client: Queryable = this.database,
   ): Promise<User> {
     const email = validateEmail(input.email);
     const name = validateUserName(input.name) ?? null;
+    const extra = Object.entries(input.extra ?? {});
+    if (extra.length > 0) {
+      const columns = await this.projectColumns();
+      for (const [column] of extra) {
+        if (!columns.includes(column)) throw new TotalBaseError("INVALID_QUERY", `${column} is not a column the project added to the users table.`);
+      }
+    }
     try {
       const { rows } = await client.query<UserRow>(
-        `INSERT INTO totalbase.users (email, name, password_hash, owner, email_verified_at)
-         VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() END)
+        `INSERT INTO totalbase.users (email, name, password_hash, owner, email_verified_at${extra.map(([column]) => `, ${quoteIdentifier(column)}`).join("")})
+         VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() END${extra.map((_, i) => `, $${i + 6}`).join("")})
          RETURNING ${SELECT_COLUMNS}`,
-        [email, name, input.passwordHash ?? null, input.owner ?? false, input.emailVerified ?? false],
+        [email, name, input.passwordHash ?? null, input.owner ?? false, input.emailVerified ?? false, ...extra.map(([, value]) => value)],
       );
       return toUser(rows[0]!);
     } catch (error) {

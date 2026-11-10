@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
+import { readOrigin } from "../read-audit.js";
+import { userExtra } from "../user-extra.js";
 import { TotalBaseError } from "@totalbase/errors";
 import { portalAccessOf } from "@totalbase/permissions";
 import type { LoginFailureReason, SignInAdmission } from "@totalbase/auth";
@@ -87,6 +89,9 @@ const MFA_VERIFY_BODY: JsonSchema = {
  * See Security.md §2.5.
  */
 export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext): void {
+  // user.extra: the project's columns the user may read of their own row (user-extra.ts).
+  const withExtra = async <T extends { id: string }>(request: FastifyRequest, user: T): Promise<T & { extra: Record<string, unknown> }> =>
+    ({ ...user, extra: await userExtra(context, user.id, readOrigin(request)) });
   app.post<{ Body: { email: string; password: string; mode?: string } }>(
     "/api/auth/login",
     doc({
@@ -114,7 +119,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         admit: apiAdmission(context),
       }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: result.user.id };
-      return { data: { token: await deliverSession(context, reply, mode, result.token), user: result.user } };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), user: await withExtra(request, result.user) } };
     },
   );
 
@@ -170,9 +175,24 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
       if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
       const token = await deliverSession(context, reply, mode, result.token);
-      return { data: { token, user: result.user, recoveryCodes: result.recoveryCodes } };
+      return { data: { token, user: await withExtra(request, result.user), recoveryCodes: result.recoveryCodes } };
     },
   );
+
+  // A Realtime ticket (Security.md §2.10): the application's server, holding the session, asks for one and hands
+  // it to the page, whose WebSocket authenticates with it instead of the session token it never had.
+  app.post("/api/auth/realtime-ticket", doc({
+    summary: "A ticket to open a Realtime connection",
+    description: "A 60-second, single-use stand-in for this session, for a browser that never holds the session token: the first message of /api/realtime (`{ type: \"auth\", data: { ticket } }`) or graphql-transport-ws's connection_init (`{ ticket }`) consumes it and the connection is the session's - closed when the session ends.",
+    tags: TAG,
+    access: "session",
+    response: { status: "201", schema: dataEnvelope(object({ ticket: STRING, expiresAt: { type: "string", format: "date-time" } }, ["ticket", "expiresAt"])) },
+  }), async (request, reply) => {
+    const session = await context.auth.sessions.validate(extractBearerToken(request));
+    if (!session) throw new TotalBaseError("SESSION_EXPIRED", "Session is invalid, expired, or revoked.");
+    reply.code(201);
+    return { data: await context.auth.sessions.issueTicket(session.session.id) };
+  });
 
   app.post("/api/auth/logout", doc({
     summary: "Sign out (revoke the current session)",
@@ -194,17 +214,19 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     },
     async (request) => {
       const user = await context.auth.users.findById(request.userId!);
-      return { data: user };
+      if (!user) throw new TotalBaseError("SESSION_EXPIRED", "Session is invalid, expired, or revoked.");
+      return { data: await withExtra(request, user) };
     },
   );
 
-  app.post<{ Body: { email: string; password: string; name?: string } }>(
+  app.post<{ Body: { email: string; password: string; name?: string; extra?: Record<string, unknown> } }>(
     "/api/auth/register",
     doc({
       summary: "Create an account",
+      description: "`extra` sets the columns your project added to the users table that `auth.registration_columns` names (Settings › Access), in the account's own INSERT; any other column is 400 INVALID_FIELD.",
       tags: TAG,
       access: "public",
-      requestBody: { schema: object({ email: { type: "string", format: "email" }, password: STRING, name: STRING }, ["email", "password"]) },
+      requestBody: { schema: object({ email: { type: "string", format: "email" }, password: STRING, name: STRING, extra: { type: "object", additionalProperties: true, description: "The project's columns a registration may set, by column name." } }, ["email", "password"]) },
       response: { status: "200", schema: dataEnvelope(USER_REF) },
       schemas: USER_SCHEMA,
       // Listed only while public registration is on (auth.registration_enabled).
@@ -212,7 +234,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     }),
     async (request) => {
       const user = await context.auth.register(request.body);
-      return { data: user };
+      return { data: await withExtra(request, user) };
     },
   );
 
@@ -342,9 +364,9 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       // their first sign-in (Security.md §2.17).
       if (!(await hasApiAccess(context, result.user.id)) || (await context.auth.mfa.required(result.user.id))) {
         await context.auth.sessions.revokeByToken(result.token);
-        return { data: { user: result.user } };
+        return { data: { user: await withExtra(request, result.user) } };
       }
-      return { data: { token: await deliverSession(context, reply, mode, result.token), user: result.user } };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), user: await withExtra(request, result.user) } };
     },
   );
 

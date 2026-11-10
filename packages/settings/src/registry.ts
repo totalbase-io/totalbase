@@ -39,6 +39,7 @@ export interface SettingsRegistry {
   "auth.registration_enabled": boolean;
   /** Role id assigned to an account created by POST /api/auth/register; "" = none. Never reserved or admin_access. */
   "auth.registration_default_role": string;
+  "auth.registration_columns": string[];
   "auth.email_verification_required": boolean;
   "auth.password_min_length": number;
   "auth.session_ttl_hours": number;
@@ -129,9 +130,11 @@ export interface SettingsRegistry {
   "security.rate_limit_enabled": boolean;
   "security.rate_limit_per_minute": number;
   "security.rate_limit_sign_in_per_minute": number;
+  "security.rate_limit_per_user_per_minute": number;
   "security.cors_enabled": boolean;
   "security.cors_origins": string[];
   "security.trust_proxy": boolean;
+  "security.trusted_proxies": string[];
 
   "files.enabled": boolean;
   "files.max_file_size_bytes": number;
@@ -186,6 +189,7 @@ export interface SettingsRegistry {
   "catalog.refresh_interval_minutes": number;
   "catalog.auto_refresh_after_ddl": boolean;
   "catalog.track_comments": boolean;
+  "catalog.excluded_schemas": string[];
 
   // The generated Data API document (Data_API.md §14.1): published at
   // /api/openapi.json at all, with sample values, and cached per viewer
@@ -406,6 +410,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
 
   "auth.registration_enabled": false,
   "auth.registration_default_role": "",
+  "auth.registration_columns": [],
   "auth.email_verification_required": true,
   "auth.password_min_length": 12,
   "auth.session_ttl_hours": 720,
@@ -470,9 +475,11 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "security.rate_limit_enabled": false,
   "security.rate_limit_per_minute": 3000,
   "security.rate_limit_sign_in_per_minute": 5,
+  "security.rate_limit_per_user_per_minute": 600,
   "security.cors_enabled": true,
   "security.cors_origins": [],
   "security.trust_proxy": false,
+  "security.trusted_proxies": [],
 
   // Files.
   "files.enabled": true,
@@ -539,6 +546,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "catalog.refresh_interval_minutes": 10,
   "catalog.auto_refresh_after_ddl": true,
   "catalog.track_comments": true,
+  "catalog.excluded_schemas": [],
 
   "openapi.enabled": true,
   "openapi.include_examples": true,
@@ -693,6 +701,7 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
 
   "security.rate_limit_per_minute": { min: 1 },
   "security.rate_limit_sign_in_per_minute": { min: 1, max: 1000 },
+  "security.rate_limit_per_user_per_minute": { min: 1 },
   "auth.access_review_interval_days": { min: 0, max: 3650 },
 
   "files.max_file_size_bytes": { min: 1 },

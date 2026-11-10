@@ -119,6 +119,36 @@ describe("PUT /admin/api/roles/:role/resources/:resource/permissions/:action - w
     expect(res.json().errors[0].code).toBe("INVALID_OPERATOR");
   });
 
+  it("answers 400 INVALID_QUERY naming the shape when fields are column names, not field grants", async () => {
+    const res = await app.inject({
+      method: "PUT",
+      url: `/admin/api/roles/${roleId}/resources/${resourceId}/permissions/READ`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { data: { effect: "ALLOW", fields: ["id", "name"] } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().errors[0].code).toBe("INVALID_QUERY");
+    expect(res.json().errors[0].message).toContain('"field"');
+
+    const bulk = await app.inject({
+      method: "PUT",
+      url: `/admin/api/roles/${roleId}/permissions`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { data: { permissions: [{ resource: resourceId, action: "READ", effect: "ALLOW", fields: ["id"] }] } },
+    });
+    expect(bulk.statusCode).toBe(400);
+    expect(bulk.json().errors[0].code).toBe("INVALID_QUERY");
+
+    const checks = await app.inject({
+      method: "PUT",
+      url: `/admin/api/roles/${roleId}/resources/${resourceId}/permissions/READ`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { data: { effect: "ALLOW", payloadChecks: [{ status: { _eq: "ACTIVE" } }] } },
+    });
+    expect(checks.statusCode).toBe(400);
+    expect(checks.json().errors[0].message).toContain('"rule"');
+  });
+
   it("still allows an unrestricted grant (where omitted or null)", async () => {
     const res = await app.inject({
       method: "PUT",

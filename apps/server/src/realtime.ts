@@ -10,7 +10,7 @@ import { REALTIME_PUBLICATION, resolveTableResource, resolveTableResourceById, t
 import type { AppContext } from "./context.js";
 import { extractBearerToken, requireAdmin } from "./auth-guards.js";
 import { adminDoc, object, ok } from "./openapi-admin-docs.js";
-import { resolveDataPrincipal, type DataPrincipal } from "./data-principal.js";
+import { resolveDataPrincipal, resolveSessionPrincipal, type DataPrincipal } from "./data-principal.js";
 import { authorizeRows, readRows } from "./data-read.js";
 import type { ReadOrigin } from "./read-audit.js";
 import { isSameOrigin } from "./session-cookie.js";
@@ -46,10 +46,37 @@ const CHANGE_OF: Record<RealtimeEvent, "insert" | "update" | "delete"> = { creat
  * Who a subscription delivers to: a /api/realtime connection, or a GraphQL subscription (routes/graphql-ws.ts).
  * The hub decides what reaches it; the subscriber only says it in its own protocol.
  */
+/** What a connection authenticated with: a bearer (a token, or a session's token), or the session a ticket bound it to (Data_API.md §16.3). */
+export type RealtimeCredential = { token: string } | { session: string };
+
+/** The connection's principal, live - the credential resolved again (Data_API.md §16.3). */
+export function resolveSubscriberPrincipal(context: AppContext, credential: RealtimeCredential | null): Promise<DataPrincipal> {
+  if (credential === null) return Promise.reject(new TotalBaseError("AUTHENTICATION_REQUIRED", "The connection holds no credential."));
+  return "token" in credential ? resolveDataPrincipal(context, credential.token) : resolveSessionPrincipal(context, credential.session);
+}
+
+/**
+ * The credential an `auth` message (or graphql-transport-ws's connection_init) carries: `accessToken`, or a
+ * `ticket` (Security.md §2.10) - consumed here, once, binding the connection to the ticket's session. A used,
+ * expired or unknown ticket is a credential that doesn't resolve.
+ */
+export async function credentialFromMessage(context: AppContext, data: { accessToken?: unknown; ticket?: unknown }): Promise<RealtimeCredential> {
+  if (typeof data.ticket === "string" && data.ticket !== "") {
+    const session = await context.auth.sessions.consumeTicket(data.ticket);
+    if (!session) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "The ticket is used, expired or unknown.");
+    const credential: RealtimeCredential = { session };
+    await resolveSubscriberPrincipal(context, credential);
+    return credential;
+  }
+  if (typeof data.accessToken !== "string" || data.accessToken === "") throw new TotalBaseError("INVALID_REALTIME_MESSAGE", "auth needs data.accessToken or data.ticket.");
+  await resolveDataPrincipal(context, data.accessToken);
+  return { token: data.accessToken };
+}
+
 export interface RealtimeSubscriber {
   readonly closed: boolean;
   /** The credential, resolved again before each delivery (Data_API.md §16.3). */
-  readonly token: string | null;
+  readonly credential: RealtimeCredential | null;
   /** A READ audit row's origin, a request id of its own per delivery. */
   origin(): ReadOrigin;
   event(uid: string, event: RealtimeDelivery, data?: Record<string, unknown>[]): void;
@@ -83,17 +110,17 @@ function errorBody(error: unknown): { code: string; message: string } {
 
 class Connection implements RealtimeSubscriber {
   readonly subscriptions = new Map<string, Subscription>();
-  token: string | null;
+  credential: RealtimeCredential | null;
   awaitingPong = false;
   closed = false;
   private nextUid = 1;
 
   constructor(
     readonly socket: WebSocket,
-    token: string | null,
+    credential: RealtimeCredential | null,
     private readonly request: FastifyRequest,
   ) {
-    this.token = token;
+    this.credential = credential;
   }
 
   /** A READ audit row's origin: the upgrade's IP and user agent, a request id of its own per delivery (Data_API.md §16.5). */
@@ -255,7 +282,7 @@ export class RealtimeHub {
     // The credential, live - once per subscriber and transaction (Data_API.md §16.3).
     let principal = principals.get(subscriber);
     if (!principal) {
-      principal = resolveDataPrincipal(this.context, subscriber.token ?? "").catch((error: unknown) => {
+      principal = resolveSubscriberPrincipal(this.context, subscriber.credential).catch((error: unknown) => {
         subscriber.refused(error);
         return null;
       });
@@ -352,7 +379,7 @@ export async function openSubscription(
     mode: intent.mode,
     query: intent.query,
   };
-  const principal = await resolveDataPrincipal(context, subscriber.token ?? "");
+  const principal = await resolveSubscriberPrincipal(context, subscriber.credential);
   await authorizeIntent(context, principal, subscription, subscriber.origin());
   await hub.add(subscription);
   return subscription;
@@ -486,9 +513,10 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
       upgradeTokens.set(request, await upgradeToken(context, request));
     },
   }, async (socket, request) => {
-    const connection = new Connection(socket, upgradeTokens.get(request) ?? null, request);
+    const upgrade = upgradeTokens.get(request) ?? null;
+    const connection = new Connection(socket, upgrade === null ? null : { token: upgrade }, request);
     const heartbeatSeconds = await context.settings.get("realtime.heartbeat_seconds");
-    const authTimer = connection.token === null
+    const authTimer = connection.credential === null
       ? setTimeout(() => connection.close(CLOSE_POLICY, new TotalBaseError("AUTHENTICATION_REQUIRED", "No credential within 10 seconds.")), AUTH_TIMEOUT_MS)
       : undefined;
     const heartbeat = setInterval(() => {
@@ -541,8 +569,8 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
         await authenticate(message.data);
         return;
       }
-      if (connection.token === null) {
-        connection.close(CLOSE_POLICY, new TotalBaseError("AUTHENTICATION_REQUIRED", "The first message authenticates: { type: \"auth\", data: { accessToken } }."));
+      if (connection.credential === null) {
+        connection.close(CLOSE_POLICY, new TotalBaseError("AUTHENTICATION_REQUIRED", "The first message authenticates: { type: \"auth\", data: { accessToken } } or { ticket }."));
         return;
       }
       if (message.type === "subscribe") await subscribe(message as SubscribeMessage);
@@ -550,20 +578,14 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
       else connection.error(invalid(`Unknown message type: ${String(message.type)}.`), typeof message.uid === "string" ? message.uid : undefined);
     }
 
-    /** The first message without a credential at the upgrade; later, a fresh credential for the same connection. */
+    /** The first message without a credential at the upgrade; later, a fresh credential for the same connection - a token, or a ticket (Security.md §2.10). */
     async function authenticate(data: unknown): Promise<void> {
-      const token = typeof data === "object" && data !== null ? (data as { accessToken?: unknown }).accessToken : undefined;
-      if (typeof token !== "string" || token === "") {
-        connection.close(CLOSE_POLICY, invalid("auth needs data.accessToken."));
-        return;
-      }
       try {
-        await resolveDataPrincipal(context, token);
+        connection.credential = await credentialFromMessage(context, typeof data === "object" && data !== null ? (data as { accessToken?: unknown; ticket?: unknown }) : {});
       } catch (error) {
         connection.close(CLOSE_POLICY, error);
         return;
       }
-      connection.token = token;
       clearTimeout(authTimer);
       connection.send({ type: "auth", data: { status: "ok" } });
     }

@@ -17,6 +17,8 @@ export interface AuditLogEntry {
   requestId: string;
   principal: Principal;
   session?: string | undefined;
+  /** The user the request was made for (X-TotalBase-On-Behalf-Of, Security.md §10.3) - `logs.on_behalf_of`. */
+  onBehalfOf?: string | undefined;
   /** totalbase.resources.id; absent for AUTH events, which have no resource. */
   resourceId?: string | undefined;
   action: AuditAction;
@@ -81,6 +83,7 @@ export class AuditService {
       principalType: entry.principal.type,
       principal: entry.principal.id,
       session: entry.session ?? null,
+      onBehalfOf: entry.onBehalfOf ?? null,
       resource: entry.resourceId ?? null,
       action: entry.action,
       status: entry.status,
@@ -113,7 +116,7 @@ export class AuditService {
          FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS e(doc, ord)
        ), inserted AS (
          INSERT INTO totalbase.logs (
-           id, request_id, principal_type, principal, session,
+           id, request_id, principal_type, principal, session, on_behalf_of,
            resource, action, status, source,
            ip, user_agent,
            fields, where_clause, payload, changes, metadata,
@@ -121,7 +124,7 @@ export class AuditService {
            error_code, sqlstate, error_message, error_detail, error_hint,
            started_at, finished_at, duration_ms
          )
-         SELECT id, (doc ->> 'requestId')::uuid, doc ->> 'principalType', (doc ->> 'principal')::uuid, (doc ->> 'session')::uuid,
+         SELECT id, (doc ->> 'requestId')::uuid, doc ->> 'principalType', (doc ->> 'principal')::uuid, (doc ->> 'session')::uuid, (doc ->> 'onBehalfOf')::uuid,
                 (doc ->> 'resource')::uuid, doc ->> 'action', doc ->> 'status', doc ->> 'source',
                 (doc ->> 'ip')::inet, doc ->> 'userAgent',
                 (doc ->> 'fields')::jsonb, (doc ->> 'whereClause')::jsonb, (doc ->> 'payload')::jsonb, (doc ->> 'changes')::jsonb, (doc ->> 'metadata')::jsonb,

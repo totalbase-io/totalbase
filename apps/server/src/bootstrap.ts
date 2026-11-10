@@ -86,11 +86,12 @@ export async function bootstrap(env: ServerEnv, logger: pino.Logger): Promise<Bo
   logger.info({ setupPending: setup.code !== null }, "first admin ensured");
 
   // 8. Introspect catalog
-  const catalog = await buildCatalogSnapshot(database);
+  const catalogScope = { excludedSchemas: await settings.get("catalog.excluded_schemas") };
+  const catalog = await buildCatalogSnapshot(database, catalogScope);
   logger.info({ objects: catalog.length }, "catalog introspected");
 
   // 9-10. Reconcile resources; newly discovered resources start hidden
-  const reconciliation = await reconcileResources(database, catalog);
+  const reconciliation = await reconcileResources(database, catalog, catalogScope);
   logger.info(reconciliation, "resources reconciled");
 
   // 11. Build caches - no in-memory cache yet in Phase 1; placeholder for later phases.

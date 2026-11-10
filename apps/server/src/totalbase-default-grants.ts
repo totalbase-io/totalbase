@@ -96,7 +96,7 @@ export const TOTALBASE_DEFAULT_GRANTS: DefaultGrant[] = [
         where: MY_ENTRIES,
         fields: [
           "id", "request_id", "principal_type", "principal", "resource", "action", "event", "status", "source",
-          "ip", "user_agent", "error_code", "error_message", "duration_ms", "created_at",
+          "ip", "user_agent", "error_code", "error_message", "duration_ms", "created_at", "on_behalf_of",
           "resource.schema", "resource.name",
         ],
       },

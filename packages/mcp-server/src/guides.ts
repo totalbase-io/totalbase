@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { whereParams, type AdminClient } from "./admin-client.js";
 import { pagesGuide, widgetsGuide } from "./guides-pages.js";
-import { BUILD, DATA_API, DATAVIEWS, dashboardsGuide, ERRORS, FILES, INSTRUCTIONS, MODELING, PERMISSIONS, WORKFLOWS } from "./guides-text.js";
+import { BUILD, DATA_API, DATAVIEWS, dashboardsGuide, ERRORS, FILES, INSTRUCTIONS, MODELING, MULTITENANCY, PERMISSIONS, WORKFLOWS } from "./guides-text.js";
 import { PDF_TEMPLATES } from "./guides-pdf.js";
 import { RESOURCES, type ResourceRow } from "./tool-helpers.js";
 import { operationMenu } from "@totalbase/tb-catalog";
@@ -90,6 +90,7 @@ export const GUIDES: Guide[] = [
   { name: "build", title: "How to build on TotalBase", description: "The order things are done in: model, expose, present, roles, grants, users, records, DataViews, dashboards, workflows, publishing.", text: () => BUILD },
   { name: "modeling", title: "Modeling tables", description: "Names, keys, owner and timestamps, types and their widgets, choices (CHECK vs lookup table), relations, validation.", text: () => MODELING },
   { name: "permissions", title: "Permissions", description: "Roles, grants, fields (no wildcard), row filters with $USER, payload checks, capabilities, object access, and how to check them.", text: () => PERMISSIONS },
+  { name: "multitenancy", title: "Multitenancy", description: "Many customer organizations in one instance: the tenant column, one row filter everywhere, Row Level Security inside a tenant, the Owner managing its people, sign-up creating the tenant, a backend of your own.", text: () => MULTITENANCY },
   { name: "data-api", title: "Data API query language", description: "Filter objects, operators, $USER / $ROW / $INTERVAL / $PERIOD, fields, search, order_by, paging, aggregates, nested creates, upserts, functions.", text: () => DATA_API },
   { name: "totalbase-tables", title: "TotalBase's own tables", description: "Every exposed totalbase.* table on this instance, its methods, what it is and how it is written.", text: totalbaseTablesGuide },
   { name: "files", title: "Files, images and folders", description: "File and image columns (a foreign key to files, never bytea), attachments, uploads and folders.", text: () => FILES },

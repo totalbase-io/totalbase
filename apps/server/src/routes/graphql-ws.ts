@@ -4,16 +4,8 @@ import type { WebSocket } from "@fastify/websocket";
 import { TotalBaseError } from "@totalbase/errors";
 import { subscribeGraphQL, type GraphQLChange, type GraphQLDataExecutor } from "@totalbase/graphql";
 import type { AppContext } from "../context.js";
-import { resolveDataPrincipal } from "../data-principal.js";
 import type { ReadOrigin } from "../read-audit.js";
-import {
-  openSubscription,
-  realtimeRequirements,
-  upgradeToken,
-  type RealtimeDelivery,
-  type RealtimeHub,
-  type RealtimeSubscriber,
-} from "../realtime.js";
+import { openSubscription, realtimeRequirements, upgradeToken, type RealtimeDelivery, type RealtimeHub, type RealtimeSubscriber, credentialFromMessage, resolveSubscriberPrincipal, type RealtimeCredential } from "../realtime.js";
 import { executorFor, graphqlSchemaFor } from "./graphql.js";
 
 /** The protocol of the graphql-ws library, what GraphQL clients speak over a WebSocket. */
@@ -80,14 +72,19 @@ class Channel<T> implements AsyncIterableIterator<T> {
   }
 }
 
-/** The credential connection_init may carry: `{ accessToken }`, or an `Authorization: Bearer` as a client's connection params. */
-function tokenOf(payload: unknown): string | null {
+/**
+ * The credential connection_init may carry: `{ accessToken }`, an `Authorization: Bearer` as a client's connection
+ * params, or `{ ticket }` - a Realtime ticket (Security.md §2.10), consumed once and binding the connection to its
+ * session. Null when it carries none (the upgrade's credential, if any, stands).
+ */
+async function credentialOf(context: AppContext, payload: unknown): Promise<RealtimeCredential | null> {
   if (typeof payload !== "object" || payload === null) return null;
-  const { accessToken, authorization, Authorization } = payload as Record<string, unknown>;
-  if (typeof accessToken === "string" && accessToken !== "") return accessToken;
+  const { accessToken, authorization, Authorization, ticket } = payload as Record<string, unknown>;
+  if (typeof ticket === "string" && ticket !== "") return credentialFromMessage(context, { ticket });
+  if (typeof accessToken === "string" && accessToken !== "") return { token: accessToken };
   const header = typeof authorization === "string" ? authorization : typeof Authorization === "string" ? Authorization : undefined;
   const match = header?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? null;
+  return match?.[1] ? { token: match[1] } : null;
 }
 
 /**
@@ -113,7 +110,8 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
       socket.close(CLOSE_SUBPROTOCOL, `Subprotocol not acceptable: use ${PROTOCOL}`);
       return;
     }
-    let token = upgradeTokens.get(request) ?? null;
+    const upgrade = upgradeTokens.get(request) ?? null;
+    let credential: RealtimeCredential | null = upgrade === null ? null : { token: upgrade };
     let initialized = false;
     let acknowledged = false;
     let closed = false;
@@ -212,13 +210,13 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
         return;
       }
       initialized = true;
-      token = tokenOf(payload) ?? token;
-      if (token === null) {
-        close(CLOSE_FORBIDDEN, "Forbidden: connection_init carries no credential");
-        return;
-      }
       try {
-        await resolveDataPrincipal(context, token);
+        credential = (await credentialOf(context, payload)) ?? credential;
+        if (credential === null) {
+          close(CLOSE_FORBIDDEN, "Forbidden: connection_init carries no credential");
+          return;
+        }
+        await resolveSubscriberPrincipal(context, credential);
       } catch (error) {
         close(CLOSE_FORBIDDEN, error instanceof Error ? error.message : "Forbidden");
         return;
@@ -244,7 +242,7 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
       // The credential, live: resolved again for every operation.
       let principal;
       try {
-        principal = await resolveDataPrincipal(context, token!);
+        principal = await resolveSubscriberPrincipal(context, credential);
       } catch (error) {
         close(CLOSE_FORBIDDEN, error instanceof Error ? error.message : "Forbidden");
         return;
@@ -276,8 +274,8 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
           get closed() {
             return closed || channel.done;
           },
-          get token() {
-            return token;
+          get credential() {
+            return credential;
           },
           origin,
           event: (_uid: string, event: RealtimeDelivery, data?: Record<string, unknown>[]) => channel.push({ event, ...(data !== undefined && { data }) }),

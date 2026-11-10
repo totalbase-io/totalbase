@@ -152,6 +152,8 @@
       "noInheritDescription": "El padre organiza los roles - dónde está cada uno y quién lo gestiona - y es un techo: un rol bajo él tiene solo lo que se le concede, no recibe nada de su padre y nunca puede hacer más que él.",
       "manageRoles": "Puede gestionar los roles que tiene debajo",
       "manageRolesHelp": "Sus miembros crean roles debajo de este, les otorgan permisos dentro de lo que tiene este rol y los asignan.",
+      "actOnBehalf": "Puede actuar en nombre de usuarios",
+      "actOnBehalfHelp": "Un programa con este rol indica el usuario por el que actúa (X-TotalBase-On-Behalf-Of), uno que puede leer, y el registro de auditoría guarda a los dos. No presta permisos: la solicitud es del programa.",
       "reviewRequired": "Revisar su acceso periódicamente",
       "reviewRequiredHelp": "Su pestaña Revisiones de acceso avisa cuando toca una revisión, como para Administrators.",
       "relations": "Relaciones con otros roles",

@@ -2,7 +2,7 @@ import type { Queryable } from "@totalbase/database";
 import { resolveEffect, type PermissionDecision } from "@totalbase/permissions";
 
 /** What a role may be granted beyond row operations (Security.md §5.2). */
-export type Capability = "TRANSACTIONS" | "SEND_EMAIL";
+export type Capability = "TRANSACTIONS" | "SEND_EMAIL" | "MANAGE_ROLES" | "ACT_ON_BEHALF";
 
 /**
  * Per-role capabilities (`roles_capabilities`): TRANSACTIONS runs POST

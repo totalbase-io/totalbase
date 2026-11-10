@@ -58,6 +58,7 @@ export class ReadAudit {
     return {
       requestId: this.origin.requestId,
       principal: this.dataPrincipal.principal,
+      onBehalfOf: this.dataPrincipal.onBehalfOf,
       resourceId: this.resource.id,
       action: "READ" as const,
       source: "api",

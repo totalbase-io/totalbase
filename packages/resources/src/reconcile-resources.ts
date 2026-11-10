@@ -1,4 +1,4 @@
-import { relationDetailCache, resourceFunctionSql, resourceRelationSql, type CatalogObject } from "@totalbase/pg-catalog";
+import { relationDetailCache, resourceFunctionSql, resourceRelationSql, type CatalogObject, type CatalogScope } from "@totalbase/pg-catalog";
 import { isExposureFixed } from "@totalbase/shared";
 import type { Database, Queryable } from "@totalbase/database";
 import { syncRealtimePublication } from "./realtime-publication.js";
@@ -71,7 +71,9 @@ export function fixedExposure(schema: string, name: string): string[] | null {
 export async function reconcileResources(
   database: Database,
   catalog: CatalogObject[],
+  scope: CatalogScope = {},
 ): Promise<ReconcileResourcesResult> {
+  const excludedSchemas = scope.excludedSchemas ?? [];
   const exposable = catalog.filter((object) => object.resourceType !== undefined);
   const oids = exposable.map((object) => object.oid);
 
@@ -121,8 +123,8 @@ export async function reconcileResources(
       [input],
     );
 
-    const missing = await markMissing(client, oids);
-    const purged = await purgeMissing(client);
+    const missing = await markMissing(client, oids, excludedSchemas);
+    const purged = await purgeMissing(client, excludedSchemas);
 
     // REALTIME off a table that lost what it needs (dropped, its primary key gone), and the publication in
     // step (Data_API.md §16.2). A failure here never fails the reconcile: the next one tries again.
@@ -149,19 +151,22 @@ export async function reconcileResources(
  * One that stopped being a resource - a table attached as a partition, a
  * function that became an extension's member - is gone all the same.
  */
-const STILL_EXISTS = `(EXISTS (SELECT 1 FROM pg_catalog.pg_class c WHERE c.oid = r.postgres_oid AND ${resourceRelationSql("c")})
+/** `excluded` is the bind parameter holding `catalog.excluded_schemas`: a relation or function there is no resource, however present. */
+const stillExists = (excluded: string) => `(EXISTS (SELECT 1 FROM pg_catalog.pg_class c WHERE c.oid = r.postgres_oid AND ${resourceRelationSql("c")}
+    AND c.relnamespace NOT IN (SELECT n.oid FROM pg_catalog.pg_namespace n WHERE n.nspname = ANY(${excluded}::text[])))
   OR EXISTS (SELECT 1 FROM pg_catalog.pg_proc p WHERE p.oid = r.postgres_oid AND ${resourceFunctionSql("p")}
     -- TotalBase's own functions are never resources (catalog-snapshot.ts): one registered before is gone all the same.
-    AND p.pronamespace <> 'totalbase'::regnamespace))`;
+    AND p.pronamespace <> 'totalbase'::regnamespace
+    AND p.pronamespace NOT IN (SELECT n.oid FROM pg_catalog.pg_namespace n WHERE n.nspname = ANY(${excluded}::text[]))))`;
 
-async function markMissing(client: Queryable, activeOids: number[]): Promise<number> {
+async function markMissing(client: Queryable, activeOids: number[], excludedSchemas: string[]): Promise<number> {
   const { rowCount } = await client.query(
     `UPDATE totalbase.resources r
      SET status = 'MISSING', updated_at = now()
      WHERE r.status = 'ACTIVE'
        AND r.postgres_oid <> ALL($1::oid[])
-       AND NOT ${STILL_EXISTS}`,
-    [activeOids],
+       AND NOT ${stillExists("$2")}`,
+    [activeOids, excludedSchemas],
   );
   return rowCount;
 }
@@ -177,12 +182,13 @@ async function markMissing(client: Queryable, activeOids: number[]): Promise<num
  * deleting it would abort this whole transaction. They're left
  * MISSING for a human to notice and fix the DataView first.
  */
-async function purgeMissing(client: Queryable): Promise<number> {
+async function purgeMissing(client: Queryable, excludedSchemas: string[]): Promise<number> {
   const { rowCount } = await client.query(
     `DELETE FROM totalbase.resources r
      WHERE r.status = 'MISSING'
-       AND NOT ${STILL_EXISTS}
+       AND NOT ${stillExists("$1")}
        AND NOT EXISTS (SELECT 1 FROM totalbase.dataviews d WHERE d.source_resource = r.id)`,
+    [excludedSchemas],
   );
   return rowCount;
 }

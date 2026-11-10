@@ -8,7 +8,7 @@ import {
 } from "@totalbase/query-engine";
 import { TotalBaseError, deniedMessage } from "@totalbase/errors";
 import type { ResolvedApiResource } from "@totalbase/resources";
-import { buildRowFilter, dataApiTimeout, loadPasswordColumns, protectedFieldDecision, userVariableResolver, withPasswordColumnsDenied } from "@totalbase/mutations";
+import { buildRowFilter, dataApiTransactionContext, loadPasswordColumns, protectedFieldDecision, userVariableResolver, withPasswordColumnsDenied } from "@totalbase/mutations";
 import type { AppContext } from "./context.js";
 import type { DataPrincipal } from "./data-principal.js";
 import { loadQueryFeatures } from "./query-features.js";
@@ -126,7 +126,7 @@ export async function readRows(
       }
       await readAudit.executed(client, auditDetail, rows.length);
       return flags ? { data: rows, meta: { flags } } : { data: rows };
-    }, await dataApiTimeout(context, dataPrincipal));
+    }, await dataApiTransactionContext(context, dataPrincipal));
   } catch (error) {
     await readAudit.failed("FAILED", auditDetail, error);
     throw error;
@@ -199,7 +199,7 @@ export async function readRowByKey(
       const result = await client.query<Record<string, unknown>>(compiled.sql, compiled.params);
       await readAudit.executed(client, auditDetail, result.rows.length);
       return result.rows;
-    }, await dataApiTimeout(context, dataPrincipal));
+    }, await dataApiTransactionContext(context, dataPrincipal));
   } catch (error) {
     await readAudit.failed("FAILED", auditDetail, error);
     throw error;

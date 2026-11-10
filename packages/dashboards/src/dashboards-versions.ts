@@ -171,6 +171,9 @@ export function forgetSnapshots(ctx: DashboardsContext, dashboardId: string): vo
   for (const key of ctx.plans.keys()) {
     if (key.startsWith(`${dashboardId}/`)) ctx.plans.delete(key);
   }
+  for (const key of ctx.rowSecured.keys()) {
+    if (key.startsWith(`${dashboardId}/`)) ctx.rowSecured.delete(key);
+  }
 }
 
 /**

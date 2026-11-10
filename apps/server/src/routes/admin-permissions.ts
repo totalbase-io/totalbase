@@ -50,6 +50,15 @@ export const GRANT_PROPERTIES: Record<string, JsonSchema> = {
 export async function parseGrant(context: AppContext, body: unknown): Promise<SetPermissionInput> {
   if (!body || typeof body !== "object") throw new TotalBaseError("INVALID_QUERY", "The grant goes in data.");
   const grant = body as PermissionBody;
+  if (grant.effect !== "ALLOW" && grant.effect !== "DENY") throw new TotalBaseError("INVALID_QUERY", "effect must be ALLOW or DENY.");
+  // The shape, before anything is stored: a list of column names (["id", "name"]) reads as a list but is not
+  // one - each entry names its field and its effect, so a DENY on one field can sit beside the ALLOWs.
+  if (grant.fields !== undefined && !(Array.isArray(grant.fields) && grant.fields.every(isFieldGrant))) {
+    throw new TotalBaseError("INVALID_QUERY", 'fields must be a list of { "field": "<column>", "effect": "ALLOW" | "DENY" } objects.');
+  }
+  if (grant.payloadChecks !== undefined && !(Array.isArray(grant.payloadChecks) && grant.payloadChecks.every(isPayloadCheck))) {
+    throw new TotalBaseError("INVALID_QUERY", 'payloadChecks must be a list of { "rule": <filter>, "label"?: "<text>" } objects.');
+  }
   const needsLimits = (grant.where !== undefined && grant.where !== null) || (grant.payloadChecks !== undefined && grant.payloadChecks.length > 0);
   if (needsLimits) {
     const [maxFilterDepth, maxRelationDepth] = await Promise.all([
@@ -65,6 +74,18 @@ export async function parseGrant(context: AppContext, body: unknown): Promise<Se
     fields: grant.fields,
     payloadChecks: grant.payloadChecks?.map((v) => ({ rule: v.rule, label: v.label ?? null })),
   };
+}
+
+function isFieldGrant(value: unknown): value is { field: string; effect: "ALLOW" | "DENY" } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const { field, effect } = value as { field?: unknown; effect?: unknown };
+  return typeof field === "string" && field.length > 0 && (effect === "ALLOW" || effect === "DENY");
+}
+
+function isPayloadCheck(value: unknown): value is { rule: unknown; label?: string | null } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const { rule, label } = value as { rule?: unknown; label?: unknown };
+  return rule !== undefined && (label === undefined || label === null || typeof label === "string");
 }
 
 /** A non-empty list of distinct role ids. */

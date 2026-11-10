@@ -117,7 +117,7 @@ export async function runQuery(
       variableValues[name] = (await resolver.resolve({ kind: "VAR", name, part: null }).catch(() => ({ value: null }))).value;
     }
     return { result, totals, variableValues };
-  });
+  }, { actorUserId: context.userId ?? undefined });
   const truncated = result.rows.length > maxRows;
   const typed = await typeResult(ctx.database, result.fields, (truncated ? result.rows.slice(0, maxRows) : result.rows) as Record<string, unknown>[]);
   return { columns: typed.columns, rows: typed.rows, truncated, durationMs: Math.round(performance.now() - started), cached: false, totals: totals ?? null, marks: null, files: null, variableValues };
@@ -301,6 +301,35 @@ export function plannedColumns(ctx: DashboardsContext, key: string, plan: () => 
 /** Drops every memoized plan - after a catalog refresh (apps/server's reconcileCatalog), when columns may have changed under a query. */
 export function forgetPlans(ctx: DashboardsContext): void {
   ctx.plans.clear();
+  ctx.rowSecured.clear();
+}
+
+/**
+ * Whether a published widget's query reads a table under Row Level Security (`pg_class.relrowsecurity`), as
+ * PostgreSQL plans it (`queryTables`: a view's tables included, a table read inside a function not). Such a result
+ * is the viewer's even when the query never names `$USER` - the policy keys on the transaction's actor
+ * (Security.md §10.3) - so the cache keeps it per viewer. Kept per version and widget like the plan; a refused
+ * plan reads as not secured and isn't kept (the run reports the refusal). Dropped with the plans: enabling row
+ * security is DDL, which the catalog refresh sees.
+ */
+export function readsRowSecuredTable(ctx: DashboardsContext, key: string, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<boolean> {
+  const memoized = ctx.rowSecured.get(key);
+  if (memoized) return memoized;
+  const loading = (async () => {
+    const tables = await queryTables(ctx, rawSql, variables, timeoutMs);
+    if (!tables || tables.length === 0) return false;
+    const { rows } = await ctx.database.query<{ secured: boolean }>(
+      `SELECT bool_or(c.relrowsecurity) AS secured
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN unnest($1::text[], $2::text[]) AS t(schema, name) ON t.schema = n.nspname AND t.name = c.relname`,
+      [tables.map((t) => t.schema), tables.map((t) => t.name)],
+    );
+    return rows[0]?.secured === true;
+  })();
+  loading.catch(() => ctx.rowSecured.delete(key));
+  ctx.rowSecured.set(key, loading);
+  while (ctx.rowSecured.size > MAX_MEMOIZED) ctx.rowSecured.delete(ctx.rowSecured.keys().next().value!);
+  return loading;
 }
 
 /**
@@ -329,8 +358,12 @@ export async function executeWidget(
     return result;
   };
   if (!scope.published || ttlSeconds <= 0) return viewerRun();
-  // Keyed by what changes the result: the version, the values, the viewer's zone - and who they are, when it reads them.
-  const readsUser = /\$USER\./.test(widget.query) || context.variables.some((v) => v.default?.source === "user" && referencedVariableNames(widget.query).includes(v.name));
+  // Keyed by what changes the result: the version, the values, the viewer's zone - and who they are, when it reads
+  // them: `$USER.*`, a variable defaulting from the user row, or a table under Row Level Security (the policy
+  // reads the viewer as the transaction's actor, whether or not the query names them).
+  const readsUser = /\$USER\./.test(widget.query)
+    || context.variables.some((v) => v.default?.source === "user" && referencedVariableNames(widget.query).includes(v.name))
+    || await readsRowSecuredTable(ctx, `${scope.dashboardId}/${scope.published.version}/${widget.id}`, widget.query, context.variables, limits.timeoutMs);
   const key = cacheKey({ d: scope.dashboardId, v: scope.published.version, w: widget.id, values: context.values, tz: context.timezone ?? null, user: readsUser ? context.userId : null });
   if (!limits.fresh) {
     const hit = ctx.results.get(key);

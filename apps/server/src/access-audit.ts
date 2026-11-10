@@ -27,6 +27,8 @@ import type { AppContext } from "./context.js";
 declare module "fastify" {
   interface FastifyRequest {
     auditPrincipal?: Principal;
+    /** The user the request is made for (X-TotalBase-On-Behalf-Of, Security.md §10.3), once data-principal.ts accepted it. */
+    onBehalfOf?: string;
     auditMetadata?: Record<string, unknown>;
     /**
      * The event and status when the route's own would mislead: a correct password answered with an MFA
@@ -88,11 +90,11 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /admin/api/users/:id/reset-password": "user.password_reset",
   "PUT /admin/api/users/:id/roles": "user.roles_set",
   "DELETE /admin/api/users/:id/mfa": "user.mfa_reset",
-  // Delegated user administration (Security.md §9.3)
-  "POST /app/api/users/invitations": "user.invite",
+  // Delegated user administration (Security.md §9.3) - built-in actions on users (Data_API.md §2.2)
+  "POST /api/totalbase/table/users/invitations": "user.invite",
   "DELETE /app/api/users/:id": "user.delete",
-  "POST /app/api/users/:id/invite": "user.invite",
-  "POST /app/api/users/:id/reset-password": "user.password_reset",
+  "POST /api/totalbase/table/users/:id/invite": "user.invite",
+  "POST /api/totalbase/table/users/:id/reset-password": "user.password_reset",
   // Roles and permissions
   "PUT /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.set",
   "PUT /admin/api/roles/:role/permissions": "permission.set",
@@ -193,6 +195,7 @@ export function registerAccessAudit(app: FastifyInstance, context: AppContext): 
       await context.audit.record(context.database, {
         requestId: request.id,
         principal: principalFor(request),
+        onBehalfOf: request.onBehalfOf,
         action: "AUTH",
         status: request.auditOutcome?.status ?? statusFor(reply.statusCode),
         source: request.url.startsWith("/admin/") ? "admin" : "auth",

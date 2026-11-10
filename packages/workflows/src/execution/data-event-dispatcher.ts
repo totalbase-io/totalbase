@@ -16,6 +16,8 @@ interface OutboxRow {
   old_payload: Record<string, unknown> | null;
   /** UPDATE: the columns the write changed - matched against `changed_fields`. */
   changed_columns: string[] | null;
+  /** The user the write was made for (X-TotalBase-On-Behalf-Of) - handed to the run as `initiator.onBehalfOf`. */
+  on_behalf_of?: string | null;
   status: string;
   /** Where the write came from (the audit log's source). */
   source: string;
@@ -201,7 +203,7 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
       continue;
     }
 
-    const initiator = { type: "DATA_EVENT", resource: outbox.resource, event: outbox.event, requestId: outbox.request_id, ...(perStatement && { forEach: "STATEMENT" }) };
+    const initiator = { type: "DATA_EVENT", resource: outbox.resource, event: outbox.event, requestId: outbox.request_id, ...(outbox.on_behalf_of && { onBehalfOf: outbox.on_behalf_of }), ...(perStatement && { forEach: "STATEMENT" }) };
     // Every run this event admits for this workflow - or the one
     // suppression it records - takes a claim, so a retried event never
     // admits it twice (Workflows.md §6.3.5).

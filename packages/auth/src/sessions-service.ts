@@ -32,6 +32,9 @@ interface SessionRow {
 }
 
 /** validate() reads the session beside u.* - its columns travel under this prefix. */
+/** How long a Realtime ticket lives (Security.md §2.10): a handshake, not a credential to tune. */
+export const REALTIME_TICKET_TTL_SECONDS = 60;
+
 const SESSION_COLUMN_PREFIX = "__session_";
 
 function toSession(row: SessionRow): Session {
@@ -190,7 +193,15 @@ export class SessionsService {
    * query, so the Data API needn't read it again after validating.
    */
   async validate(token: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
-    const tokenHash = hashToken(token);
+    return this.validateBy("s.token_hash", hashToken(token));
+  }
+
+  /** The same validation by the session's id - how a connection opened with a Realtime ticket resolves its session before every delivery (Security.md §2.10). */
+  async validateById(sessionId: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
+    return this.validateBy("s.id", sessionId);
+  }
+
+  private async validateBy(column: "s.token_hash" | "s.id", value: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
     const idleMinutes = await this.idleMinutes();
 
     // u.* first, then the session's columns under a prefix no user column
@@ -202,11 +213,11 @@ export class SessionsService {
          ${sessionEnd("$2")} AS __session_expires_at, s.revoked_at AS __session_revoked_at
        FROM totalbase.sessions s
        JOIN totalbase.users u ON u.id = s."user"
-       WHERE s.token_hash = $1
+       WHERE ${column} = $1
          AND ${statusCondition("ACTIVE", "$2")}
          AND u.active = true
          AND u.can_login = true`,
-      [tokenHash, idleMinutes],
+      [value, idleMinutes],
     );
 
     const row = rows[0];
@@ -247,6 +258,44 @@ export class SessionsService {
       session,
       userRow,
     };
+  }
+
+  /**
+   * A Realtime ticket (Security.md §2.10): a 60-second, single-use stand-in for the session, good only to open a
+   * WebSocket from a browser that never holds the session token itself. Only its hash is stored, in PostgreSQL,
+   * so every server process honours it.
+   */
+  async issueTicket(sessionId: string): Promise<{ ticket: string; expiresAt: Date }> {
+    const ticket = `rt_${generateOpaqueToken()}`;
+    const { rows } = await this.database.query<{ expires_at: Date }>(
+      `INSERT INTO totalbase.sessions_tickets (session, token_hash, expires_at)
+       VALUES ($1, $2, now() + make_interval(secs => $3))
+       RETURNING expires_at`,
+      [sessionId, hashToken(ticket), REALTIME_TICKET_TTL_SECONDS],
+    );
+    return { ticket, expiresAt: rows[0]!.expires_at };
+  }
+
+  /** Consumes a ticket - hash, unused and unexpired, under a row lock - and answers its session's id; null for any failure. */
+  async consumeTicket(ticket: string): Promise<string | null> {
+    return this.database.transaction(async (client) => {
+      const { rows } = await client.query<{ id: string; session: string }>(
+        `SELECT id, session FROM totalbase.sessions_tickets
+          WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+          FOR UPDATE`,
+        [hashToken(ticket)],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      await client.query(`UPDATE totalbase.sessions_tickets SET used_at = now() WHERE id = $1`, [row.id]);
+      return row.session;
+    });
+  }
+
+  /** Tickets past their minute, used or not - the retention job's. */
+  async purgeTickets(): Promise<number> {
+    const { rowCount } = await this.database.query(`DELETE FROM totalbase.sessions_tickets WHERE expires_at < now() - interval '1 hour'`);
+    return rowCount ?? 0;
   }
 
   /** The session's user just confirmed their identity again (Security.md §2.19). */

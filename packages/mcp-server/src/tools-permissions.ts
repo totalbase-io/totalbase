@@ -454,7 +454,7 @@ export function registerPermissionTools(server: McpServer, client: AdminClient):
         "Turn a role's capability on or off: TRANSACTIONS (may submit multi-step Data API transactions, POST /api/transactions - each step still checked per resource), SEND_EMAIL (may run a workflow's Send email step) or MANAGE_ROLES (its members create roles under it - a role's parent column - grant them permissions within what this role has, share what they open and assign them: delegated administration of a branch). Like grants: ALLOW, DENY (wins over other roles' ALLOW) or off (no row: undefined). Administrators hold all of them.",
       inputSchema: {
         role_id: roleId(),
-        capability: z.enum(["TRANSACTIONS", "SEND_EMAIL", "MANAGE_ROLES"]),
+        capability: z.enum(["TRANSACTIONS", "SEND_EMAIL", "MANAGE_ROLES", "ACT_ON_BEHALF"]),
         effect: z.enum(["ALLOW", "DENY", "OFF"]),
       },
       annotations: IDEMPOTENT,

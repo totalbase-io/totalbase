@@ -275,6 +275,7 @@ export async function queueAuditAndOutbox(
   batch.audits.push({
     requestId: deps.audit.requestId,
     principal: deps.dataPrincipal.principal,
+    onBehalfOf: deps.dataPrincipal.onBehalfOf,
     resourceId: deps.resourceId,
     action,
     status: "EXECUTED",
@@ -296,6 +297,7 @@ export async function queueAuditAndOutbox(
     event: action,
     payload,
     source: deps.audit.source,
+    ...(deps.dataPrincipal.onBehalfOf !== undefined && { onBehalfOf: deps.dataPrincipal.onBehalfOf }),
     // The event itself says it is a workflow's write - the dispatcher never consults the audit log for it (which audit.enabled may switch off).
     ...(deps.audit.workflowAncestry !== undefined && { workflowAncestry: deps.audit.workflowAncestry }),
     // An UPDATE also carries the row before it and what changed - a DATA_EVENT Start matches on them.
@@ -375,6 +377,7 @@ export async function recordMutationFailure(
     await deps.context.audit.record(deps.context.database, {
       requestId: deps.audit.requestId,
       principal: deps.dataPrincipal.principal,
+      onBehalfOf: deps.dataPrincipal.onBehalfOf,
       resourceId: deps.resourceId,
       action,
       status,

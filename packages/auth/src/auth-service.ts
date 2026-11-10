@@ -151,7 +151,7 @@ export class AuthService {
   }
 
   /** POST /api/auth/register. Gated by auth.registration_enabled. */
-  async register(input: { email: string; password: string; name?: string }): Promise<User> {
+  async register(input: { email: string; password: string; name?: string; extra?: Record<string, unknown> | undefined }): Promise<User> {
     const registrationEnabled = await this.settings.get("auth.registration_enabled");
     if (!registrationEnabled) {
       throw new TotalBaseError("PERMISSION_DENIED", "Public registration is disabled.");
@@ -159,6 +159,14 @@ export class AuthService {
 
     const minLength = await this.settings.get("auth.password_min_length");
     assertPasswordStrength(input.password, minLength);
+    // The project's columns a registration may set (Security.md §2.7): the ones auth.registration_columns names,
+    // nothing else - the setting is the administrator's word on what a stranger's form may write.
+    const extra = input.extra ?? {};
+    if (typeof extra !== "object" || extra === null || Array.isArray(extra)) throw new TotalBaseError("INVALID_QUERY", "extra must be an object of column values.");
+    const allowed = await this.settings.get("auth.registration_columns");
+    for (const column of Object.keys(extra)) {
+      if (!allowed.includes(column)) throw new TotalBaseError("INVALID_FIELD", `${column} is not a column a registration may set (auth.registration_columns).`);
+    }
 
     const passwordHash = await hashPassword(input.password);
     const defaultRole = await this.settings.get("auth.registration_default_role");
@@ -168,7 +176,7 @@ export class AuthService {
     // re-checked here, not only when the setting was saved: a role deleted
     // since is simply not given, and a reserved or admin_access one never is.
     const user = await this.database.transaction(async (client) => {
-      const created = await this.users.create({ email: input.email, name: input.name ?? null, passwordHash }, client);
+      const created = await this.users.create({ email: input.email, name: input.name ?? null, passwordHash, extra }, client);
       if (defaultRole) {
         await client.query(
           `INSERT INTO totalbase.users_roles ("user", role)

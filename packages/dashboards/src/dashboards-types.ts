@@ -345,6 +345,8 @@ export interface DashboardsContext {
   snapshots: Map<string, Promise<AdminDashboardVersionSnapshot>>;
   /** Published widgets' planned columns, keyed `dashboard/version/widget` (`plannedColumns`) - same bound and lifetime as the snapshots. */
   plans: Map<string, Promise<TypedResultColumn[] | null>>;
+  /** Whether a published widget's query reads a table under Row Level Security, keyed like `plans` (`readsRowSecuredTable`) - its cached result is then the viewer's. */
+  rowSecured: Map<string, Promise<boolean>>;
 }
 
 /** How many snapshots, and how many plans, the memos keep at most - oldest use out first. */

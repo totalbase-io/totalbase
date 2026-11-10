@@ -318,7 +318,7 @@ export async function assertUserRoleAssignmentAllowed(
 /**
  * The assignment guardrail for a set of roles at once - a Data API row
  * write (one role) and an invitation that assigns several
- * (/app/api/users/invitations) share it: never a reserved or
+ * (/api/totalbase/table/users/invitations) share it: never a reserved or
  * administrative role, whoever the caller is; and a non-administrator
  * (`caller` given) only a role they created or one of their roles manages.
  * One query per rule, however many roles.

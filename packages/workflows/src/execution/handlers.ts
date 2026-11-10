@@ -4,7 +4,7 @@ import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
 import { compileSelect, parseFilter, parseQuery, SchemaContext, type FilterNode } from "@totalbase/query-engine";
 import type { WorkflowEngineContext } from "./context.js";
 import type { DataPrincipal } from "@totalbase/mutations";
-import { buildRowFilter, executeCreate, executeDelete, executeUpdate, loadPasswordColumns, protectedFieldDecision, rowFilterLimits as loadLimits, userVariableResolver, withPasswordColumnsDenied, type MutationDeps } from "@totalbase/mutations";
+import { buildRowFilter, executeCreate, executeDelete, executeUpdate, loadPasswordColumns, protectedFieldDecision, rowFilterLimits as loadLimits, userVariableResolver, withPasswordColumnsDenied, type MutationDeps, dataApiTransactionContext } from "@totalbase/mutations";
 import { evaluateFilter } from "./filter-evaluator.js";
 import { resolveWorkflowResource } from "./resource-resolution.js";
 import { CODE_HANDLERS } from "./code-handlers.js";
@@ -74,7 +74,9 @@ const readRecords: OperationHandler = async ({ context, dataPrincipal, configura
     maxOffset,
     defaultOrderBy: resource.defaultSort,
   });
-  const { rows } = await context.database.query(compiled.sql, compiled.params);
+  // In a transaction of its own, as a Data API read: the executor as the actor, so a Row Level Security policy
+  // decides for the run as it would for the executor's own request (Security.md §10.3).
+  const { rows } = await context.database.transaction((client) => client.query(compiled.sql, compiled.params), await dataApiTransactionContext(context, dataPrincipal));
   return { output: "next", result: rows };
 };
 

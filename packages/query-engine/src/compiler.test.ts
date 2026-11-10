@@ -222,6 +222,20 @@ describe("compileSelect (integration)", () => {
     expect(rows.map((r) => r.name)).toEqual(["Gadget"]);
   });
 
+  it("a $USER column that is an array contributes its elements to _in / _nin, beside the list's other entries; elsewhere it is refused", async () => {
+    const favorites = parseQuery({ where: { name: { _in: ["$USER.favorites", "Widget"] } } }, LIMITS);
+    const compiled = await compile(favorites, { resolveUserVariable: () => ["Gadget"] });
+    const { rows } = await database.query<{ name: string }>(compiled.sql, compiled.params);
+    expect(rows.map((r) => r.name).sort()).toEqual(["Gadget", "Widget"]);
+
+    const none = await compile(parseQuery({ where: { name: { _nin: "$USER.favorites" } } }, LIMITS), { resolveUserVariable: () => ["Gadget", "Widget"] });
+    const { rows: rest } = await database.query<{ name: string }>(none.sql, none.params);
+    expect(rest.map((r) => r.name)).not.toContain("Gadget");
+    expect(rest.map((r) => r.name)).not.toContain("Widget");
+
+    await expect(compile(parseQuery({ where: { name: { _eq: "$USER.favorites" } } }, LIMITS), { resolveUserVariable: () => ["Gadget"] })).rejects.toMatchObject({ code: "INVALID_QUERY" });
+  });
+
   it("combines the request where and the permission row filter with AND", async () => {
     const ast = parseQuery({ where: { price: { _gt: "0" } } }, LIMITS);
     const compiled = await compile(ast, {

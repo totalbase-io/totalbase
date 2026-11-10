@@ -8,14 +8,25 @@ import type { Database } from "@totalbase/database";
  * anywhere without this. Same exclusion filter buildCatalogSnapshot's own
  * queries already use (system/temp schemas).
  */
-export async function listSchemas(database: Database): Promise<string[]> {
+export async function listSchemas(database: Database, scope: CatalogScope = {}): Promise<string[]> {
   const { rows } = await database.query<{ nspname: string }>(
     `SELECT nspname FROM pg_namespace
      WHERE nspname NOT IN ('pg_catalog', 'information_schema')
        AND nspname NOT LIKE 'pg\\_%'
+       AND nspname <> ALL($1::text[])
      ORDER BY nspname`,
+    [scope.excludedSchemas ?? []],
   );
   return rows.map((row) => row.nspname);
+}
+
+/**
+ * What the catalog leaves out besides PostgreSQL's own schemas (Foundations.md §12.3): the schemas
+ * `catalog.excluded_schemas` names - an extension's working schema (`_timescaledb_internal`), whose tables are
+ * nobody's resources and whose churn would run a reconcile each time.
+ */
+export interface CatalogScope {
+  excludedSchemas?: string[] | undefined;
 }
 
 /**
@@ -112,12 +123,15 @@ const RELATION_KIND_BY_RELKIND: Record<string, { relationKind: RelationKind; res
  * The relations that are resources of their own (Foundations.md §12):
  * not a partition - a storage detail of its partitioned parent, which is
  * the resource; a partition registered beside it could be exposed and
- * granted apart, its rows read past the parent's grants - and not an
+ * granted apart, its rows read past the parent's grants -, nor a table
+ * inheriting from another (`pg_inherits`: a TimescaleDB chunk, an old-style
+ * partition), read through its parent for the same reason, and not an
  * extension's member, which belongs to the extension, not the application.
  * `alias` is the pg_class alias of the query it goes into.
  */
 export function resourceRelationSql(alias: string): string {
   return `NOT ${alias}.relispartition
+       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_inherits i WHERE i.inhrelid = ${alias}.oid)
        AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend d
                        WHERE d.classid = 'pg_catalog.pg_class'::regclass AND d.objid = ${alias}.oid AND d.deptype = 'e')`;
 }
@@ -141,7 +155,8 @@ export function resourceFunctionSql(alias: string): string {
  * Column/PK/FK/CHECK/index-level introspection belongs to later phases;
  * this snapshot only establishes object identity for resource reconciliation.
  */
-export async function buildCatalogSnapshot(database: Database): Promise<CatalogObject[]> {
+export async function buildCatalogSnapshot(database: Database, scope: CatalogScope = {}): Promise<CatalogObject[]> {
+  const excludedSchemas = scope.excludedSchemas ?? [];
   const relations = await database.query<{
     oid: number;
     schema: string;
@@ -154,11 +169,12 @@ export async function buildCatalogSnapshot(database: Database): Promise<CatalogO
      WHERE c.relkind IN ('r', 'p', 'v', 'm')
        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
        AND n.nspname NOT LIKE 'pg\\_%'
+       AND n.nspname <> ALL($2::text[])
        -- TotalBase's own tables: only the ones it exposes (EXPOSABLE_TOTALBASE_TABLES); its schema is the signal.
        AND (n.nspname <> 'totalbase' OR c.relname = ANY($1))
        AND ${resourceRelationSql("c")}
      ORDER BY n.nspname, c.relname`,
-    [EXPOSABLE_TOTALBASE_TABLES],
+    [EXPOSABLE_TOTALBASE_TABLES, excludedSchemas],
   );
 
   const functions = await database.query<{
@@ -172,11 +188,13 @@ export async function buildCatalogSnapshot(database: Database): Promise<CatalogO
      JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
        AND n.nspname NOT LIKE 'pg\\_%'
+       AND n.nspname <> ALL($1::text[])
        AND p.prokind IN ('f', 'p')
        -- TotalBase's own internal functions (instance_protect_id...) are never resources: its schema holds them.
        AND n.nspname <> 'totalbase'
        AND ${resourceFunctionSql("p")}
      ORDER BY n.nspname, p.proname`,
+    [excludedSchemas],
   );
 
   const objects: CatalogObject[] = [];

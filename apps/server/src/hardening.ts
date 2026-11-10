@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { Transform } from "node:stream";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import qs from "qs";
@@ -73,7 +73,7 @@ export function parseQueryString(queryString: string): Record<string | symbol, u
 const QUERY_STRING_REFUSAL = Symbol("queryStringRefusal");
 
 /** Headers a browser may send cross-origin (the preflight's Access-Control-Allow-Headers). */
-const CORS_ALLOWED_HEADERS = "authorization, content-type, idempotency-key, x-totalbase-timezone";
+const CORS_ALLOWED_HEADERS = "authorization, content-type, idempotency-key, x-totalbase-timezone, x-totalbase-on-behalf-of";
 
 function bodyTooLarge(): TotalBaseError {
   return new TotalBaseError("REQUEST_BODY_TOO_LARGE", "Request body exceeds the configured size limit.");
@@ -156,6 +156,18 @@ function isInternalRequest(header: string | string[] | undefined, key: string): 
 }
 
 /** Methods that change nothing - never held to the same origin. */
+/**
+ * The credential a request carries, as the rate limiter keys a bucket on it (Administration.md §7.8): a hash of
+ * the bearer, or of the session cookie - the limiter runs before authentication, so it never knows the user; two
+ * sessions of one person are two buckets, which is close enough. Null: an anonymous request, counted per address.
+ */
+function credentialKey(request: FastifyRequest): string | null {
+  const header = request.headers.authorization;
+  const bearer = typeof header === "string" ? header.match(/^Bearer\s+(\S+)/i)?.[1] : undefined;
+  const credential = bearer ?? readSessionCookie(request);
+  return credential ? `credential:${createHash("sha256").update(credential).digest("base64url").slice(0, 32)}` : null;
+}
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**
@@ -202,7 +214,7 @@ export function registerHardeningHooks(
       return;
     }
 
-    const [corsEnabled, corsOrigins, maxQueryStringBytes, maxQueryParameters, rateLimitEnabled, rateLimitPerMinute, signInPerMinute] = await Promise.all([
+    const [corsEnabled, corsOrigins, maxQueryStringBytes, maxQueryParameters, rateLimitEnabled, rateLimitPerMinute, signInPerMinute, rateLimitPerUserPerMinute] = await Promise.all([
       settings.get("security.cors_enabled"),
       settings.get("security.cors_origins"),
       settings.get("api.max_query_string_bytes"),
@@ -210,6 +222,7 @@ export function registerHardeningHooks(
       settings.get("security.rate_limit_enabled"),
       settings.get("security.rate_limit_per_minute"),
       settings.get("security.rate_limit_sign_in_per_minute"),
+      settings.get("security.rate_limit_per_user_per_minute"),
     ]);
 
     // --- CORS (Administration.md §7.8) ---
@@ -262,9 +275,19 @@ export function registerHardeningHooks(
     // endpoint's), never the API's per-IP one - an agent's build is several hundred calls a minute. Without a token
     // it is an anonymous request like any other, counted per IP.
     const mcpWithToken = (request.url === "/mcp" || request.url.startsWith("/mcp?")) && /^Bearer\s+\S/i.test(request.headers.authorization ?? "");
-    if (rateLimitEnabled && !internal && !mcpWithToken && !rateLimiter.consume(request.ip, rateLimitPerMinute)) {
-      reply.header("retry-after", String(rateLimiter.retryAfterSeconds(request.ip)));
-      throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many requests. Please slow down.");
+    // A request with a credential counts in that credential's bucket (security.rate_limit_per_user_per_minute): people
+    // behind one connection, or an application's server sending every request from one address, each get their own.
+    // An anonymous request counts per address, as does a credential that is refused (the onResponse hook below), so a
+    // flood of invented tokens exhausts its address's bucket - which then refuses every request from it.
+    if (rateLimitEnabled && !internal && !mcpWithToken) {
+      const credential = credentialKey(request);
+      const refused = credential === null
+        ? !rateLimiter.consume(request.ip, rateLimitPerMinute)
+        : rateLimiter.exhausted(request.ip, rateLimitPerMinute) || !rateLimiter.consume(credential, rateLimitPerUserPerMinute);
+      if (refused) {
+        reply.header("retry-after", String(rateLimiter.retryAfterSeconds(credential !== null && rateLimiter.exhausted(credential, rateLimitPerUserPerMinute) ? credential : request.ip)));
+        throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many requests. Please slow down.");
+      }
     }
     if (rateLimitEnabled && isSignIn(request) && signInFailures.exhausted(request.ip, signInPerMinute)) {
       reply.header("retry-after", String(signInFailures.retryAfterSeconds(request.ip)));
@@ -277,14 +300,20 @@ export function registerHardeningHooks(
     return payload;
   });
 
-  // A failed attempt on a credential route counts once it's answered (SIGN_IN_PATHS).
+  // A failed attempt on a credential route counts once it's answered (SIGN_IN_PATHS); a credential the request
+  // carried that was refused (401) counts against the address, as an anonymous request would have.
   app.addHook("onResponse", async (request, reply) => {
-    if (!isSignIn(request) || reply.statusCode < 400 || reply.statusCode >= 500 || reply.statusCode === 429) return;
-    const [rateLimitEnabled, signInPerMinute] = await Promise.all([
+    const refusedCredential = reply.statusCode === 401 && credentialKey(request) !== null;
+    const failedSignIn = isSignIn(request) && reply.statusCode >= 400 && reply.statusCode < 500 && reply.statusCode !== 429;
+    if (!refusedCredential && !failedSignIn) return;
+    const [rateLimitEnabled, signInPerMinute, rateLimitPerMinute] = await Promise.all([
       settings.get("security.rate_limit_enabled"),
       settings.get("security.rate_limit_sign_in_per_minute"),
+      settings.get("security.rate_limit_per_minute"),
     ]);
-    if (rateLimitEnabled) signInFailures.consume(request.ip, signInPerMinute);
+    if (!rateLimitEnabled) return;
+    if (failedSignIn) signInFailures.consume(request.ip, signInPerMinute);
+    if (refusedCredential) rateLimiter.consume(request.ip, rateLimitPerMinute);
   });
 
   // --- REQUEST_BODY_TOO_LARGE (Data_API.md §12) ---

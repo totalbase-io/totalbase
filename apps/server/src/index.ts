@@ -3,7 +3,7 @@ import { bootstrap, publicUrlFor } from "./bootstrap.js";
 import { buildContext } from "./context.js";
 import { loadServerEnv } from "./env.js";
 import { buildServer } from "./server.js";
-import { syncCatalog, syncCatalogIfChanged } from "./catalog-refresh.js";
+import { syncCatalog, syncCatalogIfChanged, catalogScope } from "./catalog-refresh.js";
 import { getCatalogFingerprint } from "@totalbase/pg-catalog";
 import { requeueFailedOutbox, runRetention } from "./retention.js";
 import { runCronTick } from "@totalbase/workflows";
@@ -271,7 +271,7 @@ async function main() {
   // tick, a full sync only when it changed. Re-read every cycle like the
   // scheduled sync; 0 turns it off (checked again each minute).
   let catalogWatchTimer: NodeJS.Timeout | undefined;
-  let catalogFingerprint = await getCatalogFingerprint(database);
+  let catalogFingerprint = await getCatalogFingerprint(database, await catalogScope(context));
   const scheduleNextCatalogWatch = () => {
     context.settings.get("catalog.watch_interval_seconds").then((seconds) => {
       catalogWatchTimer = setTimeout(async () => {

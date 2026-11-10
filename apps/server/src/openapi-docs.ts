@@ -25,6 +25,11 @@ export const USER_SCHEMA: Record<string, JsonSchema> = {
       canLogin: { type: "boolean" },
       emailVerifiedAt: { type: ["string", "null"], format: "date-time" },
       createdAt: { type: "string", format: "date-time" },
+      extra: {
+        type: "object",
+        additionalProperties: true,
+        description: "The columns the project added to totalbase.users, as this user may read them of their own row: READ on users, its field grants and its row filter decide (Security.md §2.5); empty when nothing is granted.",
+      },
     },
   },
 };

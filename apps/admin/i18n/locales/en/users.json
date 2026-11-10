@@ -152,6 +152,8 @@
       "noInheritDescription": "The parent organizes the roles - where each one sits and who manages it - and is a ceiling: a role under it has only what is granted to it, gets nothing from its parent, and can never do more than it.",
       "manageRoles": "Can manage the roles below it",
       "manageRolesHelp": "Members create roles under this one, grant them permissions within what this role has, and assign them.",
+      "actOnBehalf": "Can act on behalf of users",
+      "actOnBehalfHelp": "A program with this role names the user it acts for (X-TotalBase-On-Behalf-Of) - one it can read - and the audit log records both. It lends no permission: the request is the program's.",
       "reviewRequired": "Review its access periodically",
       "reviewRequiredHelp": "Its Access reviews tab reminds when a review is due, as for Administrators.",
       "relations": "Relations with other roles",

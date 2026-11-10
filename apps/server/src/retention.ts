@@ -13,6 +13,7 @@ export interface RetentionResult {
   executions: number;
   tokens: number;
   challenges: number;
+  realtimeTickets: number;
   derivatives: { expired: number; orphanedFiles: number };
   expiredAssignments: number;
   dormantAccounts: number;
@@ -42,7 +43,7 @@ type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "id
  *   both audited, as the system.
  */
 export async function runRetention(context: RetentionContext): Promise<RetentionResult> {
-  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, derivatives: { expired: 0, orphanedFiles: 0 }, expiredAssignments: 0, dormantAccounts: 0 };
+  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, realtimeTickets: 0, derivatives: { expired: 0, orphanedFiles: 0 }, expiredAssignments: 0, dormantAccounts: 0 };
   const { logger } = context;
 
   try {
@@ -101,6 +102,12 @@ export async function runRetention(context: RetentionContext): Promise<Retention
     result.challenges = await context.auth.mfa.purgeChallenges();
   } catch (error) {
     logger.error({ error }, "MFA challenges purge failed");
+  }
+
+  try {
+    result.realtimeTickets = await context.auth.sessions.purgeTickets();
+  } catch (error) {
+    logger.error({ error }, "Realtime tickets purge failed");
   }
 
   try {

@@ -61,8 +61,12 @@ export async function compileFilter(
         }
         return other.columnSql;
       }
-      case "user":
-        return nextParam(context.resolveUserVariable(raw.field));
+      case "user": {
+        const value = context.resolveUserVariable(raw.field);
+        // A list compares with _in/_nin (its elements), never with a scalar operator: said plainly, not PostgreSQL's operator error.
+        if (Array.isArray(value)) throw new TotalBaseError("INVALID_QUERY", `$USER.${raw.field} is a list - compare it with _in or _nin.`);
+        return nextParam(value);
+      }
       case "currentTimestamp":
         return "CURRENT_TIMESTAMP";
       case "currentDate":
@@ -100,7 +104,7 @@ export async function compileFilter(
     }
 
     if (n.operator === "_in" || n.operator === "_nin") {
-      const values = (n.value as RawValue[]).map((v) => resolveLiteralOnly(v, dataType));
+      const values = (n.value as RawValue[]).flatMap((v) => resolveListValue(v, dataType));
       return `${columnSql} ${inListSql(n.operator === "_nin", nextParam(values))}`;
     }
 
@@ -116,10 +120,18 @@ export async function compileFilter(
     return `${columnSql} ${template.replace("?", value)}`;
   }
 
-  /** _in/_nin/_between arrays are bound as a single array parameter, so variables (CURRENT_* / $INTERVAL / $PERIOD) aren't supported inside them - only literals and $USER.*. */
-  function resolveLiteralOnly(raw: RawValue, dataType: string): unknown {
-    if (typeof raw === "string") return context.coerceLiteral(raw, dataType);
-    if (raw.kind === "user") return context.resolveUserVariable(raw.field);
+  /**
+   * _in/_nin arrays are bound as a single array parameter, so variables (CURRENT_* / $INTERVAL / $PERIOD) aren't
+   * supported inside them - only literals and $USER.*. A $USER column that is itself an array (`users.tenants
+   * uuid[]`, kept by a trigger: one user in several tenants, Data_API.md §3.7) contributes its elements to the
+   * list, beside whatever else the list names.
+   */
+  function resolveListValue(raw: RawValue, dataType: string): unknown[] {
+    if (typeof raw === "string") return [context.coerceLiteral(raw, dataType)];
+    if (raw.kind === "user") {
+      const value = context.resolveUserVariable(raw.field);
+      return Array.isArray(value) ? value : [value];
+    }
     throw new TotalBaseError("INVALID_QUERY", `Variable ${raw.kind} is not supported inside _in/_nin.`);
   }
 

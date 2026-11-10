@@ -39,7 +39,7 @@ function assertSessionOnlySettings(request: FastifyRequest, keys: string[]): voi
   }
 }
 
-export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppContext, startup: { trustProxy?: boolean } = {}): void {
+export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppContext, startup: { trustProxy?: boolean; trustedProxies?: string[] } = {}): void {
   const preHandler = requireAdmin(context);
 
   // Settings applied only at startup: the value in use right now, which
@@ -50,6 +50,7 @@ export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppCo
     "pool.connection_timeout_ms": () => context.database.poolSettings().poolConnectionTimeoutMs,
     "pool.max_lifetime_ms": () => context.database.poolSettings().poolMaxLifetimeMs,
     ...(startup.trustProxy !== undefined ? { "security.trust_proxy": () => startup.trustProxy } : {}),
+    ...(startup.trustedProxies !== undefined ? { "security.trusted_proxies": () => startup.trustedProxies } : {}),
   };
 
   app.get("/admin/api/settings", {

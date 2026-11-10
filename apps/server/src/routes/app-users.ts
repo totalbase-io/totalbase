@@ -3,7 +3,10 @@ import type { LinkDelivery } from "@totalbase/auth";
 import { checkConstraintValues } from "@totalbase/tb-catalog";
 import { TotalBaseError } from "@totalbase/errors";
 import { assertColumnsGranted, assertRolesAssignable, resolveTableGrant, rowFilterLimits, rowPassesGrant } from "@totalbase/mutations";
+import { dataEnvelope, type JsonSchema } from "@totalbase/openapi";
+import { object } from "../openapi-admin-docs.js";
 import type { AppContext } from "../context.js";
+import { canOnTotalbaseResource } from "../openapi-docs.js";
 import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
 import { resolveDataPrincipal, type DataPrincipal } from "../data-principal.js";
 import { sourceDetail } from "../record-catalog.js";
@@ -46,13 +49,18 @@ async function userReachable(context: AppContext, principal: DataPrincipal, admi
   return { id: user.id, email: user.email, name: user.name };
 }
 
+const DELIVERY_PROPERTY: Record<string, JsonSchema> = { delivery: { type: "string", enum: ["email", "link"], description: "`link` (administrators only) answers the link instead of emailing it." } };
+const SENT_SCHEMA = object({ delivered: { type: "boolean" }, actionUrl: { type: "string", format: "uri", description: "With `delivery: \"link\"` only." } }, ["delivered"]);
+const USERS_DOC = { tags: ["users"], access: "principal" as const };
+
 /**
- * User actions for delegated users that are not a plain row write
- * (Security.md §9.3) - inviting someone, and sending an
- * existing user an invitation or password reset link - through the same
- * services as the Admin API, authorized like a Data API write. Listing,
- * editing and deleting users, and their role assignments, go through the
- * Data API itself.
+ * User actions that are not a plain row write (Security.md §9.3) - inviting someone, and sending an existing
+ * user an invitation or password reset link - as built-in actions on `users` (Data_API.md §2.2), through the
+ * same services as the Admin API, authorized like a Data API write: CREATE on users with each column and the
+ * row filter on the new row; UPDATE on the row. On the Data API's surface, so an application with its own
+ * frontend - a tenant's owner with a session, its backend with a token - reaches them with its own grants; the
+ * portal's Users module calls the same routes. Listing, editing and deleting users, and their role assignments,
+ * go through the Data API itself; the delete with its avatar's removal keeps its /app/api route.
  */
 export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAppAccess(context);
@@ -61,7 +69,17 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
   // table, each column granted) - the invite form's Additional data, with what shows each one: its type,
   // presentation, a foreign key's target and its row presentation, a CHECK list's values. Never a CHECK
   // expression, and nothing of a column the grant leaves out.
-  app.get("/app/api/users/invitation-columns", { preHandler }, async (request) => {
+  app.get("/api/totalbase/table/users/invitations/columns", {
+    config: {
+      openapi: {
+        ...USERS_DOC,
+        summary: "The columns an invitation may set",
+        description: "The columns your project added to users that the caller's CREATE grant lets an invitation set, each with its type, presentation, foreign-key target and CHECK list.",
+        response: { status: "200", schema: dataEnvelope({ type: "array", items: { type: "object", properties: { name: { type: "string" }, dataType: { type: "string" }, nullable: { type: "boolean" }, presentation: { type: "object" }, relation: { type: ["object", "null"] }, values: { type: ["array", "null"], items: { type: "string" } } } } }) },
+        visible: canOnTotalbaseResource(context, "users", "CREATE"),
+      },
+    },
+  }, async (request) => {
     const principal = await principalOf(context, request);
     const users = (await context.resourcesAdmin.list({ schema: "totalbase", type: "TABLE" })).find((r) => r.name === "users");
     if (!users) return { data: [] };
@@ -100,8 +118,19 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
   // users_roles, only roles the caller may assign) in one
   // transaction; the email goes out after it commits.
   app.post<{ Body: { data?: { email?: string; name?: string | null; roles?: string[]; extra?: Record<string, unknown>; delivery?: LinkDelivery } } }>(
-    "/app/api/users/invitations",
-    { preHandler },
+    "/api/totalbase/table/users/invitations",
+    {
+      config: {
+        openapi: {
+          ...USERS_DOC,
+          summary: "Create an account and invite it",
+          description: "Creates the user (CREATE on users: each column granted, the row filter checked on the new row), assigns `roles` (CREATE on users_roles, each role one you may assign) and emails the invitation, in one transaction - `meta.delivered` says whether the email went out; the account exists either way. `extra` holds the columns your project added to users.",
+          requestBody: { schema: dataEnvelope(object({ email: { type: "string", format: "email" }, name: { type: ["string", "null"] }, roles: { type: "array", items: { type: "string", format: "uuid" } }, extra: { type: "object", additionalProperties: true }, ...DELIVERY_PROPERTY }, ["email"])) },
+          response: { status: "201", schema: object({ data: object({ id: { type: "string", format: "uuid" }, email: { type: "string" }, name: { type: ["string", "null"] } }), meta: SENT_SCHEMA }) },
+          visible: canOnTotalbaseResource(context, "users", "CREATE"),
+        },
+      },
+    },
     async (request, reply) => {
       const principal = await principalOf(context, request);
       const administrator = await context.roles.isAdministrator(principal.roleIds);
@@ -109,8 +138,8 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
       const delivery = parseDelivery(body.delivery, administrator);
       const roles = [...new Set(Array.isArray(body.roles) ? body.roles : [])];
       if (roles.some((role) => typeof role !== "string")) throw new TotalBaseError("INVALID_QUERY", "roles must be an array of role ids.");
-      // The columns the project added to the users table (Additional data), set on the new row before
-      // the row filter is checked - a filter like branch = $USER.branch needs them there.
+      // The columns the project added to the users table (Additional data), in the row's own INSERT - a filter like
+      // branch = $USER.branch needs them there, and a BEFORE INSERT trigger reads them from NEW.
       const extra = body.extra ?? {};
       if (typeof extra !== "object" || extra === null || Array.isArray(extra)) throw new TotalBaseError("INVALID_QUERY", "extra must be an object of column values.");
 
@@ -123,8 +152,7 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
       const limits = await rowFilterLimits(context);
 
       const user = await context.database.transaction(async (client) => {
-        const created = await context.auth.users.create({ email: body.email ?? null, name: body.name ?? null }, client);
-        await context.auth.users.setProjectColumns(created.id, extra, client);
+        const created = await context.auth.users.create({ email: body.email ?? null, name: body.name ?? null, extra }, client);
         if (!(await rowPassesGrant(client, context, principal, userGrant, created.id, limits))) {
           throw new TotalBaseError(DENIED, "The user does not satisfy your permission's row filter.");
         }
@@ -183,8 +211,20 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
   });
 
   app.post<{ Params: { id: string }; Body: { data?: { delivery?: LinkDelivery } } | undefined }>(
-    "/app/api/users/:id/invite",
-    { preHandler },
+    "/api/totalbase/table/users/:id/invite",
+    {
+      config: {
+        openapi: {
+          ...USERS_DOC,
+          summary: "Send a user an invitation",
+          description: "A new single-use invitation link, emailed to the account's own address (UPDATE on that user's row; never an administrator's account unless you are one).",
+          pathParameters: { id: { schema: { type: "string", format: "uuid" } } },
+          requestBody: { schema: dataEnvelope(object(DELIVERY_PROPERTY)), required: false },
+          response: { status: "200", schema: dataEnvelope(SENT_SCHEMA) },
+          visible: canOnTotalbaseResource(context, "users", "UPDATE"),
+        },
+      },
+    },
     async (request) => {
       const principal = await principalOf(context, request);
       const administrator = await context.roles.isAdministrator(principal.roleIds);
@@ -196,8 +236,20 @@ export function registerAppUsersRoutes(app: FastifyInstance, context: AppContext
   );
 
   app.post<{ Params: { id: string }; Body: { data?: { delivery?: LinkDelivery } } | undefined }>(
-    "/app/api/users/:id/reset-password",
-    { preHandler },
+    "/api/totalbase/table/users/:id/reset-password",
+    {
+      config: {
+        openapi: {
+          ...USERS_DOC,
+          summary: "Send a user a password reset",
+          description: "A new single-use reset link, emailed to the account's own address (UPDATE on that user's row; never an administrator's account unless you are one).",
+          pathParameters: { id: { schema: { type: "string", format: "uuid" } } },
+          requestBody: { schema: dataEnvelope(object(DELIVERY_PROPERTY)), required: false },
+          response: { status: "200", schema: dataEnvelope(SENT_SCHEMA) },
+          visible: canOnTotalbaseResource(context, "users", "UPDATE"),
+        },
+      },
+    },
     async (request) => {
       const principal = await principalOf(context, request);
       const administrator = await context.roles.isAdministrator(principal.roleIds);

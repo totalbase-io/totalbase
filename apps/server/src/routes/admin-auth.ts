@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import { managedRoleIds, portalAccessOf } from "@totalbase/permissions";
 import type { AppContext } from "../context.js";
+import { readOrigin } from "../read-audit.js";
+import { userExtra } from "../user-extra.js";
 import { assignableRoleIds } from "@totalbase/mutations";
 import { COMPANIONS, delegatedModuleActions } from "../delegated-modules.js";
 import { appShell, menuHeader } from "./app-menu.js";
@@ -202,6 +204,9 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
     async (request) => ({
       data: {
         ...request.admin,
+        // The project's columns of the user's own row, as their grants let them read them (user-extra.ts) - the same
+        // `extra` the Data API's sign-in answers carry.
+        extra: await userExtra(context, request.admin!.id, readOrigin(request)),
         access: request.access,
         environment: context.nodeEnv,
         version: TOTALBASE_VERSION,

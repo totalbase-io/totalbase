@@ -420,6 +420,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     input: "role",
     dependsOn: "auth.registration_enabled",
   },
+  "auth.registration_columns": {
+    label: "Registration columns",
+    description: "The columns your project added to the users table that a self-registration may set through `extra` (a company name, a country, a time zone) - written in the account's own INSERT, where a trigger that creates the tenant reads them. Never a TotalBase column or a Password column.",
+    section: "Accounts & sessions",
+    dependsOn: "auth.registration_enabled",
+  },
   "auth.email_verification_required": {
     label: "Require email verification",
     description: "A newly registered account can't sign in until its email address is verified.",
@@ -715,6 +721,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     section: "Rate limiting",
     dependsOn: "security.rate_limit_enabled",
   },
+  "security.rate_limit_per_user_per_minute": {
+    label: "Requests per minute per user",
+    description: "The most requests one signed-in session or personal token can make in a minute, counted on the credential rather than the address - so people behind one office connection, or an application whose server sends every request from one address, each get their own limit. A request with no credential, or a credential that is refused, counts against its address.",
+    section: "Rate limiting",
+    dependsOn: "security.rate_limit_enabled",
+  },
   "security.rate_limit_sign_in_per_minute": {
     label: "Failed sign-ins per minute",
     description: "The most failed sign-in attempts from one IP address in a minute - a correct sign-in doesn't count. Each account also locks after its own failed attempts, in Access.",
@@ -735,6 +747,11 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "security.trust_proxy": {
     label: "Trust reverse proxy headers",
     description: "Reads the caller's real IP from X-Forwarded-For - only enable this behind a proxy you control. Applies after a restart.",
+    section: "Reverse proxy",
+  },
+  "security.trusted_proxies": {
+    label: "Trusted proxies",
+    description: "Addresses or CIDR ranges (10.0.0.5, 172.16.0.0/12) whose X-Forwarded-For is believed - your reverse proxy, or your application's server in front of the Data API. When set, only these are trusted, whatever Trust reverse proxy headers says. Applies after a restart.",
     section: "Reverse proxy",
   },
   "auth.access_review_interval_days": {
@@ -880,6 +897,10 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "catalog.track_comments": {
     label: "Sync descriptions with COMMENT ON",
     description: "Fills a resource's empty description from PostgreSQL's COMMENT ON, and an empty comment from the description, on every sync.",
+  },
+  "catalog.excluded_schemas": {
+    label: "Excluded schemas",
+    description: "Schemas the catalog leaves out altogether - an extension's working schema such as _timescaledb_internal: their tables and functions are no resources, their changes run no sync, and a resource registered there before leaves on the next sync.",
   },
 
   // --- openapi.* ---

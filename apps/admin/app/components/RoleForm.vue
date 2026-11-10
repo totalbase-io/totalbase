@@ -66,9 +66,9 @@ async function loadHomeOptions() {
 // The role's capabilities (roles_capabilities, Security.md
 // §5.2) - their own grant rows, not role columns, so a reserved role's
 // switches work too. `grants` are the rows as loaded; null = none.
-const CAPABILITIES: Capability[] = ['TRANSACTIONS', 'SEND_EMAIL', 'MANAGE_ROLES']
-const noGrants = (): Record<Capability, 'ALLOW' | 'DENY' | null> => ({ TRANSACTIONS: null, SEND_EMAIL: null, MANAGE_ROLES: null })
-const notAllowed = (): Record<Capability, boolean> => ({ TRANSACTIONS: false, SEND_EMAIL: false, MANAGE_ROLES: false })
+const CAPABILITIES: Capability[] = ['TRANSACTIONS', 'SEND_EMAIL', 'MANAGE_ROLES', 'ACT_ON_BEHALF']
+const noGrants = (): Record<Capability, 'ALLOW' | 'DENY' | null> => ({ TRANSACTIONS: null, SEND_EMAIL: null, MANAGE_ROLES: null, ACT_ON_BEHALF: null })
+const notAllowed = (): Record<Capability, boolean> => ({ TRANSACTIONS: false, SEND_EMAIL: false, MANAGE_ROLES: false, ACT_ON_BEHALF: false })
 const grants = ref(noGrants())
 const allowed = ref<Record<Capability, boolean>>(notAllowed())
 
@@ -170,8 +170,8 @@ async function loadCapabilities(roleId: string) {
   capabilitiesLoading.value = true
   try {
     const loaded = await Promise.all(CAPABILITIES.map(capability => rolesApi.capabilityGrant(roleId, capability)))
-    grants.value = { TRANSACTIONS: loaded[0]!, SEND_EMAIL: loaded[1]!, MANAGE_ROLES: loaded[2]! }
-    allowed.value = { TRANSACTIONS: loaded[0] === 'ALLOW', SEND_EMAIL: loaded[1] === 'ALLOW', MANAGE_ROLES: loaded[2] === 'ALLOW' }
+    grants.value = { TRANSACTIONS: loaded[0]!, SEND_EMAIL: loaded[1]!, MANAGE_ROLES: loaded[2]!, ACT_ON_BEHALF: loaded[3]! }
+    allowed.value = { TRANSACTIONS: loaded[0] === 'ALLOW', SEND_EMAIL: loaded[1] === 'ALLOW', MANAGE_ROLES: loaded[2] === 'ALLOW', ACT_ON_BEHALF: loaded[3] === 'ALLOW' }
   } catch (err) {
     notifyError(err, t('users.roleForm.capabilitiesLoadError'))
   } finally {
@@ -386,6 +386,12 @@ defineExpose({ submit, seed, saving, reserved, dirty })
             v-model="allowed.SEND_EMAIL"
             :label="t('users.roleForm.sendEmail')"
             :description="t('users.roleForm.sendEmailHelp')"
+            :disabled="capabilitiesLoading"
+          />
+          <USwitch
+            v-model="allowed.ACT_ON_BEHALF"
+            :label="t('users.roleForm.actOnBehalf')"
+            :description="t('users.roleForm.actOnBehalfHelp')"
             :disabled="capabilitiesLoading"
           />
         </div>

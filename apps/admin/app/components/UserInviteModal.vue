@@ -9,7 +9,7 @@
  * Shared by the Users panel and a role's Users tab - with `roleId` set,
  * the roles are fixed to that one role instead of picked from a list.
  *
- * A delegated user invites through POST /app/api/users/invitations (one
+ * A delegated user invites through POST /api/totalbase/table/users/invitations (one
  * call: account, roles, email), choosing among the roles they may assign.
  */
 import type { AdminUser } from '~/types/security'
@@ -21,7 +21,7 @@ const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ created: [AdminUser] }>()
 
 const api = useAdminApi()
-const appApi = useAppApi()
+const dataApi = useDataApi()
 const session = useSession()
 const toast = useToast()
 const { t } = useI18n()
@@ -68,7 +68,7 @@ const canInvite = computed(() => !!name.value.trim() && !!email.value.trim() && 
 async function submitDelegated() {
   inviting.value = true
   try {
-    const { data: user, meta } = await appApi.post<AdminUser>('/users/invitations', {
+    const { data: user, meta } = await dataApi.post<AdminUser>('/totalbase/table/users/invitations', {
       data: {
         email: email.value,
         name: name.value,

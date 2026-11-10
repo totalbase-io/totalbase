@@ -82,10 +82,13 @@ export async function buildServer(
   logLevel: string,
   adminUi: { enabled: boolean; dir?: string | undefined; devProxyTarget?: string | undefined } = { enabled: true },
 ) {
-  // A Fastify construction option, so read once: security.trust_proxy
-  // applies after a restart (Administration.md §7.5, §7.7).
+  // A Fastify construction option, so read once: security.trust_proxy and security.trusted_proxies
+  // apply after a restart (Administration.md §7.5, §7.7). A list of trusted proxies, when set, is the
+  // option - only those addresses' X-Forwarded-For is believed; else the boolean (every hop, or none).
   // Every other hardening setting is read per request (hardening.ts).
-  const trustProxy = await context.settings.get("security.trust_proxy");
+  const trustedProxies = await context.settings.get("security.trusted_proxies");
+  const trustProxyFlag = await context.settings.get("security.trust_proxy");
+  const trustProxy: boolean | string[] = trustedProxies.length > 0 ? trustedProxies : trustProxyFlag;
   // Node's header limit, also read once: big enough for a query string of
   // api.max_query_string_bytes to reach the hardening hook (and its
   // QUERY_STRING_TOO_LARGE) instead of Node's raw 431. Raising the setting
@@ -242,7 +245,7 @@ export async function buildServer(
   registerAdminAuditRoutes(app, context);
   registerAdminAuthProvidersRoutes(app, context);
   registerAdminSecretsRoutes(app, context);
-  registerAdminSettingsRoutes(app, context, { trustProxy });
+  registerAdminSettingsRoutes(app, context, { trustProxy: trustProxyFlag, trustedProxies });
   registerAdminSystemEmailsRoutes(app, context);
   registerAdminDashboardRoutes(app, context);
   registerAdminSchemaRoutes(app, context);

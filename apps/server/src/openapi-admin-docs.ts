@@ -241,7 +241,7 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     tables: arrayOf(ref("MaintenanceTable")),
   }),
   SystemInfo: object({
-    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.12)." },
+    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.13)." },
     environment: { type: "string", description: "NODE_ENV: development, staging or production." },
     postgres: object({
       version: { type: "string", description: "The server's version, e.g. 17.2." },
@@ -255,5 +255,6 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     avatarUrl: nullable({ type: "string" }),
     active: { type: "boolean" },
     access: { type: "string", enum: ["ADMIN", "APP"] },
+    extra: { type: "object", additionalProperties: true, description: "The project's columns of the user's own row, as their grants let them read them (Security.md §2.5)." },
   }),
 };

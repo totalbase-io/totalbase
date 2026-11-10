@@ -1,7 +1,7 @@
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError, type TotalBaseErrorCode } from "@totalbase/errors";
 import type { EffectivePermission, ResourceAction } from "@totalbase/permissions";
-import { SchemaContext, compileFilter, mutationFilterContext, quoteIdentifier } from "@totalbase/query-engine";
+import { SchemaContext, compileFilter, mutationFilterContext, quoteIdentifier, relatedResolver } from "@totalbase/query-engine";
 import type { DataPrincipal, MutationsContext } from "./context.js";
 import { buildRowFilter, userVariableResolver, type Limits } from "./mutation-service.js";
 
@@ -41,7 +41,11 @@ export async function resolveTableGrant(
   return { table, postgresOid: resource.postgres_oid, permission };
 }
 
-/** Whether row `rowId` satisfies the grant's row filter (an unscoped grant passes every row). Pass a transaction client to check a row mid-write. */
+/**
+ * Whether row `rowId` satisfies the grant's row filter (an unscoped grant passes every row). Pass a transaction client
+ * to check a row mid-write. A relation path in the filter (`user.tenant` on users_roles) compiles as the Data API's
+ * writes compile it - a scalar subquery following the foreign keys (Security.md §6.5).
+ */
 export async function rowPassesGrant(
   queryable: Queryable,
   context: TableAuthorizationContext,
@@ -52,8 +56,9 @@ export async function rowPassesGrant(
 ): Promise<boolean> {
   const rowFilter = buildRowFilter(grant.permission, limits);
   if (!rowFilter) return true;
-  const resource = await new SchemaContext(context.database).loadRoot("totalbase", grant.table, grant.postgresOid);
-  const compiled = await compileFilter(rowFilter, mutationFilterContext(resource, "t", userVariableResolver(dataPrincipal)), 1);
+  const schemaContext = new SchemaContext(context.database);
+  const resource = await schemaContext.loadRoot("totalbase", grant.table, grant.postgresOid);
+  const compiled = await compileFilter(rowFilter, mutationFilterContext(resource, "t", userVariableResolver(dataPrincipal), relatedResolver(schemaContext)), 1);
   const { rows } = await queryable.query<{ id: string }>(
     `SELECT t.id FROM totalbase.${quoteIdentifier(grant.table)} t WHERE t.id = $1 AND (${compiled.sql})`,
     [rowId, ...compiled.params],

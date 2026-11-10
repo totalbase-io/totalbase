@@ -18,7 +18,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import { isProtectedField } from "@totalbase/mutations";
 import type { AppContext } from "../context.js";
 import { recordCatalog } from "../record-catalog.js";
-import { brokenReferences, syncCatalog } from "../catalog-refresh.js";
+import { brokenReferences, syncCatalog, catalogScope } from "../catalog-refresh.js";
 import { dataApiTimeout } from "@totalbase/mutations";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
@@ -77,11 +77,12 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
     preHandler,
     ...doc({
       summary: "PostgreSQL schemas",
-      description: "Every schema except PostgreSQL's own (pg_*, information_schema), empty ones included, with how many tables, views and functions it holds.",
+      description: "Every schema except PostgreSQL's own (pg_*, information_schema) and the ones catalog.excluded_schemas names, empty ones included, with how many tables, views and functions it holds.",
       response: ok(arrayOf(object({ schema: { type: "string" }, objectCount: { type: "integer" } }))),
     }),
   }, async () => {
-    const [snapshot, schemaNames] = await Promise.all([buildCatalogSnapshot(context.database), listSchemas(context.database)]);
+    const scope = await catalogScope(context);
+    const [snapshot, schemaNames] = await Promise.all([buildCatalogSnapshot(context.database, scope), listSchemas(context.database, scope)]);
     const counts = new Map<string, number>();
     for (const object of snapshot) {
       counts.set(object.schema, (counts.get(object.schema) ?? 0) + 1);

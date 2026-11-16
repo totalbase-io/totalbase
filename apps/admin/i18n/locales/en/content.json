@@ -122,7 +122,7 @@
         "filesUpdated": "{n} files updated | {n} file updated | {n} files updated",
         "partialUpdated": "{done} of {total} updated",
         "deleted": "File deleted | {n} files deleted",
-        "partialDeleted": "{done} of {total} deleted",
+        "deleteFailed": "Couldn't delete: {names}",
         "makePublic": "Make public",
         "makePrivate": "Make private",
         "tags": "Tags",
@@ -223,6 +223,7 @@
       },
       "securityViews": {
         "failed-sign-ins": "Failed sign-ins",
+        "refused-tokens": "Refused tokens",
         "access-changes": "Roles & permissions",
         "config-changes": "Settings & secrets",
         "credential-changes": "Tokens & sessions"
@@ -260,7 +261,11 @@
         "instancePublicUrl": "Settings → General → Public URL.",
         "actionUrl": "The single-use link the person follows. Required.",
         "expiresIn": "How long the link stays valid, e.g. \"7 days\".",
-        "newEmail": "Email changed only - the address it changed to (the email goes to the previous one, user.email)."
+        "newEmail": "Email changed only - the address it changed to (the email goes to the previous one, user.email).",
+        "inviterName": "Invitation only - who invites: their name, or their email when they have none.",
+        "inviterEmail": "Invitation only - the email of who invites.",
+        "roles": "Invitation only - the names of the roles the account has, separated by commas.",
+        "message": "Invitation only - the line whoever invites adds through the API (message). Empty when they add none."
       },
       "editor": {
         "saved": "Email saved",

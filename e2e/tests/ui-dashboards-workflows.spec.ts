@@ -266,7 +266,7 @@ test('a dashboard: details and roles, variables, a widget configured, moved, res
   await openVersion(page, 1)
   await expect(card(page, 'Valor')).toHaveCount(1)
   await restoreVersion(page, false)
-  await expect(page.getByText('Restored v1 into the draft', { exact: true })).toBeVisible()
+  await expect(page.getByText('v1 restored to the draft', { exact: true })).toBeVisible()
   await expect(card(page, 'Valor')).toHaveCount(1)
   widgets = await apiRequest<DashboardWidget[]>(page, token, 'GET', `/admin/api/dashboards/${id}/widgets`)
   expect(widgets.map(w => w.label)).toEqual(['Valor'])

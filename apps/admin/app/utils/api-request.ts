@@ -6,6 +6,8 @@ import { retryingRateLimit } from '~/utils/rate-limit'
 export interface ApiResult<T> {
   data: T
   meta?: AdminApiSuccessEnvelope<T>['meta']
+  /** The HTTP status - a Publish's 201 (a version created) or 200 (nothing to publish). */
+  status?: number
 }
 
 export type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
@@ -40,14 +42,14 @@ export async function apiRequest<T>(url: string, method: ApiMethod, options: Api
       baseURL: ''
     }))
     const body = response._data
-    if (body === null || body === undefined) return { data: undefined as T }
+    if (body === null || body === undefined) return { data: undefined as T, status: response.status }
     if (isErrorEnvelope(body)) throw new AdminApiError(response.status, body.errors)
     // Anything but the JSON envelope (an HTML page from a misrouted request) is an error, not an empty result.
     if (typeof body !== 'object' || !('data' in body)) {
       throw new AdminApiError(response.status, [{ source: 'TOTALBASE', code: 'INVALID_RESPONSE', message: 'The server answered with something other than the API response.' }])
     }
     const envelope = body as AdminApiSuccessEnvelope<T>
-    return { data: envelope.data, meta: envelope.meta }
+    return { data: envelope.data, meta: envelope.meta, status: response.status }
   } catch (error) {
     throw toApiError(error)
   }

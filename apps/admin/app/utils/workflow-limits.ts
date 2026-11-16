@@ -1,17 +1,8 @@
-// Client-side mirror of @totalbase/workflows' WORKFLOW_DEFINITION_LIMITS
-// (Workflows.md §3.6), so the editor refuses before saving
-// what the server would refuse with WORKFLOW_LIMIT_EXCEEDED. The server
-// stays authoritative; workflow-limits.test.ts keeps the values equal.
+// The workflow definition limits (Workflows.md §3.6) - the server's own values (@totalbase/shared), so the editor
+// refuses before saving what the server would refuse with WORKFLOW_LIMIT_EXCEEDED. The server stays authoritative.
+import { WORKFLOW_DEFINITION_LIMITS } from '@totalbase/shared'
 
-export const WORKFLOW_DEFINITION_LIMITS = {
-  maxOperations: 100,
-  maxConnections: 200,
-  maxConfigurationBytes: 65_536,
-  maxDefinitionBytes: 1_048_576,
-  maxConfigurationDepth: 20,
-  maxMapFields: 100,
-  maxTemplatePathLength: 1_024
-} as const
+export { WORKFLOW_DEFINITION_LIMITS }
 
 /**
  * A workflows text by key, with `{param}` placeholders filled - the UI passes

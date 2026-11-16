@@ -1,23 +1,9 @@
-// Mirrors @totalbase/query-engine's operators.ts (server-only, no import
-// path into this app) - same reasoning as ACTIONS_BY_RESOURCE_TYPE
-// elsewhere: the admin needs to know this shape to build a UI, the
-// server package can't be imported here. This backs the Row filter/
-// Payload check "condition builder" - FilterConditionBuilder.vue picks
-// an operator from here based
-// on the selected column's Postgres type, WhereField.vue serializes the
-// result into the same {field: {operator: value}} grammar.
+// The Row filter/Payload check "condition builder": FilterConditionBuilder.vue picks an operator from here based on
+// the selected column's Postgres type, WhereField.vue serializes the result into the same {field: {operator: value}}
+// grammar. The operator names are the query engine's own (@totalbase/shared, Data_API.md §3.3).
+import { COMPARISON_OPERATORS, UNARY_OPERATORS, type ComparisonOperator } from '@totalbase/shared'
 
-export const COMPARISON_OPERATORS = [
-  '_eq', '_neq', '_gt', '_gte', '_lt', '_lte',
-  '_like', '_ilike', '_regex',
-  '_in', '_nin', '_between',
-  '_null', '_nnull',
-  '_contains', '_contained_by', '_overlap'
-] as const
-export type ComparisonOperator = (typeof COMPARISON_OPERATORS)[number]
-
-/** No value - a bare `true` placeholder is stored as the JSON value (see WhereField.vue's serializer); the parser ignores it either way. */
-export const UNARY_OPERATORS: ReadonlySet<ComparisonOperator> = new Set(['_null', '_nnull'])
+export { COMPARISON_OPERATORS, UNARY_OPERATORS, type ComparisonOperator }
 /** Comma-joined into one string value, per parseValue()'s `_between` handling. */
 export const BETWEEN_OPERATOR = '_between' as const
 /** Comma-joined into one string value, per parseValue()'s `_in`/`_nin` handling - kept as a single free-text input in v1 rather than a multi-value chip picker. */

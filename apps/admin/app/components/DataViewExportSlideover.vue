@@ -53,15 +53,6 @@ watch(open, (isOpen) => {
   if (isOpen) reset()
 }, { immediate: true })
 
-function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 async function exportRows() {
   // In the checklist's order - the grid's own (orderedFields: the viewer's column order), not the design's.
   const cols = columns.value
@@ -82,9 +73,7 @@ async function exportRows() {
     const headers = cols.map(f => f.label ?? f.columnName!)
     const body = sourceRows.map(row => cols.map(f => formatCellPlainText(f, row[f.columnName!], row, props.displayFormatDefaults)))
     if (format.value === 'csv') {
-      const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
-      const lines = [headers.map(escape).join(','), ...body.map(line => line.map(escape).join(','))]
-      download(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }), `${props.resourceName}.csv`)
+      downloadCsv([headers, ...body], `${props.resourceName}.csv`)
     } else {
       const XLSX = await import('xlsx')
       const sheet = XLSX.utils.aoa_to_sheet([headers, ...body])

@@ -1,5 +1,5 @@
 import { UUID_PATTERN } from "@totalbase/shared";
-import { fillMailPlaceholders, type EmailAttachment } from "@totalbase/auth";
+import { EmailSendError, fillMailPlaceholders, type EmailAttachment } from "@totalbase/auth";
 import { TotalBaseError } from "@totalbase/errors";
 import { assertFileReadAllowed, assertTemplateReadAllowed, type DataPrincipal } from "@totalbase/mutations";
 import { templatePlaceholders } from "@totalbase/settings";
@@ -112,13 +112,70 @@ export function address(value: unknown): string | undefined {
  * A TEST run with an email redirect (Workflows.md §11.1) sends to that one
  * address instead - to, cc, bcc and the template's defaults all replaced -
  * and its result says whom the step would have sent to.
+ *
+ * `retries` (0-5, default 0): how many more times to send after a failure the relay certainly did not take
+ * (sendWithRetries) - the result then carries `attempts`.
  */
+/** How long each retry waits, in order: 5 s, 15 s, 30 s, 60 s, 120 s - at most MAX_SEND_RETRIES of them. */
+export const SEND_RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000, 120_000];
+export const MAX_SEND_RETRIES = SEND_RETRY_DELAYS_MS.length;
+
+/** `retries`: 0 (the default) to MAX_SEND_RETRIES, a whole number. */
+function sendRetries(value: unknown): number {
+  if (value === undefined || value === null || value === "") return 0;
+  const retries = Number(value);
+  if (!Number.isInteger(retries) || retries < 0 || retries > MAX_SEND_RETRIES) {
+    throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `This step's retries must be a whole number from 0 to ${MAX_SEND_RETRIES}.`);
+  }
+  return retries;
+}
+
+/** Waits `ms`, or until the run is cancelled (false). */
+function waitOrCancelled(ms: number, signal: AbortSignal | undefined): Promise<boolean> {
+  if (signal?.aborted) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * Sends, and - only with `retries` - again after a failure the relay certainly did not take
+ * (EmailSendError.notAccepted: a 4xx answer, or no connection at all), so a retry can never be a second copy.
+ * An uncertain outcome, a permanent refusal, SMTP not configured: the first error stands. A cancelled run stops
+ * waiting. Returns the attempts made.
+ */
+export async function sendWithRetries(send: () => Promise<void>, retries: number, signal: AbortSignal | undefined, delaysMs: readonly number[] = SEND_RETRY_DELAYS_MS): Promise<number> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await send();
+      return attempt;
+    } catch (error) {
+      const retryable = error instanceof EmailSendError && error.notAccepted;
+      if (!retryable || attempt > retries || !(await waitOrCancelled(delaysMs[attempt - 1] ?? delaysMs[delaysMs.length - 1] ?? 0, signal))) {
+        if (attempt > 1 && error instanceof TotalBaseError) {
+          throw new TotalBaseError(error.code, `${error.message} (after ${attempt} attempts)`, { cause: error });
+        }
+        throw error;
+      }
+    }
+  }
+}
+
 const sendEmail: OperationHandler = async ({ context, dataPrincipal, configuration, workflowContext }) => {
   await assertSendAllowed(context, dataPrincipal);
   let to = address(configuration.to);
   if (!to) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's recipient must resolve to an address or a non-empty list of them.");
   let cc = address(configuration.cc);
   let bcc = address(configuration.bcc);
+  const retries = sendRetries(configuration.retries);
   let replyTo = address(configuration.replyTo);
   let subject: string | undefined;
   let body: string | undefined;
@@ -153,7 +210,7 @@ const sendEmail: OperationHandler = async ({ context, dataPrincipal, configurati
     bcc = undefined;
   }
 
-  await context.emailSender.send({
+  const message = {
     to,
     subject,
     ...(cc !== undefined && { cc }),
@@ -162,10 +219,11 @@ const sendEmail: OperationHandler = async ({ context, dataPrincipal, configurati
     ...(body !== undefined && { body }),
     ...(html !== undefined && { html }),
     ...(attachments.length > 0 && { attachments }),
-  });
+  };
+  const attempts = await sendWithRetries(() => context.emailSender.send(message), retries, workflowContext.signal);
 
   // Names only - a file's content never goes into the run's history (§9.2).
-  return { output: "next", result: { to, subject, ...(attachments.length > 0 && { attachments: attachments.map((a) => a.filename) }), ...(redirectedFrom && { redirectedFrom }) } };
+  return { output: "next", result: { to, subject, ...(attachments.length > 0 && { attachments: attachments.map((a) => a.filename) }), ...(redirectedFrom && { redirectedFrom }), ...(attempts > 1 && { attempts }) } };
 };
 
 export const EMAIL_HANDLERS: Record<string, OperationHandler> = {

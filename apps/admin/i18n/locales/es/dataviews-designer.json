@@ -2910,9 +2910,6 @@
       "htmlSource": "Código HTML"
     },
     "settingsPage": {
-      "copyError": "No se pudo crear la copia",
-      "created": "Se creó \"{name}\"",
-      "createdDescription": "Una copia sin publicar - publícala cuando esté lista.",
       "deleteDescription": "Se eliminan su diseño, todas sus versiones y los estados guardados de sus espectadores. Esto no se puede deshacer. Los datos de su tabla de origen NO se modifican.",
       "deleteError": "No se pudo eliminar el DataView",
       "deleteTitle": "¿Eliminar este DataView?",
@@ -2920,7 +2917,6 @@
       "formDesign": "Diseño de formulario",
       "frame": "Marco",
       "general": "General",
-      "loadVersionError": "No se pudo cargar la versión",
       "openDataView": "Abrir DataView",
       "page": "Página",
       "pageDesign": "Diseño de página",
@@ -2929,9 +2925,6 @@
       "publishError": "No se pudo publicar",
       "publishNote": "A partir de ahora, los espectadores verán el borrador actual.",
       "published": "Publicado como v{version}",
-      "restoreError": "No se pudo restaurar",
-      "restored": "v{version} restaurada en el borrador",
-      "restoredDescription": "Aún no se ha publicado nada - publica para ponerlo en vivo.",
       "saveError": "No se pudo guardar el DataView",
       "security": "Seguridad",
       "sections": {

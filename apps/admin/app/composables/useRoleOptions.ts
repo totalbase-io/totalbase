@@ -7,15 +7,16 @@ import { WORKFLOWS_ROLE_NAME, type RoleSummary } from '~/types/security'
 // be an option that always rejects on save.
 
 /**
- * Shared, cached list of roles for assignment selects (Users, API Keys).
- * Small, rarely-changing list (most Admin API lists are small) — one
- * fetch per session is enough, no need for a dedicated store.
+ * The roles for assignment selects (Users, API Keys, invitations...) - useRoles()' one list (`roles-all`) without
+ * the Workflows role, so a role created, renamed or deleted shows here with one refresh. Awaitable like the
+ * `useAsyncData` it reads.
  */
 export function useRoleOptions() {
-  const roles = useRolesApi()
-  return useAsyncData<RoleSummary[]>(
-    'role-options',
-    () => roles.list().then(list => list.filter(role => role.name !== WORKFLOWS_ROLE_NAME)),
-    { default: () => [] }
-  )
+  const all = useRoles()
+  const result = {
+    data: computed<RoleSummary[]>(() => (all.data.value ?? []).filter(role => role.name !== WORKFLOWS_ROLE_NAME)),
+    pending: all.pending,
+    refresh: all.refresh
+  }
+  return Object.assign(all.then(() => result), result)
 }

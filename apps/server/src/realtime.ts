@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { clientIp } from "./client-ip.js";
 import { EventEmitter } from "node:events";
 import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
@@ -14,6 +15,7 @@ import { resolveDataPrincipal, resolveSessionPrincipal, type DataPrincipal } fro
 import { authorizeRows, readRows } from "./data-read.js";
 import type { ReadOrigin } from "./read-audit.js";
 import { isSameOrigin } from "./session-cookie.js";
+import { singleColumnPrimaryKey } from "@totalbase/pg-catalog";
 
 /**
  * Realtime subscriptions (Data_API.md §16): one WebSocket at /api/realtime, subscriptions to the tables
@@ -47,12 +49,12 @@ const CHANGE_OF: Record<RealtimeEvent, "insert" | "update" | "delete"> = { creat
  * The hub decides what reaches it; the subscriber only says it in its own protocol.
  */
 /** What a connection authenticated with: a bearer (a token, or a session's token), or the session a ticket bound it to (Data_API.md §16.3). */
-export type RealtimeCredential = { token: string } | { session: string };
+export type RealtimeCredential = { token: string; address: string | undefined } | { session: string };
 
-/** The connection's principal, live - the credential resolved again (Data_API.md §16.3). */
+/** The connection's principal, live - the credential resolved again (Data_API.md §16.3), a token from the address the connection came from (Security.md §3.5). */
 export function resolveSubscriberPrincipal(context: AppContext, credential: RealtimeCredential | null): Promise<DataPrincipal> {
   if (credential === null) return Promise.reject(new TotalBaseError("AUTHENTICATION_REQUIRED", "The connection holds no credential."));
-  return "token" in credential ? resolveDataPrincipal(context, credential.token) : resolveSessionPrincipal(context, credential.session);
+  return "token" in credential ? resolveDataPrincipal(context, credential.token, undefined, undefined, credential.address) : resolveSessionPrincipal(context, credential.session);
 }
 
 /**
@@ -60,7 +62,7 @@ export function resolveSubscriberPrincipal(context: AppContext, credential: Real
  * `ticket` (Security.md §2.10) - consumed here, once, binding the connection to the ticket's session. A used,
  * expired or unknown ticket is a credential that doesn't resolve.
  */
-export async function credentialFromMessage(context: AppContext, data: { accessToken?: unknown; ticket?: unknown }): Promise<RealtimeCredential> {
+export async function credentialFromMessage(context: AppContext, data: { accessToken?: unknown; ticket?: unknown }, address: string | undefined): Promise<RealtimeCredential> {
   if (typeof data.ticket === "string" && data.ticket !== "") {
     const session = await context.auth.sessions.consumeTicket(data.ticket);
     if (!session) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "The ticket is used, expired or unknown.");
@@ -69,8 +71,8 @@ export async function credentialFromMessage(context: AppContext, data: { accessT
     return credential;
   }
   if (typeof data.accessToken !== "string" || data.accessToken === "") throw new TotalBaseError("INVALID_REALTIME_MESSAGE", "auth needs data.accessToken or data.ticket.");
-  await resolveDataPrincipal(context, data.accessToken);
-  return { token: data.accessToken };
+  await resolveDataPrincipal(context, data.accessToken, undefined, undefined, address);
+  return { token: data.accessToken, address };
 }
 
 export interface RealtimeSubscriber {
@@ -401,7 +403,7 @@ export async function upgradeToken(context: AppContext, request: FastifyRequest)
   if (token !== null && request.headers.authorization === undefined && !isSameOrigin(request, await context.auth.mailer.publicUrl())) {
     throw new TotalBaseError("CROSS_SITE_REQUEST_REFUSED", "A session cookie is only accepted from this instance's own pages.");
   }
-  if (token !== null) await resolveDataPrincipal(context, token);
+  if (token !== null) await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
   return token;
 }
 
@@ -418,14 +420,8 @@ async function authorizeIntent(context: AppContext, principal: DataPrincipal, su
 
 /** Its single-column primary key and whether it goes out as a number (int2, int4). */
 async function primaryKeyOf(context: AppContext, oid: number): Promise<{ column: string; isNumber: boolean } | null> {
-  const { rows } = await context.database.query<{ column: string; type: number }>(
-    `SELECT a.attname AS column, a.atttypid::int AS type
-     FROM pg_catalog.pg_index i JOIN pg_catalog.pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
-     WHERE i.indrelid = $1 AND i.indisprimary AND i.indnkeyatts = 1`,
-    [oid],
-  );
-  const row = rows[0];
-  return row ? { column: row.column, isNumber: row.type === 21 || row.type === 23 } : null;
+  const key = await singleColumnPrimaryKey(context.database, oid);
+  return key ? { column: key.name, isNumber: key.typeId === 21 || key.typeId === 23 } : null;
 }
 
 /** What logical replication needs, read live (Data_API.md §16.1) - Settings > Realtime shows it, the upgrade checks it. */
@@ -514,7 +510,7 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
     },
   }, async (socket, request) => {
     const upgrade = upgradeTokens.get(request) ?? null;
-    const connection = new Connection(socket, upgrade === null ? null : { token: upgrade }, request);
+    const connection = new Connection(socket, upgrade === null ? null : { token: upgrade, address: clientIp(request) }, request);
     const heartbeatSeconds = await context.settings.get("realtime.heartbeat_seconds");
     const authTimer = connection.credential === null
       ? setTimeout(() => connection.close(CLOSE_POLICY, new TotalBaseError("AUTHENTICATION_REQUIRED", "No credential within 10 seconds.")), AUTH_TIMEOUT_MS)
@@ -581,7 +577,7 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
     /** The first message without a credential at the upgrade; later, a fresh credential for the same connection - a token, or a ticket (Security.md §2.10). */
     async function authenticate(data: unknown): Promise<void> {
       try {
-        connection.credential = await credentialFromMessage(context, typeof data === "object" && data !== null ? (data as { accessToken?: unknown; ticket?: unknown }) : {});
+        connection.credential = await credentialFromMessage(context, typeof data === "object" && data !== null ? (data as { accessToken?: unknown; ticket?: unknown }) : {}, clientIp(request));
       } catch (error) {
         connection.close(CLOSE_POLICY, error);
         return;

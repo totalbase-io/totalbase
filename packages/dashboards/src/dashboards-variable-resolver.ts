@@ -3,6 +3,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { BoundVariable, DateRangePart, SqlVariableRef } from "./sql-variables.js";
 import { dateRangeBoundsSql, normalizeVariableValue, type DashboardVariable, type DateRangeValue } from "./variables.js";
 import type { DashboardQueryContext } from "./dashboards-types.js";
+import { listAttributes } from "@totalbase/pg-catalog";
 
 /** Columns never exposed through `$USER.*` - a widget query could otherwise just SELECT them. */
 export const DENIED_USER_FIELDS = new Set(["password_hash"]);
@@ -38,12 +39,7 @@ export class VariableResolver {
       throw new TotalBaseError("DASHBOARD_QUERY_INVALID", "$USER.* needs a signed-in user.");
     }
     if (!this.userColumns) {
-      const { rows } = await this.client.query<{ name: string; type: string }>(
-        `SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type
-         FROM pg_attribute a
-         WHERE a.attrelid = 'totalbase.users'::regclass AND a.attnum > 0 AND NOT a.attisdropped`,
-      );
-      this.userColumns = new Map(rows.map((r) => [r.name, r.type]));
+      this.userColumns = new Map((await listAttributes(this.client, ["totalbase.users"])).map((a) => [a.name, a.type]));
     }
     const type = this.userColumns.get(field);
     if (!type) throw new TotalBaseError("DASHBOARD_QUERY_INVALID", `Unknown $USER field: ${field}`);

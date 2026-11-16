@@ -45,11 +45,23 @@ export class AuthTokensService {
     );
   }
 
+  /** Whose link this is, without using it - null for one that wouldn't be accepted. */
+  async peek(token: string, type: AuthTokenType): Promise<string | null> {
+    if (typeof token !== "string") return null;
+    const { rows } = await this.database.query<{ user: string }>(
+      `SELECT "user" FROM totalbase.emails_tokens WHERE token_hash = $1 AND type = $2 AND used_at IS NULL AND expires_at > now()`,
+      [hashToken(token), type],
+    );
+    return rows[0]?.user ?? null;
+  }
+
   /**
    * Validates and consumes a token: it must exist, match the expected
    * type, not be expired, and not already be used.
    */
   async consume(token: string, type: AuthTokenType): Promise<string> {
+    // A body without it (or with another JSON type) is a token nothing issued.
+    if (typeof token !== "string") throw new TotalBaseError("INVALID_TOKEN", "Token is invalid, expired, or already used.");
     return this.database.transaction(async (client) => {
       const { rows } = await client.query<{ id: string; user: string }>(
         `SELECT id, "user" FROM totalbase.emails_tokens

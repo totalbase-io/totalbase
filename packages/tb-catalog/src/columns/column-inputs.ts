@@ -13,6 +13,7 @@
  */
 
 import { checkConstraintBounds } from "./check-bounds.js";
+import { quoteIdentifier, quoteLiteral } from "@totalbase/shared";
 import { checkConstraintArrayValues, checkConstraintValues } from "./check-values.js";
 import { checkConstraintPatterns } from "./regex-patterns.js";
 import type { ValueKind, WidgetName } from "../widgets/widget-catalog.js";
@@ -105,10 +106,6 @@ export interface ColumnInputDefinition {
   buildCheckConstraint?: (columnName: string, config: CreationConfig) => string | null;
   /** A number entry: its PostgreSQL type unless Add Column picks another. */
   numberType?: NumberType;
-}
-
-function quoteLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
 }
 
 function combineChecks(parts: (string | null | undefined)[]): string | null {
@@ -753,10 +750,13 @@ export function integerRange(column: string, dataType: string, checks: ColumnInp
  * nullable/default. A relation entry needs `config.relation` from the modal's picker - a relation with no foreign
  * key is a bug, so it throws.
  */
-export function buildColumnCreationBody(key: ColumnInputKey, columnName: string, config: CreationConfig): ColumnCreationBody {
+export function buildColumnCreationBody(key: ColumnInputKey, name: string, config: CreationConfig): ColumnCreationBody {
   const entry = COLUMN_INPUTS[key];
   const strategy = entry.create;
   if (!strategy) throw new Error(`${key} edits a column it doesn't create`);
+  assertNumericConfig(config);
+  // The CHECK names the column as SQL: quoted, so `MyCol` or `order` is the column, not `mycol` or a keyword.
+  const columnName = quoteIdentifier(name);
 
   if (strategy.kind === "relation") {
     if (strategy.target === "files") {
@@ -786,6 +786,18 @@ export function buildColumnCreationBody(key: ColumnInputKey, columnName: string,
   const dataType = typeof strategy.dataType === "function" ? strategy.dataType(config) : strategy.dataType;
   const check = entry.buildCheckConstraint?.(columnName, config);
   return { dataType, ...(check ? { check } : {}) };
+}
+
+/** The config's numbers go into the DDL as written: each must be a finite number, a length or a count a whole one. */
+function assertNumericConfig(config: CreationConfig): void {
+  for (const field of ["min", "max"] as const) {
+    const value = config[field];
+    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) throw new Error(`${field} must be a number`);
+  }
+  for (const field of ["minLength", "maxLength", "decimals", "ratingLength", "pinLength"] as const) {
+    const value = config[field];
+    if (value !== undefined && (typeof value !== "number" || !Number.isInteger(value) || value < 0)) throw new Error(`${field} must be a whole number`);
+  }
 }
 
 export function creationStrategyFor(key: ColumnInputKey): CreationStrategy | undefined {

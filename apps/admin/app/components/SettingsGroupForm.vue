@@ -133,10 +133,12 @@ watch(settings, (s) => {
 // Field order/copy comes from the schema; a key the schema doesn't know
 // about yet still renders under its bare name rather than being dropped.
 const fields = computed<SettingField[]>(() => {
-  const known = (schemas.value ?? []).flatMap(s => s.fields)
+  // A setting that is a document - a system email's template - has an editor of its own (Templates), not a field here.
+  const isDocument = (value: unknown) => typeof value === 'object' && value !== null && !Array.isArray(value)
+  const known = (schemas.value ?? []).flatMap(s => s.fields).filter(f => !isDocument(f.default))
   const knownKeys = new Set(known.map(f => f.key))
   const fallback = Object.keys(draft.value)
-    .filter(k => !knownKeys.has(k))
+    .filter(k => !knownKeys.has(k) && !isDocument(draft.value[k]))
     .map(key => ({ key, label: shortKey(key), description: '' }))
   return [...known, ...fallback]
 })

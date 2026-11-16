@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, preHandlerHookHandler } from "fas
 import type { AppContext } from "../context.js";
 import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
 import { versionParam } from "../request-body.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 type Pillar = "dataviews" | "dashboards" | "workflows";
 
@@ -58,16 +59,10 @@ export function registerDeleteVersionsRoute(
 
 async function auditDeletion(context: AppContext, request: FastifyRequest, pillar: Pillar, id: string, result: DeletedVersions, startedAt: Date) {
   if (result.deleted.length === 0) return;
-  await context.audit.record(context.database, {
-    requestId: request.id,
-    principal: { type: "ADMIN", id: request.admin!.id },
+  await context.audit.record(context.database, adminAuditEntry(request, {
     action: "DELETE",
     status: "EXECUTED",
-    source: "admin",
-    ip: request.ip,
-    userAgent: request.headers["user-agent"],
-    metadata: { versionsDeleted: { [pillar]: id, versions: result.deleted }, ...(request.adminToken && { token: request.adminToken }) },
+    metadata: { versionsDeleted: { [pillar]: id, versions: result.deleted } },
     startedAt,
-    finishedAt: new Date(),
-  });
+  }));
 }

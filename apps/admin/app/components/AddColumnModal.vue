@@ -48,8 +48,11 @@ const hasTypeSearchResults = computed(() => filteredGroups.value.length > 0)
 const wizard = useTemplateRef<{ next: () => void }>('wizard')
 function pickFirstMatch() {
   const first = filteredGroups.value[0]?.entries[0]
-  if (!first) return
-  pick(first.key)
+  if (first) pickAndContinue(first.key)
+}
+/** A card's double click, like Enter on the search: chosen, then straight to its configuration. */
+function pickAndContinue(key: ColumnInputKey) {
+  pick(key)
   nextTick(() => wizard.value?.next())
 }
 
@@ -332,6 +335,7 @@ async function save() {
               class="relative rounded-lg border p-4 text-left transition-colors"
               :class="selectedKey === opt.key ? 'border-primary bg-primary/5' : 'border-default hover:bg-elevated'"
               @click="pick(opt.key)"
+              @dblclick="pickAndContinue(opt.key)"
             >
               <UIcon
                 :name="opt.icon"

@@ -42,11 +42,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ click: [], remove: [], removeCascade: [], add: [output: string, type: string] }>()
 const deleteConfirmOpen = ref(false)
-/** The delete modal's Confirm - Delete enables only once it is checked (AGENTS.md §25). */
-const deleteConfirmed = ref(false)
-watch(deleteConfirmOpen, (open) => {
-  if (open) deleteConfirmed.value = false
-})
 /** A leaf removes just itself; otherwise every step below it goes too. */
 function confirmDelete() {
   deleteConfirmOpen.value = false
@@ -140,47 +135,24 @@ const menuItems = computed(() => [
       />
     </UDropdownMenu>
 
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteConfirmOpen"
       :title="props.descendantCount ? t('workflows.workflowStepCard.deleteStepsTitle') : t('workflows.workflowStepCard.deleteStepTitle')"
-      :ui="{ content: 'max-w-sm' }"
+      :confirm-label="props.descendantCount ? t('workflows.workflowStepCard.deleteNSteps', { n: 1 + props.descendantCount }) : t('common.delete')"
+      @confirm="confirmDelete"
     >
-      <template #body>
-        <p class="text-sm text-highlighted">
-          <template v-if="props.descendantCount">
-            {{ t('workflows.workflowStepCard.deleteWithDownstream', { title: props.title, n: props.descendantCount }, props.descendantCount) }}
-          </template>
-          <template v-else>
-            {{ t('workflows.workflowStepCard.deleteOne', { title: props.title }) }}
-          </template>
-        </p>
-        <p class="mt-1 text-xs text-muted">
-          {{ props.descendantCount ? t('workflows.workflowStepCard.removesFollowing') : t('workflows.workflowStepCard.removesStep') }} {{ t('workflows.workflowStepCard.cannotUndo') }}
-        </p>
-      </template>
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <UCheckbox v-model="deleteConfirmed" />
-            <span class="text-sm">{{ t('common.confirm') }}</span>
-          </label>
-          <div class="flex gap-2">
-            <UButton
-              :label="$t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              @click="deleteConfirmOpen = false"
-            />
-            <UButton
-              :label="props.descendantCount ? t('workflows.workflowStepCard.deleteNSteps', { n: 1 + props.descendantCount }) : t('common.delete')"
-              color="error"
-              :disabled="!deleteConfirmed"
-              @click="confirmDelete"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <p class="text-sm text-highlighted">
+        <template v-if="props.descendantCount">
+          {{ t('workflows.workflowStepCard.deleteWithDownstream', { title: props.title, n: props.descendantCount }, props.descendantCount) }}
+        </template>
+        <template v-else>
+          {{ t('workflows.workflowStepCard.deleteOne', { title: props.title }) }}
+        </template>
+      </p>
+      <p class="mt-1 text-xs text-muted">
+        {{ props.descendantCount ? t('workflows.workflowStepCard.removesFollowing') : t('workflows.workflowStepCard.removesStep') }} {{ t('workflows.workflowStepCard.cannotUndo') }}
+      </p>
+    </DeleteConfirmModal>
 
     <div class="flex items-center gap-1.5 pr-5">
       <UIcon

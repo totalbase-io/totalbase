@@ -3,8 +3,7 @@
  * Shared chrome for every bottom UDrawer in the admin - title + a
  * one-line description stacked below it (same layout as PageHeader, so
  * a drawer's header reads the same way a page's does), an
- * expand/collapse toggle, and Close. Extracted so TableDrawer.vue,
- * SqlConsoleDrawer.vue, and templates.vue/mailings.vue's inline drawers
+ * expand/collapse toggle, and Close. Extracted so SqlConsoleDrawer.vue, and templates.vue/mailings.vue's inline drawers
  * stop each reimplementing the same header row and sizing classes
  * (AGENTS.md §25 "UDrawer vs USlideover").
  *
@@ -99,7 +98,12 @@ watch(open, (isOpen) => {
     <template #content>
       <div :class="['flex w-full flex-col gap-3 p-4', nuxtSize ? 'min-h-0' : 'h-full']">
         <div class="flex items-start justify-between gap-2 border-b border-default pb-3 shrink-0">
-          <div class="min-w-0">
+          <!-- What it shows is UDrawer's own title and description again: those (visually hidden) name the dialog for
+          assistive tech, so this copy stays out of the accessibility tree - one heading, not two. -->
+          <div
+            class="min-w-0"
+            aria-hidden="true"
+          >
             <h2 class="text-base font-bold text-highlighted truncate">
               {{ title }}
             </h2>

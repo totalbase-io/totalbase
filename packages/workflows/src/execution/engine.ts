@@ -1,5 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
-import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
+import { OPERATION_CATALOG, operationDefinition } from "@totalbase/tb-catalog";
 import { manualInputFields, validateManualInput } from "./manual-start.js";
 import type { WorkflowRecord } from "../workflows-admin-service.js";
 import type { WorkflowRunMode, WorkflowRunRecord, WorkflowRunStatus, WorkflowRunStepRecord, WorkflowRunTrigger } from "../workflow-runs-service.js";
@@ -628,6 +628,10 @@ export async function runWorkflow(
       if (TEMPLATED_OPERATION_TYPES.has(node.type)) {
         try {
           resolvedConfiguration = resolveTemplates(node.configuration ?? {}, state) as Record<string, unknown>;
+          // An HTML field (the catalog's htmlTemplates, §5.16) takes the values spliced into it escaped.
+          for (const field of operationDefinition(node.type)?.htmlTemplates ?? []) {
+            if (node.configuration?.[field] !== undefined) resolvedConfiguration[field] = resolveTemplates(node.configuration[field], state, { html: true });
+          }
         } catch (templateResolutionError) {
           templateError = toStepError(templateResolutionError);
         }

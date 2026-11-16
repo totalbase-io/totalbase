@@ -113,7 +113,8 @@ describe("workflow operations", () => {
         return;
       }
       if (request.url === "/soap") {
-        // A SOAP 1.1 service: echoes the operation's parameters back (one or two `item`s), a Fault for id 0, plain text for id 9.
+        // A SOAP 1.1 service: echoes the operation's parameters back (one or two `item`s), a Fault for id 0, plain text for id 9;
+        // a SOAP 1.2 Fault for id 8 and a document declaring an entity (a DOCTYPE) for id 7.
         let raw = "";
         request.setEncoding("utf8");
         request.on("data", (chunk: string) => { raw += chunk; });
@@ -122,6 +123,14 @@ describe("workflow operations", () => {
           const action = request.headers.soapaction ?? "";
           if (id === "9") {
             response.writeHead(200, { "content-type": "text/plain" }).end("not xml");
+            return;
+          }
+          if (id === "8") {
+            response.writeHead(500, { "content-type": "application/soap+xml" }).end(`<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"><env:Body><env:Fault><env:Code><env:Value>env:Sender</env:Value></env:Code><env:Reason><env:Text xml:lang="es">Id &amp; nombre &lt;inválidos&gt;</env:Text></env:Reason><env:Detail><campo>id</campo></env:Detail></env:Fault></env:Body></env:Envelope>`);
+            return;
+          }
+          if (id === "7") {
+            response.writeHead(200, { "content-type": "text/xml" }).end(`<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">]><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body><r>&lol;</r></S:Body></S:Envelope>`);
             return;
           }
           if (id === "0") {
@@ -277,6 +286,8 @@ describe("workflow operations", () => {
       await step("soap-two", { soapAction: "urn:test#getPersona", body: { id: 2 } });
       await step("soap-fault", { body: { id: 0 } });
       await step("soap-text", { body: { id: 9 } });
+      await step("soap-fault-12", { body: { id: 8 } });
+      await step("soap-doctype", { body: { id: 7 } });
       await step("soap-markup", { body: { "id><x": 1 } });
       await step("soap-blocked", { url: "http://169.254.169.254/soap", body: { id: 1 } });
     });
@@ -302,6 +313,15 @@ describe("workflow operations", () => {
     it("fails the step with the service's Fault", async () => {
       const res = await run(`${PREFIX}-soap-fault`);
       expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: expect.stringContaining("No existe persona con ese Id") } });
+    });
+
+    it("reads a SOAP 1.2 Fault - Code.Value, Reason.Text with its xml:lang - its entities decoded", async () => {
+      const res = await run(`${PREFIX}-soap-fault-12`);
+      expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: "SOAP request failed: Id & nombre <inválidos> (env:Sender)." } });
+    });
+
+    it("refuses an answer that declares entities (a DOCTYPE) before parsing it", async () => {
+      expect((await run(`${PREFIX}-soap-doctype`)).json().data).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR", message: expect.stringContaining("DOCTYPE") } });
     });
 
     it("fails on an answer that is not a SOAP envelope, on a key that is markup, and on a refused destination", async () => {
@@ -494,6 +514,22 @@ describe("workflow operations", () => {
       const res = await run(`${PREFIX}-mail-run`, { to: "dest@example.com", number: "42", name: "Ana" });
       expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "TEMPLATE_ACCESS_DENIED" } });
       expect(sent).toHaveLength(0);
+    });
+
+    // Security regression: a value from the trigger spliced into an HTML body written in the step arrived as markup.
+    it("Send email escapes the values spliced into an HTML body written in the step - never its text body or its subject", async () => {
+      await publishedWorkflow(`${PREFIX}-inline-html-run`, {
+        type: "totalbase.send-email",
+        configuration: { to: "{{start.data.to}}", subject: "From {{start.data.name}}", bodyType: "both", textBody: "Hi {{start.data.name}}", htmlBody: "<p>Hi <b>{{start.data.name}}</b></p>" },
+      });
+      sent.length = 0;
+      const res = await run(`${PREFIX}-inline-html-run`, { to: "dest@example.com", name: "<img src=x onerror=alert(1)>" });
+      expect(res.json().data, res.body).toMatchObject({ status: "SUCCEEDED" });
+      expect(sent).toEqual([expect.objectContaining({
+        subject: "From <img src=x onerror=alert(1)>",
+        body: "Hi <img src=x onerror=alert(1)>",
+        html: "<p>Hi <b>&lt;img src=x onerror=alert(1)&gt;</b></p>",
+      })]);
     });
 
     it("Send email renders the template with READ (row filter honored), escaping values in the message", async () => {

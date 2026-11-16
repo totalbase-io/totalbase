@@ -11,6 +11,9 @@ export type MfaSurface = "API" | "PORTAL";
 /** VERIFY: enter the code. ENROLL: the instance requires a factor the user hasn't set up yet. */
 export type ChallengePurpose = "VERIFY" | "ENROLL";
 
+/** What a row of `totalbase.challenges` is for: a second factor's step, or a password to change first (Security.md §2.20). */
+type StoredPurpose = ChallengePurpose | "PASSWORD";
+
 export interface MfaChallenge {
   challenge: string;
   purpose: ChallengePurpose;
@@ -67,7 +70,8 @@ interface FactorRow {
 
 /**
  * Multi-factor authentication (Security.md §2.17): TOTP factors in `totalbase.factors` (the secret encrypted
- * with the master key), their recovery codes, and the sign-in challenges. Every check that two requests could
+ * with the master key), their recovery codes, and the sign-in challenges - the second factor's, and the one of
+ * a password that must be changed first (§2.20), which live in the same table. Every check that two requests could
  * race - a code used twice, a challenge completed twice, a recovery code spent twice - is one conditional
  * UPDATE PostgreSQL decides.
  */
@@ -108,17 +112,65 @@ export class MfaService {
    * when the instance requires a factor they don't have, else null (the session is created at once).
    */
   async secondStep(userId: string, surface: MfaSurface): Promise<MfaChallenge | null> {
-    const factor = await this.confirmedFactor(this.database, userId);
-    const purpose: ChallengePurpose | null = factor ? "VERIFY" : (await this.required(userId)) ? "ENROLL" : null;
-    if (!purpose) return null;
+    const purpose: ChallengePurpose | null = (await this.hasFactor(userId)) ? "VERIFY" : (await this.required(userId)) ? "ENROLL" : null;
+    return purpose ? this.issue(userId, purpose, surface) : null;
+  }
+
+  /** Whether the account has a confirmed factor - its sign-ins verify a code. */
+  async hasFactor(userId: string): Promise<boolean> {
+    return (await this.confirmedFactor(this.database, userId)) !== null;
+  }
+
+  /** A new challenge for one step of a sign-in on a surface. */
+  async issue<P extends StoredPurpose>(
+    userId: string,
+    purpose: P,
+    surface: MfaSurface,
+    /** What the sign-in already showed: the account's password (a provider's sign-in didn't), its second factor. */
+    passed: { password?: boolean; mfa?: boolean } = {},
+  ): Promise<{ challenge: string; purpose: P; expiresAt: Date }> {
     const challenge = generateOpaqueToken();
     const { rows } = await this.database.query<{ expires_at: Date }>(
-      `INSERT INTO totalbase.challenges ("user", purpose, surface, token_hash, expires_at)
-       VALUES ($1, $2, $3, $4, now() + make_interval(mins => $5))
+      `INSERT INTO totalbase.challenges ("user", purpose, surface, token_hash, expires_at, password_sign_in, mfa_verified)
+       VALUES ($1, $2, $3, $4, now() + make_interval(mins => $5), $6, $7)
        RETURNING expires_at`,
-      [userId, purpose, surface, hashToken(challenge), CHALLENGE_TTL_MINUTES],
+      [userId, purpose, surface, hashToken(challenge), CHALLENGE_TTL_MINUTES, passed.password ?? false, passed.mfa ?? false],
     );
     return { challenge, purpose, expiresAt: rows[0]!.expires_at };
+  }
+
+  /**
+   * A PASSWORD challenge still good for its step (Security.md §2.20): open, on its surface, its account usable -
+   * and, when the account has a second factor, issued after it was verified. Not spent here: a refused new
+   * password leaves it usable, `spendPasswordChallenge` ends it with the change.
+   */
+  async openPasswordChallenge(challenge: unknown, surface: MfaSurface): Promise<{ id: string; userId: string; mfaVerified: boolean }> {
+    const invalid = () => new TotalBaseError("INVALID_PASSWORD_CHALLENGE", "This sign-in step expired or is no longer valid - sign in again.");
+    if (typeof challenge !== "string" || !challenge) throw invalid();
+    const { rows } = await this.database.query<{ id: string; user: string; mfa_verified: boolean; usable: boolean; factor: boolean }>(
+      `SELECT c.id, c."user", c.mfa_verified,
+              u.active AND u.can_login AND NOT coalesce(u.locked_until > now(), false) AS usable,
+              EXISTS (SELECT 1 FROM totalbase.factors f WHERE f."user" = u.id AND f.confirmed_at IS NOT NULL) AS factor
+       FROM totalbase.challenges c JOIN totalbase.users u ON u.id = c."user"
+       WHERE c.token_hash = $1 AND c.purpose = 'PASSWORD' AND c.surface = $2 AND c.used_at IS NULL AND c.expires_at > now()`,
+      [hashToken(challenge), surface],
+    );
+    const row = rows[0];
+    if (!row) throw invalid();
+    if (!row.usable || (row.factor && !row.mfa_verified)) {
+      await this.database.query(`UPDATE totalbase.challenges SET used_at = now() WHERE id = $1`, [row.id]);
+      throw invalid();
+    }
+    return { id: row.id, userId: row.user, mfaVerified: row.mfa_verified };
+  }
+
+  /** Ends a PASSWORD challenge, once: PostgreSQL decides which of two requests holding it changes the password. */
+  async spendPasswordChallenge(client: Queryable, challengeId: string): Promise<void> {
+    const { rowCount } = await client.query(
+      `UPDATE totalbase.challenges SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now()`,
+      [challengeId],
+    );
+    if (rowCount === 0) throw new TotalBaseError("INVALID_PASSWORD_CHALLENGE", "This sign-in step expired or is no longer valid - sign in again.");
   }
 
   /**
@@ -210,12 +262,13 @@ export class MfaService {
     code?: unknown;
     recoveryCode?: unknown;
     onWrongCode: (userId: string) => Promise<void>;
-  }): Promise<{ userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean }> {
+  }): Promise<{ userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean; passwordSignIn: boolean }> {
     const wrong: { userId?: string; spend?: boolean } = {};
     try {
       return await this.database.transaction(async (client) => {
         const challenge = await this.openChallenge(client, input.challenge, { lock: true });
-        if (challenge.surface !== input.surface) throw invalidChallenge();
+        // A PASSWORD challenge is never a second factor's: a code must not turn it into a session.
+        if (challenge.surface !== input.surface || challenge.purpose === "PASSWORD") throw invalidChallenge();
         const { rows: users } = await client.query<{ usable: boolean }>(
           `SELECT active AND can_login AND NOT coalesce(locked_until > now(), false) AS usable FROM totalbase.users WHERE id = $1`,
           [challenge.user],
@@ -235,14 +288,14 @@ export class MfaService {
             await this.acceptCode(client, pending, input.code);
             await client.query(`UPDATE totalbase.factors SET confirmed_at = now() WHERE id = $1`, [pending.id]);
             await this.spend(client, challenge.id);
-            return { userId: challenge.user, recoveryCodes: await this.replaceRecoveryCodes(client, pending.id), usedRecoveryCode: false };
+            return { userId: challenge.user, recoveryCodes: await this.replaceRecoveryCodes(client, pending.id), usedRecoveryCode: false, passwordSignIn: challenge.password_sign_in };
           }
           const factor = await this.lockedConfirmedFactor(client, challenge.user).catch(() => {
             throw invalidChallenge(); // reset by an administrator meanwhile
           });
           const usedRecoveryCode = await this.acceptProof(client, factor, { code: input.code, recoveryCode: input.recoveryCode });
           await this.spend(client, challenge.id);
-          return { userId: challenge.user, recoveryCodes: null, usedRecoveryCode };
+          return { userId: challenge.user, recoveryCodes: null, usedRecoveryCode, passwordSignIn: challenge.password_sign_in };
         } catch (error) {
           if (error instanceof TotalBaseError && error.code === "INVALID_MFA_CODE") wrong.userId = challenge.user;
           throw error;
@@ -335,8 +388,8 @@ export class MfaService {
 
   private async openChallenge(client: Queryable, challenge: unknown, options: { lock?: boolean } = {}) {
     if (typeof challenge !== "string" || !challenge) throw invalidChallenge();
-    const { rows } = await client.query<{ id: string; user: string; purpose: ChallengePurpose; surface: MfaSurface }>(
-      `SELECT id, "user", purpose, surface FROM totalbase.challenges
+    const { rows } = await client.query<{ id: string; user: string; purpose: StoredPurpose; surface: MfaSurface; password_sign_in: boolean }>(
+      `SELECT id, "user", purpose, surface, password_sign_in FROM totalbase.challenges
        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()${options.lock ? " FOR UPDATE" : ""}`,
       [hashToken(challenge)],
     );

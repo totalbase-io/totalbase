@@ -75,7 +75,7 @@ export function useRecordOutputs(options: {
   async function copy(values: Record<string, unknown>, pk?: unknown) {
     try {
       values = await withShownValues(values, pk)
-      await navigator.clipboard.writeText(recordAsText(values, printedFields.value, displayFormatDefaults.value))
+      await copyText(recordAsText(values, printedFields.value, displayFormatDefaults.value))
       toast.add({ title: t('common.copied'), color: 'success' })
     } catch {
       toast.add({ title: t('dataviews.record.copyError'), color: 'error' })

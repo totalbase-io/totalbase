@@ -163,22 +163,6 @@ describe("FilesTransformService (integration)", () => {
     expect(metadata.height).toBe(50);
   });
 
-  it("answers the configured cache lifetime with every derivative", async () => {
-    await settings.set("files.transforms.cache_ttl_seconds", 600);
-    try {
-      const result = await transformService.resolve({
-        fileId: "file-ttl",
-        sourceHash: "hash-ttl",
-        mimeType: "image/png",
-        query: { width: "20" },
-        readOriginal: () => testImage(),
-      });
-      expect(result!.cacheTtlSeconds).toBe(600);
-    } finally {
-      await settings.reset("files.transforms.cache_ttl_seconds");
-    }
-  });
-
   it("purges derivatives past the cache lifetime and those of deleted files", async () => {
     const storage = new FilesLocalStorageProvider(basePath);
     const { rows } = await database.query<{ id: string }>(

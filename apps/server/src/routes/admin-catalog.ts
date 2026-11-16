@@ -25,6 +25,8 @@ import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, arrayOf, object, ok, ref } from "../openapi-admin-docs.js";
 import { CATALOG_SCHEMAS, RESOURCE_ID_PARAM } from "../openapi-admin-docs-database.js";
 import { resourceByPathId } from "../resource-by-path-id.js";
+import { pageOf } from "../pagination.js";
+import { optionalData } from "../request-body.js";
 
 const doc = (openapi: Parameters<typeof adminDoc>[1]) => adminDoc("catalog", { schemas: CATALOG_SCHEMAS, ...openapi });
 const BY_ID = { id: RESOURCE_ID_PARAM };
@@ -200,8 +202,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
     },
     async (request) => {
       const oid = await resolveResourceOid(context, request.params.id, "TABLE");
-      const limit = request.query.limit === undefined ? 50 : Number(request.query.limit);
-      const offset = request.query.offset === undefined ? 0 : Number(request.query.offset);
+      const { limit, offset } = pageOf(request.query, { max: 200, defaultLimit: 50 });
       return { data: await previewRelationRows(context.database, oid, { limit, offset }, await dataApiTimeout(context)) };
     },
   );
@@ -317,5 +318,5 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
       requestBody: { required: false, schema: dataEnvelope(object({ autoPresentation: { type: "boolean" } })) },
       response: ok(ref("CatalogSyncResult")),
     }),
-  }, async request => ({ data: await syncCatalog(context, { autoPresentation: request.body?.data?.autoPresentation === true }) }));
+  }, async request => ({ data: await syncCatalog(context, { autoPresentation: optionalData(request.body).autoPresentation === true }) }));
 }

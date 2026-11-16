@@ -26,7 +26,7 @@ export function registerDataTableRoutes(app: FastifyInstance, context: AppContex
       const token = extractBearerToken(request);
       const dataPrincipal = await resolveDataPrincipal(context, token, request.headers["x-totalbase-timezone"], request);
       const resource = await resolveTableResource(context, request.params.schema, request.params.resource, "GET");
-      const { row, version } = await readRowByKey(context, dataPrincipal, resource, request.params.pk, readOrigin(request));
+      const { row, version } = await readRowByKey(context, dataPrincipal, resource, request.params.pk, readOrigin(request), request.query as Record<string, unknown>);
       if (version !== undefined) reply.header("etag", `"${version}"`);
       return { data: row, ...(version !== undefined && { meta: { version } }) };
     },

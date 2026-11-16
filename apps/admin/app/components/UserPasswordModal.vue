@@ -44,6 +44,8 @@ const password = ref('')
 const passwordConfirm = ref('')
 const showPassword = ref(false)
 const signOut = ref(true)
+/** Someone else's password, as a temporary one: they choose their own at their next sign-in (Security.md §2.20). */
+const mustChange = ref(false)
 const saving = ref(false)
 
 watch(open, (isOpen) => {
@@ -53,6 +55,7 @@ watch(open, (isOpen) => {
   passwordConfirm.value = ''
   showPassword.value = false
   signOut.value = true
+  mustChange.value = false
 })
 
 function generate() {
@@ -79,7 +82,7 @@ async function save() {
         data: {
           password: password.value,
           signOut: signOut.value,
-          ...(props.self && { currentPassword: currentPassword.value })
+          ...(props.self ? { currentPassword: currentPassword.value } : { mustChange: mustChange.value })
         }
       })
     }
@@ -194,6 +197,12 @@ async function save() {
           v-model="signOut"
           :label="self ? t('users.password.signOutSelf') : t('users.password.signOutUser')"
           :description="self ? t('users.password.signOutSelfHelp') : t('users.password.signOutUserHelp')"
+        />
+        <UCheckbox
+          v-if="!self"
+          v-model="mustChange"
+          :label="t('users.password.mustChange')"
+          :description="t('users.password.mustChangeHelp')"
         />
       </form>
     </template>

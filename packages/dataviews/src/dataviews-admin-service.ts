@@ -1,6 +1,6 @@
 import type { EffectivePermissionService } from "@totalbase/permissions";
 import { diagnoseDataView, type DiagnosisIssue } from "./dataviews-diagnosis.js";
-import type { Database } from "@totalbase/database";
+import type { Database, Published } from "@totalbase/database";
 import type {
   AddWidgetInput,
   AddWidgetTreeInput,
@@ -19,6 +19,7 @@ import type {
 import * as read from "./dataviews-read.js";
 import * as access from "./dataviews-access.js";
 import * as fields from "./dataviews-fields.js";
+import * as viewer from "./dataviews-viewer.js";
 import * as columns from "./dataviews-columns.js";
 import * as widgets from "./dataviews-widgets.js";
 import * as crud from "./dataviews-crud.js";
@@ -233,12 +234,39 @@ export class DataViewsAdminService {
     return diagnoseDataView(this.ctx, permissions, dataviewId);
   }
 
+  // --- A viewer in the App (dataviews-viewer.ts): `roleIds` are the caller's, null an Administrator.
+
+  /** The ones the App lists to these roles - object access granted and READ on the source (Security.md §8.1). */
+  listableTo(permissions: EffectivePermissionService, roleIds: string[] | null, views: AdminDataView[]): Promise<AdminDataView[]> {
+    return viewer.listableDataViews(this.ctx, permissions, roleIds, views);
+  }
+
+  /** RESOURCE_NOT_FOUND unless these roles may open it - reachable and READ on its source. */
+  assertReadableBy(permissions: EffectivePermissionService, roleIds: string[] | null, view: AdminDataView): Promise<void> {
+    return viewer.assertReadableDataView(this.ctx, permissions, roleIds, view);
+  }
+
+  /** What these roles may do to its source's rows. */
+  grantedRowActions(permissions: EffectivePermissionService, roleIds: string[] | null, view: AdminDataView): Promise<viewer.RowActions> {
+    return viewer.grantedRowActions(permissions, roleIds, view);
+  }
+
+  /** Its fields as these roles may read them. */
+  fieldsVisibleTo(permissions: EffectivePermissionService, roleIds: string[] | null, view: AdminDataView, all: AdminDataViewField[]): Promise<AdminDataViewField[]> {
+    return viewer.fieldsVisibleTo(this.ctx, permissions, roleIds, view, all);
+  }
+
+  /** The `fk.related` paths its formulas read that these roles may not. */
+  deniedRelationPaths(permissions: EffectivePermissionService, roleIds: string[] | null, view: AdminDataView): Promise<string[]> {
+    return viewer.deniedRelationPaths(this.ctx, permissions, roleIds, view);
+  }
+
   publishWarnings(dataviewId: string): Promise<string[]> {
     return versions.publishWarnings(this.ctx, dataviewId);
   }
 
   /** Snapshots the draft as the next version - a no-op when the draft equals the latest. See `publish`. */
-  publish(dataviewId: string, userId: string | null, note: string | null = null): Promise<AdminDataViewPublish> {
+  publish(dataviewId: string, userId: string | null, note: string | null = null): Promise<Published<AdminDataViewPublish>> {
     return versions.publish(this.ctx, dataviewId, userId, note);
   }
 

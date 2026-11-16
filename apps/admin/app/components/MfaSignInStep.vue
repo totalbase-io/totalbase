@@ -5,7 +5,8 @@
  * - VERIFY: the code from the authenticator app, or one of the recovery codes;
  * - ENROLL: the instance requires two-factor authentication and the account has none - set up the app here
  *   (POST /api/auth/mfa/enroll), confirm its first code, then keep the recovery codes before going on.
- * Emits `done` with what the portal's sign-in returns; `cancel` goes back to the start.
+ * Emits `done` with what the portal's sign-in returns; `password` when the code was right and the password must
+ * be changed before the session (the next step, Security.md §2.20); `cancel` goes back to the start.
  */
 import type { AdminAccount } from '~/composables/useSession'
 import { useApiErrorMessage } from '~/utils/api-error-message'
@@ -17,6 +18,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   done: [{ admin: AdminAccount }]
+  password: [{ challenge: string, reason: 'EXPIRED' | 'REQUESTED' }]
   cancel: []
 }>()
 
@@ -68,6 +70,13 @@ async function submit() {
     if (data.recoveryCodes) finished.value = data
     else emit('done', { admin: data.admin })
   } catch (error) {
+    if (error instanceof AdminApiError && error.code === 'PASSWORD_CHANGE_REQUIRED') {
+      const meta = error.errors[0]?.meta
+      if (typeof meta?.challenge === 'string') {
+        emit('password', { challenge: meta.challenge, reason: meta.reason === 'REQUESTED' ? 'REQUESTED' : 'EXPIRED' })
+        return
+      }
+    }
     if (error instanceof AdminApiError && error.code === 'INVALID_MFA_CHALLENGE') expired.value = true
     errorMessage.value = error instanceof AdminApiError && error.code === 'INVALID_MFA_CODE'
       ? t(useRecovery.value ? 'auth.mfa.wrongRecoveryCode' : 'auth.mfa.wrongCode')

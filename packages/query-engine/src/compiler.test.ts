@@ -393,6 +393,44 @@ describe("compileSelect (integration)", () => {
     expect(Number(countRows[0]?.count)).toBe(3);
   });
 
+  // Data_API.md §3.8: the total needs only the joins that decide which rows there are.
+  describe("the count query's joins", () => {
+    const count = async (compiled: Awaited<ReturnType<typeof compile>>) =>
+      Number((await database.query<{ count: string }>(compiled.countSql!, compiled.countParams)).rows[0]!.count);
+
+    it("leaves out the joins only fields and order_by ask for - the same statement as without them", async () => {
+      const plain = await compile(parseQuery({ fields: "name", count: "true" }, LIMITS));
+      const related = await compile(parseQuery({ fields: "name,brand.name", order_by: "brand.name", count: "true" }, LIMITS));
+      expect(related.sql).toContain("LEFT JOIN");
+      expect(related.countSql).not.toContain("JOIN");
+      expect(related.countSql).toBe(plain.countSql);
+      expect(await count(related)).toBe(3);
+    });
+
+    it("keeps the joins where, search and the row filter use, whatever fields reads", async () => {
+      const where = await compile(parseQuery({ fields: "name,brand.name", where: { "brand.name": { _eq: "Acme" } }, count: "true" }, LIMITS));
+      expect(where.countSql).toContain("LEFT JOIN");
+      expect(await count(where)).toBe((await database.query(where.sql, where.params)).rows.length);
+
+      const search = await compile(parseQuery({ fields: "name,brand.name", search: "acme", count: "true" }, LIMITS));
+      expect(search.countSql).toContain("LEFT JOIN");
+      expect(await count(search)).toBe((await database.query(search.sql, search.params)).rows.length);
+
+      const rowFilter = await compile(parseQuery({ fields: "name", count: "true" }, LIMITS), {
+        rowFilter: { type: "comparison", path: ["brand", "name"], operator: "_eq", value: "Acme" },
+      });
+      expect(rowFilter.countSql).toContain("LEFT JOIN");
+      expect(await count(rowFilter)).toBe((await database.query(rowFilter.sql, rowFilter.params)).rows.length);
+      expect(await count(rowFilter)).toBeGreaterThan(0);
+    });
+
+    it("a grouped count keeps its joins", async () => {
+      const grouped = await compile(parseQuery({ group_by: "brand.name", count: "true" }, LIMITS));
+      expect(grouped.countSql).toContain("LEFT JOIN");
+      expect(await count(grouped)).toBe((await database.query(grouped.sql, grouped.params)).rows.length);
+    });
+  });
+
   it("rejects a field the caller is not authorized to read", async () => {
     const ast = parseQuery({ fields: "name,price" }, LIMITS);
     await expect(

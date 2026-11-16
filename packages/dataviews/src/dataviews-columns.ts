@@ -63,13 +63,15 @@ export async function syncFields(ctx: DataViewsContext, dataviewId: string): Pro
       orphanedRows.push(row);
       continue;
     }
-    if (column.name !== row.column_name) {
-      await ctx.database.query(`UPDATE totalbase.dataviews_fields SET column_name = $1, updated_at = now() WHERE id = $2`, [
-        column.name,
-        row.id,
-      ]);
-      renamed.push({ fieldId: row.id, from: row.column_name, to: column.name });
-    }
+    if (column.name !== row.column_name) renamed.push({ fieldId: row.id, from: row.column_name, to: column.name });
+  }
+  // Every renamed column's field in one statement.
+  if (renamed.length > 0) {
+    await ctx.database.query(
+      `UPDATE totalbase.dataviews_fields f SET column_name = r.name, updated_at = now()
+       FROM unnest($1::uuid[], $2::text[]) AS r(id, name) WHERE f.id = r.id`,
+      [renamed.map((r) => r.fieldId), renamed.map((r) => r.to)],
+    );
   }
 
   // A related column (RELATED) follows its foreign key and its target column by attnum: a rename of

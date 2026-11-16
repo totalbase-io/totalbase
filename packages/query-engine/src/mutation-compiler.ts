@@ -114,16 +114,29 @@ function requireColumn(root: ResolvedResource, field: string) {
   return column;
 }
 
+const JSON_TYPES = new Set(["json", "jsonb"]);
+
 /**
- * JSON body values need no string coercion (unlike query-string literals);
- * jsonb objects are serialized by node-postgres automatically. `point` is
- * the one exception - node-postgres has no serializer for it, so a
+ * JSON body values need no string coercion (unlike query-string literals).
+ * `point` is one exception - node-postgres has no serializer for it, so a
  * `{ lng, lat }` object needs turning into its `"(x,y)"` literal here
- * (packages/database's own type parser is the read-side counterpart).
+ * (packages/database's own type parser is the read-side counterpart). This
+ * is the value as it goes into a JSON document (compileInsertMany).
  */
 function toParam(value: unknown, dataType: string): unknown {
   if (dataType === "point") return pointLiteral(value);
   return value;
+}
+
+/**
+ * toParam for a bind parameter. A list for a json/jsonb column is the other
+ * exception: node-postgres serializes an object as JSON but a list as a
+ * PostgreSQL array ({...}) - refused by json, and an empty one read as {} -
+ * so it is serialized here (as compileFunctionCall does for an argument).
+ */
+function toBindParam(value: unknown, dataType: string): unknown {
+  if (JSON_TYPES.has(dataType) && Array.isArray(value)) return JSON.stringify(value);
+  return toParam(value, dataType);
 }
 
 function validateConflictTarget(root: ResolvedResource, target: string[]): void {
@@ -240,7 +253,7 @@ export async function compileInsert(
     requireFieldAllowed(fieldDecision, field);
     const column = requireColumn(root, field);
     columnsSql.push(quoteIdentifier(field));
-    params.push(toParam(data[field], column.dataType));
+    params.push(toBindParam(data[field], column.dataType));
     placeholders.push(`$${params.length}`);
   }
 
@@ -272,7 +285,7 @@ export async function compileInsert(
       requireColumn(root, sourceField);
       setParts.push(`${quoteIdentifier(field)} = ${excludedColumnSql(sourceField)}`);
     } else {
-      params.push(toParam(value, column.dataType));
+      params.push(toBindParam(value, column.dataType));
       setParts.push(`${quoteIdentifier(field)} = $${params.length}`);
     }
   }
@@ -382,7 +395,7 @@ export async function compileUpdate(
   for (const field of fields) {
     requireFieldAllowed(fieldDecision, field);
     const column = requireColumn(root, field);
-    params.push(toParam(data[field], column.dataType));
+    params.push(toBindParam(data[field], column.dataType));
     setParts.push(`${quoteIdentifier(field)} = $${params.length}`);
   }
 

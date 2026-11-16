@@ -46,10 +46,7 @@ export function useFileObjectUrl() {
   async function load(key: string, id: string, width: number | undefined) {
     loading.add(key)
     try {
-      const response = await fileRequests.run(() => retryingRateLimit(true, () => $fetch.raw(`/api/totalbase/table/files/${id}${width ? `?width=${width}&fit=cover` : ''}`, {
-        baseURL: '',
-        responseType: 'blob'
-      })))
+      const response = await fileRequests.run(() => retryingRateLimit(true, () => fetchFileContent(`/api/totalbase/table/files/${id}${width ? `?width=${width}&fit=cover` : ''}`)))
       remember(key, URL.createObjectURL(response._data as Blob))
     } catch {
       // Gone, or not readable by this viewer: the caller shows its empty state - never retried in a loop.

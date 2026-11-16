@@ -1,6 +1,7 @@
 import type { Database } from "@totalbase/database";
 import { adminRoleIds, holdsAdminAccess } from "./admin-roles.js";
-import { resolveEffect, type PermissionDecision } from "./permission-resolver.js";
+import { resolveEffect, type PermissionDecision, type PermissionEffect as Effect } from "./permission-resolver.js";
+import { listAttributes } from "@totalbase/pg-catalog";
 
 const FULL_ACCESS: EffectivePermission = {
   action: "ALLOW",
@@ -230,6 +231,47 @@ export class EffectivePermissionService {
   }
 
   /**
+   * What a role below `parent` may be granted (Security.md §9.6): the parent's effective ALLOW decisions - each
+   * active resource it is granted on, the actions it may take and the fields it may use. A delegated editor's
+   * choices; anything else is past the ceiling.
+   */
+  async ceilingOf(parent: string): Promise<{ resource: { id: string; schema: string; name: string; type: string }; actions: Record<string, { fields: string[] }> }[]> {
+    const { rows: candidates } = await this.database.query<{ id: string; schema: string; name: string; type: string }>(
+      `SELECT DISTINCT r.id, r."schema", r.name, r.type FROM totalbase.permissions p JOIN totalbase.resources r ON r.id = p.resource
+       WHERE p.role = $1 AND p.effect = 'ALLOW' AND r.status = 'ACTIVE' ORDER BY r."schema", r.name`,
+      [parent],
+    );
+    const decisions = await this.resolveBulk([parent], candidates.map((r) => r.id));
+    return candidates.flatMap((resource) => {
+      const actions = Object.fromEntries(
+        Object.entries(decisions.get(resource.id) ?? {})
+          .filter(([, decision]) => decision.decision === "ALLOW")
+          .map(([action, decision]) => [action, { fields: decision.fields ?? [] }]),
+      );
+      return Object.keys(actions).length > 0 ? [{ resource, actions }] : [];
+    });
+  }
+
+  /**
+   * Where a grant reaches past a role's ceiling - its parent's own access (Security.md §6.11, §9.6): `ACTION` when
+   * the parent can't take the action on the resource, `FIELDS` with the fields the grant allows that the parent
+   * can't use; null when it fits. A DENY never exceeds. Its row filter and payload checks are free: the resolver
+   * AND-combines the parent's with them, live - this is the clear answer, the resolver the guarantee.
+   */
+  async beyondCeiling(
+    parent: string,
+    resourceId: string,
+    action: ResourceAction,
+    grant: { effect: Effect; fields?: ReadonlyArray<{ field: string; effect: Effect }> | undefined },
+  ): Promise<{ reason: "ACTION" } | { reason: "FIELDS"; fields: string[] } | null> {
+    if (grant.effect !== "ALLOW") return null;
+    const ceiling = await this.resolve([parent], resourceId, action);
+    if (ceiling.action !== "ALLOW") return { reason: "ACTION" };
+    const fields = (grant.fields ?? []).filter((f) => f.effect === "ALLOW" && ceiling.fieldDecision(f.field) !== "ALLOW").map((f) => f.field);
+    return fields.length > 0 ? { reason: "FIELDS", fields } : null;
+  }
+
+  /**
    * Bulk variant of resolve(): every action, for every given resource, in
    * one query instead of one resolve() call per (resource, action) pair.
    * Built for the Admin UI's "effective permissions" views
@@ -302,12 +344,7 @@ export class EffectivePermissionService {
       [resourceIds],
     );
     if (resourceRows.length === 0) return orders;
-    const { rows: attrRows } = await this.database.query<{ attrelid: number; attname: string }>(
-      `SELECT attrelid, attname FROM pg_attribute
-       WHERE attrelid = ANY($1) AND attnum > 0 AND NOT attisdropped
-       ORDER BY attrelid, attnum`,
-      [resourceRows.map((r) => r.postgres_oid)],
-    );
+    const attrRows = (await listAttributes(this.database, resourceRows.map((r) => r.postgres_oid))).map((a) => ({ attrelid: a.relation, attname: a.name }));
     const orderByOid = new Map<number, Map<string, number>>();
     for (const row of attrRows) {
       const order = orderByOid.get(row.attrelid) ?? new Map<string, number>();

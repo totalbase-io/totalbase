@@ -57,7 +57,7 @@ async function sendTest() {
 </script>
 
 <template>
-  <SettingsGroupForm group="smtp">
+  <SettingsGroupForm :group="['smtp', 'mail']">
     <template #actions="{ dirty, draft }">
       <!-- Both use the saved settings: held while edits are pending, and
       until a host and a sender address are saved (SMTP_NOT_CONFIGURED).

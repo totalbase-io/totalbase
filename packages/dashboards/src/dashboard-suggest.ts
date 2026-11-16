@@ -10,7 +10,7 @@ import {
   type RowPresentation,
 } from "@totalbase/tb-catalog";
 import { getRelationDetail, type RelationDetail } from "@totalbase/pg-catalog";
-import { quoteIdentifier, type Database } from "@totalbase/database";
+import { quoteIdentifier, quoteLiteral, type Database } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { mechanicalLabel, suggestPresentation } from "@totalbase/resources";
 import type { DashboardSpec, DashboardSpecWidget } from "./dashboard-spec.js";
@@ -320,10 +320,6 @@ function fill(template: string, params: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => params[name] ?? whole);
 }
 
-function literal(text: string): string {
-  return `'${text.replace(/'/g, "''")}'`;
-}
-
 export interface ProposeInput {
   relation: SuggestRelation;
   columns: readonly SuggestColumnFacts[];
@@ -360,7 +356,7 @@ function targetLabelSql(target: SuggestForeignKeyTarget, alias: string): string 
     const parts = template.split(/(\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\})/).filter((p) => p !== "");
     return `(${parts.map((part) => {
       const name = /^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(part)?.[1];
-      return name && columns.has(name) ? `coalesce(${col(name)}::text, '')` : literal(part);
+      return name && columns.has(name) ? `coalesce(${col(name)}::text, '')` : quoteLiteral(part);
     }).join(" || ")})`;
   }
   const field = [target.rowPresentation?.displayField, target.suggestedDisplayField].find((f): f is string => Boolean(f && columns.has(f)));
@@ -559,7 +555,7 @@ LIMIT 10`,
     add("spec", {
       type: "HEATMAP",
       label: fill(texts.heatmap!, { table: tableLabel }),
-      query: `SELECT (ARRAY[${WEEKDAYS[language].map(literal).join(", ")}])[${dow}::int] AS ${as(weekday)}, extract(hour FROM ${momentSql})::int AS ${as(hour)}, count(*) AS ${as(count)}
+      query: `SELECT (ARRAY[${WEEKDAYS[language].map(quoteLiteral).join(", ")}])[${dow}::int] AS ${as(weekday)}, extract(hour FROM ${momentSql})::int AS ${as(hour)}, count(*) AS ${as(count)}
 FROM ${from}${where()}
 GROUP BY ${dow}, 2
 ORDER BY ${dow}, 2`,

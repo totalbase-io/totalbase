@@ -16,11 +16,18 @@ export async function sourceDetail(context: AppContext, resourceId: string): Pro
   return getRelationDetail(context.database, resource.postgresOid);
 }
 
-export async function readableCatalog(context: AppContext, roleIds: string[] | null, resourceId: string, detail?: RelationDetail): Promise<RelationDetail> {
-  detail ??= await sourceDetail(context, resourceId);
-  const passwords = await getPasswordColumns(context.database, resourceId);
+/** What a caller already has in hand - each read once, however many catalogs use it. */
+interface Known {
+  detail?: RelationDetail;
+  passwords?: Set<string>;
+  read?: Awaited<ReturnType<AppContext["effectivePermissions"]["resolve"]>>;
+}
+
+export async function readableCatalog(context: AppContext, roleIds: string[] | null, resourceId: string, known: Known = {}): Promise<RelationDetail> {
+  const detail = known.detail ?? await sourceDetail(context, resourceId);
+  const passwords = known.passwords ?? await getPasswordColumns(context.database, resourceId);
   if (roleIds === null) return passwords.size ? { ...detail, columns: detail.columns.filter((column) => !passwords.has(column.name)) } : detail;
-  const permission = await context.effectivePermissions.resolve(roleIds, resourceId, "READ");
+  const permission = known.read ?? await context.effectivePermissions.resolve(roleIds, resourceId, "READ");
   if (permission.action !== "ALLOW") throw new TotalBaseError("RESOURCE_NOT_FOUND", "Resource not found.");
   const readable = (column: string) => !passwords.has(column) && permission.fieldDecision(column) === "ALLOW";
   return {
@@ -54,20 +61,24 @@ export async function readableCatalog(context: AppContext, roleIds: string[] | n
  * Preview never recomputes it in the browser.
  */
 export async function recordCatalog(context: AppContext, roleIds: string[] | null, resourceId: string) {
-  const detail = await sourceDetail(context, resourceId);
-  const readable = await readableCatalog(context, roleIds, resourceId, detail);
-  const passwords = await getPasswordColumns(context.database, resourceId);
+  // Everything this needs, read once and side by side: the detail, the Password columns, the three grants.
+  const [detail, passwords, grants] = await Promise.all([
+    sourceDetail(context, resourceId),
+    getPasswordColumns(context.database, resourceId),
+    roleIds === null
+      ? null
+      : Promise.all([
+          context.effectivePermissions.resolve(roleIds, resourceId, "READ"),
+          context.effectivePermissions.resolve(roleIds, resourceId, "CREATE"),
+          context.effectivePermissions.resolve(roleIds, resourceId, "UPDATE"),
+        ]),
+  ]);
+  const readable = await readableCatalog(context, roleIds, resourceId, { detail, passwords, ...(grants && { read: grants[0] }) });
   // What a field may write: every column the viewer reads, and every Password column - never read, only written.
   const candidates = detail.columns.filter((column) => readable.columns.includes(column) || passwords.has(column.name)).map((column) => column.name);
-  const writable = roleIds === null
-    ? { create: candidates, update: candidates }
-    : await (async () => {
-        const grant = async (action: "CREATE" | "UPDATE") => {
-          const permission = await context.effectivePermissions.resolve(roleIds, resourceId, action);
-          return permission.action === "ALLOW" ? candidates.filter((name) => permission.fieldDecision(name) === "ALLOW") : [];
-        };
-        return { create: await grant("CREATE"), update: await grant("UPDATE") };
-      })();
+  type Grant = NonNullable<Known["read"]>;
+  const allowed = (permission: Grant) => permission.action === "ALLOW" ? candidates.filter((name) => permission.fieldDecision(name) === "ALLOW") : [];
+  const writable = grants === null ? { create: candidates, update: candidates } : { create: allowed(grants[1]), update: allowed(grants[2]) };
   // A Password column is in the catalog only where the viewer may write it - as write-only.
   const writeOnly = candidates.filter((name) => passwords.has(name) && (writable.create.includes(name) || writable.update.includes(name)));
   const catalog = { ...readable, columns: detail.columns.filter((column) => readable.columns.includes(column) || writeOnly.includes(column.name)) };

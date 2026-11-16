@@ -67,7 +67,8 @@ test('a select menu\'s search window finds a row by another column and picks it'
     await expect(window.getByRole('columnheader', { name: 'Id' })).toHaveCount(0)
     await window.getByRole('textbox', { name: 'Search' }).fill('C-047')
     await expect(window.getByRole('cell', { name: 'Category 47' })).toBeVisible()
-    await expect(window.getByRole('row')).toHaveCount(2)
+    // One row of data (the header holds Nuxt UI's own rows besides the column headers).
+    await expect(window.getByRole('row').filter({ has: page.getByRole('cell') })).toHaveCount(1)
     await window.getByRole('textbox', { name: 'Search' }).press('Enter')
 
     // Picked: the window closes and the select shows the row.

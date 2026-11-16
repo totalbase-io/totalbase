@@ -7,6 +7,13 @@ import { generateUserApiKey, hashUserApiKey } from "./tokens.js";
 
 export type UserApiPlane = "API" | "ADMIN";
 
+/**
+ * Why a token refuses a secret that is its own (Security.md §11.6): revoked, deactivated, past its expiry (or
+ * its previous secret past the grace window), its user inactive, the address outside `allowed_ips`, or its
+ * user's roles no longer granting its plane.
+ */
+export type TokenRefusal = "revoked" | "inactive" | "expired" | "user_inactive" | "ip_not_allowed" | "no_access";
+
 export interface UserApi {
   id: string;
   user: string;
@@ -22,6 +29,8 @@ export interface UserApi {
   previousExpiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
+  /** The addresses and CIDR ranges the token is accepted from (Security.md §3.5) - null: from anywhere. */
+  allowedIps: string[] | null;
 }
 
 interface UserApiRow {
@@ -38,9 +47,10 @@ interface UserApiRow {
   previous_expires_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
+  allowed_ips: string[] | null;
 }
 
-const SELECT_COLUMNS = `id, "user", name, description, plane, key_prefix, active, expires_at, last_used_at, rotated_at, previous_expires_at, revoked_at, created_at`;
+const SELECT_COLUMNS = `id, "user", name, description, plane, key_prefix, active, expires_at, last_used_at, rotated_at, previous_expires_at, revoked_at, created_at, allowed_ips`;
 
 function toUserApi(row: UserApiRow): UserApi {
   return {
@@ -57,12 +67,26 @@ function toUserApi(row: UserApiRow): UserApi {
     previousExpiresAt: row.previous_expires_at,
     revokedAt: row.revoked_at,
     createdAt: row.created_at,
+    allowedIps: row.allowed_ips,
   };
 }
 
 /** A token's name is unique per user, case-insensitively (tokens_user_name_unique) - PostgreSQL decides, this only words the error. */
 function mapUniqueViolation(error: unknown, name: string): never {
   return remapUniqueViolation(error, [{ constraint: "tokens_user_name_unique", code: "USER_API_NAME_DUPLICATE", message: `This user already has a token named "${name}".` }]);
+}
+
+/**
+ * `allowedIps` as the column takes it: a list of addresses and CIDR ranges, or null - an empty list is no
+ * restriction. What an address is, PostgreSQL decides (inet): an entry it can't read is its own
+ * `400 INVALID_TEXT_REPRESENTATION`, more than 50 the column's CHECK.
+ */
+function allowedIpsParameter(value: unknown): string[] | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+    throw new TotalBaseError("INVALID_QUERY", "allowedIps is a list of IP addresses and CIDR ranges.");
+  }
+  return value.length === 0 ? null : value.map((entry: string) => entry.trim());
 }
 
 /** Longest lifetime a token may be issued with - ten years. Every token expires. */
@@ -145,6 +169,7 @@ export class UsersApisService {
     description?: string | null | undefined;
     plane: UserApiPlane;
     ttlDays?: number | undefined;
+    allowedIps?: string[] | null | undefined;
   }): Promise<{ plainKey: string; userApi: UserApi }> {
     await this.assertUserCanHoldTokens(input.userId);
     if (input.plane === "ADMIN") {
@@ -157,13 +182,14 @@ export class UsersApisService {
     const ttlDays = await this.resolveTtlDays(input.ttlDays);
     const name = validateName(input.name);
     const description = validateDescription(input.description);
+    const allowedIps = allowedIpsParameter(input.allowedIps);
 
     try {
       const { rows } = await this.database.query<UserApiRow>(
-        `INSERT INTO totalbase.tokens ("user", name, description, plane, key_prefix, key_hash, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, now() + make_interval(days => $7))
+        `INSERT INTO totalbase.tokens ("user", name, description, plane, key_prefix, key_hash, expires_at, allowed_ips)
+         VALUES ($1, $2, $3, $4, $5, $6, now() + make_interval(days => $7), $8::inet[])
          RETURNING ${SELECT_COLUMNS}`,
-        [input.userId, name, description, input.plane, keyPrefix, keyHash, ttlDays],
+        [input.userId, name, description, input.plane, keyPrefix, keyHash, ttlDays, allowedIps],
       );
       return { plainKey, userApi: toUserApi(rows[0]!) };
     } catch (error) {
@@ -176,25 +202,18 @@ export class UsersApisService {
    * LIVE and requires them to still grant the token's plane - admin
    * access for plane='ADMIN', API access for plane='API' - so a role
    * change kills the token immediately, not just at its next creation.
+   *
+   * `clientIp` is the address the request came from, and it is not optional: a token with `allowed_ips` is
+   * accepted only from one of them (Security.md §3.5) - PostgreSQL compares - and a caller that knows no
+   * address (undefined) is refused for such a token, never let through. `403 TOKEN_IP_NOT_ALLOWED`.
    */
-  async validate(plainKey: string): Promise<{ id: string; userId: string; plane: UserApiPlane; roleIds: string[] } | null> {
-    const keyHash = hashUserApiKey(plainKey);
-
-    const { rows } = await this.database.query<{ id: string; user: string; plane: UserApiPlane }>(
-      // The owning user must be active too - deactivating a user stops
-      // their tokens at once, the same way their sessions stop validating -
-      // and a person (can_login), never a system account.
-      `SELECT a.id, a."user", a.plane FROM totalbase.tokens a
-       JOIN totalbase.users u ON u.id = a."user"
-       WHERE a.active = true AND a.revoked_at IS NULL
-         AND ((a.key_hash = $1 AND (a.expires_at IS NULL OR a.expires_at > now()))
-           -- The previous secret, within the grace window its regeneration left (§3.3).
-           OR (a.previous_key_hash = $1 AND a.previous_expires_at > now()))
-         AND u.active AND u.can_login`,
-      [keyHash],
-    );
-    const row = rows[0];
+  async validate(plainKey: string, clientIp: string | undefined): Promise<{ id: string; userId: string; plane: UserApiPlane; roleIds: string[] } | null> {
+    const row = await this.lookup(plainKey, clientIp);
     if (!row) return null;
+    if (row.refusal === "ip_not_allowed") {
+      throw new TotalBaseError("TOKEN_IP_NOT_ALLOWED", "This token is not accepted from this address.");
+    }
+    if (row.refusal !== null) return null;
 
     // Re-checked live on every use, not just at creation: losing the
     // role (or the flag on it) kills every outstanding token at once.
@@ -212,6 +231,51 @@ export class UsersApisService {
     );
 
     return { id: row.id, userId: row.user, plane: row.plane, roleIds };
+  }
+
+  /**
+   * The token a presented secret belongs to - its current secret or the one its last regeneration replaced -
+   * and why the token itself refuses it, if it does: one statement, PostgreSQL's clock and PostgreSQL's
+   * comparison of the address (`<<=`). Null: no token has that secret.
+   */
+  private async lookup(plainKey: string, clientIp: string | undefined): Promise<{ id: string; user: string; plane: UserApiPlane; refusal: Exclude<TokenRefusal, "no_access"> | null } | null> {
+    const { rows } = await this.database.query<{ id: string; user: string; plane: UserApiPlane; refusal: Exclude<TokenRefusal, "no_access"> | null }>(
+      `SELECT a.id, a."user", a.plane,
+              CASE
+                WHEN a.revoked_at IS NOT NULL THEN 'revoked'
+                WHEN a.active IS NOT TRUE THEN 'inactive'
+                -- The current secret past its expiry, or the previous one past the grace window its regeneration left (§3.3).
+                -- IS NOT TRUE, not NOT: with no previous secret the second half is NULL, and NULL must refuse.
+                WHEN ((a.key_hash = $1 AND (a.expires_at IS NULL OR a.expires_at > now()))
+                   OR (a.previous_key_hash = $1 AND a.previous_expires_at > now())) IS NOT TRUE THEN 'expired'
+                -- The owning user must be active too - deactivating a user stops their tokens at once, the same way
+                -- their sessions stop validating - and a person (can_login), never a system account.
+                WHEN (u.active AND u.can_login) IS NOT TRUE THEN 'user_inactive'
+                WHEN (a.allowed_ips IS NULL OR $2::inet <<= ANY(a.allowed_ips)) IS NOT TRUE THEN 'ip_not_allowed'
+              END AS refusal
+         FROM totalbase.tokens a
+         JOIN totalbase.users u ON u.id = a."user"
+        WHERE a.key_hash = $1 OR a.previous_key_hash = $1
+        ORDER BY (a.key_hash = $1) DESC
+        LIMIT 1`,
+      [hashUserApiKey(plainKey), clientIp ?? null],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Why a presented secret is refused, for the audit log (Security.md §11.6, `auth.token_refused`): the token it
+   * belongs to and the reason - or null when no token has that secret (an invented one: nothing to name) or
+   * when the token is in order (the request was refused for something else). Changes nothing.
+   */
+  async refusalOf(plainKey: string, clientIp: string | undefined): Promise<{ id: string; userId: string; plane: UserApiPlane; reason: TokenRefusal } | null> {
+    const row = await this.lookup(plainKey, clientIp);
+    if (!row) return null;
+    if (row.refusal !== null) return { id: row.id, userId: row.user, plane: row.plane, reason: row.refusal };
+    const roleIds = await this.roleAssignments.listEffectiveRolesForUser(row.user);
+    const access = await this.roles.effectiveAccess(roleIds);
+    const holdsPlane = row.plane === "ADMIN" ? await this.roles.holdsAdministratorsRole(roleIds) : access.apiAccess;
+    return holdsPlane ? null : { id: row.id, userId: row.user, plane: row.plane, reason: "no_access" };
   }
 
   /**

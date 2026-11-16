@@ -82,6 +82,37 @@ describe("/admin/api/system-emails", () => {
     expect((await inject("GET", "/admin/api/system-emails/nope")).statusCode).toBe(404);
   });
 
+  // mail.footer (Administration.md §8.3): set by the Admin API, as a project's set-up script does.
+  it("sends the footer the mail.footer setting says - the instance's by default, none when empty", async () => {
+    const html = async () => {
+      const detail = (await inject("GET", "/admin/api/system-emails/user_invitation")).json().data;
+      return (await inject("POST", "/admin/api/system-emails/user_invitation/preview", detail.template)).json().data.html as string;
+    };
+    const publicUrl = await context.auth.mailer.publicUrl();
+    const instanceName = await context.settings.get("system.instance_name");
+    try {
+      expect((await inject("GET", "/admin/api/settings/mail")).json().data["mail.footer"]).toBe("{{instance.name}} · {{instance.public_url}}");
+      expect(await html()).toContain(`${instanceName} · ${publicUrl}</p>`);
+
+      const custom = await app.inject({ method: "PATCH", url: "/admin/api/settings/mail", headers: { authorization: `Bearer ${adminToken}` }, payload: { data: { "mail.footer": "Sent by {{instance.name}}" } } });
+      expect(custom.statusCode, custom.body).toBe(200);
+      expect(await html()).toContain(`Sent by ${instanceName}</p>`);
+      expect(await html()).not.toContain(`${publicUrl}</p>`);
+
+      const empty = await app.inject({ method: "PATCH", url: "/admin/api/settings/mail", headers: { authorization: `Bearer ${adminToken}` }, payload: { data: { "mail.footer": "" } } });
+      expect(empty.statusCode, empty.body).toBe(200);
+      expect(await html()).not.toContain("margin-top:32px");
+
+      const unknown = await app.inject({ method: "PATCH", url: "/admin/api/settings/mail", headers: { authorization: `Bearer ${adminToken}` }, payload: { data: { "mail.footer": "{{user.email}}" } } });
+      expect(unknown.statusCode).toBe(400);
+      expect(unknown.json().errors[0].code).toBe("INVALID_SETTING");
+      const long = await app.inject({ method: "PATCH", url: "/admin/api/settings/mail", headers: { authorization: `Bearer ${adminToken}` }, payload: { data: { "mail.footer": "x".repeat(501) } } });
+      expect(long.statusCode).toBe(400);
+    } finally {
+      await context.settings.reset("mail.footer");
+    }
+  });
+
   it("requires an admin", async () => {
     expect((await app.inject({ method: "GET", url: "/admin/api/system-emails" })).statusCode).toBe(401);
   });

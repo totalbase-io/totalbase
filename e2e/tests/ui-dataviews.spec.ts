@@ -1,5 +1,5 @@
 import { expect as baseExpect, test, type Browser, type Locator, type Page } from '@playwright/test'
-import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, sessionToken, watchApiFailures } from './helpers.js'
+import { ADMIN_EMAIL, ADMIN_PASSWORD, apiRequest, sessionToken, typeInMonaco, watchApiFailures } from './helpers.js'
 import { BASE_URL } from './helpers'
 
 /**
@@ -376,7 +376,7 @@ test('settings: published, an earlier version restored, and one saved as a new D
   await page.getByRole('menuitemcheckbox', { name: /^v1 / }).click()
   await expect(main.getByText(/read-only/).first()).toBeVisible()
   await main.getByRole('button', { name: 'Restore', exact: true }).click()
-  await expect(page.getByText('Restored v1 into the draft', { exact: true })).toBeVisible()
+  await expect(page.getByText('v1 restored to the draft', { exact: true })).toBeVisible()
   await poll(async () => ((await getDataView(page, token, id)).viewConfig.features as Record<string, boolean> | undefined)?.print).toBe(true)
   expect((await getDataView(page, token, id)).hasUnpublishedChanges).toBe(true)
 
@@ -387,7 +387,7 @@ test('settings: published, an earlier version restored, and one saved as a new D
   const modal = page.getByRole('dialog', { name: 'Save as a new copy' })
   await modal.getByLabel('Name').fill(`${PREFIX} Copia`)
   await modal.getByRole('button', { name: 'Create copy' }).click()
-  await expect(page.getByText(`Created "${PREFIX} Copia"`, { exact: true })).toBeVisible()
+  await expect(page.getByText(`${PREFIX} Copia created`, { exact: true })).toBeVisible()
   await page.waitForURL(url => /\/dataviews\/[0-9a-f-]{36}\/settings/.test(url.pathname) && !url.pathname.includes(id), { waitUntil: 'commit' })
   const copyId = /\/dataviews\/([0-9a-f-]{36})/.exec(page.url())![1]!
   state.dataviews.add(copyId)
@@ -692,7 +692,7 @@ test('saved views: saved, shared with a user who applies it, opened by link, uns
   await main.getByRole('button', { name: /^Filter/ }).click()
   const filter = page.getByRole('dialog', { name: 'Filter' })
   await filter.getByRole('button', { name: 'Advanced' }).click()
-  await filter.getByRole('textbox').last().fill('{ "ciudad": { "_eq": "Rosario" } }')
+  await typeInMonaco(page, filter.locator('.monaco-editor').last(), '{ "ciudad": { "_eq": "Rosario" } }')
   await filter.getByRole('textbox').last().blur()
   await filter.getByRole('button', { name: 'Close' }).last().click()
   await expect(gridRows(page)).toHaveCount(1)

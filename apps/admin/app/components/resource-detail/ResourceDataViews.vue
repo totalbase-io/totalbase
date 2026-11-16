@@ -25,12 +25,10 @@ const COLUMNS = computed<TableColumn<DataView>[]>(() => [
 ])
 
 const deleteTarget = ref<DataView | null>(null)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
 
 function openDelete(dataview: DataView) {
   deleteTarget.value = dataview
-  deleteConfirmed.value = false
 }
 
 async function confirmDelete() {
@@ -154,49 +152,23 @@ async function confirmDelete() {
       </template>
     </UTable>
 
-    <UModal
+    <DeleteConfirmModal
       :open="!!deleteTarget"
       :title="t('database.resourceDataViews.deleteModalTitle')"
+      :loading="deleting"
       @update:open="(value: boolean) => { if (!value) deleteTarget = null }"
+      @confirm="confirmDelete"
     >
-      <template #body>
-        <div
-          v-if="deleteTarget"
-          class="flex flex-col gap-4"
-        >
-          <i18n-t
-            keypath="database.resourceDataViews.deleteBody"
-            tag="p"
-            class="text-sm text-muted"
-          >
-            <template #name>
-              <span class="font-medium text-default">{{ deleteTarget.name }}</span>
-            </template>
-          </i18n-t>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex cursor-pointer items-center gap-2">
-              <UCheckbox v-model="deleteConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="deleting"
-                @click="deleteTarget = null"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!deleteConfirmed"
-                :loading="deleting"
-                @click="confirmDelete"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <i18n-t
+        v-if="deleteTarget"
+        keypath="database.resourceDataViews.deleteBody"
+        tag="p"
+        class="text-sm text-muted"
+      >
+        <template #name>
+          <span class="font-medium text-default">{{ deleteTarget.name }}</span>
+        </template>
+      </i18n-t>
+    </DeleteConfirmModal>
   </SettingsSection>
 </template>

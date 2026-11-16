@@ -1,7 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// The server's constants, read straight from their source - this test is
-// what keeps the editor's mirror equal to them.
-import { WORKFLOW_DEFINITION_LIMITS as SERVER_LIMITS } from '../../../../packages/workflows/src/execution/definition-limits'
 import { configurationLimitProblem as configurationProblem, definitionLimitProblem as definitionProblem, WORKFLOW_DEFINITION_LIMITS as LIMITS, workflowTextFrom } from './workflow-limits'
 // The English source texts - the UI passes vue-i18n's `t`; here the file itself.
 import enWorkflows from '../../i18n/locales/en/workflows.json'
@@ -11,11 +8,7 @@ const configurationLimitProblem = (op: Parameters<typeof configurationProblem>[0
 const definitionLimitProblem = (definition: Parameters<typeof definitionProblem>[0]) => definitionProblem(definition, t)
 const op = (key: string, configuration: unknown = {}) => ({ key, configuration })
 
-describe('workflow limits mirror', () => {
-  it('equals the server limits', () => {
-    expect(LIMITS).toEqual(SERVER_LIMITS)
-  })
-
+describe('workflow limits', () => {
   it('accepts a definition within every limit', () => {
     expect(definitionLimitProblem({ operations: Array.from({ length: LIMITS.maxOperations }, (_, i) => op(`s${i}`)), connections: [] })).toBeNull()
   })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Add/drop index - same create_index/drop_index operations and the same
-// batch POST .../edit endpoint TableDrawer.vue's old Indexes tab used,
+// batch POST .../edit endpoint the table's other structure editors use,
 // just fired one at a time (no dry-run SQL preview, no accumulated diff)
 // to match this page's other panels (ResourceConstraints.vue's Add Check,
 // ResourceColumns.vue) autosave-per-action pattern instead of that

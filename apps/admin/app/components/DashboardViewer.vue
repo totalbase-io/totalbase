@@ -5,7 +5,7 @@
  * variables bar, the same component a DataView page's TDashboard widget embeds). Variable
  * values mirror into the URL so a shared link shows the same view.
  */
-import { useDashboardCatalogText, type Dashboard, type DashboardVariable } from '~/types/dashboard'
+import { useDashboardCatalogText } from '~/types/dashboard'
 import { decodeVariableValues, encodeVariableValues } from '~/utils/dashboard-variables'
 import { DASHBOARD_REFRESH_INTERVALS } from '@totalbase/tb-catalog'
 import { formatDistanceToNow } from 'date-fns'
@@ -18,15 +18,10 @@ const router = useRouter()
 const { t } = useI18n()
 const catalog = useDashboardCatalogText()
 
-const { data: dashboard, error } = await useAsyncData(
-  () => `app-dashboard-${props.slug}`,
-  () => api.get<Omit<Dashboard, 'variables'>>(`/dashboards/${props.slug}`).then(r => r.data)
-)
-const { data: variables } = await useAsyncData(
-  () => `app-dashboard-variables-${props.slug}`,
-  () => api.get<DashboardVariable[]>(`/dashboards/${props.slug}/variables`).then(r => r.data),
-  { default: (): DashboardVariable[] => [] }
-)
+// The same fetch as DashboardView.vue's cards (useViewerDashboard): one request per dashboard, one handler per key.
+const shared = useViewerDashboard(api, () => props.slug, () => `/dashboards/${props.slug}`)
+const { data: dashboard, error } = await shared.dashboard
+const { data: variables } = await shared.variables
 
 const variableValues = ref<Record<string, unknown>>(decodeVariableValues(variables.value ?? [], route.query))
 /** The open tab (D7) - `?tab=`, shareable. */

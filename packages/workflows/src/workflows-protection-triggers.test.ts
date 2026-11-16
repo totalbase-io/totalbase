@@ -39,6 +39,10 @@ describe("Workflows system account protection triggers (integration)", () => {
     await expect(
       database.query(`INSERT INTO totalbase.users_roles ("user", role) VALUES ($1, $2)`, [userId, workflowsRoleId]),
     ).rejects.toThrow(/reserved for TotalBase's own system account/);
+    // Its own SQLSTATE - a 403, the one check now that the service no longer asks first.
+    await expect(
+      database.query(`INSERT INTO totalbase.users_roles ("user", role) VALUES ($1, $2)`, [userId, workflowsRoleId]),
+    ).rejects.toMatchObject({ code: "INSUFFICIENT_PRIVILEGE" });
     const { rows } = await database.query<{ user: string }>(`SELECT "user" FROM totalbase.users_roles WHERE role = $1`, [workflowsRoleId]);
     expect(rows.map((row) => row.user)).toEqual([systemUserId]);
   });

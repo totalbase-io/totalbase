@@ -9,7 +9,7 @@
  * (AuditEntryChanges.vue).
  */
 import { diffLines, diffWords, type DiffSegment } from '~/utils/text-diff'
-import type { AuditDiffRow } from '~/utils/audit-changes'
+import { NOT_RECORDED, type AuditDiffRow } from '~/utils/audit-changes'
 
 const props = defineProps<{
   rows: AuditDiffRow[]
@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 const { t } = useI18n()
 
-type Line = { sign: '-' | '+' | ' ', segments: DiffSegment[] } | { sign: '-' | '+', empty: true }
+type Line = { sign: '-' | '+' | ' ', segments: DiffSegment[] } | { sign: '-' | '+', empty: true } | { sign: ' ', notRecorded: true }
 
 /** null stays null (shown as "(empty)"); an object or array reads as indented JSON. */
 function asText(value: unknown): string | null {
@@ -29,6 +29,8 @@ function asText(value: unknown): string | null {
 const whole = (text: string, changed: boolean): DiffSegment[] => [{ text, changed }]
 
 function linesOf(row: AuditDiffRow): Line[] {
+  // A column excluded from the audit log: that it changed, never its values.
+  if (row.new === NOT_RECORDED || row.old === NOT_RECORDED) return [{ sign: ' ', notRecorded: true }]
   const hasOld = row.old !== undefined
   const hasNew = row.new !== undefined
   const before = hasOld ? asText(row.old) : undefined
@@ -97,6 +99,10 @@ const CHANGED_CLASS = { '-': 'rounded-sm bg-error/25', '+': 'rounded-sm bg-succe
               v-if="'empty' in line"
               class="italic text-dimmed"
             >{{ t('shell.auditDiff.empty') }}</span>
+            <span
+              v-else-if="'notRecorded' in line"
+              class="italic text-dimmed"
+            >{{ t('shell.auditDiff.notRecorded') }}</span>
             <template v-else>
               <span
                 v-for="(segment, s) in line.segments"

@@ -33,6 +33,12 @@ export interface AdminUserListItem extends AdminUser {
   providerAvatar: { url: string, provider: string } | null
   /** Two-factor authentication is on (Security.md §2.17). */
   mfaEnabled: boolean
+  /** When the account was removed (Security.md §1.12) - no way in left, the row kept for the audit log; null otherwise. */
+  removedAt: string | null
+  /** When the current password was set; null without one (Security.md §2.20). */
+  passwordChangedAt: string | null
+  /** The password must be changed at the user's next sign-in. */
+  passwordChangeRequired: boolean
 }
 
 // Kept in sync with @totalbase/shared's WORKFLOWS_SYSTEM_USER_EMAIL - not
@@ -56,19 +62,21 @@ export function isWorkflowsRole(role: { name: string, reserved: boolean }): bool
 }
 
 /** How the Users screen classifies a user - see userStatus(). */
-export type UserStatus = 'ACTIVE' | 'INVITED' | 'INACTIVE'
+export type UserStatus = 'ACTIVE' | 'INVITED' | 'INACTIVE' | 'REMOVED'
 
-export function userStatus(user: Pick<AdminUserListItem, 'active' | 'hasPassword' | 'canLogin'>): UserStatus {
+export function userStatus(user: Pick<AdminUserListItem, 'active' | 'hasPassword' | 'canLogin'> & { removedAt?: string | null }): UserStatus {
+  if (user.removedAt) return 'REMOVED'
   if (!user.active) return 'INACTIVE'
   if (!user.hasPassword && user.canLogin) return 'INVITED'
   return 'ACTIVE'
 }
 
 /** `labelKey` is a locale key (`users.status.*`), translated where shown. */
-export const USER_STATUS_META: Record<UserStatus, { labelKey: string, color: 'success' | 'warning' | 'neutral' }> = {
+export const USER_STATUS_META: Record<UserStatus, { labelKey: string, color: 'success' | 'warning' | 'neutral' | 'error' }> = {
   ACTIVE: { labelKey: 'users.status.ACTIVE', color: 'success' },
   INVITED: { labelKey: 'users.status.INVITED', color: 'warning' },
-  INACTIVE: { labelKey: 'users.status.INACTIVE', color: 'neutral' }
+  INACTIVE: { labelKey: 'users.status.INACTIVE', color: 'neutral' },
+  REMOVED: { labelKey: 'users.status.REMOVED', color: 'error' }
 }
 
 export interface Session {
@@ -102,6 +110,8 @@ export interface UserApiToken {
   rotatedAt: string | null
   revokedAt: string | null
   createdAt: string
+  /** The addresses and CIDR ranges the token is accepted from (Security.md §3.5) - null: from anywhere. */
+  allowedIps: string[] | null
 }
 
 /** Only present once, right after POST .../rotate — never stored, never shown again. */
@@ -134,6 +144,9 @@ export interface MyAccount {
   lastLoginAt: string | null
   providerAvatar: { url: string, provider: string } | null
   passwordMinLength: number
+  /** When the password was set, and when auth.password_max_age_days ends it - null with the setting off (Security.md §2.20). */
+  passwordChangedAt: string | null
+  passwordExpiresAt: string | null
   /** Which personal access tokens this account can hold. */
   tokens: { api: boolean, admin: boolean }
   /** Two-factor authentication (Security.md §2.17). */

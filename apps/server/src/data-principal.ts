@@ -8,6 +8,7 @@ import { readOrigin } from "./read-audit.js";
 import { resolveTableResource } from "@totalbase/resources";
 import { UUID_PATTERN } from "@totalbase/shared";
 import { effectiveTimezone, ownTimezone } from "./display-preferences.js";
+import { clientIp } from "./client-ip.js";
 
 // The shape lives with the Data API writes that consume it; resolving it (sessions, tokens, execute_as) is HTTP/auth work and stays here.
 export type { DataPrincipal };
@@ -24,9 +25,13 @@ const USER_API_KEY_PREFIX = "tb_";
  * A prefixed token that is no key is still tried as a session - a random
  * session token can begin with "tb_" too - so what authenticates is
  * unchanged; only the usual case costs one lookup instead of two.
+ *
+ * `address` is where the request came from, for a caller that passes no `request` (clientIp(), client-ip.ts): a
+ * token with allowed addresses is accepted only from them (Security.md §3.5), and with neither a request nor
+ * an address such a token is refused.
  */
-export async function resolveDataPrincipal(context: AppContext, token: string, browserTimezone?: unknown, request?: FastifyRequest): Promise<DataPrincipal> {
-  const principal = await withOnBehalfOf(context, await resolveCaller(context, token, browserTimezone), request);
+export async function resolveDataPrincipal(context: AppContext, token: string, browserTimezone?: unknown, request?: FastifyRequest, address?: string): Promise<DataPrincipal> {
+  const principal = await withOnBehalfOf(context, await resolveCaller(context, token, browserTimezone, request ? clientIp(request) : address), request);
   // See as (view-as.ts): an administrator's session previewing a role or a user - the resolver then decides with
   // their roles and their $USER. A token never previews.
   if (!request || request.headers[VIEW_AS_HEADER] === undefined) return principal;
@@ -64,10 +69,10 @@ async function withOnBehalfOf(context: AppContext, principal: DataPrincipal, req
   return { ...principal, onBehalfOf: id };
 }
 
-async function resolveCaller(context: AppContext, token: string, browserTimezone?: unknown): Promise<DataPrincipal> {
+async function resolveCaller(context: AppContext, token: string, browserTimezone: unknown, address: string | undefined): Promise<DataPrincipal> {
   const looksLikeApiKey = token.startsWith(USER_API_KEY_PREFIX);
   if (looksLikeApiKey) {
-    const principal = await resolveApiKeyPrincipal(context, token, browserTimezone);
+    const principal = await resolveApiKeyPrincipal(context, token, browserTimezone, address);
     if (principal) return principal;
   }
 
@@ -77,8 +82,8 @@ async function resolveCaller(context: AppContext, token: string, browserTimezone
   throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid session or token.");
 }
 
-async function resolveApiKeyPrincipal(context: AppContext, token: string, browserTimezone: unknown): Promise<DataPrincipal | null> {
-  const tokenResult = await context.usersApis.validate(token);
+async function resolveApiKeyPrincipal(context: AppContext, token: string, browserTimezone: unknown, address: string | undefined): Promise<DataPrincipal | null> {
+  const tokenResult = await context.usersApis.validate(token, address);
   // A plane="ADMIN" token reaches the Data API too while its owner is an
   // administrator (checked live, like the Admin API does) - it grants
   // nothing that token doesn't already hold, and lets one credential drive

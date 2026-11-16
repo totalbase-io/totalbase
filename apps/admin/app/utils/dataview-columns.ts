@@ -36,3 +36,9 @@ export function cappedNotice(total: number, limit: number, where: string): strin
   const bcp47 = regionalLocale()
   return i18n.t('database.dataviewColumns.cappedNotice', { limit: limit.toLocaleString(bcp47), total: total.toLocaleString(bcp47), where })
 }
+
+/** Lanes in their layout's `laneOrder`; one missing from it goes at the end, in the order it came. */
+export function orderLanes<Lane extends { pk: string }>(lanes: Lane[], laneOrder: string[] | undefined): Lane[] {
+  const index = new Map((laneOrder ?? []).map((pk, i) => [pk, i]))
+  return [...lanes].sort((a, b) => (index.get(a.pk) ?? Number.MAX_SAFE_INTEGER) - (index.get(b.pk) ?? Number.MAX_SAFE_INTEGER))
+}

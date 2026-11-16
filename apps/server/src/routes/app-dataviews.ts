@@ -1,7 +1,7 @@
 import { UUID_PATTERN } from "@totalbase/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { callerRoleIds, callerRoles } from "../caller-roles.js";
-import { settingsWritable, type AdminDataView, type AdminDataViewField } from "@totalbase/dataviews";
+import { settingsWritable, viewerRowActions, type AdminDataView, type AdminDataViewField, type RowActions } from "@totalbase/dataviews";
 import { ReadAudit, readOrigin } from "../read-audit.js";
 import { TotalBaseError } from "@totalbase/errors";
 import { getPasswordColumns } from "@totalbase/resources";
@@ -11,74 +11,15 @@ import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
 import { resolveDataPrincipal } from "../data-principal.js";
 
 
-/** READ on each source resource (level 1) - a DataView with no source (EXTERNALFRAME) needs none. */
-async function withSourceRead(context: AppContext, roleIds: string[], views: AdminDataView[]): Promise<AdminDataView[]> {
-  const resourceIds = [...new Set(views.map((view) => view.sourceResource).filter((id): id is string => id !== null))];
-  const decisions = await context.effectivePermissions.resolveBulk(roleIds, resourceIds);
-  return views.filter((view) => view.sourceResource === null || decisions.get(view.sourceResource)?.READ.decision === "ALLOW");
+/** The App's DataView list for these roles (Security.md §8.1) - `@totalbase/dataviews` decides, with the Permission Resolver. */
+export function listableDataViews(context: AppContext, roleIds: string[] | null, views: AdminDataView[]): Promise<AdminDataView[]> {
+  return context.dataviewsAdmin.listableTo(context.effectivePermissions, roleIds, views);
 }
 
-/**
- * The App lists a DataView when the caller holds its object access
- * (level 2, granted directly) and READ on its source (level 1) -
- * Security.md §8.1.
- */
-export async function listableDataViews(context: AppContext, roleIds: string[] | null, views: AdminDataView[]): Promise<AdminDataView[]> {
-  if (roleIds === null) return views;
-  const granted = await context.dataviewsAdmin.grantedToRoles(views.map((view) => view.id), roleIds);
-  return withSourceRead(context, roleIds, views.filter((view) => granted.has(view.id)));
-}
-
-/**
- * Opening one DataView: reachable (granted, or embedded in one the caller
- * can open) and READ on its source. "Denied = missing", so a caller can't
- * probe which DataViews exist.
- */
-async function assertReadableDataView(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<void> {
-  const roleIds = await callerRoleIds(context, request);
-  if (roleIds === null) return;
-  const reachable = await context.dataviewsAdmin.reachableByRoles(view.id, roleIds);
-  if (!reachable || (await withSourceRead(context, roleIds, [view])).length === 0) {
-    throw new TotalBaseError("RESOURCE_NOT_FOUND", "DataView not found.");
-  }
-}
-
-type RowActions = { create: boolean; update: boolean; delete: boolean };
-
-/**
- * What this viewer may do to its source's rows - the Permission Resolver's
- * CREATE/UPDATE/DELETE decisions, so the App offers New, editing and
- * Delete only where the Data API will take them (it still decides every
- * write). An Administrator may do everything; a DataView with no source, nothing.
- */
-async function grantedActions(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<RowActions> {
-  if (view.sourceResource === null) return { create: false, update: false, delete: false };
-  const roleIds = await callerRoleIds(context, request);
-  if (roleIds === null) return { create: true, update: true, delete: true };
-  const decisions = (await context.effectivePermissions.resolveBulk(roleIds, [view.sourceResource])).get(view.sourceResource);
-  return {
-    create: decisions?.CREATE.decision === "ALLOW",
-    update: decisions?.UPDATE.decision === "ALLOW",
-    delete: decisions?.DELETE.decision === "ALLOW",
-  };
-}
-
-/**
- * What the viewer is offered on the DataView's own pages - its list and its record form: what they're granted,
- * narrowed by the DataView's own Allow (`view_config.allow`, DataViews.md §5.1 - a history with no
- * New), an Administrator's too. An embed of it (TDataView) is narrowed by its own Allow instead, over
- * `grantedActions` - the same DataView may be a listing with no New and, in a record's page, where rows are made.
- */
-function viewerActions(view: AdminDataView, granted: RowActions): RowActions {
-  const allow = Array.isArray(view.viewConfig.allow) ? (view.viewConfig.allow as string[]) : null;
-  const allows = (action: string) => allow === null || allow.includes(action);
-  return { create: granted.create && allows("create"), update: granted.update && allows("update"), delete: granted.delete && allows("delete") };
-}
-
-/** Both, for the App's read of a DataView. */
+/** Both row-action sets, for the App's read of a DataView: the granted ones and the DataView's own Allow over them. */
 async function rowActions(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<{ viewerActions: RowActions; grantedActions: RowActions }> {
-  const granted = await grantedActions(context, request, view);
-  return { viewerActions: viewerActions(view, granted), grantedActions: granted };
+  const granted = await context.dataviewsAdmin.grantedRowActions(context.effectivePermissions, await callerRoleIds(context, request), view);
+  return { viewerActions: viewerRowActions(view, granted), grantedActions: granted };
 }
 
 /** What a custom action runs, as the App calls it - only for one this viewer may run. */
@@ -95,13 +36,10 @@ async function actionTargets(context: AppContext, request: FastifyRequest, view:
   const roleIds = (await callerRoles(context, request)).roleIds;
   for (const action of actions) {
     if (action.target.kind === "FUNCTION") {
-      const { rows } = await context.database.query<{ schema: string; name: string }>(
-        `SELECT "schema", name FROM totalbase.resources WHERE id = $1 AND type = 'FUNCTION' AND status = 'ACTIVE' AND 'POST' = ANY(exposed_methods)`,
-        [action.target.resource],
-      );
-      if (!rows[0]) continue;
+      const fn = await context.resourcesAdmin.get(action.target.resource).catch(() => null);
+      if (!fn || fn.type !== "FUNCTION" || fn.status !== "ACTIVE" || !fn.exposedMethods.includes("POST")) continue;
       if ((await context.effectivePermissions.resolve(roleIds, action.target.resource, "EXECUTE")).action !== "ALLOW") continue;
-      targets[action.id] = { kind: "FUNCTION", schema: rows[0].schema, name: rows[0].name };
+      targets[action.id] = { kind: "FUNCTION", schema: fn.schema, name: fn.name };
     } else {
       const workflow = await context.workflowsAdmin.get(action.target.workflow).catch(() => null);
       const found = workflow ? await context.workflowsAdmin.getEnabledPublishedBySlug(workflow.slug) : null;
@@ -140,67 +78,13 @@ export async function openableDataView(context: AppContext, request: FastifyRequ
       return UUID_PATTERN.test(slug) ? context.dataviewsAdmin.get(slug) : context.dataviewsAdmin.getBySlug(slug);
     }
   });
-  await assertReadableDataView(context, request, view);
+  await context.dataviewsAdmin.assertReadableBy(context.effectivePermissions, await callerRoleIds(context, request), view);
   return view;
 }
 
-/**
- * A published DataView's fields as this viewer may see them: COLUMN and
- * RELATED fields only for columns (paths) their READ grant allows; an FK whose display join they
- * may not traverse (no dotted `fk.display` field grant on the source) is marked
- * `display_field_denied`, so the grid shows the raw key instead of asking
- * for a join the Data API would refuse outright (FIELD_PERMISSION_DENIED
- * on `fk.display`). `display_field` itself stays - it is what makes the
- * column an FK (a Kanban's group column, for one).
- */
-async function fieldsForViewer(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<AdminDataViewField[]> {
-  const fields = await context.dataviewsAdmin.listPublishedFields(view.id);
-  return fieldsVisibleTo(context, request, view, fields);
-}
-
+/** Its fields as this viewer may read them (`@totalbase/dataviews`' fieldsVisibleTo). */
 async function fieldsVisibleTo(context: AppContext, request: FastifyRequest, view: AdminDataView, all: AdminDataViewField[]): Promise<AdminDataViewField[]> {
-  if (view.sourceResource === null) return all;
-  // A Password column is never read, not even by an administrator (Security.md §2.3): one a DataView still lists is left out.
-  // So is one whose column is gone (DataViews.md §4.8) - the Data API would refuse every row; the author sees it as broken.
-  const passwordColumns = await getPasswordColumns(context.database, view.sourceResource);
-  const fields = all.filter((field) => !field.orphaned && (field.kind !== "COLUMN" || field.columnName === null || !passwordColumns.has(field.columnName)));
-  const roleIds = await callerRoleIds(context, request);
-  if (roleIds === null) return fields;
-  const permission = await context.effectivePermissions.resolve(roleIds, view.sourceResource, "READ");
-  // A related column (RELATED, `brand.country`) the same way: its dotted path needs its own field grant on the source - without it, it's left out.
-  const readableFields = fields.filter((field) => (field.kind !== "COLUMN" && field.kind !== "RELATED") || field.columnName === null || permission.fieldDecision(field.columnName) === "ALLOW");
-
-  // The join is authorized the way the Data API authorizes it: a dotted field grant on the source (`status.name`).
-  return readableFields.map((field) => {
-    const config = field.config as { display_field?: string; display_template?: string };
-    if (field.kind !== "COLUMN" || !field.columnName || !config.display_field) return field;
-    // A display template (`{{name}} ({{country}})`) joins each of its columns - every one needs its grant.
-    const template = [...(config.display_template ?? "").matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g)].map((m) => m[1]!);
-    const shown = template.length ? template : [config.display_field];
-    if (shown.every((column) => permission.fieldDecision(`${field.columnName}.${column}`) === "ALLOW")) return field;
-    return { ...field, config: { ...config, display_field_denied: true } };
-  });
-}
-
-/** `{{fk.related}}` in a formula - the same one-hop token the admin's formula engine reads (formula-engine.ts TEMPLATE_TOKEN). */
-const RELATION_TOKEN = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
-
-/**
- * The `fk.related` paths a published DataView's formulas read (its layouts'
- * title, description, color... in `view_config`, its columns' bindings) that
- * this viewer may not: the grid leaves them out of its `fields` - the Data
- * API would refuse the whole request (FIELD_PERMISSION_DENIED) - and the
- * formula reads them as empty, the way a denied FK display shows its key.
- */
-async function deniedRelationPaths(context: AppContext, request: FastifyRequest, view: AdminDataView): Promise<string[]> {
-  const roleIds = await callerRoleIds(context, request);
-  if (roleIds === null || view.sourceResource === null) return [];
-  const fields = await context.dataviewsAdmin.listPublishedFields(view.id);
-  const text = JSON.stringify([view.viewConfig, fields.map((f) => f.config)]);
-  const paths = new Set([...text.matchAll(RELATION_TOKEN)].map((m) => `${m[1]}.${m[2]}`));
-  if (paths.size === 0) return [];
-  const permission = await context.effectivePermissions.resolve(roleIds, view.sourceResource, "READ");
-  return [...paths].filter((path) => permission.fieldDecision(path) !== "ALLOW");
+  return context.dataviewsAdmin.fieldsVisibleTo(context.effectivePermissions, await callerRoleIds(context, request), view, all);
 }
 
 /** Published DataView snapshots for the /app UI. Draft/design endpoints stay in /admin/api. */
@@ -259,7 +143,7 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
     return {
       data: {
         ...view,
-        deniedRelationPaths: await deniedRelationPaths(context, request, view),
+        deniedRelationPaths: await context.dataviewsAdmin.deniedRelationPaths(context.effectivePermissions, await callerRoleIds(context, request), view),
         ...(await rowActions(context, request, view)),
         ...(await actionTargets(context, request, view)),
         instanceToolbarMode: await instanceToolbarMode(),
@@ -286,6 +170,6 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
       return { data: await fieldsVisibleTo(context, request, view, await context.dataviewsAdmin.listFields(view.id)) };
     }
     const view = await openableDataView(context, request, request.params.slug);
-    return { data: await fieldsForViewer(context, request, view) };
+    return { data: await fieldsVisibleTo(context, request, view, await context.dataviewsAdmin.listPublishedFields(view.id)) };
   });
 }

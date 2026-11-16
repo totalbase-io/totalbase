@@ -41,6 +41,7 @@ import WorkflowDisabledBadge from '~/components/workflows/WorkflowDisabledBadge.
 const route = useRoute()
 const api = useAdminApi()
 const toast = useToast()
+const publishToast = usePublishToast()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 const { operationTitle } = useOperationCatalogText()
@@ -366,14 +367,10 @@ async function publish(note?: string) {
   try {
     await autosave.flush()
     if (!draft.value) return
-    const previous = draft.value.workflow.liveVersion
-    const { data } = await api.post<{ liveVersion: number | null }>(`/workflows/${route.params.id}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
+    const result = await api.post<{ version: number }>(`/workflows/${route.params.id}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
     await refresh()
     await refreshVersions()
-    // A draft equal to the live version publishes nothing - the server answers it as is (Foundations.md §13.4).
-    toast.add(data.liveVersion === previous
-      ? { title: t('workflows.editor.nothingToPublish'), description: t('workflows.editor.alreadyLive', { version: previous }), color: 'neutral' }
-      : { title: t('workflows.editor.published'), color: 'success' })
+    publishToast(result, t('workflows.editor.published'))
   } catch (error) {
     notifyError(error, t('workflows.editor.publishFailed'))
   } finally {
@@ -401,10 +398,6 @@ async function openSettings(section?: 'trigger' | 'runs', run?: string) {
   await navigateTo({ path: `/workflows/${route.params.id}/settings`, query: { ...(section && { section }), ...(run && { run }) } })
 }
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 const objectMenuItems = computed(() => [
   [{ label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => { deleteOpen.value = true } }]
 ])
@@ -570,36 +563,13 @@ async function onOperationSave(payload: { key: string, configuration: AnyOperati
       :prepare="runModalMode === 'TEST' ? flushDraft : undefined"
       @open-logs="openRunInLogs"
     />
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('workflows.editor.deleteTitle')"
       :description="t('workflows.editor.deleteDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteWorkflow"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteWorkflow"
+    />
     <VersionSaveAsModal
       v-if="previewVersion && draft"
       v-model:open="saveAsOpen"

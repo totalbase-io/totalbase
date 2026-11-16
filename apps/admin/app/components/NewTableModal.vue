@@ -5,8 +5,8 @@ import type { RelationDetail } from '~/types/schema'
  * New Table (Administration.md §3.4: a minimal wizard, not a
  * full schema designer - name, description, PK strategy, nothing else; the
  * rest of the columns get added afterward from the table's own detail
- * page). TableDrawer is the EDIT side only (columns/PK/FK/CHECK/indexes/
- * data preview - out of scope here).
+ * page), which is the one editor of its structure (columns, keys,
+ * constraints, indexes).
  *
  * PK type list is the user's own flattened restatement of the spec's 4
  * strategies (UUID / Auto-increment / Manual integer / Manual text) into

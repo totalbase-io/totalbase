@@ -8,3 +8,4 @@ export * from "./ddl.js";
 export * from "./maintenance-stats.js";
 export * from "./result-columns.js";
 export * from "./object-ownership.js";
+export * from "./attributes.js";

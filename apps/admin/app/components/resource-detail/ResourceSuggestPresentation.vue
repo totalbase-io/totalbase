@@ -73,9 +73,9 @@ function toggle(id: string, on: boolean) {
   ticked.value = next
 }
 
-/** A value as the review shows it - words for a flag, a CHECK list's labels. */
+/** A value as the review shows it - words for a flag, a CHECK list's labels; nothing at all for none. */
 function shown(key: string, value: unknown): string {
-  if (value === undefined || value === null || value === '') return '—'
+  if (value === undefined || value === null || value === '') return ''
   if (value === true) return t('database.resourceSuggestPresentation.on')
   if (key === 'options' && typeof value === 'object') return Object.entries(value as Record<string, { label?: string }>).map(([v, o]) => o.label ? `${v} → ${o.label}` : v).join(', ')
   return String(value)

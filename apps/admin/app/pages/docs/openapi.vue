@@ -59,27 +59,17 @@ const fileBase = computed(() => documentKind.value === 'admin'
 
 const prettyJson = computed(() => spec.value ? JSON.stringify(spec.value, null, 2) : '')
 
-function downloadBlob(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 function downloadJson() {
   if (!prettyJson.value) return
-  downloadBlob(prettyJson.value, `${fileBase.value}.json`, 'application/json')
+  downloadText(prettyJson.value, `${fileBase.value}.json`, 'application/json')
 }
 
 // Same document, saved as .txt for a caller that just wants to paste it
 // somewhere without a .json extension getting in the way (e.g. into a
 // chat, an issue, a doc).
-function downloadText() {
+function downloadTxt() {
   if (!prettyJson.value) return
-  downloadBlob(prettyJson.value, `${fileBase.value}.txt`, 'text/plain')
+  downloadText(prettyJson.value, `${fileBase.value}.txt`, 'text/plain')
 }
 
 const viewerRef = ref<{ wordWrap: boolean, toggleWordWrap: () => void, find: () => void, reveal: (text: string) => void } | null>(null)
@@ -209,7 +199,7 @@ watch(viewerRef, (viewer) => {
             variant="outline"
             size="sm"
             square
-            @click="downloadText"
+            @click="downloadTxt"
           />
         </UTooltip>
       </div>

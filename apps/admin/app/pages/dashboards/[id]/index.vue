@@ -46,7 +46,7 @@ import { decodeVariableValues, encodeVariableValues } from '~/utils/dashboard-va
 import { BROWSER_TIMEZONE } from '~/utils/api-headers'
 import { DASHBOARD_DESIGN_COLUMNS, dashboardFlowLayout } from '~/utils/dashboard-layout'
 import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
-import type { GridStack as GridStackCore, GridStackNode, GridStackWidget } from 'gridstack'
+import type { GridStack as GridStackCore, GridStackNode, GridStackOptions, GridStackWidget } from 'gridstack'
 import { GridStack } from 'gridstack/dist/vue'
 import 'gridstack/dist/gridstack.css'
 
@@ -54,6 +54,7 @@ const route = useRoute()
 const router = useRouter()
 const api = useAdminApi()
 const toast = useToast()
+const publishToast = usePublishToast()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 const catalog = useDashboardCatalogText()
@@ -69,11 +70,21 @@ const { data: widgets, refresh: refreshWidgets } = await useAsyncData(
   () => api.get<DashboardWidget[]>(`/dashboards/${dashboardId}/widgets`).then(r => r.data),
   { default: (): DashboardWidget[] => [] }
 )
-const { data: versions, refresh: refreshVersions } = await useAsyncData(
-  `dashboard-versions-${dashboardId}`,
-  () => api.get<DashboardVersion[]>(`/dashboards/${dashboardId}/versions`).then(r => r.data),
-  { default: (): DashboardVersion[] => [] }
-)
+// Versions (Foundations.md §13.4): previewing one shows its snapshot, read-only; Restore re-reads the widgets.
+const {
+  read: versionsRead, versions, refreshVersions, preview, selectVersion, restoring, restore,
+  saveAsOpen, savingAs, saveAs, deleteVersionsOpen, onVersionsDeleted, versionsMobileMenu
+} = useObjectVersions<DashboardVersion, DashboardVersionSnapshot>({
+  path: () => `/dashboards/${dashboardId}`,
+  key: () => `dashboard-versions-${dashboardId}`,
+  afterRestore: async () => {
+    await Promise.all([refreshWidgets(), refreshStatus()])
+    refreshKey.value++
+  },
+  afterCopy: () => refreshTree(),
+  copyUrl: copy => `/dashboards/${copy.id}`
+})
+await versionsRead
 const liveVersion = computed(() => versions.value?.[0] ?? null) // newest first = live
 const hasUnpublishedChanges = computed(() => dashboard.value?.hasUnpublishedChanges === true)
 // The Dashboards sidebar badges each entry by this same status.
@@ -89,8 +100,6 @@ function refreshStatus() {
   return refreshDashboard()
 }
 
-// --- Version preview (Foundations.md §13.4) ---
-const preview = ref<DashboardVersionSnapshot | null>(null)
 const readOnly = computed(() => preview.value !== null)
 const isCompact = useCompactUi()
 const isMobile = useIsMobile()
@@ -108,37 +117,6 @@ const deviceLabel = (value: CanvasDevice) => t(`dashboards.embedDrawer.devices.$
 const layoutLocked = computed(() => readOnly.value || isCompact.value || device.value.columns !== 12)
 /** A phone or tablet: the palette as a slideover, opened from the header's Add widget. */
 const paletteOpen = ref(false)
-async function selectVersion(version: number | null) {
-  if (version === null) {
-    preview.value = null
-    return
-  }
-  try {
-    const { data } = await api.get<DashboardVersionSnapshot>(`/dashboards/${dashboardId}/versions/${version}`)
-    preview.value = data
-  } catch (error) {
-    notifyError(error, t('dashboards.editor.openVersionFailed'))
-  }
-}
-
-// Restore (Foundations.md §13.4): that version replaces the draft - nothing is published.
-const restoring = ref(false)
-async function restore() {
-  if (!preview.value) return
-  const version = preview.value.version
-  restoring.value = true
-  try {
-    await api.post(`/dashboards/${dashboardId}/versions/${version}/restore`)
-    preview.value = null
-    await Promise.all([refreshWidgets(), refreshVersions(), refreshStatus()])
-    refreshKey.value++
-    toast.add({ title: t('dashboards.editor.restored', { version }), description: t('dashboards.editor.restoredHelp'), color: 'success' })
-  } catch (error) {
-    notifyError(error, t('dashboards.editor.restoreFailed'))
-  } finally {
-    restoring.value = false
-  }
-}
 
 // Duplicate (D26): a copy of the draft - its widgets and variables - unpublished, opened by no role.
 const duplicateOpen = ref(false)
@@ -156,24 +134,6 @@ async function duplicate(input: { name: string, slug: string }) {
     notifyError(error, t('dashboards.editor.copyFailed'))
   } finally {
     duplicating.value = false
-  }
-}
-
-const saveAsOpen = ref(false)
-const savingAs = ref(false)
-async function saveAs(input: { name: string, slug: string }) {
-  if (!preview.value) return
-  savingAs.value = true
-  try {
-    const { data } = await api.post<Dashboard>(`/dashboards/${dashboardId}/versions/${preview.value.version}/duplicate`, { data: input })
-    saveAsOpen.value = false
-    await refreshTree()
-    toast.add({ title: t('dashboards.editor.copyCreated', { name: data.name }), description: t('dashboards.editor.copyCreatedHelp'), color: 'success' })
-    await navigateTo(`/dashboards/${data.id}`)
-  } catch (error) {
-    notifyError(error, t('dashboards.editor.copyFailed'))
-  } finally {
-    savingAs.value = false
   }
 }
 
@@ -289,9 +249,9 @@ async function publish(note?: string) {
   publishing.value = true
   try {
     await autosave.flush()
-    const { data } = await api.post<DashboardVersion>(`/dashboards/${dashboardId}/publish`, note ? { data: { note } } : undefined)
+    const result = await api.post<DashboardVersion>(`/dashboards/${dashboardId}/publish`, note ? { data: { note } } : undefined)
     await Promise.all([refreshVersions(), refreshStatus()])
-    toast.add({ title: t('dashboards.editor.published', { version: data.version }), color: 'success' })
+    publishToast(result, t('dashboards.editor.published', { version: result.data.version }))
   } catch (error) {
     notifyError(error, t('dashboards.editor.publishFailed'))
   } finally {
@@ -302,10 +262,6 @@ async function publish(note?: string) {
 // --- Object actions: the "⋯" menu next to the title (settings, delete) -
 // kept apart from the everyday canvas/publish actions on the right. ---
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 const objectMenuItems = computed(() => [
   [
     { label: t('dashboards.editor.duplicate'), icon: 'i-lucide-copy', onSelect: () => { duplicateOpen.value = true } }
@@ -324,22 +280,11 @@ const headerActions = computed<HeaderAction[]>(() => [
       ]),
   { label: t('common.refresh'), icon: 'i-lucide-refresh-cw', onSelect: () => { refreshKey.value++ } }
 ])
-const { mobileMenu: versionsMobileMenu } = useVersionMenu(() => versions.value ?? [], () => preview.value?.version ?? null, selectVersion, openDeleteVersions)
 // Settings › Versions opens a version here: `?version=N` previews it.
 onMounted(() => {
   const asked = Number(route.query.version)
   if (asked) void selectVersion(asked)
 })
-// "Delete old versions…" (Foundations.md §13.4): a preview of a deleted version goes back to the draft.
-const deleteVersionsOpen = ref(false)
-function openDeleteVersions() {
-  deleteVersionsOpen.value = true
-}
-async function onVersionsDeleted(deleted: number[]) {
-  const viewing = preview.value?.version
-  if (viewing !== undefined && deleted.includes(viewing)) await selectVersion(null)
-  await refreshVersions()
-}
 
 // --- Delete ---
 const deleting = ref(false)
@@ -360,11 +305,6 @@ async function deleteDashboard() {
 // --- Widgets (draft) ---
 /** A card's Delete… asks first - a widget's query goes with it. */
 const widgetToDelete = ref<DashboardWidgetContent | null>(null)
-/** The delete modal's Confirm - Delete enables only once it is checked (AGENTS.md §25). */
-const deleteWidgetConfirmed = ref(false)
-watch(widgetToDelete, (widget) => {
-  if (widget) deleteWidgetConfirmed.value = false
-})
 const deletingWidget = ref(false)
 function askDeleteWidget(widget: DashboardWidgetContent) {
   widgetToDelete.value = widget
@@ -471,11 +411,12 @@ const flowLayout = dashboardFlowLayout((id) => {
   const widget = displayedWidgets.value.find(w => w.id === id)
   return widget && { x: widget.gridX, y: widget.gridY, w: widget.gridW, mobile: widget.config?.mobile }
 })
-const gridOptions = {
+const gridOptions: GridStackOptions = {
   column: DESIGN_COLUMNS,
   cellHeight: 72,
   margin: 8,
-  float: false,
+  // Top gravity: widgets rise to fill the space above them (gridstack 14's `mode`, `float: false` before).
+  mode: 'top',
   draggable: { handle: '.dashboard-widget-drag-handle' }
 }
 const gridComponents = { DashboardWidgetCard }
@@ -809,68 +750,22 @@ const unconfiguredCount = computed(() => (widgets.value ?? []).filter(w => !w.qu
     <!-- Delete lives in the "⋯" menu, so there's no button to anchor a
     popover to - a small modal instead, with AGENTS.md §25's "Confirm"
     checkbox in the footer. -->
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('dashboards.editor.deleteTitle')"
       :description="t('dashboards.editor.deleteHelp', { name: dashboard?.name ?? t('dashboards.editor.thisDashboard') })"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteDashboard"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteDashboard"
+    />
     <!-- A widget's Delete… (its card's "⋮") - it goes from the draft with its query. -->
-    <UModal
+    <DeleteConfirmModal
       :open="widgetToDelete !== null"
       :title="t('dashboards.editor.deleteWidgetTitle')"
       :description="t('dashboards.editor.deleteWidgetHelp', { name: widgetToDelete?.label || (widgetToDelete ? catalog.widgetLabel(widgetToDelete.type) : '') })"
+      :loading="deletingWidget"
       @update:open="(isOpen: boolean) => { if (!isOpen) widgetToDelete = null }"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <UCheckbox v-model="deleteWidgetConfirmed" />
-            <span class="text-sm">{{ t('common.confirm') }}</span>
-          </label>
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deletingWidget"
-              @click="widgetToDelete = null"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :disabled="!deleteWidgetConfirmed"
-              :loading="deletingWidget"
-              @click="deleteWidget"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      @confirm="deleteWidget"
+    />
 
     <VersionSaveAsModal
       v-if="dashboard"

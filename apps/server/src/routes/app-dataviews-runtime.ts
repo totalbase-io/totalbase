@@ -2,13 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { UUID_PATTERN } from "@totalbase/shared";
 import { callerRoleIds, callerRoles } from "../caller-roles.js";
 import { checkConstraintValues } from "@totalbase/tb-catalog";
-import { getRelationDetail } from "@totalbase/pg-catalog";
 import { TotalBaseError } from "@totalbase/errors";
 import { readableCatalog, recordCatalog, sourceDetail } from "../record-catalog.js";
 import type { AppContext } from "../context.js";
 import { requireAppAccess } from "../auth-guards.js";
 import { openableDataView } from "./app-dataviews.js";
-import { requestData, type DataBody } from "../request-body.js";
+import { requestData, type DataBody, optionalData } from "../request-body.js";
+import { columnReference } from "@totalbase/dataviews";
 
 interface CreateStateBody { name: string; config: Record<string, unknown> }
 interface UpdateStateBody { name?: string; config?: Record<string, unknown> }
@@ -122,14 +122,17 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
     const view = await openableDataView(context, request, request.params.slug);
     if (view.sourceResource === null) throw new TotalBaseError("RESOURCE_NOT_FOUND", "This DataView has no source.");
     const roleIds = await callerRoleIds(context, request);
-    const detail = await sourceDetail(context, view.sourceResource);
-    const catalog = await readableCatalog(context, roleIds, view.sourceResource, detail);
+    const [detail, permission] = await Promise.all([
+      sourceDetail(context, view.sourceResource),
+      roleIds === null ? null : context.effectivePermissions.resolve(roleIds, view.sourceResource, "READ"),
+    ]);
+    // The READ grant read once: the catalog's columns and the related ones below both answer to it.
+    const catalog = await readableCatalog(context, roleIds, view.sourceResource, { detail, ...(permission && { read: permission }) });
     // The values of its readable columns' CHECK lists (`estado IN ('A', 'B')`) - a Kanban's lanes; never the expressions.
     const expressions = detail.checkConstraints.map((check) => check.expression);
     const checkValues = Object.fromEntries(catalog.columns.map((column) => [column.name, checkConstraintValues(column.name, expressions)] as const).filter(([, values]) => values !== null));
     // Its related columns' types (`producto.codigo` → text) - what the grid's Filter offers them with; only the ones this viewer may read.
     const types = view.sourceResourceOid === null ? {} : await context.dataviewsAdmin.relatedColumnTypes(await context.dataviewsAdmin.listPublishedFields(view.id), view.sourceResourceOid);
-    const permission = roleIds === null ? null : await context.effectivePermissions.resolve(roleIds, view.sourceResource, "READ");
     const relatedColumns = Object.fromEntries(Object.entries(types).filter(([path]) => permission === null || permission.fieldDecision(path) === "ALLOW"));
     return { data: { ...catalog, relatedColumns, checkValues } };
   });
@@ -148,43 +151,7 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
     const catalog = await readableCatalog(context, roleIds, view.sourceResource);
     const column = catalog.columns.find((c) => c.name === request.params.column);
     if (!column) throw notFound;
-    let relation = catalog.relations.find((r) => r.sourceColumn === column.name);
-    if (!relation && view.sourceResourceOid !== null) {
-      // A view's column: the foreign key of the table column it is.
-      const { rows } = await context.database.query<{ relid: number; attname: string }>(
-        `SELECT o.origin_relid::int AS relid, a.attname
-         FROM totalbase.view_column_origins($1) o
-         JOIN pg_catalog.pg_attribute v ON v.attrelid = $1 AND v.attnum = o.attnum
-         JOIN pg_catalog.pg_attribute a ON a.attrelid = o.origin_relid AND a.attnum = o.origin_attnum
-         WHERE v.attname = $2`,
-        [view.sourceResourceOid, column.name],
-      );
-      const origin = rows[0];
-      if (origin) {
-        const table = await getRelationDetail(context.database, origin.relid).catch(() => null);
-        relation = table?.relations.find((r) => r.sourceColumn === origin.attname);
-      }
-    }
-    if (!relation) return { data: null };
-    const { rows: targets } = await context.database.query<{ id: string; row_presentation: { displayField?: string; displayTemplate?: string } | null; postgres_oid: number }>(
-      `SELECT id, row_presentation, postgres_oid FROM totalbase.resources WHERE "schema" = $1 AND name = $2 AND status = 'ACTIVE'`,
-      [relation.targetSchema, relation.targetTable],
-    );
-    const target = targets[0];
-    if (!target) return { data: null };
-    const detail = await getRelationDetail(context.database, target.postgres_oid);
-    const presentation = target.row_presentation ?? {};
-    const named = detail.columns.find((c) => ["name", "label", "title", "display_name"].includes(c.name.toLowerCase()));
-    const text = detail.columns.find((c) => c.name !== relation!.targetColumn && /^(text|character varying|character|citext)/.test(c.dataType));
-    return {
-      data: {
-        schema: relation.targetSchema,
-        table: relation.targetTable,
-        column: relation.targetColumn,
-        displayField: presentation.displayField ?? (named ?? text)?.name ?? relation.targetColumn,
-        ...(presentation.displayTemplate ? { displayTemplate: presentation.displayTemplate } : {}),
-      },
-    };
+    return { data: await columnReference(context.database, view.sourceResourceOid, catalog.relations, column.name) };
   });
 
   /**
@@ -197,8 +164,7 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
     const view = await openableDataView(context, request, request.params.slug);
     const junction = view.sourceResource && UUID_PATTERN.test(request.params.resource) ? await context.dataviewsAdmin.getJunction(view.sourceResource, request.params.resource) : null;
     if (!junction) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Junction table not found.");
-    const { rows } = await context.database.query<{ exposed_methods: string[] }>(`SELECT exposed_methods FROM totalbase.resources WHERE id = $1`, [junction.resourceId]);
-    const exposed = new Set(rows[0]?.exposed_methods ?? []);
+    const exposed = new Set<string>((await context.resourcesAdmin.get(junction.resourceId).catch(() => null))?.exposedMethods ?? []);
     const roleIds = await callerRoleIds(context, request);
     const decisions = roleIds === null ? null : (await context.effectivePermissions.resolveBulk(roleIds, [junction.resourceId])).get(junction.resourceId);
     const allowed = (action: "READ" | "CREATE" | "DELETE", method: string) => exposed.has(method) && (decisions === null || decisions?.[action].decision === "ALLOW");
@@ -225,7 +191,7 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
    * own filter, if they had one to record.
    */
   app.post<{ Body: { data?: AuditEventBody } | undefined }>("/app/api/audit/events", { preHandler }, async (request, reply) => {
-    const { resource, action, rowCount, format, search, where } = request.body?.data ?? ({} as AuditEventBody);
+    const { resource, action, rowCount, format, search, where } = optionalData(request.body);
     if (!BULK_AUDIT_ACTIONS.includes(action as BulkAuditAction)) {
       throw new TotalBaseError("INVALID_QUERY", `Unsupported audit event action: ${action}`);
     }

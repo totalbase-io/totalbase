@@ -46,7 +46,6 @@ function overrideDefault(column: CatalogColumn) {
 }
 const adding = ref(false)
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
 const columnWidths = ref<Record<string, number>>({})
 const visibleColumnNames = ref<string[]>([])
@@ -206,7 +205,7 @@ function toggleSort(column: CatalogColumn) {
   else sort.value = column.name
 }
 function copyRow(row: Record<string, unknown>) {
-  navigator.clipboard?.writeText(JSON.stringify(row, null, 2))
+  copyText(JSON.stringify(row, null, 2))
   toast.add({ title: t('database.resourceDataGrid.rowCopied'), color: 'success' })
 }
 function rowActions(row: Record<string, unknown>) {
@@ -225,7 +224,6 @@ async function confirmDelete() {
     toast.add({ title: t('database.resourceDataGrid.rowsDeleted'), color: 'success' })
     selectedKeys.value = new Set()
     deleteOpen.value = false
-    deleteConfirmed.value = false
     await refresh()
   } catch (err) {
     notifyError(err, t('database.resourceDataGrid.deleteRowsError'))
@@ -538,32 +536,15 @@ const tableColumns = computed<TableColumn<Row>[]>(() => [
       :page-size-options="[25, 50, 100]"
       class="shrink-0 px-2"
     />
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('database.resourceDataGrid.deleteTitle')"
+      :loading="deleting"
+      @confirm="confirmDelete"
     >
-      <template #body>
-        <p class="text-sm text-muted">
-          {{ t('database.resourceDataGrid.deleteBody', { n: selectedKeys.size }) }}
-        </p>
-      </template><template #footer>
-        <div class="flex w-full items-center justify-between gap-3">
-          <label class="flex items-center gap-2 cursor-pointer text-sm"><UCheckbox v-model="deleteConfirmed" /> {{ t('common.confirm') }}</label><div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              @click="deleteOpen = false"
-            /><UButton
-              :label="t('common.delete')"
-              color="error"
-              :disabled="!deleteConfirmed"
-              :loading="deleting"
-              @click="confirmDelete"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <p class="text-sm text-muted">
+        {{ t('database.resourceDataGrid.deleteBody', { n: selectedKeys.size }) }}
+      </p>
+    </DeleteConfirmModal>
   </div>
 </template>

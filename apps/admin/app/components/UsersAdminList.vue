@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The Users table. Filters come from the route query, set by the Users
- * panel (UsersPanel.vue): `?status=ACTIVE|INVITED|INACTIVE` and
+ * panel (UsersPanel.vue): `?status=ACTIVE|INVITED|INACTIVE|REMOVED` and
  * `?role=<id>`. New user / Invite live in that panel too; a row opens the
  * user's own page (pages/users/[id].vue) - no detail slideover.
  */
@@ -36,6 +36,7 @@ const headerTitle = computed(() => {
 const headerDescription = computed(() => {
   if (statusFilter.value === 'INVITED') return t('users.usersList.descriptionInvited')
   if (statusFilter.value === 'INACTIVE') return t('users.usersList.descriptionInactive')
+  if (statusFilter.value === 'REMOVED') return t('users.usersList.descriptionRemoved')
   if (roleFilter.value) return t('users.usersList.descriptionRole')
   return t('users.usersList.description')
 })
@@ -164,7 +165,7 @@ function actionItems(user: AdminUserListItem) {
       user.active
         ? { label: t('users.roleEditor.deactivate'), icon: 'i-lucide-user-x', disabled: undeletable, onSelect: () => toggleActiveRow(user, false) }
         : { label: t('users.roleEditor.activate'), icon: 'i-lucide-user-check', onSelect: () => toggleActiveRow(user, true) },
-      { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, disabled: undeletable, onSelect: () => openDrop([user]) }
+      { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, disabled: undeletable, onSelect: () => drop.start([user]) }
     ]
   ]
 }
@@ -178,47 +179,16 @@ const selectedUsers = computed(() => rows.value.filter(u => rowSelection.value[u
 
 // --- Delete - one row's action and the toolbar's bulk Delete both land
 // here (a single row is just a one-element list). ---
-const dropTargets = ref<AdminUserListItem[]>([])
-const isDeleteOpen = computed({
-  get: () => dropTargets.value.length > 0,
-  set: (open: boolean) => { if (!open) dropTargets.value = [] }
+const drop = useBulkDelete<AdminUserListItem>({
+  remove: target => api.del(`/users/${target.id}`),
+  after: async () => {
+    rowSelection.value = {}
+    await refreshUsersData()
+  },
+  deleted: n => t('users.usersList.deleted', n),
+  failed: failures => t('users.usersList.deleteFailed', { n: failures.length })
 })
-const dropConfirmed = ref(false)
-const deleting = ref(false)
-const deleteModalTitle = computed(() =>
-  t('users.usersList.deleteTitle', dropTargets.value.length)
-)
 
-function openDrop(targets: AdminUserListItem[]) {
-  dropConfirmed.value = false
-  dropTargets.value = targets
-}
-
-async function confirmDrop() {
-  const targets = dropTargets.value
-  deleting.value = true
-  let failures = 0
-  for (const target of targets) {
-    try {
-      await api.del(`/users/${target.id}`)
-    } catch {
-      failures += 1
-    }
-  }
-  deleting.value = false
-  dropTargets.value = []
-  rowSelection.value = {}
-  await refreshUsersData()
-  if (failures === 0) {
-    toast.add({ title: t('users.usersList.deleted', targets.length), color: 'success' })
-  } else {
-    toast.add({
-      title: t('users.tokens.deletedPartial', { done: targets.length - failures, total: targets.length }),
-      description: t('users.usersList.deleteFailed', { n: failures }),
-      color: 'warning'
-    })
-  }
-}
 // --- Bulk role membership and deactivation (Security.md §9.4):
 // one Data API request each - one transaction, an audit row per change. ---
 const rolesApi = useRolesApi()
@@ -281,7 +251,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
     { label: t('users.usersList.addToRoleEllipsis'), icon: 'i-lucide-user-plus', onSelect: () => openRoleAction('add') },
     { label: t('users.usersList.removeFromRoleEllipsis'), icon: 'i-lucide-user-minus', onSelect: () => openRoleAction('remove') },
     { label: t('users.roleEditor.deactivate'), icon: 'i-lucide-user-x', onSelect: deactivateSelected },
-    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDrop(selectedUsers.value) }
+    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => drop.start(selectedUsers.value) }
   ],
   onClear: () => {
     rowSelection.value = {}
@@ -497,51 +467,14 @@ const headerSelection = computed<HeaderSelection>(() => ({
       />
     </template>
 
-    <UModal
-      v-model:open="isDeleteOpen"
-      :title="deleteModalTitle"
-    >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('users.usersList.deleteBody') }}
-          </p>
-          <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
-            <li
-              v-for="u in dropTargets"
-              :key="u.id"
-              class="text-sm truncate"
-            >
-              {{ u.name ?? u.email ?? u.id }}
-            </li>
-          </ul>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="dropConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="dropTargets = []"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :disabled="!dropConfirmed"
-              :loading="deleting"
-              @click="confirmDrop"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+    <DeleteConfirmModal
+      v-model:open="drop.open.value"
+      :title="t('users.usersList.deleteTitle', drop.targets.value.length)"
+      :description="t('users.usersList.deleteBody')"
+      :items="drop.targets.value.map(u => u.name ?? u.email ?? u.id)"
+      :loading="drop.deleting.value"
+      @confirm="drop.confirm"
+    />
     <PickRoleModal
       v-model:open="roleActionOpen"
       :title="roleAction === 'remove' ? t('users.usersList.removeFromRole') : t('users.usersList.addToRole')"

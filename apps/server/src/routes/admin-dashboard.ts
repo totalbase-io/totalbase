@@ -22,6 +22,7 @@ type AttentionKey =
   | "outbox_backlog"
   | "tokens_expiring"
   | "failed_sign_ins"
+  | "tokens_refused"
   | "backup_failed";
 type AttentionItem = { key: AttentionKey; severity: "error" | "warning" | "info"; count: number };
 
@@ -120,6 +121,8 @@ export function registerAdminDashboardRoutes(app: FastifyInstance, context: AppC
         severity: "warning" as const,
         count: (outbox.oldestPendingSeconds ?? 0) > OUTBOX_BACKLOG_SECONDS ? outbox.pending : 0,
       },
+      // A revoked, expired or out-of-place token still being presented (Security.md §11.6): a program nobody updated, or a leaked secret.
+      { key: "tokens_refused" as const, severity: "warning" as const, count: insights.last24h.refusedTokens },
       { key: "tokens_expiring" as const, severity: "info" as const, count: expiringTokens },
       { key: "failed_sign_ins" as const, severity: "info" as const, count: insights.last24h.failedSignIns },
     ].filter((item) => item.count > 0);

@@ -10,7 +10,7 @@ Thanks for helping. This file has what a contribution needs: how to run the proj
 
 ## Running it
 
-You need Node.js 22, pnpm 10 and a reachable PostgreSQL 15-18 with a role that owns a database.
+You need Node.js 26 (`.nvmrc`), pnpm 10 and a reachable PostgreSQL 15-18 with a role that owns a database. Node.js 26 doesn't bundle corepack: `npm install -g corepack && corepack enable` once gives you the pnpm `package.json` pins.
 
 ```bash
 pnpm install

@@ -68,8 +68,8 @@ export class AdminClient {
     return (await this.envelope<T>(method, path, body, plane, query)).data;
   }
 
-  /** The whole response envelope - `data` and the `meta` beside it (a list's `count`). */
-  private async envelope<T>(method: string, path: string, body?: unknown, plane: "/admin/api" | "/api" = "/admin/api", query?: Record<string, string>): Promise<{ data: T; meta?: Record<string, unknown> }> {
+  /** The whole response envelope - `data` and the `meta` beside it (a list's `count`) - and its status. */
+  private async envelope<T>(method: string, path: string, body?: unknown, plane: "/admin/api" | "/api" = "/admin/api", query?: Record<string, string>): Promise<{ data: T; meta?: Record<string, unknown>; status: number }> {
     const url = new URL(`${plane}${path}`, this.config.baseUrl);
     for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
     const init: RequestInit = {
@@ -82,7 +82,7 @@ export class AdminClient {
     if (body !== undefined) init.body = JSON.stringify(body);
     const response = await this.fetch(url, init);
 
-    if (response.status === 204) return { data: undefined as T };
+    if (response.status === 204) return { data: undefined as T, status: 204 };
 
     const json = (await response.json().catch(() => null)) as
       | { data: T; meta?: Record<string, unknown> }
@@ -94,7 +94,7 @@ export class AdminClient {
       throw new AdminApiError(response.status, errors);
     }
 
-    return json as { data: T; meta?: Record<string, unknown> };
+    return { ...(json as { data: T; meta?: Record<string, unknown> }), status: response.status };
   }
 
   get<T>(path: string): Promise<T> {
@@ -109,8 +109,8 @@ export class AdminClient {
     return this.request<T>("PATCH", path, body ?? {});
   }
 
-  /** A POST with its `meta` - a publish's warnings. */
-  postWithMeta<T>(path: string, body?: unknown): Promise<{ data: T; meta?: Record<string, unknown> }> {
+  /** A POST with its `meta` and status - a publish's warnings, and whether it created a version (201) or found the draft live (200). */
+  postWithMeta<T>(path: string, body?: unknown): Promise<{ data: T; meta?: Record<string, unknown>; status: number }> {
     return this.envelope<T>("POST", path, body ?? {});
   }
 

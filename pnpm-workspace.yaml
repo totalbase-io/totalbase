@@ -6,4 +6,4 @@ onlyBuiltDependencies:
   - isolated-vm
 
 patchedDependencies:
-  reka-ui@2.10.3: patches/reka-ui@2.10.3.patch
+  reka-ui@2.11.0: patches/reka-ui@2.11.0.patch

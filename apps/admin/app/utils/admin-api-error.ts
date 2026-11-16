@@ -1,4 +1,4 @@
-import type { AdminApiError as AdminApiErrorShape } from '~/types/api'
+import type { AdminApiErrorItem as AdminApiErrorShape } from '~/types/api'
 
 /**
  * Thrown by useAdminApi() for every non-2xx response. Carries the server's

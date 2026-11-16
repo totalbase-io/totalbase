@@ -70,11 +70,7 @@ async function sendLink(action: 'invite' | 'reset-password', done: string) {
 
 // --- Delete ---
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 async function deleteUser() {
   deleting.value = true
   try {
@@ -282,45 +278,21 @@ async function removeRole(assignmentId: string) {
       </section>
     </div>
 
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('users.userEditor.deleteTitle')"
+      :loading="deleting"
+      @confirm="deleteUser"
     >
-      <template #body>
-        <i18n-t
-          keypath="users.userDelegated.deleteBody"
-          tag="p"
-          class="text-sm text-muted"
-        >
-          <template #user>
-            <span class="font-medium text-default">{{ user?.name || user?.email }}</span>
-          </template>
-        </i18n-t>
-      </template>
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteUser"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <i18n-t
+        keypath="users.userDelegated.deleteBody"
+        tag="p"
+        class="text-sm text-muted"
+      >
+        <template #user>
+          <span class="font-medium text-default">{{ user?.name || user?.email }}</span>
+        </template>
+      </i18n-t>
+    </DeleteConfirmModal>
   </PageShell>
 </template>

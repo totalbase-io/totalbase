@@ -337,7 +337,6 @@
       "replace": "Reemplazar",
       "deleteTitle": "¿Eliminar el secreto? | ¿Eliminar {n} secretos?",
       "deleted": "Secreto eliminado | {n} secretos eliminados",
-      "partiallyDeleted": "{done} de {total} eliminados",
       "deleteFailures": "{n} fallaron - lo más probable es que sigan referenciados en otro lugar.",
       "refresh": "Actualizar secretos",
       "searchByKey": "Buscar por clave...",
@@ -509,6 +508,10 @@
         "graphql": {
           "label": "GraphQL",
           "description": "La API GraphQL: las tablas de la Data API en /api/graphql; cada cliente ve solo lo que sus roles le permiten."
+        },
+        "mail": {
+          "label": "Correos del sistema",
+          "description": "Lo que comparten todos los correos que TotalBase envía por su cuenta. El texto de cada uno está en Plantillas."
         }
       },
       "sections": {
@@ -548,7 +551,8 @@
         "color": "Color",
         "schedule": "Programación",
         "destination": "Destino",
-        "content": "Contenido"
+        "content": "Contenido",
+        "systemEmails": "Correos del sistema"
       },
       "units": {
         "bytes": "bytes",
@@ -718,7 +722,7 @@
         },
         "files__transforms__cache_ttl_seconds": {
           "label": "Duración de la caché de transformaciones",
-          "description": "Cuánto tiempo pueden los navegadores guardar en caché una imagen transformada, y cuánto se conserva su copia almacenada antes de que la limpieza horaria la elimine (la siguiente solicitud la regenera)."
+          "description": "Cuánto se conserva la copia almacenada de una imagen transformada antes de que la limpieza horaria la elimine (la siguiente solicitud la regenera). Los navegadores la revalidan contra el checksum del archivo."
         },
         "files__transforms__max_operations": {
           "label": "Máximo de operaciones por transformación",
@@ -752,6 +756,10 @@
           "label": "Rol predeterminado del autorregistro",
           "description": "Se asigna a cada cuenta creada por autorregistro. Ninguno: una cuenta nueva no tiene roles hasta que alguien le asigne uno."
         },
+        "auth__registration_columns": {
+          "label": "Columnas del registro",
+          "description": "Las columnas que tu proyecto agregó a la tabla de usuarios y que un autorregistro puede completar mediante `extra` (el nombre de una empresa, un país, una zona horaria): se escriben en el mismo INSERT de la cuenta, donde un trigger que crea el tenant las lee. Nunca una columna de TotalBase ni una columna Password."
+        },
         "auth__email_verification_required": {
           "label": "Exigir verificación del correo electrónico",
           "description": "Una cuenta recién registrada no puede iniciar sesión hasta que se verifique su dirección de correo electrónico."
@@ -759,6 +767,10 @@
         "auth__password_min_length": {
           "label": "Longitud mínima de la contraseña",
           "description": "La contraseña más corta que TotalBase acepta cuando un usuario define o cambia la suya."
+        },
+        "auth__password_max_age_days": {
+          "label": "Antigüedad máxima de la contraseña",
+          "description": "Una contraseña con más de esta cantidad de días debe cambiarse en el próximo inicio de sesión de su dueño, antes de darle una sesión. Las recomendaciones actuales (NIST SP 800-63B, OWASP ASVS) desaconsejan los cambios periódicos: actívalo solo si una política que debes cumplir lo pide. 0 lo desactiva."
         },
         "auth__session_ttl_hours": {
           "label": "Duración de la sesión",
@@ -906,7 +918,7 @@
         },
         "s3__endpoint": {
           "label": "Endpoint",
-          "description": "La URL base del servicio, por ejemplo https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com o http://minio:9000."
+          "description": "La URL base del servicio, por ejemplo https://s3.us-east-1.amazonaws.com, https://{'<'}account{'>'}.r2.cloudflarestorage.com o http://minio:9000."
         },
         "s3__region": {
           "label": "Región",
@@ -940,6 +952,10 @@
           "label": "Solicitudes por minuto",
           "description": "La mayor cantidad de solicitudes que puede hacer una dirección IP en una ventana de un minuto antes de ser limitada."
         },
+        "security__rate_limit_per_user_per_minute": {
+          "label": "Solicitudes por minuto por usuario",
+          "description": "La mayor cantidad de solicitudes que una sesión iniciada o un token personal puede hacer en un minuto, contadas por la credencial y no por la dirección: así, las personas detrás de una misma conexión de oficina, o una aplicación cuyo servidor envía todas las solicitudes desde una dirección, tienen cada una su propio límite. Una solicitud sin credencial, o con una credencial rechazada, cuenta contra su dirección."
+        },
         "security__rate_limit_sign_in_per_minute": {
           "label": "Inicios de sesión fallidos por minuto",
           "description": "La mayor cantidad de intentos fallidos de inicio de sesión desde una dirección IP en un minuto; un inicio de sesión correcto no cuenta. Además, cada cuenta se bloquea tras sus propios intentos fallidos, en Acceso."
@@ -955,6 +971,10 @@
         "security__trust_proxy": {
           "label": "Confiar en las cabeceras del proxy inverso",
           "description": "Lee la IP real de quien llama de X-Forwarded-For: actívalo solo detrás de un proxy que controles. Se aplica tras reiniciar."
+        },
+        "security__trusted_proxies": {
+          "label": "Proxies de confianza",
+          "description": "Direcciones o rangos CIDR (10.0.0.5, 172.16.0.0/12) cuyo X-Forwarded-For se cree: tu proxy inverso, o el servidor de tu aplicación delante del Data API. Si se define, solo se confía en estos, diga lo que diga Confiar en las cabeceras del proxy inverso. Se aplica tras reiniciar."
         },
         "auth__access_review_interval_days": {
           "label": "Intervalo de revisión de accesos",
@@ -1055,6 +1075,10 @@
         "catalog__track_comments": {
           "label": "Sincronizar descripciones con COMMENT ON",
           "description": "Completa la descripción vacía de un recurso con el COMMENT ON de PostgreSQL, y un comentario vacío con la descripción, en cada sincronización."
+        },
+        "catalog__excluded_schemas": {
+          "label": "Esquemas excluidos",
+          "description": "Esquemas que el catálogo deja afuera por completo, como el esquema de trabajo de una extensión (_timescaledb_internal): sus tablas y funciones no son recursos, sus cambios no disparan sincronización, y un recurso registrado ahí antes sale en la próxima sincronización."
         },
         "openapi__enabled": {
           "label": "Publicar el documento OpenAPI",
@@ -1471,8 +1495,7 @@
           "options": {
             "SHARED": "Compartida",
             "STANDALONE": "Independiente"
-          }
-,
+          },
           "optionDescriptions": {
             "SHARED": "La App junto al riel, como la ven los administradores.",
             "STANDALONE": "Sin riel: el menú es la única barra lateral, con tu logo, su cuenta y los módulos que pongas."
@@ -1549,6 +1572,10 @@
         "graphql__max_depth": {
           "label": "Profundidad de la selección",
           "description": "Cuánto puede anidarse la selección de una petición, introspección incluida. Hasta dónde llegan las relaciones lo fija api.max_relation_depth."
+        },
+        "mail__footer": {
+          "label": "Pie",
+          "description": "La línea con la que termina cada correo del sistema. TotalBase completa {'{'}{'{'}instance.name{'}'}{'}'} e {'{'}{'{'}instance.public_url{'}'}{'}'}. Déjalo vacío para enviarlos sin pie, cuando tus usuarios conocen tu aplicación y no esta dirección."
         }
       }
     },

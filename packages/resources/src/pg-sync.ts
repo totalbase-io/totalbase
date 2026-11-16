@@ -1,6 +1,6 @@
 import type { Database, Queryable } from "@totalbase/database";
-import { getRelationDetail } from "@totalbase/pg-catalog";
-import { quoteIdentifier } from "@totalbase/schema";
+import { getRelationDetail, listAttributes } from "@totalbase/pg-catalog";
+import { quoteIdentifier, quoteLiteral } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
 export interface SyncColumnsResult {
@@ -105,11 +105,7 @@ export async function pushColumnPresentation(database: Queryable, input: PushCol
     throw new TotalBaseError("RESOURCE_NOT_FOUND", `No active TABLE resource for ${input.schema}.${input.table}`);
   }
 
-  const { rows: attributeRows } = await database.query<{ attnum: number }>(
-    `SELECT attnum FROM pg_attribute WHERE attrelid = $1 AND attname = $2 AND NOT attisdropped`,
-    [resource.postgres_oid, input.columnName],
-  );
-  const attribute = attributeRows[0];
+  const attribute = (await listAttributes(database, [resource.postgres_oid])).find((a) => a.name === input.columnName);
   if (!attribute) {
     throw new TotalBaseError("RESOURCE_NOT_FOUND", `Column ${input.columnName} not found on ${input.schema}.${input.table} after ADD COLUMN`);
   }
@@ -210,9 +206,8 @@ export async function syncResourceDescriptions(database: Database): Promise<Sync
       // COMMENT ON's grammar takes a string constant, not an expression -
       // no bind parameter for the literal, same rule table-schema-service.ts's
       // buildCommentOnConstraintSql already follows.
-      const literal = `'${row.description.replace(/'/g, "''")}'`;
       await database.query(
-        `COMMENT ON ${row.comment_target} ${quoteIdentifier(row.schema)}.${quoteIdentifier(row.name)} IS ${literal}`,
+        `COMMENT ON ${row.comment_target} ${quoteIdentifier(row.schema)}.${quoteIdentifier(row.name)} IS ${quoteLiteral(row.description)}`,
       );
       filledFromDescription += 1;
     }

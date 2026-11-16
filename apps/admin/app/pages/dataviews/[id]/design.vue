@@ -113,6 +113,7 @@ const activeDesigner = computed(() => customRef.value)
 // Its Publish runs this page's publish (the same endpoint and refreshes
 // as the settings page's).
 const toast = useToast()
+const publishToast = usePublishToast()
 const draftPreviewOpen = ref(false)
 const draftPreviewMounted = useOpenedOnce(draftPreviewOpen)
 async function openDraftPreview() {
@@ -126,9 +127,10 @@ async function publish(note?: string): Promise<boolean> {
   publishing.value = true
   try {
     await activeDesigner.value?.flush()
-    const { data, meta } = await api.post<DataViewPublish>(`/dataviews/${id.value}/publish`, note ? { data: { note } } : undefined)
+    const result = await api.post<DataViewPublish>(`/dataviews/${id.value}/publish`, note ? { data: { note } } : undefined)
+    const { data, meta } = result
     await Promise.all([refreshStatus(), useAppsNavDataViews().refresh()])
-    toast.add({ title: t('designer.designPage.published', { version: data.version }), color: 'success' })
+    publishToast(result, t('designer.designPage.published', { version: data.version }))
     for (const warning of (meta?.warnings as string[] | undefined) ?? []) toast.add({ title: t('designer.publishWarning'), description: warning, color: 'warning' })
     return true
   } catch (err) {

@@ -1,4 +1,4 @@
-import { deleteVersionsBefore, publishVersion, quoteIdentifier, type Queryable, type VersionsTable } from "@totalbase/database";
+import { deleteVersionsBefore, publishVersion, quoteIdentifier, type Published, type Queryable, type VersionsTable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { assertVariablesValid, assertWidgetConfigValid, assertWidgetName, variableRefs, type WidgetFieldConfig } from "./widget-fields.js";
 import { isPageViewType, toAdminDataViewPublish, type AdminDataView, type AdminDataViewField, type AdminDataViewPublish, type DataViewFieldSnapshotRow, type DataViewPublishRow, type DataViewsContext, type InheritedPresentation, FIELD_SNAPSHOT_COLUMNS, FIELDS_ORDER } from "./dataviews-types.js";
@@ -50,19 +50,22 @@ export function ownedDetailSql(owner: string): string {
 export const HAS_UNPUBLISHED_CHANGES_SQL = `(${ownUnpublishedChangesSql("d")}
   OR EXISTS (SELECT 1 FROM totalbase.dataviews c WHERE c.id IN (${ownedDetailSql("d.id")}) AND ${ownUnpublishedChangesSql("c")}))`;
 
-/** Inserts a snapshot's field rows into `dataviewId` - `parent` in a second pass, since it references another row of the same batch. */
+/**
+ * Inserts a snapshot's field rows into `dataviewId` in one statement - `parent` included: a row may point at another
+ * of the same batch, and PostgreSQL checks the foreign key once the statement ends.
+ */
 export async function insertSnapshotFields(client: Queryable, dataviewId: string, fields: DataViewFieldSnapshotRow[]): Promise<void> {
-  for (const f of fields) {
-    await client.query(
-      `INSERT INTO totalbase.dataviews_fields
-         (id, dataview, kind, grid_x, grid_y, grid_w, grid_h, label, icon, column_attnum, column_name, relation_attnum, target_attnum, widget, visible, config, related_dataview, related_dashboard)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-      [f.id, dataviewId, f.kind, f.grid_x, f.grid_y, f.grid_w, f.grid_h, f.label, f.icon, f.column_attnum, f.column_name, f.relation_attnum ?? null, f.target_attnum ?? null, f.widget, f.visible, JSON.stringify(f.config), f.related_dataview, f.related_dashboard ?? null],
-    );
-  }
-  for (const f of fields) {
-    if (f.parent) await client.query(`UPDATE totalbase.dataviews_fields SET parent = $2 WHERE id = $1`, [f.id, f.parent]);
-  }
+  if (fields.length === 0) return;
+  await client.query(
+    `INSERT INTO totalbase.dataviews_fields
+       (id, dataview, kind, grid_x, grid_y, grid_w, grid_h, label, icon, column_attnum, column_name, relation_attnum, target_attnum, widget, visible, config, related_dataview, related_dashboard, parent)
+     SELECT f.id, $1, f.kind, f.grid_x, f.grid_y, f.grid_w, f.grid_h, f.label, f.icon, f.column_attnum, f.column_name, f.relation_attnum, f.target_attnum,
+            f.widget, f.visible, COALESCE(f.config, '{}'::jsonb), f.related_dataview, f.related_dashboard, f.parent
+     FROM jsonb_to_recordset($2::jsonb) AS f(id uuid, kind text, grid_x integer, grid_y integer, grid_w integer, grid_h integer, label text, icon text,
+       column_attnum integer, column_name text, relation_attnum integer, target_attnum integer, widget text, visible boolean, config jsonb,
+       related_dataview uuid, related_dashboard uuid, parent uuid)`,
+    [dataviewId, JSON.stringify(fields.map((f) => ({ ...f, relation_attnum: f.relation_attnum ?? null, target_attnum: f.target_attnum ?? null, related_dashboard: f.related_dashboard ?? null, parent: f.parent ?? null })))],
+  );
 }
 
 /** The draft as it would be snapshotted - `view_config`, raw field rows (fixed order), `code`. */
@@ -111,7 +114,7 @@ export async function publishWarnings(ctx: DataViewsContext, dataviewId: string)
  * equals it. A draft equal to an OLDER version (Restore, Foundations.md §13.4) records it
  * as `restored_from_version` - the newest such version.
  */
-export async function publish(ctx: DataViewsContext, dataviewId: string, userId: string | null, note: string | null = null): Promise<AdminDataViewPublish> {
+export async function publish(ctx: DataViewsContext, dataviewId: string, userId: string | null, note: string | null = null): Promise<Published<AdminDataViewPublish>> {
   // Validated first - a master that can't go out takes none of its details with it - then one transaction:
   // the DataView's row locked (two publishes at once queue up, the second finds the first's version and
   // returns it), its details published inside it, so either everything is out or nothing is.
@@ -119,10 +122,10 @@ export async function publish(ctx: DataViewsContext, dataviewId: string, userId:
   return ctx.database.transaction((client) => publishOn(ctx, client, dataviewId, userId, note));
 }
 
-export async function publishOn(ctx: DataViewsContext, client: Queryable, dataviewId: string, userId: string | null, note: string | null = null): Promise<AdminDataViewPublish> {
+export async function publishOn(ctx: DataViewsContext, client: Queryable, dataviewId: string, userId: string | null, note: string | null = null): Promise<Published<AdminDataViewPublish>> {
   // The shared helper locks the DataView's row, then takes the snapshot under that lock (`@totalbase/database`'s
   // `publishVersion`: the no-op on an unchanged draft, MAX + 1, `restored_from_version`).
-  const row = await publishVersion<DataViewPublishRow>(client, DATAVIEW_VERSIONS, dataviewId, userId, async () => {
+  const { row, created } = await publishVersion<DataViewPublishRow>(client, DATAVIEW_VERSIONS, dataviewId, userId, async () => {
     // Its detail DataViews go out with it - the App's Detail control opens their published version.
     const { rows: owned } = await client.query<{ id: string }>(ownedDetailSql("$1"), [dataviewId]);
     for (const detail of owned) await publishOn(ctx, client, detail.id, userId);
@@ -135,7 +138,7 @@ export async function publishOn(ctx: DataViewsContext, client: Queryable, datavi
       { column: "presentation_snapshot", expression: "totalbase.dataview_presentation($1)" },
     ];
   }, note);
-  return toAdminDataViewPublish(row);
+  return { ...toAdminDataViewPublish(row), created };
 }
 
 /**

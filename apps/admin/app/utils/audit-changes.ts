@@ -12,10 +12,17 @@ export interface AuditDiffRow {
 }
 
 /**
+ * What stands for the value of a column that changed but is excluded from the audit log
+ * (`{ column: { excluded: true } }`, Security.md §11.4): AuditDiff.vue says so instead of showing a value.
+ */
+export const NOT_RECORDED = '\u0000not-recorded'
+
+/**
  * An UPDATE entry's own before/after (Security.md §11.4):
  * `changes` holds `{ column: { old, new } }` for every column the update
  * changed, read in the same statement - exact even when an earlier change
- * didn't go through TotalBase (SQL Console, a script). null when the entry
+ * didn't go through TotalBase (SQL Console, a script). An excluded column that
+ * changed has no before and NOT_RECORDED as its after. null when the entry
  * has none (a table without a primary key on PostgreSQL 15-17, or nothing
  * changed): callers then compare against the record's previous entry.
  */
@@ -26,6 +33,10 @@ export function updateDiffFromChanges(log: Pick<AuditLog, 'action' | 'changes'>)
   const before: Row = {}
   const after: Row = {}
   for (const [field, pair] of Object.entries(changes as Row)) {
+    if (pair && typeof pair === 'object' && (pair as Row).excluded === true) {
+      after[field] = NOT_RECORDED
+      continue
+    }
     if (!pair || typeof pair !== 'object' || !('old' in pair)) return null
     before[field] = (pair as Row).old
     after[field] = (pair as Row).new

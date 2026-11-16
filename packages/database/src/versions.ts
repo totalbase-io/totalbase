@@ -34,6 +34,13 @@ export type VersionSnapshotColumn = { column: string; value: unknown; cast?: "js
 const qualify = (name: string) => name.split(".").map(quoteIdentifier).join(".");
 
 /**
+ * What a Publish answers (Foundations.md §13.6): the version now live, and whether this call created it - false
+ * when the draft already equaled it, a no-op. `created` is the call's, not the version's: the route turns it into
+ * its status (201 or 200) and leaves it out of the body.
+ */
+export type Published<Version> = Version & { created: boolean };
+
+/**
  * Publishes a draft as the next version (Foundations.md §13.4), inside
  * the caller's transaction: locks the owner's row (two publishes at once
  * queue up, and the second finds the first's version instead of inserting
@@ -42,7 +49,7 @@ const qualify = (name: string) => name.split(".").map(quoteIdentifier).join(".")
  * latest version when the snapshot equals it (a no-op publish), or inserts
  * MAX(version) + 1 with `restored_from_version` = the newest OLDER version
  * holding the same snapshot (a Restore that was published, §13.4; null
- * otherwise). Returns the version row (`columns`), existing or inserted.
+ * otherwise). Returns the version row (`columns`), existing or inserted, and whether this call created it.
  */
 export async function publishVersion<Row extends QueryResultRow>(
   client: Queryable,
@@ -52,7 +59,7 @@ export async function publishVersion<Row extends QueryResultRow>(
   snapshot: (client: Queryable) => Promise<VersionSnapshotColumn[]>,
   /** The publisher's note on what this version changes (Foundations.md §13.3) - kept only when a version is created. */
   note: string | null = null,
-): Promise<Row> {
+): Promise<{ row: Row; created: boolean }> {
   await client.query(`SELECT 1 FROM ${qualify(versions.ownerTable)} WHERE id = $1 FOR UPDATE`, [ownerId]);
   const columns = await snapshot(client);
 
@@ -73,7 +80,7 @@ export async function publishVersion<Row extends QueryResultRow>(
        AND ${equals}`,
     params,
   );
-  if (unchanged[0]) return unchanged[0];
+  if (unchanged[0]) return { row: unchanged[0], created: false };
 
   params.push(userId, note);
   const { rows } = await client.query<Row>(
@@ -84,7 +91,7 @@ export async function publishVersion<Row extends QueryResultRow>(
      RETURNING ${versions.columns}`,
     params,
   );
-  return rows[0]!;
+  return { row: rows[0]!, created: true };
 }
 
 /**

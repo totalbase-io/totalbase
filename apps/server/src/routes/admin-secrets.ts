@@ -5,6 +5,7 @@ import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, NO_CONTENT, object, ok, ref } from "../openapi-admin-docs.js";
 import { SECRETS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { optionalData } from "../request-body.js";
 
 const KEY_PARAM = { key: { description: "The secret's key, e.g. `mail.password`.", schema: { type: "string" } } };
 
@@ -44,7 +45,7 @@ export function registerAdminSecretsRoutes(app: FastifyInstance, context: AppCon
       }),
     },
     async (request) => {
-      const value = request.body?.data?.value;
+      const value = optionalData(request.body).value;
       if (typeof value !== "string") throw new TotalBaseError("INVALID_QUERY", "Expected { data: { value } } with a string value.");
       return { data: await context.secrets.set(request.params.key, value) };
     },

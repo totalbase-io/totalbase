@@ -179,10 +179,11 @@ function isUsersTable(root: ResolvedResource): boolean {
  * administrator locked, reset the failed-login counter, turn an account
  * into one that can (or can't) sign in, forge the last sign-in, or change
  * an email and send a reset to the new address - signing in as that user,
- * with roles the manager doesn't hold. Email changes go through their own
+ * with roles the manager doesn't hold - or take back an administrator's request to change a password (§2.20).
+ * Email changes go through their own
  * routes (§2.12), accounts are created by invitation (§9.3).
  */
-const USERS_ADMIN_WRITTEN_COLUMNS = ["email", "email_verified_at", "can_login", "locked_until", "failed_login_count", "last_login_at"];
+const USERS_ADMIN_WRITTEN_COLUMNS = ["email", "email_verified_at", "can_login", "locked_until", "failed_login_count", "last_login_at", "removed_at", "password_changed_at", "password_change_required"];
 /**
  * Set when an account is created, never changed through the Data API - by
  * anyone: an email change has its own route (§2.12), which retires the

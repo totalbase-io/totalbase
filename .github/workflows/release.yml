@@ -113,7 +113,7 @@ jobs:
       # The script's checks are a node script (fetch).
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
       # Pulled by its version from Docker Hub, as people install it: each runner gets its own architecture's image.
       - name: Check the published image
         run: |

@@ -1,5 +1,5 @@
 import type { ColorMode, LoginCardPosition, LoginLayout, McpMode, NeutralColor } from "@totalbase/shared";
-import { MAIL_TEMPLATE_DEFAULTS, type MailTemplate } from "./mail-templates.js";
+import { MAIL_FOOTER_DEFAULT, MAIL_TEMPLATE_DEFAULTS, type MailTemplate } from "./mail-templates.js";
 
 /**
  * Typed settings registry. Defaults live in code; PostgreSQL stores only
@@ -42,6 +42,8 @@ export interface SettingsRegistry {
   "auth.registration_columns": string[];
   "auth.email_verification_required": boolean;
   "auth.password_min_length": number;
+  /** Days a password may be used before a sign-in asks for a new one; 0 = off (Security.md §2.20). */
+  "auth.password_max_age_days": number;
   "auth.session_ttl_hours": number;
   /** Minutes a session may go unused before it stops validating; 0 = off (Security.md §2.2). */
   "auth.session_idle_minutes": number;
@@ -117,6 +119,8 @@ export interface SettingsRegistry {
   "mail.templates.mfa_disabled": MailTemplate;
   "mail.templates.token_created": MailTemplate;
   "mail.templates.user_welcome": MailTemplate;
+  /** The line every system email's HTML body ends with; empty = no footer (Administration.md §8.3). */
+  "mail.footer": string;
 
   "api_keys.default_ttl_days": number;
   "api_keys.rotation_warning_days": number;
@@ -413,6 +417,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.registration_columns": [],
   "auth.email_verification_required": true,
   "auth.password_min_length": 12,
+  "auth.password_max_age_days": 0,
   "auth.session_ttl_hours": 720,
   "auth.session_idle_minutes": 0,
   "auth.reauthentication_minutes": 15,
@@ -461,6 +466,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "mail.templates.mfa_disabled": MAIL_TEMPLATE_DEFAULTS.mfa_disabled,
   "mail.templates.token_created": MAIL_TEMPLATE_DEFAULTS.token_created,
   "mail.templates.user_welcome": MAIL_TEMPLATE_DEFAULTS.user_welcome,
+  "mail.footer": MAIL_FOOTER_DEFAULT,
 
   "api_keys.default_ttl_days": 365,
   "api_keys.rotation_warning_days": 30,
@@ -684,6 +690,7 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api.nested_write_max_records": { min: 1 },
 
   "auth.password_min_length": { min: 8, max: 128 },
+  "auth.password_max_age_days": { min: 0, max: 3650 },
   "auth.session_ttl_hours": { min: 1 },
   "auth.session_idle_minutes": { min: 0, max: 10_080 },
   "auth.reauthentication_minutes": { min: 1, max: 1440 },

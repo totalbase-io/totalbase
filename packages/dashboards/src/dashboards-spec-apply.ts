@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { insertWidgets, updateWidgets, type WidgetRow } from "./dashboards-widgets-write.js";
+import { createHash, randomUUID } from "node:crypto";
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { validateRoleColor } from "@totalbase/permissions";
@@ -134,12 +135,14 @@ export async function applySpec(
   const showDescriptions = spec.showDescriptions ?? true;
   if (typeof showDescriptions !== "boolean") errors.push({ path: "showDescriptions", code: "DASHBOARD_SPEC_INVALID", message: `showDescriptions is true (the default) or false - got ${JSON.stringify(showDescriptions)}.` });
   if (spec.icon !== undefined && spec.icon !== null && typeof spec.icon !== "string") errors.push({ path: "icon", code: "DASHBOARD_SPEC_INVALID", message: "icon takes a Lucide icon name, e.g. i-lucide-chart-pie." });
+  // Reported with every other problem (a dry run included) - the same rule as the UNIQUE constraints, case and all;
+  // the write itself still leaves it to them (remapDashboardUniqueViolation), so a race is their 409, never a second row.
   if (name !== undefined || slug !== undefined) {
     const { rows } = await ctx.database.query<{ name: string; slug: string }>(
-      `SELECT name, slug FROM totalbase.dashboards WHERE (lower(name) = lower($1) OR slug = $2) AND id IS DISTINCT FROM $3::uuid`,
+      `SELECT name, slug FROM totalbase.dashboards WHERE (name = $1 OR slug = $2) AND id IS DISTINCT FROM $3::uuid`,
       [name ?? "", slug ?? "", id],
     );
-    if (name !== undefined && rows.some((r) => r.name.toLowerCase() === name.toLowerCase())) errors.push({ path: "name", code: "DASHBOARD_NAME_DUPLICATE", message: `A dashboard is already named "${name}".` });
+    if (name !== undefined && rows.some((r) => r.name === name)) errors.push({ path: "name", code: "DASHBOARD_NAME_DUPLICATE", message: `A dashboard is already named "${name}".` });
     if (slug !== undefined && rows.some((r) => r.slug === slug)) errors.push({ path: "slug", code: "DASHBOARD_SLUG_DUPLICATE", message: `A dashboard already has the slug "${slug}".` });
   }
   // The variables: a problem at its own path (DB41) - each checked alone to find it; the widgets then check against
@@ -298,25 +301,22 @@ export async function applySpec(
           )).rows[0]!.id;
       const deleted = diff.widgets.deleted.map((w) => w.id);
       if (deleted.length) await client.query(`DELETE FROM totalbase.dashboards_widgets WHERE dashboard = $1 AND id = ANY($2::uuid[])`, [dashboardId, deleted]);
-      const ids: string[] = [];
-      for (const widget of next.widgets) {
-        const params = [widget.type, widget.label, widget.grid.x, widget.grid.y, widget.grid.w, widget.grid.h, widget.query, JSON.stringify(widget.config), widget.tab];
-        if (widget.id) {
-          await client.query(
-            `UPDATE totalbase.dashboards_widgets SET type = $3, label = $4, grid_x = $5, grid_y = $6, grid_w = $7, grid_h = $8, query = $9, config = $10::jsonb, tab = $11, updated_at = now()
-             WHERE id = $1 AND dashboard = $2 AND (type, label, grid_x, grid_y, grid_w, grid_h, query, config, tab) IS DISTINCT FROM ($3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)`,
-            [widget.id, dashboardId, ...params],
-          );
-          ids.push(widget.id);
-        } else {
-          const { rows } = await client.query<{ id: string }>(
-            `INSERT INTO totalbase.dashboards_widgets (dashboard, type, label, grid_x, grid_y, grid_w, grid_h, query, config, tab)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10) RETURNING id`,
-            [dashboardId, ...params],
-          );
-          ids.push(rows[0]!.id);
-        }
-      }
+      // Each widget's row, a new one's id given here - kept ones in one UPDATE, new ones in one INSERT.
+      const rows: WidgetRow[] = next.widgets.map((widget) => ({
+        id: widget.id ?? randomUUID(),
+        type: widget.type,
+        label: widget.label,
+        gridX: widget.grid.x,
+        gridY: widget.grid.y,
+        gridW: widget.grid.w,
+        gridH: widget.grid.h,
+        query: widget.query,
+        config: widget.config,
+        tab: widget.tab,
+      }));
+      await updateWidgets(client, dashboardId, rows.filter((_row, index) => next.widgets[index]!.id));
+      await insertWidgets(client, dashboardId, rows.filter((_row, index) => !next.widgets[index]!.id));
+      const ids = rows.map((row) => row.id);
       await onApplied?.(client, { dashboardId, created: !current, diff });
       return { dashboardId, ids };
     });

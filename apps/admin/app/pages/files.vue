@@ -33,9 +33,6 @@ const isUploadOpen = ref(false)
 const uploading = ref(false)
 const uploadFiles = ref<File[]>([])
 const rowSelection = ref<Record<string, boolean>>({})
-const deleteTargets = ref<FileNode[]>([])
-const deleteConfirmed = ref(false)
-const deletingFiles = ref(false)
 const savingDetails = ref(false)
 const editDescription = ref('')
 const editTags = ref<string[]>([])
@@ -48,12 +45,6 @@ const editorLoading = ref(false)
 const editorSaving = ref(false)
 const isImageEditorOpen = ref(false)
 const imageEditorFile = ref<FileNode | null>(null)
-const isDeleteOpen = computed({
-  get: () => deleteTargets.value.length > 0,
-  set: (open: boolean) => {
-    if (!open) deleteTargets.value = []
-  }
-})
 
 const { data: storedFolders, pending, error, refresh } = await useAsyncData(
   'files-folders-db',
@@ -388,14 +379,11 @@ async function openTextEditor(file: FileNode) {
   isEditorOpen.value = true
   editorLoading.value = true
   try {
-    const response = await $fetch.raw(`/api/totalbase/table/files/${file.id}`, {
-      baseURL: '',
-      responseType: 'text'
-    })
+    const response = await fetchFileContent(`/api/totalbase/table/files/${file.id}`, 'text')
     editorContent.value = String(response._data ?? '')
   } catch (err) {
     isEditorOpen.value = false
-    toast.add({ title: t('content.files.page.loadFileError'), description: err instanceof Error ? err.message : undefined, color: 'error' })
+    notifyError(err, t('content.files.page.loadFileError'))
   } finally {
     editorLoading.value = false
   }
@@ -450,10 +438,9 @@ async function loadPreview(file: FileNode, width: number, target: Map<string, st
   if (!isImageFile(file) || target.has(file.id) || loading.has(file.id)) return
   loading.add(file.id)
   try {
-    const response = await $fetch.raw(`/api/totalbase/table/files/${file.id}?width=${width}&fit=cover`, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    // `v`, ignored by the server, names the content: a browser that kept a rendition under the bare URL (before
+    // content revalidation, beta.13 and earlier) never answers with it.
+    const response = await fetchFileContent(`/api/totalbase/table/files/${file.id}?width=${width}&fit=cover&v=${file.checksum}`)
     const blob = response._data as Blob
     target.set(file.id, URL.createObjectURL(blob))
   } catch {
@@ -504,9 +491,9 @@ async function saveFileDetails() {
       tags: editTags.value
     })
     replaceStoredFile(data)
-    editDescription.value = data.description ?? ''
-    editTags.value = [...data.tags]
     toast.add({ title: t('content.files.page.fileUpdated'), color: 'success' })
+    // Saved is done: the properties close, as a record form's Save does.
+    selectedFile.value = null
   } catch (err) {
     notifyError(err, t('content.files.page.updateError'))
   } finally {
@@ -680,12 +667,7 @@ async function downloadFile(file: FileNode) {
   downloading.value = true
   try {
     const { blob, filename } = await filesApi.download(file.id)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, filename)
   } catch (err) {
     notifyError(err, t('content.files.page.downloadError'))
   } finally {
@@ -693,37 +675,16 @@ async function downloadFile(file: FileNode) {
   }
 }
 
-function openDeleteFiles(targets: FileNode[]) {
-  deleteConfirmed.value = false
-  deleteTargets.value = targets
-}
-
-async function confirmDeleteFiles() {
-  deletingFiles.value = true
-  let failures = 0
-  try {
-    for (const file of deleteTargets.value) {
-      try {
-        await filesApi.remove(file.id)
-      } catch {
-        failures += 1
-      }
-    }
-    if (selectedFile.value && deleteTargets.value.some(file => file.id === selectedFile.value?.id)) {
-      selectedFile.value = null
-    }
+const fileDelete = useBulkDelete<FileNode>({
+  remove: file => filesApi.remove(file.id),
+  after: async (targets) => {
+    if (selectedFile.value && targets.some(file => file.id === selectedFile.value?.id)) selectedFile.value = null
     rowSelection.value = {}
-    const total = deleteTargets.value.length
-    deleteTargets.value = []
     await refreshFiles()
-    toast.add({
-      title: failures === 0 ? t('content.files.page.deleted', total) : t('content.files.page.partialDeleted', { done: total - failures, total }),
-      color: failures === 0 ? 'success' : 'warning'
-    })
-  } finally {
-    deletingFiles.value = false
-  }
-}
+  },
+  deleted: n => t('content.files.page.deleted', n),
+  failed: failures => t('content.files.page.deleteFailed', { names: failures.map(file => file.name).join(', ') })
+})
 
 // Header: Refresh (PageHeader's "⋮" on a phone) and the bulk actions
 // while files are selected.
@@ -746,7 +707,7 @@ const headerSelection = computed<HeaderSelection>(() => {
     actions.push({ label: t('content.files.page.moveToFolder'), icon: 'i-lucide-folder-input', onSelect: () => openMove(selectedFiles.value) })
   }
   if (canDelete.value) {
-    actions.push({ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDeleteFiles(selectedFiles.value) })
+    actions.push({ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => fileDelete.start(selectedFiles.value) })
   }
   return {
     count: selectedFiles.value.length,
@@ -1259,7 +1220,7 @@ const folderTreeBindings = computed(() => ({
             color="error"
             variant="soft"
             class="self-start"
-            @click="openDeleteFiles([selectedFile])"
+            @click="fileDelete.start([selectedFile])"
           />
         </div>
       </template>
@@ -1423,48 +1384,13 @@ const folderTreeBindings = computed(() => ({
       </template>
     </UModal>
 
-    <UModal
-      v-model:open="isDeleteOpen"
-      :title="deleteTargets.length === 1 ? t('content.files.page.deleteOne') : t('content.files.page.deleteN', { n: deleteTargets.length })"
-    >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('content.files.page.deleteHelp') }}
-          </p>
-          <ul class="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-lg border border-default p-2">
-            <li
-              v-for="file in deleteTargets"
-              :key="file.id"
-              class="truncate text-sm"
-            >
-              {{ file.name }}
-            </li>
-          </ul>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex cursor-pointer items-center gap-2">
-              <UCheckbox v-model="deleteConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="deletingFiles"
-                @click="deleteTargets = []"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!deleteConfirmed"
-                :loading="deletingFiles"
-                @click="confirmDeleteFiles"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+    <DeleteConfirmModal
+      v-model:open="fileDelete.open.value"
+      :title="fileDelete.targets.value.length === 1 ? t('content.files.page.deleteOne') : t('content.files.page.deleteN', { n: fileDelete.targets.value.length })"
+      :loading="fileDelete.deleting.value"
+      :description="t('content.files.page.deleteHelp')"
+      :items="fileDelete.targets.value.map(file => file.name)"
+      @confirm="fileDelete.confirm"
+    />
   </div>
 </template>

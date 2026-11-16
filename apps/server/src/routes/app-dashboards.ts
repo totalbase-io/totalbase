@@ -3,7 +3,7 @@ import type { AdminDashboard, AdminDashboardWidgetContent, DashboardVariable } f
 import { TotalBaseError } from "@totalbase/errors";
 import { isUuid } from "@totalbase/shared";
 import type { AppContext } from "../context.js";
-import { callerRoles } from "../caller-roles.js";
+import { callerRoleIds } from "../caller-roles.js";
 import { requestViewer, runTimezone } from "../display-preferences.js";
 import { requireAppAccess } from "../auth-guards.js";
 import { appFileScope, dashboardQueryLimits, freshRun, variableValues, type VariableValues } from "./admin-dashboards.js";
@@ -46,12 +46,6 @@ export async function recordWidgetExport(
   });
 }
 
-/** `null` = Administrator (sees every published dashboard); otherwise the caller's role ids. */
-async function callerRoleScope(context: AppContext, request: FastifyRequest): Promise<string[] | null> {
-  const roleIds = (await callerRoles(context, request)).roleIds;
-  return (await context.roles.isAdministrator(roleIds)) ? null : roleIds;
-}
-
 /**
  * Resolves a published dashboard the caller may view, or throws
  * RESOURCE_NOT_FOUND - "denied = missing", same convention as
@@ -66,7 +60,7 @@ async function viewableDashboard(context: AppContext, request: FastifyRequest, s
   } catch {
     throw notFound;
   }
-  const scope = await callerRoleScope(context, request);
+  const scope = await callerRoleIds(context, request);
   if ((await context.dashboardsAdmin.listVersions(dashboard.id)).length === 0) throw notFound;
   if (scope !== null && !(await context.dashboardsAdmin.isVisibleToRoles(dashboard.id, scope))) throw notFound;
   return dashboard;
@@ -111,7 +105,7 @@ export function registerAppDashboardsRoutes(app: FastifyInstance, context: AppCo
   );
 
   app.get("/app/api/dashboards", { preHandler }, async (request) => ({
-    data: (await context.dashboardsAdmin.listPublished(await callerRoleScope(context, request))).map(publicDashboard),
+    data: (await context.dashboardsAdmin.listPublished(await callerRoleIds(context, request))).map(publicDashboard),
   }));
 
   app.get<{ Params: { slug: string } }>("/app/api/dashboards/:slug", { preHandler }, async (request) => {
@@ -158,7 +152,7 @@ export function registerAppDashboardsRoutes(app: FastifyInstance, context: AppCo
       const dashboard = await viewableDashboard(context, request, request.params.slug);
       const widget = (await context.dashboardsAdmin.getPublishedWidgets(dashboard.id)).find((w) => w.id === request.params.widgetId);
       if (!widget) throw new TotalBaseError("DASHBOARD_WIDGET_NOT_FOUND", `Widget not found: ${request.params.widgetId}`);
-      const roleIds = await callerRoleScope(context, request);
+      const roleIds = await callerRoleIds(context, request);
       const id = await recordWidgetExport(context, request, { type: roleIds === null ? "ADMIN" : "USER", id: request.admin!.id }, dashboard.id, widget.id, request.body, null);
       reply.code(201);
       return { data: { id } };

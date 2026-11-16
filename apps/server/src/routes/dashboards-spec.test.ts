@@ -114,6 +114,16 @@ describe("Dashboards - the draft as a spec (DM2, DM3)", () => {
     expect((await getSpec(id)).draftVersion).toBe(before.draftVersion);
   });
 
+  it("judges a name the way its UNIQUE constraint does - case and all, like creating one", async () => {
+    const taken = (await getSpec(dashboardIds[0]!)).spec.name as string;
+    const other = { ...spec(taken.toUpperCase()), slug: `spec-${RUN}-upper` };
+    const dry = await call("POST", "/admin/api/dashboards/spec", { spec: other, dryRun: true });
+    expect(dry.statusCode, dry.body).toBe(200);
+    const same = await call("POST", "/admin/api/dashboards/spec", { spec: { ...spec(taken), slug: `spec-${RUN}-same` }, dryRun: true });
+    expect(same.statusCode, same.body).toBe(422);
+    expect(same.json().errors).toContainEqual(expect.objectContaining({ path: "name", code: "DASHBOARD_NAME_DUPLICATE" }));
+  });
+
   it("keeps, creates and deletes widgets by id; a dry run answers the difference only; an old draftVersion is refused", async () => {
     const id = dashboardIds[0]!;
     const before = await getSpec(id);

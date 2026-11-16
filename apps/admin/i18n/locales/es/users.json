@@ -344,7 +344,6 @@
       "deleteTitle": "¿Eliminar {n} tokens? | ¿Eliminar el token? | ¿Eliminar {n} tokens?",
       "refresh": "Actualizar tokens",
       "deleted": "{n} tokens eliminados | Token eliminado | {n} tokens eliminados",
-      "deletedPartial": "{done} de {total} eliminados",
       "copied": "Copiado al portapapeles",
       "search": "Nombre, usuario o prefijo de clave (tb_…)",
       "introSelf": "Los tokens permiten que tus scripts e integraciones llamen a TotalBase como tú - con tus roles, comprobados en vivo en cada uso.",
@@ -365,6 +364,13 @@
       "nameHelpUser": "Para qué es - único entre los tokens de este usuario, hasta 32 caracteres.",
       "descriptionHelp": "Opcional - quién lo pidió, dónde se guarda el secreto, qué lo usa. Hasta 128 caracteres.",
       "accessHelp": "Data API actúa con los roles del usuario en /api. Admin API llega a /admin/api y requiere que el usuario tenga acceso de administración.",
+      "allowedIps": "Direcciones IP permitidas",
+      "allowedIpsHelp": "Opcional - direcciones o rangos (203.0.113.7, 10.0.0.0/8) desde los que se acepta el token. Vacío: desde cualquier lugar. Detrás de un proxy inverso, el proxy debe estar antes en Configuración › Seguridad › Proxies de confianza.",
+      "allowedIpsEllipsis": "Direcciones IP permitidas…",
+      "allowedIpsTitle": "Direcciones IP permitidas de “{name}”",
+      "allowedIpsDescription": "Desde cualquier otra dirección el token se rechaza. El secreto no cambia.",
+      "allowedIpsError": "No se pudieron guardar las direcciones IP permitidas",
+      "onlyFrom": "Solo desde {addresses}",
       "createToken": "Crear token",
       "regenerateTitle": "Regenerar “{name}”",
       "regenerateDescription": "Un nuevo secreto con una nueva caducidad - el token conserva su nombre, acceso e historial.",
@@ -384,7 +390,8 @@
     "status": {
       "ACTIVE": "Activo",
       "INVITED": "Invitado",
-      "INACTIVE": "Inactivo"
+      "INACTIVE": "Inactivo",
+      "REMOVED": "Removido"
     },
     "pages": {
       "sessions": {
@@ -456,6 +463,8 @@
       "saveError": "No se pudo guardar el usuario",
       "unlocked": "Cuenta desbloqueada",
       "unlockError": "No se pudo desbloquear la cuenta",
+      "passwordChangeRequired": "Elegirá una contraseña nueva en su próximo inicio de sesión",
+      "passwordChangeRequireError": "No se pudo pedir el cambio de contraseña",
       "updateError": "No se pudo actualizar el usuario",
       "menu": {
         "sendReset": "Enviar restablecimiento de contraseña",
@@ -469,6 +478,7 @@
         "revokeSessions": "Revocar todas las sesiones",
         "sessionsRevoked": "Sesiones revocadas",
         "sessionsError": "No se pudieron revocar las sesiones",
+        "requirePasswordChange": "Exigir cambio de contraseña",
         "unlock": "Desbloquear cuenta"
       },
       "protected": {
@@ -491,6 +501,8 @@
         "noSystem": "No - cuenta del sistema",
         "password": "Contraseña",
         "passwordSet": "Definida",
+        "passwordSetOn": "Establecida el {date}",
+        "passwordMustChange": "Establecida - debe cambiarse en el próximo inicio de sesión",
         "passwordNotSet": "Sin definir - invitación pendiente",
         "verifiedOn": "Verificado el {date}",
         "notVerified": "No verificado",
@@ -507,7 +519,11 @@
         "deactivateHelp": "Cierra sus sesiones en todas partes y detiene sus tokens de API hasta que se active de nuevo. Reversible.",
         "activateHelp": "Le permite volver a iniciar sesión y usar sus tokens de API.",
         "deleteTitle": "Eliminar usuario",
-        "deleteHelp": "Elimina para siempre la cuenta con sus sesiones, tokens de API, asignaciones de roles y avatar. Las entradas del registro de auditoría se conservan. No se puede deshacer."
+        "deleteHelp": "Elimina para siempre la cuenta con sus sesiones, tokens de API, asignaciones de roles y avatar. Las entradas del registro de auditoría se conservan. No se puede deshacer.",
+        "removeTitle": "Remover usuario",
+        "removeHelp": "Para alguien que ya no es parte de la organización: conserva la cuenta para el registro de auditoría y le quita toda forma de entrar: contraseña, sesiones, tokens de API, autenticación en dos pasos y roles. Vuelve solo por invitación.",
+        "removedTitle": "Este usuario fue removido",
+        "removedHelp": "La cuenta se conserva para el registro de auditoría y nada suyo funciona. Para traerlo de vuelta, envíale una invitación desde el menú de arriba y vuelve a darle sus roles."
       },
       "rolesIntro": "Un usuario obtiene la unión de todos los roles activados aquí. Guarda desde la cabecera para aplicarlo.",
       "accessFromRoles": "Acceso que dan estos roles:",
@@ -542,7 +558,12 @@
         "resetButton": "Restablecer",
         "resetDone": "Verificación en dos pasos restablecida",
         "resetError": "No se pudo restablecer la verificación en dos pasos."
-      }
+      },
+      "removed": "Usuario removido",
+      "removeError": "No se pudo remover al usuario",
+      "removeTitle": "¿Remover a este usuario?",
+      "removeDescription": "La cuenta queda, para que el registro de auditoría lo siga nombrando, pero ya nada suyo funciona: se van su contraseña, sus sesiones, sus tokens de API, la autenticación en dos pasos, sus proveedores de inicio de sesión, los enlaces pendientes y sus roles. Solo una nueva invitación lo trae de vuelta.",
+      "removeConfirm": "Remover"
     },
     "userCreate": {
       "passwordHelpMin": "Al menos {n} caracteres. El usuario puede iniciar sesión con ella de inmediato.",
@@ -575,6 +596,8 @@
       "signOutSelf": "Cerrar mis otras sesiones",
       "signOutUser": "Cerrar las sesiones del usuario en todas partes",
       "signOutSelfHelp": "Esta sesión sigue abierta.",
+      "mustChange": "Pedir una contraseña nueva en su próximo inicio de sesión",
+      "mustChangeHelp": "Para una contraseña temporal: iniciar sesión con ella solo le permite elegir la suya.",
       "signOutUserHelp": "Sus sesiones terminan; los tokens de API siguen funcionando."
     },
     "userInvite": {
@@ -625,7 +648,8 @@
       "titleByStatus": {
         "ACTIVE": "Usuarios activos",
         "INVITED": "Usuarios invitados",
-        "INACTIVE": "Usuarios inactivos"
+        "INACTIVE": "Usuarios inactivos",
+        "REMOVED": "Usuarios removidos"
       },
       "descriptionInvited": "Cuentas invitadas que aún no han definido su contraseña.",
       "descriptionInactive": "Cuentas desactivadas - no pueden iniciar sesión hasta que se activen de nuevo.",
@@ -654,7 +678,8 @@
       "selectedUsers": "{n} usuarios seleccionados. | {n} usuario seleccionado. | {n} usuarios seleccionados.",
       "filter": "Filtrar",
       "noValue": "Sin {column}",
-      "clearFilter": "Quitar el filtro de {column}"
+      "clearFilter": "Quitar el filtro de {column}",
+      "descriptionRemoved": "Cuentas removidas: se conservan para que el registro de auditoría las siga nombrando, sin forma de iniciar sesión. Una invitación las trae de vuelta."
     },
     "usersDelegated": {
       "description": "Las cuentas que puedes ver.",
@@ -815,7 +840,7 @@
       "fields": "Columnas",
       "fieldsHelp": "Las columnas que este rol puede usar para esta acción.",
       "where": "Filtro de filas",
-      "whereHelp": "Opcional. Un filtro en la gramática de la API de datos, como en los filtros de filas de un rol. Usa $USER.<columna> para los datos de la propia persona.",
+      "whereHelp": "Opcional. Un filtro en la gramática de la API de datos, como en los filtros de filas de un rol. Usa $USER.{'<'}columna{'>'} para los datos de la propia persona.",
       "whereInvalid": "El filtro de filas no es JSON válido.",
       "saved": "Permiso guardado",
       "removed": "Permiso quitado",

@@ -344,7 +344,6 @@
       "deleteTitle": "Delete {n} tokens? | Delete token? | Delete {n} tokens?",
       "refresh": "Refresh tokens",
       "deleted": "{n} tokens deleted | Token deleted | {n} tokens deleted",
-      "deletedPartial": "{done} of {total} deleted",
       "copied": "Copied to clipboard",
       "search": "Name, user or key prefix (tb_…)",
       "introSelf": "Tokens let your scripts and integrations call TotalBase as you - with your roles, checked live on every use.",
@@ -365,6 +364,13 @@
       "nameHelpUser": "What it's for - unique among this user's tokens, up to 32 characters.",
       "descriptionHelp": "Optional - who asked for it, where the secret is stored, what uses it. Up to 128 characters.",
       "accessHelp": "Data API acts with the user's roles on /api. Admin API reaches /admin/api and needs the user to have admin access.",
+      "allowedIps": "Allowed IP addresses",
+      "allowedIpsHelp": "Optional - addresses or ranges (203.0.113.7, 10.0.0.0/8) the token is accepted from. Empty: from anywhere. Behind a reverse proxy, list the proxy in Settings › Security › Trusted proxies first.",
+      "allowedIpsEllipsis": "Allowed IP addresses…",
+      "allowedIpsTitle": "Allowed IP addresses of “{name}”",
+      "allowedIpsDescription": "From any other address the token is refused. The secret doesn't change.",
+      "allowedIpsError": "Could not save the allowed IP addresses",
+      "onlyFrom": "Only from {addresses}",
       "createToken": "Create token",
       "regenerateTitle": "Regenerate “{name}”",
       "regenerateDescription": "A new secret with a new expiration - the token keeps its name, access and history.",
@@ -384,7 +390,8 @@
     "status": {
       "ACTIVE": "Active",
       "INVITED": "Invited",
-      "INACTIVE": "Inactive"
+      "INACTIVE": "Inactive",
+      "REMOVED": "Removed"
     },
     "pages": {
       "sessions": {
@@ -456,6 +463,8 @@
       "saveError": "Could not save user",
       "unlocked": "Account unlocked",
       "unlockError": "Could not unlock the account",
+      "passwordChangeRequired": "They'll choose a new password at their next sign-in",
+      "passwordChangeRequireError": "Could not ask for a password change",
       "updateError": "Could not update user",
       "menu": {
         "sendReset": "Send password reset",
@@ -469,6 +478,7 @@
         "revokeSessions": "Revoke all sessions",
         "sessionsRevoked": "Sessions revoked",
         "sessionsError": "Could not revoke sessions",
+        "requirePasswordChange": "Require a password change",
         "unlock": "Unlock account"
       },
       "protected": {
@@ -491,6 +501,8 @@
         "noSystem": "No - system account",
         "password": "Password",
         "passwordSet": "Set",
+        "passwordSetOn": "Set on {date}",
+        "passwordMustChange": "Set - must be changed at the next sign-in",
         "passwordNotSet": "Not set - invitation pending",
         "verifiedOn": "Verified on {date}",
         "notVerified": "Not verified",
@@ -507,7 +519,11 @@
         "deactivateHelp": "Signs them out everywhere and stops their API tokens until activated again. Reversible.",
         "activateHelp": "Lets them sign in and use their API tokens again.",
         "deleteTitle": "Delete user",
-        "deleteHelp": "Permanently deletes the account with its sessions, API tokens, role assignments and avatar. Audit log entries stay. Can't be undone."
+        "deleteHelp": "Permanently deletes the account with its sessions, API tokens, role assignments and avatar. Audit log entries stay. Can't be undone.",
+        "removeTitle": "Remove user",
+        "removeHelp": "For someone who is no longer part of the organization: keeps the account for the audit log and takes away every way in - password, sessions, API tokens, two-factor authentication and roles. Comes back only by invitation.",
+        "removedTitle": "This user was removed",
+        "removedHelp": "The account is kept for the audit log and nothing of theirs works. To bring them back, send an invitation from the menu above and give them their roles again."
       },
       "rolesIntro": "A user gets the union of every role turned on here. Save from the header to apply.",
       "accessFromRoles": "Access from these roles:",
@@ -542,7 +558,12 @@
         "resetButton": "Reset",
         "resetDone": "Two-factor authentication reset",
         "resetError": "Could not reset two-factor authentication."
-      }
+      },
+      "removed": "User removed",
+      "removeError": "Could not remove user",
+      "removeTitle": "Remove this user?",
+      "removeDescription": "The account stays, so the audit log goes on naming them, but nothing of theirs works any more: their password, sessions, API tokens, two-factor authentication, sign-in providers, pending links and roles are gone. Only a new invitation brings them back.",
+      "removeConfirm": "Remove"
     },
     "userCreate": {
       "passwordHelpMin": "At least {n} characters. The user can sign in with this immediately.",
@@ -575,6 +596,8 @@
       "signOutSelf": "Sign out my other sessions",
       "signOutUser": "Sign the user out everywhere",
       "signOutSelfHelp": "This session stays signed in.",
+      "mustChange": "Ask for a new password at their next sign-in",
+      "mustChangeHelp": "For a temporary password: signing in with it only lets them choose their own.",
       "signOutUserHelp": "Their sessions end; API tokens keep working."
     },
     "userInvite": {
@@ -625,7 +648,8 @@
       "titleByStatus": {
         "ACTIVE": "Active users",
         "INVITED": "Invited users",
-        "INACTIVE": "Inactive users"
+        "INACTIVE": "Inactive users",
+        "REMOVED": "Removed users"
       },
       "descriptionInvited": "Invited accounts that haven't set their password yet.",
       "descriptionInactive": "Deactivated accounts - they can't sign in until activated again.",
@@ -654,7 +678,8 @@
       "selectedUsers": "{n} selected users. | {n} selected user. | {n} selected users.",
       "filter": "Filter",
       "noValue": "No {column}",
-      "clearFilter": "Remove the {column} filter"
+      "clearFilter": "Remove the {column} filter",
+      "descriptionRemoved": "Removed accounts - kept so the audit log goes on naming them, with no way to sign in. An invitation brings one back."
     },
     "usersDelegated": {
       "description": "The accounts you can see.",
@@ -815,7 +840,7 @@
       "fields": "Columns",
       "fieldsHelp": "The columns this role may use for this action.",
       "where": "Row filter",
-      "whereHelp": "Optional. A filter in the Data API's grammar, as in a role's row filters. Use $USER.<column> for the person's own data.",
+      "whereHelp": "Optional. A filter in the Data API's grammar, as in a role's row filters. Use $USER.{'<'}column{'>'} for the person's own data.",
       "whereInvalid": "The row filter isn't valid JSON.",
       "saved": "Permission saved",
       "removed": "Permission removed",

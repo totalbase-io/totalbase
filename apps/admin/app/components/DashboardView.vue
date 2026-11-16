@@ -19,13 +19,13 @@
  * `refreshIntervalSeconds` set, each card re-runs its query on that interval
  * (DashboardWidgetCard.vue, utils/dashboard-refresh.ts) - in either host.
  */
-import type { GridStack as GridStackCore, GridStackWidget } from 'gridstack'
+import type { GridStack as GridStackCore, GridStackOptions, GridStackWidget } from 'gridstack'
 import { GridStack } from 'gridstack/dist/vue'
 import 'gridstack/dist/gridstack.css'
 import type { LocationQuery } from 'vue-router'
 import { formatDistanceToNow } from 'date-fns'
 import { dashboardWidgetDefinition } from '@totalbase/tb-catalog'
-import type { DashboardRunTimezone, Dashboard, DashboardVariable } from '~/types/dashboard'
+import type { DashboardRunTimezone } from '~/types/dashboard'
 import { decodeVariableValues } from '~/utils/dashboard-variables'
 import { DASHBOARD_CANVAS_CONTEXT_KEY, type ViewerDashboardWidget } from '~/composables/useDashboardCanvasContext'
 import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
@@ -78,17 +78,8 @@ const api = props.embedToken ? useEmbedApi(props.embedToken) : useAppApi()
 const base = computed(() => (props.embedToken ? '/dashboard' : `/dashboards/${props.slug}`))
 const cacheKey = computed(() => (props.embedToken ? 'embed' : props.slug))
 
-/** An embed's identity also says how it looks and where its editable variables start (embed-dashboards.ts). */
-type ViewerDashboard = Omit<Dashboard, 'variables'> & {
-  display?: { titled?: boolean, refreshSeconds?: number | null, allowExport?: boolean }
-  startingValues?: Record<string, unknown>
-  /** An embed of one widget (Dashboards.md §9.5): that card alone, filling the frame - no bar, no tabs, no grid. */
-  widget?: string | null
-}
-const { data: dashboard, error } = useAsyncData(
-  () => `app-dashboard-${cacheKey.value}`,
-  () => api.get<ViewerDashboard>(base.value).then(r => r.data)
-)
+const shared = useViewerDashboard(api, cacheKey, base)
+const { data: dashboard, error } = shared.dashboard
 const titled = computed(() => props.titled ?? dashboard.value?.display?.titled ?? false)
 const singleWidget = computed(() => dashboard.value?.widget ?? null)
 const { data: widgets, pending } = useAsyncData(
@@ -96,11 +87,7 @@ const { data: widgets, pending } = useAsyncData(
   () => api.get<ViewerDashboardWidget[]>(`${base.value}/widgets`).then(r => r.data),
   { default: (): ViewerDashboardWidget[] => [] }
 )
-const { data: variables } = useAsyncData(
-  () => `app-dashboard-variables-${cacheKey.value}`,
-  () => api.get<DashboardVariable[]>(`${base.value}/variables`).then(r => r.data),
-  { default: (): DashboardVariable[] => [] }
-)
+const { data: variables } = shared.variables
 const shownVariables = computed(() => (props.hideBar ? [] : (variables.value ?? []).filter(v => !props.hiddenVariables.includes(v.name))))
 // Starting values once the definitions are known (they decide how a value is read: a range, a list, a number):
 // an embed's configured ones, then the URL's over them.
@@ -208,11 +195,12 @@ const gridRef = ref<{ getGrid(): GridStackCore | null } | null>(null)
 // saved layout cached and restores it when the grid widens again.
 /** The space GridStack leaves around each widget - the variables bar takes the same inset. */
 const GRID_MARGIN = 8
-const gridOptions = {
+const gridOptions: GridStackOptions = {
   column: DASHBOARD_DESIGN_COLUMNS,
   cellHeight: 72,
   margin: GRID_MARGIN,
-  float: false,
+  // Top gravity: widgets rise to fill the space above them (gridstack 14's `mode`, `float: false` before).
+  mode: 'top',
   staticGrid: true,
   columnOpts: {
     layout: dashboardFlowLayout((id) => {

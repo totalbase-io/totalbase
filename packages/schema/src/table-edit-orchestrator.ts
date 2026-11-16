@@ -1,4 +1,4 @@
-import type { Database } from "@totalbase/database";
+import type { Database, Queryable } from "@totalbase/database";
 import type { DdlAuditor } from "./ddl-audit.js";
 import { buildCreateIndexSql, buildDropIndexSql, type CreateIndexInput } from "./index-service.js";
 import {
@@ -17,6 +17,7 @@ import {
   type ColumnInput,
   type ForeignKeyInput,
 } from "./table-schema-service.js";
+import { findConstraintName } from "@totalbase/pg-catalog";
 
 /**
  * One admin-facing "Save" on the Edit Table drawer is a batch of these -
@@ -49,18 +50,6 @@ export interface TableEditPlan {
    * the transactional batch above. See AGENTS.md's Edit Table notes.
    */
   concurrent: string[];
-}
-
-async function findConstraintName(database: Database, schema: string, table: string, contype: string): Promise<string | null> {
-  const { rows } = await database.query<{ conname: string }>(
-    `SELECT c.conname FROM pg_constraint c
-     JOIN pg_class t ON t.oid = c.conrelid
-     JOIN pg_namespace n ON n.oid = t.relnamespace
-     WHERE n.nspname = $1 AND t.relname = $2 AND c.contype = $3
-     LIMIT 1`,
-    [schema, table, contype],
-  );
-  return rows[0]?.conname ?? null;
 }
 
 /**
@@ -140,16 +129,21 @@ export async function buildTableEditPlan(database: Database, schema: string, tab
  * `audit` (ddl-audit.ts) records the transactional half inside its
  * transaction, and each CONCURRENTLY statement right after it ran.
  */
-export async function applyTableEditPlan(database: Database, plan: TableEditPlan, audit?: DdlAuditor): Promise<void> {
+/**
+ * `within` runs in the same transaction, after the statements - what must commit with them or not at all (a column's
+ * presentation saved with its ALTER).
+ */
+export async function applyTableEditPlan(database: Database, plan: TableEditPlan, audit?: DdlAuditor, within?: (client: Queryable) => Promise<void>): Promise<void> {
   // Over the extended protocol (query(), never queryRaw()), like every DDL
   // the schema package runs: each statement is one statement, so PostgreSQL
   // itself refuses a stacked `...; DROP ...` the validation might miss.
-  if (plan.transactional.length > 0) {
+  if (plan.transactional.length > 0 || within) {
     await database.transaction(async (client) => {
       for (const sql of plan.transactional) {
         await client.query(sql);
       }
-      if (audit) await audit(client, { operation: "edit_table", statements: plan.transactional });
+      if (within) await within(client);
+      if (audit && plan.transactional.length > 0) await audit(client, { operation: "edit_table", statements: plan.transactional });
     });
   }
   for (const sql of plan.concurrent) {

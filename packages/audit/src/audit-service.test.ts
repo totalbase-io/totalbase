@@ -136,13 +136,15 @@ describe("AuditService / AuditExclusionsService (integration)", () => {
     await exclusions.set(resourceId, []);
   });
 
-  it("buildUpdateChanges records every changed column but the excluded ones", () => {
+  it("buildUpdateChanges records every changed column - an excluded one without its values", () => {
     const changes = buildUpdateChanges(
       { name: "old", price: 10, secret: "a", note: "same" },
       { name: "new", price: 12, secret: "b", note: "same" },
       new Set(["price"]),
     );
-    expect(changes).toEqual({ name: { old: "old", new: "new" }, secret: { old: "a", new: "b" } });
+    expect(changes).toEqual({ name: { old: "old", new: "new" }, price: { excluded: true }, secret: { old: "a", new: "b" } });
+    // An excluded column that didn't change isn't named.
+    expect(buildUpdateChanges({ name: "a", price: 1 }, { name: "b", price: 1 }, new Set(["price"]))).toEqual({ name: { old: "a", new: "b" } });
     // Without the old row (no primary key, PostgreSQL 15-17) or with nothing changed: none.
     expect(buildUpdateChanges(undefined, { name: "x" }, new Set())).toBeUndefined();
     expect(buildUpdateChanges({ name: "x" }, { name: "x" }, new Set())).toBeUndefined();

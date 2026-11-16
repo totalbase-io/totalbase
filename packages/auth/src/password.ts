@@ -18,7 +18,8 @@ const COMMON = new Set(COMMON_PASSWORDS);
 
 /** auth.password_min_length, PASSWORD_MAX_LENGTH and the common-password list, see Security.md §2.3. */
 export function assertPasswordStrength(password: string, minLength: number): void {
-  if (password.length < minLength) {
+  // A body without it (or with another JSON type) is a password too short, not a TypeError.
+  if (typeof password !== "string" || password.length < minLength) {
     throw new TotalBaseError(
       "PASSWORD_TOO_SHORT",
       `Password must be at least ${minLength} characters long.`,

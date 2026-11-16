@@ -56,6 +56,8 @@ export const ACCESS_EVENTS: Record<string, string> = {
   // Two-factor authentication (Security.md §2.17): the second step of a sign-in, and setting it up there
   "POST /api/auth/mfa/verify": "auth.mfa_verify",
   "POST /api/auth/mfa/enroll": "auth.mfa_enroll",
+  // A password due for a change, changed inside the sign-in (Security.md §2.20)
+  "POST /api/auth/password/renew": "auth.password_renew",
   "POST /api/tokens": "token.create",
   "DELETE /api/tokens/:id": "token.delete",
   "POST /api/tokens/:id/rotate": "token.rotate",
@@ -73,10 +75,24 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /app/api/me/mfa/confirm": "account.mfa_enable",
   "POST /app/api/me/mfa/disable": "account.mfa_disable",
   "POST /app/api/me/mfa/recovery-codes": "account.mfa_recovery_codes",
+  // The same operations for any session (routes/account.ts)
+  "PATCH /api/auth/account": "account.update",
+  "PUT /api/auth/account/email": "account.email_change",
+  "PUT /api/auth/account/password": "account.password_change",
+  "POST /api/auth/account/avatar": "account.avatar_set",
+  "POST /api/auth/account/avatar/provider": "account.avatar_set",
+  "DELETE /api/auth/account/avatar": "account.avatar_remove",
+  "DELETE /api/auth/account/sessions/:id": "session.revoke",
+  "POST /api/auth/account/sessions/revoke-others": "account.sessions_revoke",
+  "POST /api/auth/account/mfa": "account.mfa_start",
+  "POST /api/auth/account/mfa/confirm": "account.mfa_enable",
+  "POST /api/auth/account/mfa/disable": "account.mfa_disable",
+  "POST /api/auth/account/mfa/recovery-codes": "account.mfa_recovery_codes",
   // Portal sign-in
   "POST /admin/api/auth/login": "auth.portal_login",
   "POST /admin/api/auth/logout": "auth.portal_logout",
   "POST /admin/api/auth/mfa/verify": "auth.portal_mfa_verify",
+  "POST /admin/api/auth/password/renew": "auth.portal_password_renew",
   "POST /admin/api/auth/reauthenticate": "auth.reauthenticate",
   // Users
   "POST /admin/api/users": "user.create",
@@ -87,6 +103,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "DELETE /admin/api/users/:id/avatar": "user.avatar_remove",
   "DELETE /admin/api/users/:id": "user.delete",
   "POST /admin/api/users/:id/invite": "user.invite",
+  "POST /admin/api/users/:id/remove": "user.remove",
   "POST /admin/api/users/:id/reset-password": "user.password_reset",
   "PUT /admin/api/users/:id/roles": "user.roles_set",
   "DELETE /admin/api/users/:id/mfa": "user.mfa_reset",
@@ -94,6 +111,7 @@ export const ACCESS_EVENTS: Record<string, string> = {
   "POST /api/totalbase/table/users/invitations": "user.invite",
   "DELETE /app/api/users/:id": "user.delete",
   "POST /api/totalbase/table/users/:id/invite": "user.invite",
+  "POST /api/totalbase/table/users/:id/remove": "user.remove",
   "POST /api/totalbase/table/users/:id/reset-password": "user.password_reset",
   // Roles and permissions
   "PUT /admin/api/roles/:role/resources/:resource/permissions/:action": "permission.set",

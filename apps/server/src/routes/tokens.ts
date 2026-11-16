@@ -5,6 +5,7 @@ import type { AppContext } from "../context.js";
 import { dataEnvelope, type RouteDoc } from "@totalbase/openapi";
 import { assertRecentAuthentication, requireUser } from "../auth-guards.js";
 import { TOKEN_SCHEMAS } from "../openapi-docs.js";
+import { optionalData, requestData } from "../request-body.js";
 
 const TOKEN = { $ref: "#/components/schemas/ApiToken" };
 const TOKEN_WITH_KEY = { $ref: "#/components/schemas/ApiTokenWithKey" };
@@ -32,7 +33,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
     data: await context.usersApis.listForUser(request.userId!),
   }));
 
-  app.post<{ Body: { data?: { name: string; description?: string | null; plane?: UserApiPlane; ttlDays?: number } } | undefined }>(
+  app.post<{ Body: { data?: { name: string; description?: string | null; plane?: UserApiPlane; ttlDays?: number; allowedIps?: string[] | null } } | undefined }>(
     "/api/tokens",
     {
       preHandler,
@@ -48,6 +49,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
               description: { type: ["string", "null"] },
               plane: { type: "string", enum: ["API", "ADMIN"], default: "API" },
               ttlDays: TTL_DAYS,
+              allowedIps: { type: ["array", "null"], maxItems: 50, items: { type: "string" }, description: "IP addresses and CIDR ranges the token is accepted from (`203.0.113.7`, `10.0.0.0/8`); omitted, null or empty: from anywhere. Elsewhere the token answers 403 TOKEN_IP_NOT_ALLOWED." },
             },
           }),
         },
@@ -55,8 +57,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
       }),
     },
     async (request, reply) => {
-      const body = request.body?.data;
-      if (!body) throw new TotalBaseError("INVALID_QUERY", "A request body { data } is required.");
+      const body = requestData(request.body);
       // An administrator's token is the instance's keys (Security.md §2.19).
       if (body.plane === "ADMIN") await assertRecentAuthentication(context, request);
       const { plainKey, userApi } = await context.usersApis.create({
@@ -65,6 +66,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
         description: body.description,
         plane: body.plane ?? "API",
         ttlDays: body.ttlDays,
+        allowedIps: body.allowedIps,
       });
       await context.auth.notifyTokenCreated(userApi.user, userApi);
       reply.code(201);
@@ -97,7 +99,7 @@ export function registerTokensRoutes(app: FastifyInstance, context: AppContext):
     async (request) => {
       await assertOwnToken(context, request.userId!, request.params.id);
       if ((await context.usersApis.findById(request.params.id))?.plane === "ADMIN") await assertRecentAuthentication(context, request);
-      const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, request.body?.data?.ttlDays, request.body?.data?.graceHours);
+      const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, optionalData(request.body).ttlDays, optionalData(request.body).graceHours);
       await context.auth.notifyTokenCreated(userApi.user, userApi);
       return { data: { ...userApi, key: plainKey } };
     },

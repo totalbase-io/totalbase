@@ -5,9 +5,9 @@ import { resourceQueryColumns, type VariableDefinition } from "@totalbase/tb-cat
 import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
-import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID } from "../openapi-admin-docs.js";
+import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, published } from "../openapi-admin-docs.js";
 import { ADD_WIDGET_BODY, ADD_WIDGETS_TREE_BODY, CREATE_DATAVIEW_BODY, DATAVIEW_SCHEMAS, MOVE_WIDGET_BODY, UPDATE_DATAVIEW_BODY, UPDATE_FIELD_BODY } from "../openapi-admin-docs-dataviews.js";
-import { type DataBody, publishNote, requestData, versionParam } from "../request-body.js";
+import { type DataBody, publishNote, requestData, versionParam, optionalData } from "../request-body.js";
 import { registerDeleteVersionsRoute } from "./delete-versions.js";
 
 interface CreateDataViewBody {
@@ -214,19 +214,19 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
         summary: "Publish the draft as a new version",
         description:
           "Snapshots the draft (view_config, fields, code and the inherited column presentation) as the next version, and " +
-          "publishes the detail DataViews it owns with it. A no-op returning the latest version when the draft equals it. " +
+          "publishes the detail DataViews it owns with it: 201 with that version. A draft equal to the latest version publishes nothing: 200 with it. " +
           "A page publishes only whole: invalid variables or widget configs are refused (422). `meta.warnings` says what it " +
           "published anyway but should be looked at - a single-record FORM over a table with more than one row.",
         pathParameters: { id: { description: "The DataView's id.", schema: UUID } },
         requestBody: { schema: dataEnvelope(object({ note: { type: "string", maxLength: 128, description: "What this version changes - the publisher's note, shown in the object's Versions." } })), required: false },
-        response: created(ref("DataViewVersion")),
+        response: published(ref("DataViewVersion")),
         schemas: DATAVIEW_SCHEMAS,
       }),
     },
     async (request, reply) => {
-      const version = await context.dataviewsAdmin.publish(request.params.id, request.admin?.id ?? null, publishNote(request.body));
+      const { created, ...version } = await context.dataviewsAdmin.publish(request.params.id, request.admin?.id ?? null, publishNote(request.body));
       const warnings = await context.dataviewsAdmin.publishWarnings(request.params.id);
-      reply.code(201);
+      reply.code(created ? 201 : 200);
       return { data: version, ...(warnings.length > 0 && { meta: { warnings } }) };
     },
   );
@@ -579,7 +579,7 @@ export function registerAdminDataViewsRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => {
-      const body = request.body?.data ?? {};
+      const body = optionalData(request.body);
       if (body.position !== undefined && (!Number.isInteger(body.position) || body.position < 0)) throw new TotalBaseError("INVALID_QUERY", "position must be a non-negative integer.");
       const fields = await context.dataviewsAdmin.moveWidget(request.params.id, request.params.fieldId, { parent: body.parent, slot: body.slot, position: body.position });
       return { data: fields };

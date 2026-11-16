@@ -27,6 +27,12 @@ export const LINK_DELIVERY_BODY: JsonSchema = object({
   },
 });
 
+/** `data` of the invite route's body: the delivery, and the caller's own line for the email. */
+export const INVITE_BODY: JsonSchema = object({
+  ...(LINK_DELIVERY_BODY.properties as Record<string, JsonSchema>),
+  message: { type: "string", maxLength: 500, description: "Your own line for the invitation email, plain text - sent where the instance's Invitation template includes {{message}}." },
+});
+
 export const USERS_SCHEMAS: Record<string, JsonSchema> = {
   /** UsersService's UserListItem. */
   UsersListItem: object({
@@ -50,10 +56,13 @@ export const USERS_SCHEMAS: Record<string, JsonSchema> = {
       properties: { url: STRING, provider: { type: "string", description: "The provider's name." } },
     },
     mfaEnabled: { type: "boolean", description: "Two-factor authentication is on (an authenticator app confirmed)." },
+    passwordChangedAt: { ...NULLABLE_DATE_TIME, description: "When the current password was set; null without one. auth.password_max_age_days counts from it." },
+    passwordChangeRequired: { type: "boolean", description: "The password must be changed at the user's next password sign-in - set by `mustChange` on the password route, or by writing `password_change_required` on the users row; cleared when the password changes." },
+    removedAt: { ...NULLABLE_DATE_TIME, description: "When the account was removed - inactive, with no way in left, the row kept for the audit log; null otherwise. An invitation brings it back." },
   }),
   UsersSummary: object({
     total: { type: "integer" },
-    byStatus: object({ ACTIVE: { type: "integer" }, INVITED: { type: "integer" }, INACTIVE: { type: "integer" } }),
+    byStatus: object({ ACTIVE: { type: "integer" }, INVITED: { type: "integer" }, INACTIVE: { type: "integer" }, REMOVED: { type: "integer" } }),
     byRole: { type: "object", description: "Members per role id (roles with no members are absent).", additionalProperties: { type: "integer" } },
     credentials: object({
       tokens: { type: "integer", description: "Personal access tokens that still authenticate (active, not revoked, not expired)." },
@@ -97,6 +106,7 @@ export const TOKENS_SCHEMAS: Record<string, JsonSchema> = {
     lastUsedAt: NULLABLE_DATE_TIME,
     rotatedAt: NULLABLE_DATE_TIME,
     previousExpiresAt: { ...NULLABLE_DATE_TIME, description: "Until when the secret replaced by the last regeneration still works (its grace window); null when it stopped at once." },
+    allowedIps: { type: ["array", "null"], items: { type: "string" }, description: "The addresses and CIDR ranges the token is accepted from; null: from anywhere." },
     revokedAt: NULLABLE_DATE_TIME,
     createdAt: DATE_TIME,
     key: { type: "string", description: "The plaintext token - returned only in this response, never again." },

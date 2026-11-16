@@ -9,7 +9,7 @@
 # Debian slim, not Alpine: argon2, isolated-vm and sharp are native modules,
 # compiled here against glibc and loaded by the same base at runtime.
 
-ARG NODE_VERSION=22
+ARG NODE_VERSION=26
 # Optional: another Debian mirror for the build stage's apt (its main archive; security stays
 # deb.debian.org) - for when deb.debian.org is slow or unreachable from the build host. Empty: the default.
 #   docker build --build-arg APT_MIRROR=http://debian.mirror.constant.com/debian ...
@@ -22,7 +22,8 @@ RUN if [ -n "$APT_MIRROR" ]; then sed -i -E "s#^URIs: http://deb.debian.org/debi
   && apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+# Node.js 25+ no longer bundles corepack: installed from npm, it still honors package.json's packageManager.
+RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /app
 
 COPY . .

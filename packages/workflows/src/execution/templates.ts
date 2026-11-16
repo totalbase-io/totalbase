@@ -1,4 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
+import { escapeHtml } from "@totalbase/auth";
 import type { RunState } from "./bindings.js";
 
 /**
@@ -158,20 +159,28 @@ function stringify(value: unknown): string {
   return String(value);
 }
 
-function resolveString(state: RunState, text: string): unknown {
+function resolveString(state: RunState, text: string, html: boolean): unknown {
   const wholeMatch = WHOLE_VALUE_PATTERN.exec(text);
   if (wholeMatch) return resolveExpression(state, wholeMatch[1]!);
   if (!EXPRESSION_PATTERN.test(text)) return text;
   EXPRESSION_PATTERN.lastIndex = 0;
-  return text.replace(EXPRESSION_PATTERN, (_match, expression: string) => stringify(resolveExpression(state, expression)));
+  return text.replace(EXPRESSION_PATTERN, (_match, expression: string) => {
+    const value = stringify(resolveExpression(state, expression));
+    return html ? escapeHtml(value) : value;
+  });
 }
 
 /** Recursively resolves every `{{...}}` expression in a parsed JSON value - the entry point `createRecords`/`updateRecords`/`deleteRecords` call on `configuration.records`/`set`/`where`. */
-export function resolveTemplates(value: unknown, state: RunState): unknown {
-  if (typeof value === "string") return resolveString(state, value);
-  if (Array.isArray(value)) return value.map((item) => resolveTemplates(item, state));
+/**
+ * `options.html`: the value is HTML (an operation's `htmlTemplates` field - Send email's `htmlBody`, Workflows.md
+ * §5.16). A `{{...}}` embedded in it is spliced in HTML-escaped - a visitor's `<script>` arrives as text - while a
+ * string that is, in full, one `{{...}}` is still that value untouched: the body another step built.
+ */
+export function resolveTemplates(value: unknown, state: RunState, options: { html?: boolean } = {}): unknown {
+  if (typeof value === "string") return resolveString(state, value, options.html === true);
+  if (Array.isArray(value)) return value.map((item) => resolveTemplates(item, state, options));
   if (value !== null && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveTemplates(item, state)]));
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveTemplates(item, state, options)]));
   }
   return value;
 }

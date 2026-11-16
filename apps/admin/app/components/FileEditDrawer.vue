@@ -105,17 +105,14 @@ async function refreshPreviewNow() {
   previewLoading.value = true
   try {
     const qs = queryString.value
-    const response = await $fetch.raw(`/api/totalbase/table/files/${props.file.id}${qs ? `?${qs}` : ''}`, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    const response = await fetchFileContent(`/api/totalbase/table/files/${props.file.id}${qs ? `?${qs}` : ''}`)
     const blob = response._data as Blob
     revokePreview()
     previewObjectUrl = URL.createObjectURL(blob)
     previewUrl.value = previewObjectUrl
     previewBlob.value = blob
   } catch (err) {
-    toast.add({ title: t('content.files.editImage.previewError'), description: err instanceof Error ? err.message : undefined, color: 'error' })
+    notifyError(err, t('content.files.editImage.previewError'))
   } finally {
     previewLoading.value = false
   }
@@ -141,10 +138,7 @@ let cropperInstance: Cropper | null = null
 
 async function ensureOriginalLoaded() {
   if (originalUrl.value || !props.file) return
-  const response = await $fetch.raw(`/api/totalbase/table/files/${props.file.id}`, {
-    baseURL: '',
-    responseType: 'blob'
-  })
+  const response = await fetchFileContent(`/api/totalbase/table/files/${props.file.id}`)
   const blob = response._data as Blob
   originalObjectUrl = URL.createObjectURL(blob)
   originalUrl.value = originalObjectUrl
@@ -179,6 +173,45 @@ async function enterCropMode() {
   // timing to get right.
   const { default: CropperCtor } = await import('cropperjs')
   cropperInstance = new CropperCtor(img, {})
+  limitSelectionToImage()
+}
+
+/**
+ * Keeps the crop selection on the image. Since cropperjs 2.3 it starts over the image rather than the whole canvas,
+ * so dragged into the letterbox around the image it could leave it altogether - a 1-pixel crop. A move or a resize
+ * that would cross an edge is held at that edge instead.
+ */
+function limitSelectionToImage() {
+  const selection = cropperInstance?.getCropperSelection()
+  const canvas = cropperInstance?.getCropperCanvas()
+  const image = cropperInstance?.getCropperImage()
+  if (!selection || !canvas || !image) return
+  // $change emits 'change' again before it applies: the held change is let through rather than held once more.
+  let holding = false
+  selection.addEventListener('change', (event) => {
+    if (holding) return
+    const { x, y, width, height } = (event as CustomEvent<{ x: number, y: number, width: number, height: number }>).detail
+    const canvasRect = canvas.getBoundingClientRect()
+    const imageRect = image.getBoundingClientRect()
+    if (imageRect.width <= 0 || imageRect.height <= 0) return
+    // Whole pixels, inside the image: the selection rounds its values (it isn't `precise`).
+    const minX = Math.ceil(imageRect.left - canvasRect.left)
+    const minY = Math.ceil(imageRect.top - canvasRect.top)
+    const maxX = Math.floor(imageRect.right - canvasRect.left)
+    const maxY = Math.floor(imageRect.bottom - canvasRect.top)
+    const w = Math.min(width, maxX - minX)
+    const h = Math.min(height, maxY - minY)
+    const heldX = Math.min(Math.max(x, minX), maxX - w)
+    const heldY = Math.min(Math.max(y, minY), maxY - h)
+    if (heldX === x && heldY === y && w === width && h === height) return
+    event.preventDefault()
+    holding = true
+    try {
+      selection.$change(heldX, heldY, w, h)
+    } finally {
+      holding = false
+    }
+  })
 }
 
 function destroyCropper() {
@@ -259,7 +292,7 @@ const publicUrl = computed(() => {
   return `${window.location.origin}/api/totalbase/table/files/${props.file.id}${qs ? `?${qs}` : ''}`
 })
 async function copyUrl() {
-  await navigator.clipboard.writeText(publicUrl.value)
+  await copyText(publicUrl.value)
   toast.add({ title: t('common.copied'), color: 'success' })
 }
 
@@ -327,7 +360,6 @@ async function confirmReplace() {
 const replaceFileInput = ref<HTMLInputElement | null>(null)
 const pickedReplaceFile = ref<File | null>(null)
 const isReplaceImageOpen = ref(false)
-const replaceImageConfirmed = ref(false)
 const replacingImage = ref(false)
 
 function openReplaceImagePicker() {
@@ -340,7 +372,6 @@ function onReplaceFileSelected(event: Event) {
   input.value = '' // allow picking the same filename again later
   if (!picked) return
   pickedReplaceFile.value = picked
-  replaceImageConfirmed.value = false
   isReplaceImageOpen.value = true
 }
 
@@ -740,47 +771,24 @@ onBeforeUnmount(() => {
     this dialog directly, so there's no single anchor element for a
     popover to attach to; this only ever opens itself, once a file has
     actually been picked. -->
-    <UModal
+    <DeleteConfirmModal
       v-model:open="isReplaceImageOpen"
       :title="t('content.files.editImage.replaceImageTitle')"
+      :confirm-label="t('content.files.editImage.replace')"
+      :loading="replacingImage"
+      @confirm="confirmReplaceImage"
     >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            <i18n-t
-              keypath="content.files.editImage.replaceImageHelp"
-              scope="global"
-            >
-              <template #name>
-                <span class="font-medium text-default">{{ pickedReplaceFile?.name }}</span>
-              </template>
-            </i18n-t>
-          </p>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="replaceImageConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="replacingImage"
-                @click="isReplaceImageOpen = false"
-              />
-              <UButton
-                :label="t('content.files.editImage.replace')"
-                color="error"
-                :disabled="!replaceImageConfirmed"
-                :loading="replacingImage"
-                @click="confirmReplaceImage"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <p class="text-sm text-muted">
+        <i18n-t
+          keypath="content.files.editImage.replaceImageHelp"
+          scope="global"
+        >
+          <template #name>
+            <span class="font-medium text-default">{{ pickedReplaceFile?.name }}</span>
+          </template>
+        </i18n-t>
+      </p>
+    </DeleteConfirmModal>
   </AppDrawer>
 </template>
 

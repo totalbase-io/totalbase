@@ -41,5 +41,9 @@ export const SYSTEM_EMAIL_VARIABLE_HELP: Record<string, string> = {
   'instance.public_url': 'content.systemEmails.variables.instancePublicUrl',
   'action_url': 'content.systemEmails.variables.actionUrl',
   'expires_in': 'content.systemEmails.variables.expiresIn',
-  'new_email': 'content.systemEmails.variables.newEmail'
+  'new_email': 'content.systemEmails.variables.newEmail',
+  'inviter.name': 'content.systemEmails.variables.inviterName',
+  'inviter.email': 'content.systemEmails.variables.inviterEmail',
+  'roles': 'content.systemEmails.variables.roles',
+  'message': 'content.systemEmails.variables.message'
 }

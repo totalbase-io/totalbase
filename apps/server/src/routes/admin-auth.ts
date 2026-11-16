@@ -12,7 +12,7 @@ import { extractBearerToken, requireAdmin, requireAppAccess } from "../auth-guar
 import { SESSION_MODE, SESSION_TOKEN, clearSessionCookie, deliverSession, requestedSessionMode } from "../session-cookie.js";
 import { effectiveDisplayPreferences } from "../display-preferences.js";
 import { TOTALBASE_VERSION } from "../version.js";
-import { auditMfaChallenge, recordSecondStep, recordSignInFailure } from "./api-auth.js";
+import { PASSWORD_RENEW_DESCRIPTION, auditMfaChallenge, auditRenewedThenEnroll, recordSecondStep, recordSignInFailure } from "./api-auth.js";
 import type { SignInAdmission, User } from "@totalbase/auth";
 
 /** The portal's admission: admin or app access, checked before a session or an MFA challenge exists. */
@@ -60,8 +60,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
       request.auditMetadata = { email: request.body?.email };
       const mode = await requestedSessionMode(context, request);
       const { token, user } = await context.auth.login({
-        email: request.body.email,
-        password: request.body.password,
+        email: request.body?.email,
+        password: request.body?.password,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
         surface: "PORTAL",
@@ -105,12 +105,47 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         admit: portalAdmission(context),
         ip: request.ip,
         userAgent: request.headers["user-agent"],
-      }, recordSignInFailure(request));
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: result.user.id };
       if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
       if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
       const token = await deliverSession(context, reply, mode, result.token);
       return { data: { token, admin: await adminProfile(context, result.user), recoveryCodes: result.recoveryCodes } };
+    },
+  );
+
+  // The portal's password step (Security.md §2.20) - the same as /api/auth/password/renew, answered like the
+  // portal's sign-in.
+  app.post<{ Body: { challenge?: unknown; newPassword?: unknown; mode?: unknown } }>(
+    "/admin/api/auth/password/renew",
+    {
+      config: {
+        public: true,
+        openapi: {
+          summary: "Finish signing in to the admin by choosing a new password",
+          description: PASSWORD_RENEW_DESCRIPTION,
+          tags: ["auth"],
+          access: "public",
+          requestBody: {
+            schema: object({ challenge: { type: "string" }, newPassword: { type: "string" }, mode: SESSION_MODE }, ["challenge", "newPassword"]),
+          },
+          response: ok(object({ token: SESSION_TOKEN, admin: ref("AdminProfile") })),
+          schemas: ADMIN_SCHEMAS,
+        },
+      },
+    },
+    async (request, reply) => {
+      const mode = await requestedSessionMode(context, request);
+      const result = await context.auth.completePasswordStep({
+        challenge: request.body?.challenge,
+        newPassword: request.body?.newPassword,
+        surface: "PORTAL",
+        admit: portalAdmission(context),
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditRenewedThenEnroll(request, error));
+      request.auditPrincipal = { type: "USER", id: result.user.id };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), admin: await adminProfile(context, result.user) } };
     },
   );
 

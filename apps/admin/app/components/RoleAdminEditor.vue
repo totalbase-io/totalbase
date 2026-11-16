@@ -40,7 +40,7 @@ const { data: role, pending: rolePending, error: roleError, refresh: refreshRole
 // --- Actions on the role itself (the header's "⋮" menu): activate and delete; its fields are the Settings tab.
 // All disabled for the reserved Administrators role, which the server refuses to change. ---
 async function onRoleSaved() {
-  await Promise.all([refreshRole(), refreshNuxtData(['roles-all', 'role-options'])])
+  await Promise.all([refreshRole(), refreshNuxtData('roles-all')])
 }
 
 const togglingActive = ref(false)
@@ -58,18 +58,14 @@ async function toggleActive() {
 }
 
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 async function deleteRole() {
   deleting.value = true
   try {
     await rolesApi.remove(roleId)
     deleteOpen.value = false
     toast.add({ title: t('users.roleEditor.deleted'), color: 'success' })
-    await refreshNuxtData(['roles-all', 'role-options'])
+    await refreshNuxtData('roles-all')
     await navigateTo('/roles')
   } catch (err) {
     notifyError(err, t('users.roleEditor.deleteError'))
@@ -718,36 +714,13 @@ async function runRowAction(resource: Resource, kind: RowActionKind) {
       :role-name="role.name"
       :delegated="false"
     />
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('users.roleEditor.deleteTitle')"
       :description="t('users.roleEditor.deleteDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteRole"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteRole"
+    />
     <UModal
       v-model:open="leaveOpen"
       :title="t('users.userEditor.leave.title')"

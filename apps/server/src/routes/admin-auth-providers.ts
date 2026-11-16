@@ -6,6 +6,7 @@ import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID_PARAM } from "../openapi-admin-docs.js";
 import { AUTH_PROVIDER_TYPE, AUTH_PROVIDERS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { optionalData } from "../request-body.js";
 
 const ID_PARAM = { id: { ...UUID_PARAM, description: "The provider's id." } };
 const CONFIGURATION_RULES =
@@ -112,7 +113,7 @@ export function registerAdminAuthProvidersRoutes(app: FastifyInstance, context: 
       schemas: AUTH_PROVIDERS_SCHEMAS,
     }),
   }, async (request, reply) => {
-    const body = (request.body?.data ?? {}) as AuthProviderBody;
+    const body = (optionalData(request.body)) as AuthProviderBody;
     if (!body.name?.trim()) throw new TotalBaseError("INVALID_NAME", "Name is required.");
     assertValidConfiguration(body.type, body.configuration, body.showOnSignIn === true);
     await assertSecretExists(context, body.configuration.client_secret_key);

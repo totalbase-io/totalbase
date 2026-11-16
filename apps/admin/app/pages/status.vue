@@ -41,7 +41,7 @@ interface DashboardData {
   }
 }
 type AttentionKey = 'backup_failed' | 'outbox_failed' | 'workflow_runs_failed' | 'locked_accounts' | 'missing_resources'
-  | 'pool_waiting' | 'outbox_backlog' | 'tokens_expiring' | 'failed_sign_ins'
+  | 'pool_waiting' | 'outbox_backlog' | 'tokens_expiring' | 'failed_sign_ins' | 'tokens_refused'
 
 const api = useAdminApi()
 const dates = useDateTimeFormat()
@@ -69,8 +69,9 @@ const ATTENTION: Record<AttentionKey, { icon: string, to?: string }> = {
   missing_resources: { icon: 'i-lucide-database-backup', to: '/resources' },
   pool_waiting: { icon: 'i-lucide-hourglass', to: '/settings/connector' },
   outbox_backlog: { icon: 'i-lucide-clock-alert' },
+  tokens_refused: { icon: 'i-lucide-shield-alert', to: '/logs?event=auth.token_refused' },
   tokens_expiring: { icon: 'i-lucide-key-round', to: '/tokens?status=expiring' },
-  failed_sign_ins: { icon: 'i-lucide-log-in', to: '/logs?event=auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify&status=DENIED' }
+  failed_sign_ins: { icon: 'i-lucide-log-in', to: '/logs?event=auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify,auth.password_renew,auth.portal_password_renew&status=DENIED' }
 }
 const ATTENTION_KEYS: Record<AttentionKey, string> = {
   backup_failed: 'backupFailed',
@@ -81,7 +82,8 @@ const ATTENTION_KEYS: Record<AttentionKey, string> = {
   pool_waiting: 'poolWaiting',
   outbox_backlog: 'outboxBacklog',
   tokens_expiring: 'tokensExpiring',
-  failed_sign_ins: 'failedSignIns'
+  failed_sign_ins: 'failedSignIns',
+  tokens_refused: 'tokensRefused'
 }
 /** A backup's moment, in the viewer's locale. */
 const backupTime = (value: string) => new Intl.DateTimeFormat(ui.intlLocale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))

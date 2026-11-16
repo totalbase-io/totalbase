@@ -6,8 +6,10 @@ import { registerAdminUi, routeNotFound } from "./admin-ui.js";
 import { registerMcpEndpoint } from "./mcp-endpoint.js";
 import type { AppContext } from "./context.js";
 import { catalogChanged } from "./invalidations.js";
+import { registerPathIdHook } from "./path-ids.js";
 import { FASTIFY_BODY_LIMIT_CEILING, maxHeaderSizeFor, parseQueryString, registerHardeningHooks } from "./hardening.js";
 import { registerAccessAudit } from "./access-audit.js";
+import { registerTokenRefusalAudit } from "./token-refusal-audit.js";
 import { registerHealthRoutes } from "./health.js";
 import { registerApiAuthRoutes } from "./routes/api-auth.js";
 import { registerAdminAuthRoutes } from "./routes/admin-auth.js";
@@ -39,7 +41,7 @@ import { registerAppDataViewBulkRoutes } from "./routes/app-dataviews-bulk.js";
 import { registerAppTemplatesRoutes } from "./routes/app-templates.js";
 import { registerAppUsersRoutes } from "./routes/app-users.js";
 import { registerAppRolesRoutes } from "./routes/app-roles.js";
-import { registerAppMeRoutes } from "./routes/app-me.js";
+import { registerAccountRoutes } from "./routes/account.js";
 import { registerAppDataViewsRoutes } from "./routes/app-dataviews.js";
 import { registerAdminAuditRoutes } from "./routes/admin-audit.js";
 import { registerAdminAuthProvidersRoutes } from "./routes/admin-auth-providers.js";
@@ -121,11 +123,22 @@ export async function buildServer(
     http: { maxHeaderSize },
   });
 
+  // An empty body is no body, whatever Content-Type came with it: many HTTP clients send
+  // `Content-Type: application/json` on every request, a DELETE included (Data_API.md §2.4). Anything else
+  // goes to Fastify's own JSON parser (prototype poisoning refused, malformed JSON a 400).
+  const parseJson = app.getDefaultJsonParser("error", "error");
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    if (body === "") done(null, undefined);
+    else void parseJson(request, body as string, done);
+  });
+
   // Lets the MCP endpoint's in-process calls past the per-IP limit (it limits its own callers per token); made here, never stored or sent.
   const internalKey = randomBytes(32).toString("hex");
   registerHardeningHooks(app, context.settings, { internalKey, publicUrl: () => context.auth.mailer.publicUrl() });
+  registerPathIdHook(app);
   registerViewAsGuard(app);
   registerAccessAudit(app, context);
+  registerTokenRefusalAudit(app, context);
 
   // Collected for GET /admin/api/openapi (@totalbase/openapi's
   // buildAdminOpenApiSpec) - onRoute fires synchronously as each route()
@@ -193,8 +206,8 @@ export async function buildServer(
       });
       return;
     }
-    // Any other Fastify client error (malformed JSON, an empty body sent as
-    // application/json, an unsupported content type...) carries its own
+    // Any other Fastify client error (malformed JSON, an unsupported
+    // content type...) carries its own
     // 4xx statusCode - the caller's mistake, not a 500. Fastify's messages
     // describe only the request itself, so they're safe to return.
     const statusCode = (error as { statusCode?: number }).statusCode;
@@ -241,7 +254,7 @@ export async function buildServer(
   registerAppTemplatesRoutes(app, context);
   registerAppUsersRoutes(app, context);
   registerAppRolesRoutes(app, context);
-  registerAppMeRoutes(app, context);
+  registerAccountRoutes(app, context);
   registerAdminAuditRoutes(app, context);
   registerAdminAuthProvidersRoutes(app, context);
   registerAdminSecretsRoutes(app, context);

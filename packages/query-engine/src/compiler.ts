@@ -150,22 +150,25 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     }
   }
 
-  // WHERE: request filter AND permission row filter, combined.
+  // WHERE: request filter AND permission row filter, combined. These decide which rows there are, so the joins
+  // their paths go through are the ones the count keeps (registry.filterJoins).
   const whereParts: string[] = [];
-  if (ast.where) {
-    const compiled = await compileFilter(ast.where, filterContext, params.length);
-    whereParts.push(compiled.sql);
-    params.push(...compiled.params);
-  }
-  if (options.rowFilter) {
-    const compiled = await compileFilter(options.rowFilter, rowFilterContext, params.length);
-    whereParts.push(compiled.sql);
-    params.push(...compiled.params);
-  }
-  if (ast.search) {
-    const searchSql = await compileSearch(ast.search, ast.fields, ast.searchFields, root, schemaContext, registry, fieldDecision, pushParam);
-    if (searchSql) whereParts.push(searchSql);
-  }
+  await registry.whileFiltering(async () => {
+    if (ast.where) {
+      const compiled = await compileFilter(ast.where, filterContext, params.length);
+      whereParts.push(compiled.sql);
+      params.push(...compiled.params);
+    }
+    if (options.rowFilter) {
+      const compiled = await compileFilter(options.rowFilter, rowFilterContext, params.length);
+      whereParts.push(compiled.sql);
+      params.push(...compiled.params);
+    }
+    if (ast.search) {
+      const searchSql = await compileSearch(ast.search, ast.fields, ast.searchFields, root, schemaContext, registry, fieldDecision, pushParam);
+      if (searchSql) whereParts.push(searchSql);
+    }
+  });
 
   let groupHavingSql = "";
   if (isGrouped && groupBySql.length > 0) {
@@ -213,9 +216,11 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
 
   // Joins are added by every clause that resolves a path - the projection, WHERE, search, HAVING, ORDER BY and flags
   // (a relation ordered by but not read) - so the FROM is written once all of them are compiled.
-  let fromSql = ` FROM ${quoteIdentifier(root.schema)}.${quoteIdentifier(root.table)} AS ${registry.rootAlias}`;
-  for (const join of registry.joins) fromSql += ` ${join.sql}`;
-  if (whereParts.length > 0) fromSql += ` WHERE ${whereParts.join(" AND ")}`;
+  const fromWith = (joins: readonly { sql: string }[]): string =>
+    ` FROM ${quoteIdentifier(root.schema)}.${quoteIdentifier(root.table)} AS ${registry.rootAlias}` +
+    joins.map((join) => ` ${join.sql}`).join("") +
+    (whereParts.length > 0 ? ` WHERE ${whereParts.join(" AND ")}` : "");
+  const fromSql = fromWith(registry.joins);
 
   const limit = Math.min(ast.limit ?? options.defaultLimit, options.maxLimit);
   const offset = Math.min(ast.offset ?? 0, options.maxOffset);
@@ -232,7 +237,8 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
   if (ast.count) {
     countSql = isGrouped
       ? `SELECT count(*) AS count FROM (SELECT 1${fromSql}${groupHavingSql}) sub`
-      : `SELECT count(*) AS count${fromSql}`;
+      // The total needs no join that only brings a column to read or to order by (Data_API.md §3.8).
+      : `SELECT count(*) AS count${fromWith(registry.filterJoins)}`;
     countParams = sharedParams;
   }
 

@@ -9,6 +9,7 @@ import { applyTotalbaseDefaultGrants } from "../totalbase-default-grants.js";
 import { copyRolePermissions } from "../copy-role-permissions.js";
 import { dataEnvelope, type JsonSchema } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, FILTER, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
+import { optionalData } from "../request-body.js";
 
 const VALID_ACTIONS: ReadonlySet<string> = new Set(["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"]);
 
@@ -154,7 +155,7 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
       }),
     },
     async (request) => {
-      const entries = request.body?.data?.permissions;
+      const entries = optionalData(request.body).permissions;
       if (!Array.isArray(entries) || entries.length === 0) throw new TotalBaseError("INVALID_QUERY", "permissions must be a non-empty list.");
       if (!(await context.roles.findById(request.params.role))) throw new TotalBaseError("RESOURCE_NOT_FOUND", "Role not found.");
       const grants = [];
@@ -185,7 +186,7 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
     },
     async (request) => {
       const action = requireValidAction(request.params.action);
-      const roleIds = parseRoleIdList(request.body?.data?.roleIds);
+      const roleIds = parseRoleIdList(optionalData(request.body).roleIds);
       const grant = await parseGrant(context, request.body?.data);
       return { data: await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: request.admin!.id }) };
     },
@@ -261,8 +262,8 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
       }),
     },
     async (request) => {
-      const from = request.body?.data?.from;
-      const replace = request.body?.data?.replace ?? false;
+      const from = optionalData(request.body).from;
+      const replace = optionalData(request.body).replace ?? false;
       if (typeof from !== "string" || !UUID_PATTERN.test(from)) throw new TotalBaseError("INVALID_QUERY", "from must be a role id.");
       if (typeof replace !== "boolean") throw new TotalBaseError("INVALID_QUERY", "replace must be true or false.");
       const result = await copyRolePermissions(context, request.params.role, from, { replace, actorUserId: request.admin!.id });

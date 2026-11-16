@@ -4,6 +4,7 @@ import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, created, DATE_TIME, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 import { optionalData, type DataBody } from "../request-body.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 /** How long a drawer's preview token lives - the drawer asks for a new one before then. */
 export const EMBED_PREVIEW_TTL_SECONDS = 10 * 60;
@@ -52,17 +53,12 @@ const EMBED_INPUT = object({
 /** Embed writes are recorded like any administrative change (Dashboards.md §9.5). */
 async function audit(context: AppContext, request: FastifyRequest, event: string, embed: { id: string; dashboard: string; name: string }) {
   try {
-    await context.audit.record(context.database, {
-      requestId: request.id,
-      principal: { type: "ADMIN", id: request.admin!.id },
+    await context.audit.record(context.database, adminAuditEntry(request, {
       // An access event (Security.md §11.6): an embed decides who may see a dashboard's data.
       action: "AUTH",
       status: "EXECUTED",
-      source: "admin",
       metadata: { event: `dashboard_embed.${event}`, embed: embed.id, dashboard: embed.dashboard, name: embed.name },
-      startedAt: new Date(),
-      finishedAt: new Date(),
-    });
+    }));
   } catch {
     // best-effort; never mask the write
   }

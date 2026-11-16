@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
+import { typeInMonaco } from '../helpers.js'
 import { adminSession, createDataView, deleteDataViewsNamed, expect, publish, resetSchema, resourceId, test, type DataViewRef } from './fixtures.js'
 
 /**
@@ -47,7 +48,7 @@ test('a filter written as the Data API\'s own where narrows the rows', async ({ 
   await main.getByRole('button', { name: /^Filter/ }).click()
   const panel = page.getByRole('dialog', { name: 'Filter' })
   await panel.getByRole('button', { name: 'Advanced' }).click()
-  await panel.getByRole('textbox').last().fill('{ "activo": { "_eq": "false" } }')
+  await typeInMonaco(page, panel.locator('.monaco-editor').last(), '{ "activo": { "_eq": "false" } }')
   await panel.getByRole('textbox').last().blur()
   await panel.getByRole('button', { name: 'Close' }).last().click()
   await expect(rows(page)).toHaveCount(1)
@@ -81,7 +82,7 @@ test('a filter saved as a view comes back in one click', async ({ page, token })
   await main.getByRole('button', { name: /^Filter/ }).click()
   const filter = page.getByRole('dialog', { name: 'Filter' })
   await filter.getByRole('button', { name: 'Advanced' }).click()
-  await filter.getByRole('textbox').last().fill('{ "categoria": { "_eq": "3" } }')
+  await typeInMonaco(page, filter.locator('.monaco-editor').last(), '{ "categoria": { "_eq": "3" } }')
   await filter.getByRole('textbox').last().blur()
   await filter.getByRole('button', { name: 'Close' }).last().click()
   await expect(rows(page)).toHaveCount(1)

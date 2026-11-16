@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DASHBOARD_WIDGET_CATALOG, DASHBOARD_WIDGET_TYPES, dashboardValueKind, isPresentationWidget, type DashboardWidgetType } from "@totalbase/tb-catalog";
 import { AdminApiError, type AdminClient } from "./admin-client.js";
-import { ADDITIVE, DESTRUCTIVE, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId } from "./tool-helpers.js";
+import { ADDITIVE, DESTRUCTIVE, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, publishOutcome } from "./tool-helpers.js";
 import { dashboardWidgetSection } from "./guides-text.js";
 import { FULL_POLICY, refuseDestructive, type McpPolicy } from "./policy.js";
 
@@ -443,14 +443,14 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
     {
       title: "Publish dashboard",
       description:
-        "Publish a dashboard's draft as its next version - what viewers see. role_ids replaces the roles that may view it (list_roles); without any, only administrators do. Viewers see every widget's data whatever their own grants (the SQL runs with the dashboard's authority, filtered only by $USER.* in it) - publish only to roles that may see all of it. A published, LISTED dashboard joins the App menu.",
+        "Publish a dashboard's draft as its next version - what viewers see. published=false: the draft already equaled the live version, nothing changed. role_ids replaces the roles that may view it (list_roles); without any, only administrators do. Viewers see every widget's data whatever their own grants (the SQL runs with the dashboard's authority, filtered only by $USER.* in it) - publish only to roles that may see all of it. A published, LISTED dashboard joins the App menu.",
       inputSchema: { id: z.string(), role_ids: z.array(roleId()).optional().describe("Every role that may view it - replaces the current set"), note: z.string().max(128).optional().describe("What this version changes - shown in its Versions") },
       annotations: ADDITIVE,
     },
     async ({ id, role_ids, note }) => {
       if (role_ids) await client.put(`/dashboards/${id}/roles`, { data: { roleIds: role_ids } });
-      const version = await client.post<{ version: number }>(`/dashboards/${id}/publish`, note ? { data: { note } } : {});
-      return result({ id, version: version?.version, ...(role_ids && { roleIds: role_ids }) });
+      const { data: version, status } = await client.postWithMeta<{ version: number }>(`/dashboards/${id}/publish`, note ? { data: { note } } : {});
+      return result({ id, ...publishOutcome(version.version, status), ...(role_ids && { roleIds: role_ids }) });
     },
   );
 

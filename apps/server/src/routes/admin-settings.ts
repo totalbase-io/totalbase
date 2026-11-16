@@ -5,6 +5,7 @@ import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, NO_CONTENT, adminDoc, object, ok, ref } from "../openapi-admin-docs.js";
+import { optionalData } from "../request-body.js";
 
 /**
  * Settings management (Administration.md §1: "Settings").
@@ -208,7 +209,7 @@ export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppCo
       response: ok(object({ sent: { type: "boolean" } })),
     }),
   }, async (request) => {
-    const raw = request.body?.data?.to;
+    const raw = optionalData(request.body).to;
     const to = typeof raw === "string" ? raw.trim() : "";
     if (!to.includes("@")) throw new TotalBaseError("INVALID_QUERY", "Expected `to`: the email address to send the test to.");
     await context.emailSender.send({

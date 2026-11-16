@@ -30,6 +30,7 @@ const TEMPLATE_RULES =
 
 /** A preview's values for the variables a slot has beyond the common ones. */
 const PREVIEW_VARIABLES: Partial<Record<SystemEmailSlot, Record<string, string>>> = {
+  user_invitation: { "inviter.name": "Ana Torres", "inviter.email": "ana@example.com", roles: "Technician", message: "Welcome to the team." },
   email_changed: { new_email: "new-address@example.com" },
   token_created: { "token.name": "deploy-bot", "token.plane": "API" },
 };

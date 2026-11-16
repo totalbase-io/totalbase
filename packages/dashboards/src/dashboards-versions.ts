@@ -1,4 +1,6 @@
-import { deleteVersionsBefore, publishVersion, type Queryable, type VersionsTable } from "@totalbase/database";
+import { randomUUID } from "node:crypto";
+import { insertWidgets } from "./dashboards-widgets-write.js";
+import { deleteVersionsBefore, publishVersion, type Published, type Queryable, type VersionsTable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { dashboardWidgetDefinition, isPresentationWidget, resolveDashboardRoles } from "@totalbase/tb-catalog";
 import type { DashboardTab } from "./tabs.js";
@@ -73,7 +75,7 @@ export async function hasUnpublishedChanges(ctx: DashboardsContext, dashboardId:
  * version) when the draft equals it. A draft equal to an OLDER version
  * (Restore, Foundations.md §13.4) records it as `restored_from_version` - the newest one.
  */
-export async function publish(ctx: DashboardsContext, dashboardId: string, userId: string | null, note: string | null = null): Promise<AdminDashboardVersion> {
+export async function publish(ctx: DashboardsContext, dashboardId: string, userId: string | null, note: string | null = null): Promise<Published<AdminDashboardVersion>> {
   const dashboard = await getDashboard(ctx, dashboardId);
   // Never a widget that fails (DB10): its query planned (LIMIT 0, nothing read), its roles checked - else refused, listing each.
   const failing: string[] = [];
@@ -96,7 +98,7 @@ export async function publish(ctx: DashboardsContext, dashboardId: string, userI
 
   // One transaction with the dashboard's row locked, the widgets read under that lock - `@totalbase/database`'s
   // `publishVersion`: the no-op on an unchanged draft, MAX + 1, `restored_from_version`.
-  const row = await ctx.database.transaction((client) =>
+  const { row, created } = await ctx.database.transaction((client) =>
     publishVersion<VersionRow>(client, DASHBOARD_VERSIONS, dashboardId, userId, async () => {
       const { widgetsJson, variablesJson } = await draftSnapshot(ctx, dashboard, client);
       return [
@@ -107,7 +109,7 @@ export async function publish(ctx: DashboardsContext, dashboardId: string, userI
     }, note),
   );
   forgetSnapshots(ctx, dashboardId);
-  return toAdminVersion(row);
+  return { ...toAdminVersion(row), created };
 }
 
 /** Newest first, summary only (no snapshot payloads). */
@@ -215,14 +217,8 @@ export async function restore(ctx: DashboardsContext, dashboardId: string, versi
       JSON.stringify(target.tabs),
     ]);
     await client.query(`DELETE FROM totalbase.dashboards_widgets WHERE dashboard = $1`, [dashboardId]);
-    for (const w of target.widgets) {
-      await client.query(
-        `INSERT INTO totalbase.dashboards_widgets
-           (id, dashboard, type, label, grid_x, grid_y, grid_w, grid_h, query, config, tab)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)`,
-        [w.id, dashboardId, w.type, w.label, w.gridX, w.gridY, w.gridW, w.gridH, w.query, JSON.stringify(w.config), w.tab],
-      );
-    }
+    // The version's widgets keep their ids - one statement for all of them.
+    await insertWidgets(client, dashboardId, target.widgets);
   });
   forgetSnapshots(ctx, dashboardId);
   return getDashboard(ctx, dashboardId);
@@ -259,14 +255,8 @@ export async function copyInto(ctx: DashboardsContext, source: AdminDashboard, i
   });
   await ctx.database.transaction(async (client) => {
     await client.query(`UPDATE totalbase.dashboards SET variables = $2::jsonb, menu_label = $3, scope = $4, tabs = $5::jsonb WHERE id = $1`, [created.id, JSON.stringify(variables), source.menuLabel ?? null, source.scope, JSON.stringify(tabs)]);
-    for (const w of widgets) {
-      await client.query(
-        `INSERT INTO totalbase.dashboards_widgets
-           (dashboard, type, label, grid_x, grid_y, grid_w, grid_h, query, config, tab)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
-        [created.id, w.type, w.label, w.gridX, w.gridY, w.gridW, w.gridH, w.query, JSON.stringify(w.config), w.tab],
-      );
-    }
+    // A copy's widgets are new rows: fresh ids, one statement for all of them.
+    await insertWidgets(client, created.id, widgets.map((w) => ({ ...w, id: randomUUID() })));
   });
   return getWithStatus(ctx, created.id);
 }

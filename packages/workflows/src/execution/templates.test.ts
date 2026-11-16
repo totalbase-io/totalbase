@@ -39,4 +39,20 @@ describe("{{...}} templates", () => {
     expect(resolve("{{start.data.customer.phone}}")).toBeUndefined();
     expect(resolve("Phone: {{start.data.missing.deeper}}")).toBe("Phone: ");
   });
+  // An HTML field (Send email's htmlBody, Workflows.md §5.16): what a trigger carries can't become markup.
+  it("escapes a value spliced into HTML, and leaves alone a field that is one expression in full", () => {
+    const html = new Map<string, unknown>([
+      ["start", { data: { name: "<script>alert(1)</script>", note: `Tom & "Jerry's"`, tags: ["<b>"], count: 3 } }],
+      ["build", { data: { html: "<table><tr><td>1</td></tr></table>" } }],
+    ]);
+    const resolveHtml = (value: unknown) => resolveTemplates(value, { ...state, resultsByKey: html } as RunState, { html: true });
+
+    expect(resolveHtml("<p>Hi {{start.data.name}}</p>")).toBe("<p>Hi &lt;script&gt;alert(1)&lt;/script&gt;</p>");
+    expect(resolveHtml("<p>{{start.data.note}} x{{start.data.count}}</p>")).toBe("<p>Tom &amp; &quot;Jerry&#39;s&quot; x3</p>");
+    expect(resolveHtml("<p>{{start.data.tags}}</p>")).toBe("<p>[&quot;&lt;b&gt;&quot;]</p>");
+    // The body another step built, handed over whole.
+    expect(resolveHtml("{{build.data.html}}")).toBe("<table><tr><td>1</td></tr></table>");
+    // Without the option nothing changes.
+    expect(resolveTemplates("<p>{{start.data.name}}</p>", { ...state, resultsByKey: html } as RunState)).toBe("<p><script>alert(1)</script></p>");
+  });
 });

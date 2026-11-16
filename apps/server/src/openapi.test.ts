@@ -187,7 +187,8 @@ describe("GET /api/openapi.json (integration)", () => {
       try {
         const find = async () => (await endpoints()).find((e) => e.workflow === workflow.id);
         expect(await find()).toMatchObject({ method: "GET", path: "/api/workflows/endpoints-test-flow/webhook", access: "public", enabled: false });
-        workflow = await context.workflowsAdmin.publish(workflow.id, workflow.revision, () => {});
+        await context.workflowsAdmin.publish(workflow.id, workflow.revision, () => {});
+        workflow = await context.workflowsAdmin.get(workflow.id);
         await context.workflowsAdmin.update(workflow.id, { revision: workflow.revision, enabled: true });
         expect(await find()).toMatchObject({ enabled: true });
       } finally {
@@ -240,7 +241,8 @@ describe("GET /api/openapi.json (integration)", () => {
         startConfiguration: { trigger: "MANUAL" },
       });
       try {
-        workflow = await context.workflowsAdmin.publish(workflow.id, workflow.revision, () => {});
+        await context.workflowsAdmin.publish(workflow.id, workflow.revision, () => {});
+        workflow = await context.workflowsAdmin.get(workflow.id);
         await context.workflowsAdmin.update(workflow.id, { revision: workflow.revision, enabled: true });
         const path = "/api/workflows/openapi-server-test-flow/run";
         expect((await fetchSpec()).paths[path]).toBeUndefined();

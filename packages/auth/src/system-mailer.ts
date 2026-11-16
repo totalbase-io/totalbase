@@ -1,5 +1,5 @@
 import type { MailTemplate, SettingsService, SystemEmailSlot } from "@totalbase/settings";
-import { TEMPLATE_PLACEHOLDER } from "@totalbase/settings";
+import { MAIL_FOOTER_DEFAULT, TEMPLATE_PLACEHOLDER } from "@totalbase/settings";
 import type { EmailSender } from "./email-sender.js";
 
 /** The flows whose emails carry a single-use link - one `auth.links.*` setting each. */
@@ -18,7 +18,8 @@ export interface RenderedEmail {
 
 const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
-function escapeHtml(value: string): string {
+/** A value as text inside HTML - the one escaping of the system emails, MAILING templates and a Send email step's HTML body (Workflows.md §5.16). */
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]!);
 }
 
@@ -38,16 +39,16 @@ export function fillMailPlaceholders(content: string, variables: Record<string, 
 
 /**
  * The fixed frame every system email's HTML body is sent in: font, width
- * and an instance footer. Applied here, at render time, rather than stored
+ * (centered - a wide mail client would leave it against the left edge) and an instance footer. Applied here, at render time, rather than stored
  * in the template - an edited template is plain semantic HTML (what the
  * admin's rich-text editor keeps), so the frame can't be lost by editing.
  * Inline styles only: many mail clients ignore <style> blocks.
  */
 function wrapMailHtml(body: string, footer: string): string {
   return [
-    `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#1f2937;max-width:520px">`,
+    `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#1f2937;max-width:520px;margin:0 auto">`,
     body,
-    `<p style="margin-top:32px;color:#6b7280;font-size:12px">${footer}</p>`,
+    ...(footer.trim() ? [`<p style="margin-top:32px;color:#6b7280;font-size:12px">${footer}</p>`] : []),
     `</div>`,
   ].join("\n");
 }
@@ -57,18 +58,20 @@ function wrapMailHtml(body: string, footer: string): string {
  * HTML body only - the subject and plain-text body are not HTML. A
  * placeholder with no value renders empty (templates are validated
  * against each slot's variable list when saved, so this is only a
- * safety net). A non-empty HTML body is wrapped in the fixed layout.
+ * safety net). A non-empty HTML body is wrapped in the fixed layout, ending
+ * with `footer` (the `mail.footer` setting, its own placeholders filled;
+ * empty = none).
  */
-export function renderMailTemplate(template: MailTemplate, variables: Record<string, string>): RenderedEmail {
+export function renderMailTemplate(template: MailTemplate, variables: Record<string, string>, footer: string = MAIL_FOOTER_DEFAULT): RenderedEmail {
   const fill = (content: string, escape: boolean) => fillMailPlaceholders(content, variables, escape);
   const html = fill(template.html, true);
-  const footer = [variables["instance.name"], variables["instance.public_url"]]
-    .filter((part): part is string => !!part?.trim())
-    .map(escapeHtml)
-    .join(" · ");
+  // The default footer leaves a part without a value out, instead of a dangling separator.
+  const footerHtml = footer === MAIL_FOOTER_DEFAULT
+    ? [variables["instance.name"], variables["instance.public_url"]].filter((part): part is string => !!part?.trim()).map(escapeHtml).join(" · ")
+    : fill(escapeHtml(footer), true); // plain text, its own characters escaped like its values
   return {
     subject: fill(template.subject, false),
-    html: html.trim() ? wrapMailHtml(html, footer) : "",
+    html: html.trim() ? wrapMailHtml(html, footerHtml) : "",
     text: fill(template.text, false),
   };
 }
@@ -122,10 +125,11 @@ export class SystemMailer {
     /** Slot-specific variables beyond the common ones (e.g. email_changed's `new_email`). */
     extra?: Record<string, string>,
   ): Promise<RenderedEmail> {
-    const [stored, instanceName, publicUrl] = await Promise.all([
+    const [stored, instanceName, publicUrl, footer] = await Promise.all([
       template ? Promise.resolve(template) : this.settings.get(`mail.templates.${slot}`),
       this.settings.get("system.instance_name"),
       this.publicUrl(),
+      this.settings.get("mail.footer"),
     ]);
     return renderMailTemplate(stored, {
       "user.name": recipient.name?.trim() || recipient.email,
@@ -134,7 +138,7 @@ export class SystemMailer {
       "instance.public_url": publicUrl,
       ...(action && { action_url: action.url, expires_in: formatDuration(action.expiresInHours) }),
       ...extra,
-    });
+    }, footer);
   }
 
   async send(

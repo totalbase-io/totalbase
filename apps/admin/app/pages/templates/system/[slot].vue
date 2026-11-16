@@ -113,7 +113,7 @@ async function setEnabled(value: boolean) {
 
 // --- Variables - click to copy the placeholder. ---
 async function copyVariable(name: string) {
-  await navigator.clipboard.writeText(placeholder(name))
+  await copyText(placeholder(name))
   toast.add({ title: t('content.systemEmails.editor.copiedVariable', { name: placeholder(name) }), color: 'success' })
 }
 

@@ -27,6 +27,8 @@ export interface SendEmailConfiguration {
   htmlBody?: string
   /** File ids, or `{{stepKey.data.asset}}` templates resolving to one. */
   attachments?: string[]
+  /** Times to send again after the mail server certainly did not take the message (Workflows.md §5.16); 0-5. */
+  retries?: number
 }
 
 const props = defineProps<{ modelValue: SendEmailConfiguration, nodeKey: string, existingKeys: string[] }>()
@@ -54,6 +56,7 @@ const dataJson = ref('{}')
 const dataEditor = ref<{ format: () => void } | null>(null)
 
 const attachments = ref<string[]>([])
+const retries = ref(0)
 const filesApi = useFilesApi()
 const { data: files } = useAsyncData('send-email-files', () => filesApi.listFiles(), { default: () => [] })
 const fileItems = computed(() => (files.value ?? [])
@@ -102,6 +105,7 @@ watch(open, (value) => {
   textBody.value = props.modelValue.textBody ?? ''
   htmlBody.value = props.modelValue.htmlBody ?? ''
   attachments.value = [...(props.modelValue.attachments ?? [])]
+  retries.value = props.modelValue.retries ?? 0
 })
 
 const showTextBody = computed(() => bodyType.value === 'text' || bodyType.value === 'both')
@@ -116,7 +120,8 @@ function save() {
     cc: cc.value || undefined,
     bcc: bcc.value || undefined,
     replyTo: replyTo.value || undefined,
-    attachments: attachments.value.length ? attachments.value : undefined
+    attachments: attachments.value.length ? attachments.value : undefined,
+    retries: retries.value > 0 ? Math.min(5, Math.trunc(retries.value)) : undefined
   }
   const configuration: SendEmailConfiguration = contentMode.value === 'template'
     ? { ...recipients, template: templateId.value, data: JSON.parse(dataJson.value) }
@@ -360,6 +365,19 @@ const isCompact = useCompactUi()
               />
             </UDropdownMenu>
           </div>
+        </UFormField>
+
+        <UFormField
+          :label="$t('workflows.sendEmailModal.retries')"
+          :description="$t('workflows.sendEmailModal.retriesDescription')"
+        >
+          <UInput
+            v-model.number="retries"
+            type="number"
+            min="0"
+            max="5"
+            class="w-32"
+          />
         </UFormField>
       </div>
     </template>

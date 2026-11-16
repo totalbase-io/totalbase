@@ -24,7 +24,7 @@
  * (useGridColumnPrefs, useGridSelection, useGridTotals, useGridLinkFilter,
  * useGridExport, useGridSavedViews, useGridCalendarRange) or child
  * (DataViewGridToolbar, DataViewGridFilterChips, DataViewGridColumnsSlideover,
- * DataViewGridDeleteModal).
+ * the shared DeleteConfirmModal).
  */
 import type { ComponentPublicInstance } from 'vue'
 import type { DropdownMenuItem } from '@nuxt/ui'
@@ -981,7 +981,7 @@ const showPager = computed(() => props.paging || total.value > pageSize.value)
 // hands back which text to copy.
 function copyCellText(text: string) {
   if (!text) return
-  navigator.clipboard?.writeText(text).then(() => {
+  copyText(text).then(() => {
     toast.add({ title: t('dataviews.grid.copied'), color: 'success' })
   }).catch(() => {
     toast.add({ title: t('dataviews.grid.copyError'), color: 'error' })
@@ -1652,20 +1652,20 @@ async function onImported(created: number) {
   />
 
   <!-- One row's delete (its "⋮"), and the selected rows' (the page header's bulk Delete). -->
-  <DataViewGridDeleteModal
+  <DeleteConfirmModal
     :open="dropTarget !== null"
     :title="t('dataviews.grid.deleteRowTitle')"
-    :body="t('dataviews.grid.deleteRowBody')"
+    :description="t('dataviews.grid.deleteRowBody')"
     :loading="dropping"
+    :require-confirm="false"
     @update:open="(v: boolean) => { if (!v) dropTarget = null }"
     @confirm="confirmDrop"
   />
-  <DataViewGridDeleteModal
+  <DeleteConfirmModal
     v-model:open="selection.bulkDropConfirmOpen.value"
     :title="t('dataviews.grid.deleteRowsTitle')"
-    :body="t('dataviews.grid.deleteRowsBody', { count: selectedCount })"
+    :description="t('dataviews.grid.deleteRowsBody', { count: selectedCount })"
     :loading="selection.bulkDeleting.value"
-    require-confirm
     @confirm="selection.confirmBulkDrop"
   />
 </template>

@@ -29,6 +29,12 @@ describe("AdminClient", () => {
     await expect(client.post("/tokens", { data: { name: "x" } })).rejects.toBeInstanceOf(AdminApiError);
   });
 
+  it("postWithMeta answers the status beside data and meta - a publish's 201 or 200", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data: { version: 2 }, meta: { warnings: ["w"] } }), { status: 200 })));
+    const client = new AdminClient({ baseUrl: "http://localhost:3000", token: "tb_test" });
+    await expect(client.postWithMeta("/dataviews/x/publish")).resolves.toEqual({ data: { version: 2 }, meta: { warnings: ["w"] }, status: 200 });
+  });
+
   it("treats a 204 response as no content", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
     const client = new AdminClient({ baseUrl: "http://localhost:3000", token: "tb_test" });

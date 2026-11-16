@@ -7,12 +7,13 @@ import type { CardMark } from '~/utils/column-conditions'
 // own card. Dropping a card on another lane emits `update-row` - the grid
 // PATCHes it through the Data API like any edit and refetches; PostgreSQL
 // decides. `readOnly`: the cards stay where the data puts them.
-import { displayColumns, displayText, type DisplayConfig } from '~/utils/display-field'
+import type { DisplayConfig } from '~/utils/display-field'
+import type { LaneRow } from '~/composables/useLaneRows'
 import { KANBAN_UNASSIGNED_KEY, type DataViewField, type KanbanLayoutConfig } from '~/types/dataview'
 import type { CatalogColumn } from '~/types/permission'
 import type { RelationDefinition } from '~/types/schema'
 import type { KanbanCard, KanbanLane } from './DataViewKanban.vue'
-import { cappedNotice, columnField } from '~/utils/dataview-columns'
+import { cappedNotice, columnField, orderLanes } from '~/utils/dataview-columns'
 
 const props = defineProps<{
   rows: Record<string, unknown>[]
@@ -36,7 +37,6 @@ const emit = defineEmits<{
   'update-row': [change: { row: Record<string, unknown>, data: Record<string, unknown>, errorTitle: string }]
 }>()
 
-const dataApi = useDataApi()
 const { t } = useI18n()
 const formula = useLayoutFormula(() => props.fields, () => [props.layout?.titleFormula, props.layout?.descriptionFormula, props.layout?.imageFormula])
 
@@ -45,14 +45,14 @@ const relation = computed(() => props.relations?.find(r => r.sourceColumn === pr
 /** A NOT NULL group column can't be cleared by a drop, so Unassigned then takes none. Nullable until the catalog says otherwise - never lock a lane out while it loads. */
 const groupNullable = computed(() => props.catalogColumns?.find(c => c.name === props.layout?.groupColumn)?.nullable ?? true)
 
-/**
- * The related table's rows - the board's lanes. One page of 100 ordered
- * by the display field, the same fetch ForeignKeySelect.vue makes;
- * refetched only when the relation changes. `rawValue` (the target PK's
- * real type) is what a drop PATCHes; `pk` is its string form for lookups.
- */
-interface LaneRow { pk: string, rawValue: unknown, label: string, color: string | null, icon?: string | null }
-const fetchedLaneRows = ref<LaneRow[]>([])
+/** A dropped card PATCHes its lane's `rawValue` (the related key's real type); `pk` is its string form for lookups. */
+const fetchedLaneRows = useLaneRows({
+  relation: () => relation.value,
+  // What its lanes are titled by - the group column's display, one related column or a template.
+  display: () => groupField.value?.widget === 'USelectMenu' ? groupField.value.config as DisplayConfig : undefined,
+  orderColumn: () => props.layout?.laneOrderColumn,
+  colorColumn: () => props.layout?.laneColorColumn
+})
 /** Theme colors a CHECK value's presentation names, as the lanes' palette. */
 const THEME_TO_PALETTE: Record<string, string> = { primary: 'sky', secondary: 'violet', success: 'green', info: 'blue', warning: 'amber', error: 'red' }
 /** Group by a CHECK list: its values, in its order. */
@@ -64,28 +64,6 @@ const checkLaneRows = computed<LaneRow[] | null>(() => {
   return values.map(value => ({ pk: value, rawValue: value, label: options[value]?.label ?? value, color: options[value]?.color ? THEME_TO_PALETTE[options[value]!.color!] ?? null : null, icon: options[value]?.icon ?? null }))
 })
 const laneRows = computed(() => checkLaneRows.value ?? fetchedLaneRows.value)
-// Ordered by the layout's lane order column (the related table's `position`), else by name; tinted by its color column.
-watch([relation, () => props.layout?.laneOrderColumn, () => props.layout?.laneColorColumn], async ([target, orderColumn, colorColumn]) => {
-  fetchedLaneRows.value = []
-  // What its lanes are titled by - the group column's display, one related column or a template.
-  const display = groupField.value?.widget === 'USelectMenu' ? groupField.value.config as DisplayConfig : undefined
-  const shownColumns = displayColumns(display)
-  if (!target || shownColumns.length === 0) return
-  try {
-    const { data } = await dataApi.get<Record<string, unknown>[]>(
-      dataApi.resourcePath(target.targetSchema, target.targetTable),
-      { fields: [...new Set([target.targetColumn, ...shownColumns, colorColumn].filter((c): c is string => !!c))].join(','), order_by: orderColumn || shownColumns[0], limit: 100 }
-    )
-    fetchedLaneRows.value = data.map(row => ({
-      pk: String(row[target.targetColumn]),
-      rawValue: row[target.targetColumn],
-      label: displayText(display, c => row[c]) ?? String(row[target.targetColumn]),
-      color: colorColumn && typeof row[colorColumn] === 'string' ? row[colorColumn] as string : null
-    }))
-  } catch {
-    // Best-effort - the board renders with only the Unassigned lane.
-  }
-}, { immediate: true })
 
 function cardFor(row: Record<string, unknown>, index: number): KanbanCard {
   const title = formula.evaluateRich(props.layout?.titleFormula, row)
@@ -104,8 +82,7 @@ function cardFor(row: Record<string, unknown>, index: number): KanbanCard {
 const lanes = computed<KanbanLane[]>(() => {
   const groupColumn = props.layout?.groupColumn
   if (!groupColumn) return []
-  const orderIndex = new Map((props.layout?.laneOrder ?? []).map((pk, i) => [pk, i]))
-  const ordered = [...laneRows.value].sort((a, b) => (orderIndex.get(a.pk) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.pk) ?? Number.MAX_SAFE_INTEGER))
+  const ordered = orderLanes(laneRows.value, props.layout?.laneOrder)
   const result: KanbanLane[] = ordered.map(r => ({ key: r.pk, title: r.label, color: r.color, icon: r.icon, droppable: !props.layout?.readOnly, cards: [] }))
   const laneByKey = new Map(result.map(l => [l.key, l]))
   const unassigned: KanbanLane = { key: KANBAN_UNASSIGNED_KEY, title: t('dataviews.layouts.unassigned'), color: null, droppable: groupNullable.value && !props.layout?.readOnly, cards: [] }

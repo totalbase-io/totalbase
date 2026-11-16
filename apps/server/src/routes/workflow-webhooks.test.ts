@@ -211,4 +211,49 @@ describe("Workflow webhooks", () => {
     )).rows[0]!.count;
     expect(after).toBe(before);
   });
+  // Allowed addresses (Workflows.md §6.5): from anywhere else the webhook answers as one that doesn't exist.
+  it("accepts a webhook with allowed addresses only from them - an address, a range, an IPv4 client on a dual-stack socket", async () => {
+    const id = await publishedWorkflow(`${PREFIX}-ips`, { method: "POST", access: "PUBLIC", response_mode: "SYNC", execute_as: systemUserId, allowed_ips: ["10.88.0.0/24", "203.0.113.7"] });
+    const runs = async () => (await database.query<{ count: number }>(`SELECT count(*)::int AS count FROM totalbase.workflows_runs WHERE workflow = $1`, [id])).rows[0]!.count;
+
+    expect((await hit("POST", `${PREFIX}-ips`, { payload: {}, ip: "10.88.0.5" })).statusCode).toBe(200);
+    expect((await hit("POST", `${PREFIX}-ips`, { payload: {}, ip: "203.0.113.7" })).statusCode).toBe(200);
+    expect((await hit("POST", `${PREFIX}-ips`, { payload: {}, ip: "::ffff:203.0.113.7" })).statusCode).toBe(200);
+    expect(await runs()).toBe(3);
+
+    for (const ip of ["10.88.1.5", "203.0.113.8", "2001:db8::1"]) {
+      const refused = await hit("POST", `${PREFIX}-ips`, { payload: {}, ip });
+      expect([refused.statusCode, refused.json().errors[0].code], ip).toEqual([404, "WORKFLOW_NOT_FOUND"]);
+    }
+    expect(await runs()).toBe(3);
+  });
+
+  it("checks an AUTHENTICATED webhook's allowed addresses before its caller's credential", async () => {
+    const id = await publishedWorkflow(`${PREFIX}-auth-ips`, { method: "POST", access: "AUTHENTICATED", response_mode: "ASYNC", allowed_ips: ["203.0.113.7"] });
+    await context.workflowPermissions.grant(roleId, id);
+    expect((await hit("POST", `${PREFIX}-auth-ips`, { payload: {}, token: caller.plainKey, ip: "203.0.113.7" })).statusCode).toBe(202);
+    const refused = await hit("POST", `${PREFIX}-auth-ips`, { payload: {}, token: caller.plainKey, ip: "203.0.113.8" });
+    expect([refused.statusCode, refused.json().errors[0].code]).toEqual([404, "WORKFLOW_NOT_FOUND"]);
+  });
+
+  it("refuses to publish a webhook whose allowed addresses PostgreSQL can't read", async () => {
+    await expect(publishedWorkflow(`${PREFIX}-ips-bad`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, allowed_ips: ["10.0.0.0/8", "not-an-address"] })).rejects.toThrow(/allowed addresses are invalid/);
+    await expect(publishedWorkflow(`${PREFIX}-ips-bad-2`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, allowed_ips: "10.0.0.1" })).rejects.toThrow(/list of IP addresses/);
+  });
+
+  // A token's allowed addresses (Security.md §3.5) on the routes that resolve their caller without the request's headers.
+  it("refuses a token with allowed addresses from anywhere else - webhook, run result and Data API alike", async () => {
+    const restricted = await context.usersApis.create({ userId: caller.userId, name: `${PREFIX}-restricted`, plane: "API", allowedIps: ["203.0.113.50"] });
+    const from = (ip: string, url: string, method: "GET" | "POST" = "GET") =>
+      app.inject({ method, url, remoteAddress: ip, headers: { authorization: `Bearer ${restricted.plainKey}`, ...(method === "POST" && { "content-type": "application/json" }) }, ...(method === "POST" && { payload: "{}" }) });
+
+    for (const [url, method] of [[`/api/workflows/${PREFIX}-auth/webhook`, "POST"], [`/api/workflows/runs/${randomUUID()}/result`, "GET"], ["/api/totalbase/table/roles", "GET"], ["/api/openapi.json", "GET"]] as const) {
+      const refused = await from("198.51.100.1", url, method);
+      expect([refused.statusCode, refused.json().errors[0].code], url).toEqual([403, "TOKEN_IP_NOT_ALLOWED"]);
+      const allowed = await from("203.0.113.50", url, method);
+      expect(allowed.body, url).not.toContain("TOKEN_IP_NOT_ALLOWED");
+      expect(allowed.statusCode, url).not.toBe(401);
+    }
+    await context.usersApis.delete(restricted.userApi.id);
+  });
 });

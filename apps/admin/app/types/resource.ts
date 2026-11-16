@@ -1,3 +1,5 @@
+import type { DataApiMethod } from '@totalbase/shared'
+
 import type { BrokenReferences } from '~/composables/useBrokenReferences'
 import type { RowPresentation } from '@totalbase/tb-catalog'
 
@@ -9,14 +11,8 @@ import type { RowPresentation } from '@totalbase/tb-catalog'
 export type ResourceType = 'TABLE' | 'VIEW' | 'FUNCTION'
 export type ResourceStatus = 'ACTIVE' | 'MISSING'
 export type FunctionClass = 'UNCLASSIFIED' | 'QUERY' | 'ACTION'
-export type DataApiMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'REALTIME'
-
-/** What the Data API offers per resource type — the HTTP verbs and a table's realtime subscriptions (REALTIME); the ceiling `exposedMethods` can select from (packages/resources' APPLICABLE_METHODS, mirrored here since the admin UI has no server-side import). */
-export const APPLICABLE_METHODS: Record<ResourceType, DataApiMethod[]> = {
-  TABLE: ['GET', 'POST', 'PATCH', 'DELETE', 'REALTIME'],
-  VIEW: ['GET'],
-  FUNCTION: ['POST']
-}
+// The methods and the per-type ceiling are the server's own list (@totalbase/shared, Foundations.md §11.5).
+export { APPLICABLE_METHODS, type DataApiMethod } from '@totalbase/shared'
 
 export interface Resource {
   id: string

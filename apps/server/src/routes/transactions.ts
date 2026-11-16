@@ -80,7 +80,7 @@ export function registerTransactionRoutes(app: FastifyInstance, context: AppCont
       async () => {
         if (async) {
           await checkTransactionRequest({ context, dataPrincipal }, request.body);
-          return queueAsyncCall(context, dataPrincipal, TRANSACTION_EXECUTION_TYPE, undefined, { operations: request.body.operations });
+          return queueAsyncCall(context, dataPrincipal, TRANSACTION_EXECUTION_TYPE, undefined, { operations: request.body?.operations });
         }
         const results = await executeTransaction(
           {

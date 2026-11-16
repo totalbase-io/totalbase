@@ -3,12 +3,12 @@
 // end dates (`gantt_layout`, types/dataview.ts), in one flat lane or a
 // lane per related row when a Group by FK is set (Kanban's mechanism).
 // Dragging a bar, or one of its edges, emits `update-row`.
-import { displayColumns, displayText, type DisplayConfig } from '~/utils/display-field'
+import type { DisplayConfig } from '~/utils/display-field'
 import { addDays } from 'date-fns'
 import { DEFAULT_GANTT_BAR_COLOR, itemColor, GANTT_UNASSIGNED_KEY, type DataViewField, type GanttLayoutConfig, type GanttZoom } from '~/types/dataview'
 import type { RelationDefinition } from '~/types/schema'
 import type { GanttBar, GanttLane } from './DataViewGantt.vue'
-import { cappedNotice, columnField } from '~/utils/dataview-columns'
+import { cappedNotice, columnField, orderLanes } from '~/utils/dataview-columns'
 import { wallClockColumnValue } from '~/utils/datetime-local'
 
 const zoom = defineModel<GanttZoom>('zoom', { required: true })
@@ -31,7 +31,6 @@ const emit = defineEmits<{
   'update-row': [change: { row: Record<string, unknown>, data: Record<string, unknown>, errorTitle: string }]
 }>()
 
-const dataApi = useDataApi()
 const { t } = useI18n()
 const formula = useLayoutFormula(() => props.fields, () => [props.layout?.titleFormula, props.layout?.descriptionFormula, props.layout?.colorFormula])
 
@@ -70,29 +69,13 @@ function barFor(row: Record<string, unknown>, index: number, laneColor: string |
 }
 const byStart = (a: GanttBar, b: GanttBar) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime()
 
-/** Kanban's related-row fetch, plus the optional lane color column off the same rows. */
-interface LaneRow { pk: string, label: string, color: string | null }
-const laneRows = ref<LaneRow[]>([])
-watch([relation, () => props.layout?.laneOrderColumn, () => props.layout?.laneColorColumn], async ([target, orderColumn, colorColumn]) => {
-  laneRows.value = []
-  // What its lanes are titled by - the group column's display, one related column or a template.
-  const display = groupField.value?.widget === 'USelectMenu' ? groupField.value.config as DisplayConfig : undefined
-  const shownColumns = displayColumns(display)
-  if (!target || shownColumns.length === 0) return
-  try {
-    const { data } = await dataApi.get<Record<string, unknown>[]>(
-      dataApi.resourcePath(target.targetSchema, target.targetTable),
-      { fields: [...new Set([target.targetColumn, ...shownColumns, colorColumn].filter((c): c is string => !!c))].join(','), order_by: orderColumn || shownColumns[0], limit: 100 }
-    )
-    laneRows.value = data.map(row => ({
-      pk: String(row[target.targetColumn]),
-      label: displayText(display, c => row[c]) ?? String(row[target.targetColumn]),
-      color: colorColumn && typeof row[colorColumn] === 'string' ? row[colorColumn] as string : null
-    }))
-  } catch {
-    // Best-effort - the timeline renders with only the Unassigned lane.
-  }
-}, { immediate: true })
+/** Kanban's lanes - the related rows, titled by the group column's display, tinted by the lane color column. */
+const laneRows = useLaneRows({
+  relation: () => relation.value,
+  display: () => groupField.value?.widget === 'USelectMenu' ? groupField.value.config as DisplayConfig : undefined,
+  orderColumn: () => props.layout?.laneOrderColumn,
+  colorColumn: () => props.layout?.laneColorColumn
+})
 
 const resolved = computed<{ lanes: GanttLane[], skipped: number }>(() => {
   const groupColumn = props.layout?.groupColumn
@@ -106,8 +89,7 @@ const resolved = computed<{ lanes: GanttLane[], skipped: number }>(() => {
     })
     return { lanes: [{ key: '__all__', title: null, color: null, bars: bars.sort(byStart) }], skipped }
   }
-  const orderIndex = new Map((props.layout?.laneOrder ?? []).map((pk, i) => [pk, i]))
-  const ordered = [...laneRows.value].sort((a, b) => (orderIndex.get(a.pk) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.pk) ?? Number.MAX_SAFE_INTEGER))
+  const ordered = orderLanes(laneRows.value, props.layout?.laneOrder)
   const lanes: GanttLane[] = ordered.map(r => ({ key: r.pk, title: r.label, color: r.color, bars: [] }))
   const laneByKey = new Map(lanes.map(l => [l.key, l]))
   const unassigned: GanttLane = { key: GANTT_UNASSIGNED_KEY, title: t('dataviews.layouts.unassigned'), color: null, bars: [] }

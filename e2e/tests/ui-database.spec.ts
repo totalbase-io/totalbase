@@ -206,53 +206,49 @@ test('New table, then a NOT NULL column with a default and a relation column', a
   expect(failures).toEqual([])
 })
 
-/** The Tables list of the fixture schema, then a row's "Edit" - TableDrawer. */
-async function openEditDrawer(page: Page, table: string) {
-  const tree = await openTree(page)
-  await tree.getByRole('button', { name: /^Tables/ }).click()
-  await page.waitForURL(/\/resources$/)
-  await page.locator('main').getByRole('button', { name: `Actions for ${SCHEMA}.${table}`, exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Edit' }).click()
-  // AppDrawer's title is a plain heading, not the dialog's accessible name.
-  const drawer = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: `Edit ${SCHEMA}.${table}` }) })
-  await expect(drawer.getByLabel('id name')).toBeVisible()
-  return drawer
+/** A column's panel on its table's page: change its Database tab, see the SQL, Save. */
+async function editColumn(page: Page, column: string, change: (panel: Locator) => Promise<void>, expected: (string | RegExp)[]) {
+  await page.locator('main').getByRole('button', { name: `Edit column ${column}`, exact: true }).click()
+  const panel = page.getByRole('dialog', { name: column, exact: true })
+  await panel.getByRole('tab', { name: 'Database' }).click()
+  await change(panel)
+  for (const statement of expected) await expect(panel.locator('pre')).toContainText(statement)
+  await panel.getByRole('button', { name: 'Save' }).click()
+  await expect(panel).toBeHidden()
 }
 
-test('Edit table: alter, rename and constrain several columns at once - preview, then apply', async ({ page }) => {
+test('Edit table: Tables list Edit opens its page; rename, retype and constrain columns - preview, then apply', async ({ page }) => {
   const token = await login(page)
   const failures = watchApiFailures(page)
   const items = await mustResource(page, token, 'items')
 
-  const drawer = await openEditDrawer(page, 'items')
-  // Rename a column, change a type, set NOT NULL, a default, a UNIQUE and a foreign key.
-  await drawer.getByLabel('note name').fill('remark')
-  const qtyType = drawer.getByLabel('qty type')
-  await qtyType.fill('bigint')
-  await page.getByRole('option', { name: 'bigint', exact: true }).click()
-  await drawer.getByLabel('qty default').fill('0')
-  await drawer.getByRole('checkbox', { name: 'name not null' }).click()
-  await drawer.getByRole('checkbox', { name: 'name unique' }).click()
-  await drawer.getByRole('button', { name: 'Edit parent foreign key' }).click()
-  const fk = page.getByRole('dialog', { name: 'Foreign key: parent' })
-  await choose(page, fk.getByLabel('Target schema'), SCHEMA)
-  await choose(page, fk.getByLabel('Target table'), 'parents')
-  await choose(page, fk.getByLabel('Target column'), 'id')
-  await fk.getByRole('button', { name: 'Done' }).click()
-  await expect(drawer.getByRole('textbox', { name: 'parent foreign key', exact: true })).toHaveValue('parents.id')
+  // The list's Edit is the table's own page - its one structure editor.
+  const tree = await openTree(page)
+  await tree.getByRole('button', { name: /^Tables/ }).click()
+  await page.waitForURL(/\/resources$/)
+  await page.locator('main').getByRole('button', { name: `Actions for ${SCHEMA}.items`, exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Edit' }).click()
+  await page.waitForURL(new RegExp(`/resources/${items.id}$`))
 
-  await drawer.getByRole('button', { name: 'Save' }).click()
-  const confirm = page.getByRole('dialog', { name: 'Confirm changes' })
-  const preview = confirm.locator('pre')
-  await expect(preview).toContainText('RENAME COLUMN "note" TO "remark"')
-  await expect(preview).toContainText('TYPE bigint')
-  await expect(preview).toContainText('SET NOT NULL')
-  await expect(preview).toContainText('SET DEFAULT 0')
-  await expect(preview).toContainText(/unique \("name"\)/i)
-  await expect(preview).toContainText(/foreign key \("parent"\) references/i)
-  await confirm.getByRole('button', { name: 'Confirm & Save' }).click()
-  await expect(confirm).toBeHidden()
-  await expect(drawer).toBeHidden()
+  await editColumn(page, 'note', dialog => dialog.getByLabel('Name').fill('remark'), ['RENAME COLUMN "note" TO "remark"'])
+  await editColumn(page, 'qty', async (dialog) => {
+    await dialog.getByLabel('Type').fill('bigint')
+    await page.getByRole('option', { name: 'bigint', exact: true }).click()
+    await dialog.getByLabel('Default').fill('0')
+  }, ['TYPE bigint', 'SET DEFAULT 0'])
+  await editColumn(page, 'name', async (dialog) => {
+    await dialog.getByRole('switch', { name: 'Not null' }).click()
+    await dialog.getByRole('switch', { name: 'Unique' }).click()
+  }, ['SET NOT NULL', /unique \("name"\)/i])
+  await editColumn(page, 'parent', async (dialog) => {
+    await dialog.getByRole('button', { name: 'Set foreign key' }).click()
+    const fk = page.getByRole('dialog', { name: 'Foreign key: parent' })
+    await choose(page, fk.getByLabel('Target schema'), SCHEMA)
+    await choose(page, fk.getByLabel('Target table'), 'parents')
+    await choose(page, fk.getByLabel('Target column'), 'id')
+    await fk.getByRole('button', { name: 'Done' }).click()
+    await expect(dialog.getByText(`${SCHEMA}.parents.id`)).toBeVisible()
+  }, [/foreign key \("parent"\) references/i])
 
   const detail = await tableDetail(page, token, items.id)
   const byName = Object.fromEntries(detail.columns.map(c => [c.name, c]))
@@ -270,27 +266,25 @@ test('Edit table: drop the UNIQUE and the foreign key, and rename the table', as
   const token = await login(page)
   const failures = watchApiFailures(page)
   const items = await mustResource(page, token, 'items')
+  await page.goto(`/resources/${items.id}`)
 
-  const drawer = await openEditDrawer(page, 'items')
-  await expect(drawer.getByRole('checkbox', { name: 'name unique' })).toBeChecked()
-  await drawer.getByRole('checkbox', { name: 'name unique' }).click()
-  await drawer.getByRole('button', { name: 'Edit parent foreign key' }).click()
-  const fk = page.getByRole('dialog', { name: 'Foreign key: parent' })
-  await fk.getByRole('button', { name: 'Clear' }).click()
-  await expect(fk).toBeHidden()
-  await drawer.getByLabel('Table name').fill(RENAMED_TABLE)
+  await editColumn(page, 'name', async (dialog) => {
+    await expect(dialog.getByRole('switch', { name: 'Unique' })).toBeChecked()
+    await dialog.getByRole('switch', { name: 'Unique' }).click()
+  }, [/drop constraint/i])
+  await editColumn(page, 'parent', dialog => dialog.getByRole('button', { name: 'Clear' }).click(), [/drop constraint/i])
 
-  await drawer.getByRole('button', { name: 'Save' }).click()
-  const confirm = page.getByRole('dialog', { name: 'Confirm changes' })
-  await expect(confirm.locator('pre')).toContainText(new RegExp(`rename to "${RENAMED_TABLE}"`, 'i'))
-  await expect(confirm.locator('pre')).toContainText(/drop constraint/i)
+  const main = page.locator('main')
+  await main.getByRole('button', { name: 'Rename' }).click()
+  await page.getByLabel('New name').fill(RENAMED_TABLE)
+  await expect(page.locator('pre').filter({ hasText: /rename to/i })).toContainText(new RegExp(`rename to "${RENAMED_TABLE}"`, 'i'))
   const applied = page.waitForResponse(r => r.url().endsWith(`/tables/items/edit`) && r.request().method() === 'POST')
-  await confirm.getByRole('button', { name: 'Confirm & Save' }).click()
+  await page.getByRole('button', { name: 'Apply' }).click()
   expect((await applied).status()).toBe(204)
-  await expect(drawer).toBeHidden()
 
-  // Same OID, same resource: renamed in place.
+  // Same OID, same resource: renamed in place, the page stays.
   await expect.poll(async () => (await resourceById(page, token, items.id))?.name).toBe(RENAMED_TABLE)
+  await expect(main.getByRole('textbox', { name: 'Name' })).toHaveValue(RENAMED_TABLE)
   const detail = await tableDetail(page, token, items.id)
   expect(detail.uniqueConstraints).toEqual([])
   expect(detail.relations).toEqual([])
@@ -373,7 +367,7 @@ test('Table settings: description, exposed methods and a column\'s presentation'
   await expect(main.getByRole('switch', { name: 'Expose POST' })).not.toBeChecked()
   await expect.poll(async () => (await resourceById(page, token, checked.id))?.exposed_methods).toEqual(['GET'])
 
-  await main.getByRole('button', { name: 'How price shows' }).click()
+  await main.getByRole('button', { name: 'Edit column price' }).click()
   const slideover = page.getByRole('dialog', { name: 'price' })
   await slideover.getByLabel('Label', { exact: true }).fill('Unit price')
   await slideover.getByRole('button', { name: 'Save' }).click()
@@ -421,7 +415,7 @@ test('Auditing: audit reads on and off with its warning, and a column excluded f
   await apiRequest(page, token, 'PATCH', `${dataPath}/1`, { data: { name: 'second', qty: 2 } })
   expect((await newestLog('UPDATE'))?.changes).toEqual({ name: { old: 'first', new: 'second' }, qty: { old: 1, new: 2 } })
 
-  // `note` excluded: kept out of the next entry's changes and payload.
+  // `note` excluded: its values kept out of the next entry's changes and payload.
   await main.getByRole('button', { name: /^Columns excluded from the audit/ }).click()
   await page.getByRole('option', { name: 'note', exact: true }).click()
   await page.keyboard.press('Escape')
@@ -434,7 +428,8 @@ test('Auditing: audit reads on and off with its warning, and a column excluded f
 
   await apiRequest(page, token, 'PATCH', `${dataPath}/1`, { data: { name: 'third', note: 'changed' } })
   const update = await newestLog('UPDATE')
-  expect(update?.changes).toEqual({ name: { old: 'second', new: 'third' } })
+  // The entry says the excluded column changed, never its values (Security.md §11.4).
+  expect(update?.changes).toEqual({ name: { old: 'second', new: 'third' }, note: { excluded: true } })
   expect(update?.payload).toEqual(expect.objectContaining({ id: 1, name: 'third' }))
   expect(update?.payload).not.toHaveProperty('note')
   expect(failures).toEqual([])
@@ -861,8 +856,12 @@ test('A table the PostgreSQL role doesn\'t own: structure editing is disabled, w
 
   await page.goto(`/resources/${table.id}`)
   const main = page.locator('main')
-  await expect(main.getByTestId('not-owned-note')).toContainText('TotalBase\'s PostgreSQL role doesn\'t own this table', { timeout: 30_000 })
-  await expect(main.getByTestId('not-owned-note')).toContainText('someone_else')
+  // Said where structure is edited (Data) and where it's dropped (Danger zone) - both disabled.
+  await expect(main.getByTestId('not-owned-note')).toHaveCount(2, { timeout: 30_000 })
+  for (const note of await main.getByTestId('not-owned-note').all()) {
+    await expect(note).toContainText('TotalBase\'s PostgreSQL role doesn\'t own this table')
+    await expect(note).toContainText('someone_else')
+  }
   await expect(main.getByRole('button', { name: 'Add Column' })).toBeDisabled()
   await expect(main.getByRole('button', { name: 'Add Index' })).toBeDisabled()
   await expect(main.getByRole('button', { name: 'Add Constraint' })).toBeDisabled()
@@ -871,11 +870,14 @@ test('A table the PostgreSQL role doesn\'t own: structure editing is disabled, w
   // Exposure is TotalBase's own metadata, not DDL - still editable.
   await expect(main.getByRole('switch', { name: 'Expose GET' })).toBeEnabled()
 
-  // The table editor shows the structure but offers no change.
-  const drawer = await openEditDrawer(page, 'checked')
-  await expect(drawer.getByTestId('not-owned-note')).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Add column' })).toBeDisabled()
-  await expect(drawer.getByRole('button', { name: 'Save' })).toBeDisabled()
+  // No structure change either: Primary key, Rename, and a column's Database tab read-only.
+  await expect(main.getByRole('button', { name: 'Primary key' })).toBeDisabled()
+  await expect(main.getByRole('button', { name: 'Rename' })).toBeDisabled()
+  await main.getByRole('button', { name: 'Edit column price', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: 'price', exact: true })
+  await panel.getByRole('tab', { name: 'Database' }).click()
+  await expect(panel.getByTestId('not-owned-note')).toBeVisible()
+  await expect(panel.getByLabel('Name')).toBeDisabled()
   expect(failures).toEqual([])
 })
 

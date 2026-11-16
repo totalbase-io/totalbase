@@ -8,7 +8,7 @@ import { assertPasswordStrength, hashPassword, verifyPassword } from "./password
 import { MfaService, type MfaSurface } from "./mfa-service.js";
 import { SessionsService } from "./sessions-service.js";
 import { UsersService } from "./users-service.js";
-import type { User } from "./users-service.js";
+import type { PasswordStatus, User } from "./users-service.js";
 
 export interface AuthServiceOptions {
   /** TOTALBASE_PUBLIC_URL - the base for email links while `system.public_url` is empty. */
@@ -38,7 +38,10 @@ export type SignInAdmission = (userId: string) => Promise<"no_api_access" | "no_
  */
 export type LoginFailureReason =
   | "unknown_email" | "no_password" | "inactive" | "cannot_login" | "locked" | "wrong_password" | "email_not_verified"
-  | "no_api_access" | "no_portal_access" | "mfa_code_invalid" | "mfa_challenge_invalid";
+  | "no_api_access" | "no_portal_access" | "mfa_code_invalid" | "mfa_challenge_invalid" | "password_challenge_invalid";
+
+/** A step of a sign-in was passed and another is due - who it is, and what the audit row should keep of it. */
+export type SignInStepPassed = (userId: string, details?: { recoveryCode?: boolean }) => void;
 
 /** How an admin-issued link reaches the person: emailed, or handed back to the admin to share. */
 export type LinkDelivery = "email" | "link";
@@ -46,6 +49,19 @@ export type LinkDelivery = "email" | "link";
 export interface LoginResult {
   token: string;
   user: User;
+}
+
+/**
+ * What an invitation's email may say beyond the account and the link (the `user_invitation` slot's
+ * `inviter.*`, `roles` and `message` variables, Security.md §2.9) - each empty when not given.
+ */
+export interface InvitationDetails {
+  /** Who invites: the caller, or the user a backend acts for. */
+  inviter?: { name: string | null; email: string | null } | undefined;
+  /** The account's roles, by name. */
+  roles?: string[] | undefined;
+  /** The caller's own line - plain text, already length-checked. */
+  message?: string | undefined;
 }
 
 /**
@@ -223,8 +239,8 @@ export class AuthService {
       admit?: SignInAdmission;
     },
     onFailure?: (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }) => void,
-    /** The password was right and a second factor is due - who it is, for the audit row. */
-    onSecondStep?: (userId: string) => void,
+    /** The password was right and another step is due - who it is, for the audit row. */
+    onSecondStep?: SignInStepPassed,
   ): Promise<LoginResult> {
     const refuse = (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }): never => {
       onFailure?.(reason, details);
@@ -252,21 +268,115 @@ export class AuthService {
     const refused = input.admit ? await input.admit(found.id) : null;
     if (refused) refuse(refused, { userId: found.id });
 
-    // A second factor due: a challenge instead of a session (Security.md §2.17).
-    const step = await this.mfa.secondStep(found.id, input.surface ?? "API");
-    if (step) {
-      onSecondStep?.(found.id);
-      throw new TotalBaseError(
-        step.purpose === "VERIFY" ? "MFA_REQUIRED" : "MFA_ENROLLMENT_REQUIRED",
-        step.purpose === "VERIFY"
-          ? "Enter the code from your authenticator app."
-          : "This instance requires two-factor authentication - set it up to finish signing in.",
-        { meta: { challenge: step.challenge, expiresAt: step.expiresAt.toISOString() } },
-      );
-    }
+    // A second factor due, or a password to change first: a challenge instead of a session (Security.md §2.17, §2.20).
+    await this.refuseWhileStepDue(found.id, input.surface ?? "API", { mfaVerified: false, passwordRenewed: false }, onSecondStep);
 
     const { passwordHash: _omit, locked: _locked, ...publicUser } = found;
     return this.openSession(publicUser, input, false);
+  }
+
+  /**
+   * What stands between a correct password and its session, in order (Security.md §2.4): the second factor of an
+   * account that has one, a password that is due for a change (§2.20), then setting up the factor the instance
+   * requires. The first one still due is answered with its challenge instead of a session; `done` says which
+   * steps this sign-in already passed.
+   */
+  private async refuseWhileStepDue(
+    userId: string,
+    surface: MfaSurface,
+    done: { mfaVerified: boolean; passwordRenewed: boolean },
+    onStep?: SignInStepPassed,
+    details?: { recoveryCode?: boolean },
+  ): Promise<void> {
+    const refuse = (code: "MFA_REQUIRED" | "MFA_ENROLLMENT_REQUIRED" | "PASSWORD_CHANGE_REQUIRED", message: string, step: { challenge: string; expiresAt: Date }, meta?: Record<string, unknown>): never => {
+      onStep?.(userId, details);
+      throw new TotalBaseError(code, message, { meta: { challenge: step.challenge, expiresAt: step.expiresAt.toISOString(), ...meta } });
+    };
+    const hasFactor = done.mfaVerified || (await this.mfa.hasFactor(userId));
+    if (hasFactor && !done.mfaVerified) {
+      refuse("MFA_REQUIRED", "Enter the code from your authenticator app.", await this.mfa.issue(userId, "VERIFY", surface, { password: true }));
+    }
+    if (!done.passwordRenewed) {
+      const { due } = await this.passwordStatus(userId);
+      if (due) {
+        refuse(
+          "PASSWORD_CHANGE_REQUIRED",
+          due === "EXPIRED" ? "Your password has expired - choose a new one to finish signing in." : "Choose a new password to finish signing in.",
+          await this.mfa.issue(userId, "PASSWORD", surface, { password: true, mfa: done.mfaVerified }),
+          { reason: due },
+        );
+      }
+    }
+    if (!hasFactor && (await this.mfa.required(userId))) {
+      refuse(
+        "MFA_ENROLLMENT_REQUIRED",
+        "This instance requires two-factor authentication - set it up to finish signing in.",
+        await this.mfa.issue(userId, "ENROLL", surface, { password: true }),
+      );
+    }
+  }
+
+  /** Where the account's password stands against auth.password_max_age_days and an administrator's request (Security.md §2.20). */
+  async passwordStatus(userId: string): Promise<PasswordStatus> {
+    return this.users.passwordStatus(userId, await this.settings.get("auth.password_max_age_days"));
+  }
+
+  /**
+   * A sign-in's password step (`POST /api/auth/password/renew`, `/admin/api/auth/password/renew`): the challenge
+   * of a `PASSWORD_CHANGE_REQUIRED` answer and the new password. A refused password leaves the challenge usable;
+   * accepted, it is set with a change's aftermath - links retired, the account's sessions signed out, the notice
+   * - and the sign-in goes on: the session, or setting up the second factor the instance requires.
+   */
+  async completePasswordStep(
+    input: {
+      challenge: unknown;
+      newPassword: unknown;
+      surface: MfaSurface;
+      admit?: SignInAdmission;
+      ip?: string | undefined;
+      userAgent?: string | undefined;
+    },
+    onFailure?: (reason: LoginFailureReason, details?: { userId?: string }) => void,
+    onStep?: SignInStepPassed,
+  ): Promise<LoginResult> {
+    const opened = await this.mfa.openPasswordChallenge(input.challenge, input.surface).catch((error: unknown) => {
+      if (error instanceof TotalBaseError && error.code === "INVALID_PASSWORD_CHALLENGE") onFailure?.("password_challenge_invalid");
+      throw error;
+    });
+    const found = await this.users.findByIdWithPasswordHash(opened.userId);
+    if (!found?.passwordHash) throw new TotalBaseError("INVALID_PASSWORD_CHALLENGE", "This sign-in step expired or is no longer valid - sign in again.");
+    // Roles may have changed since the password: no access, no change.
+    const refused = input.admit ? await input.admit(found.id) : null;
+    if (refused) {
+      onFailure?.(refused, { userId: found.id });
+      throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid email or password.", { httpStatus: 401 });
+    }
+    const password = await this.assertNewPassword(input.newPassword, found.passwordHash);
+    const passwordHash = await hashPassword(password);
+    await this.database.transaction(async (client) => {
+      await this.mfa.spendPasswordChallenge(client, opened.id);
+      await this.users.setPasswordHash(found.id, passwordHash, client);
+    });
+    await this.authTokens.retire(found.id, ["INVITATION", "PASSWORD_RESET"]);
+    await this.sessions.revokeAllForUser(found.id);
+    await this.notifyPasswordChanged(found.id);
+
+    await this.refuseWhileStepDue(found.id, input.surface, { mfaVerified: opened.mfaVerified, passwordRenewed: true }, onStep);
+    const { passwordHash: _omit, ...publicUser } = found;
+    return this.openSession(publicUser, input, opened.mfaVerified);
+  }
+
+  /**
+   * A password someone chooses for their own account: the strength rules (Security.md §2.3), and never the one
+   * the account already has (`PASSWORD_UNCHANGED`, §2.20) - a change that changes nothing would restart its age.
+   */
+  private async assertNewPassword(password: unknown, currentHash: string | null): Promise<string> {
+    if (typeof password !== "string") throw new TotalBaseError("INVALID_QUERY", "A new password is required.");
+    assertPasswordStrength(password, await this.settings.get("auth.password_min_length"));
+    if (currentHash && (await verifyPassword(currentHash, password))) {
+      throw new TotalBaseError("PASSWORD_UNCHANGED", "The new password must be different from the current one.");
+    }
+    return password;
   }
 
   /**
@@ -286,8 +396,10 @@ export class AuthService {
       userAgent?: string | undefined;
     },
     onFailure?: (reason: LoginFailureReason, details?: { lockedNow?: boolean; userId?: string }) => void,
+    /** The code was right and the password must be changed before the session (Security.md §2.20). */
+    onStep?: SignInStepPassed,
   ): Promise<LoginResult & { recoveryCodes: string[] | null; usedRecoveryCode: boolean }> {
-    let completed: { userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean };
+    let completed: { userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean; passwordSignIn: boolean };
     try {
       completed = await this.mfa.completeChallenge({
         challenge: input.challenge,
@@ -314,6 +426,12 @@ export class AuthService {
     }
     const user = await this.users.findById(completed.userId);
     if (!user) throw new TotalBaseError("INVALID_MFA_CHALLENGE", "This sign-in step expired or is no longer valid - sign in again.");
+    // After a verified code, a due password is changed before the session - when the sign-in presented it: a
+    // provider's is never asked. An enrollment came after that step already (its recovery codes are shown once,
+    // with the session).
+    if (completed.passwordSignIn && completed.recoveryCodes === null) {
+      await this.refuseWhileStepDue(user.id, input.surface, { mfaVerified: true, passwordRenewed: false }, onStep, { recoveryCode: completed.usedRecoveryCode });
+    }
     const session = await this.openSession(user, input, true);
     return { ...session, recoveryCodes: completed.recoveryCodes, usedRecoveryCode: completed.usedRecoveryCode };
   }
@@ -394,8 +512,10 @@ export class AuthService {
 
   /** POST /api/auth/password/reset. */
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const minLength = await this.settings.get("auth.password_min_length");
-    assertPasswordStrength(newPassword, minLength);
+    // Checked before the link is used, so a refused password doesn't spend it.
+    const owner = await this.authTokens.peek(token, "PASSWORD_RESET");
+    const current = owner ? await this.users.findByIdWithPasswordHash(owner) : null;
+    await this.assertNewPassword(newPassword, current?.passwordHash ?? null);
 
     const userId = await this.authTokens.consume(token, "PASSWORD_RESET");
     const passwordHash = await hashPassword(newPassword);
@@ -424,6 +544,8 @@ export class AuthService {
     signOut: boolean;
     currentPassword?: string | undefined;
     keepSessionId?: string | undefined;
+    /** A temporary password: its owner changes it at their next sign-in (Security.md §2.20). */
+    mustChange?: boolean | undefined;
   }): Promise<void> {
     const user = await this.users.findByIdWithPasswordHash(input.userId);
     if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
@@ -433,7 +555,10 @@ export class AuthService {
         throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
       }
     }
-    await this.applyNewPassword(input);
+    // One's own account (the current password was asked): a new one, as in My account. Someone else's is not
+    // compared - the administrator doesn't know it.
+    await this.applyNewPassword({ ...input, currentHash: input.currentPassword !== undefined ? user.passwordHash : null });
+    if (input.mustChange) await this.users.requirePasswordChange(input.userId);
     // An administrator giving a passwordless account (an invited shell) its
     // first password vouches for it, as creating a user with a password does.
     if (!user.passwordHash) await this.users.markEmailVerified(input.userId);
@@ -469,6 +594,7 @@ export class AuthService {
       password: input.password,
       signOut: input.signOutOthers,
       keepSessionId: input.keepSessionId,
+      currentHash: user.passwordHash,
     });
   }
 
@@ -529,9 +655,9 @@ export class AuthService {
     }
   }
 
-  private async applyNewPassword(input: { userId: string; password: unknown; signOut: boolean; keepSessionId?: string | undefined }): Promise<void> {
+  private async applyNewPassword(input: { userId: string; password: unknown; signOut: boolean; keepSessionId?: string | undefined; currentHash: string | null }): Promise<void> {
     if (typeof input.password !== "string") throw new TotalBaseError("INVALID_QUERY", "password is required.");
-    assertPasswordStrength(input.password, await this.settings.get("auth.password_min_length"));
+    await this.assertNewPassword(input.password, input.currentHash);
 
     await this.users.setPasswordHash(input.userId, await hashPassword(input.password));
     await this.users.unlock(input.userId);
@@ -553,8 +679,7 @@ export class AuthService {
       throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
     }
 
-    const minLength = await this.settings.get("auth.password_min_length");
-    assertPasswordStrength(newPassword, minLength);
+    await this.assertNewPassword(newPassword, user.passwordHash);
 
     const passwordHash = await hashPassword(newPassword);
     await this.users.setPasswordHash(userId, passwordHash);
@@ -602,12 +727,19 @@ export class AuthService {
    * With `delivery: "link"` nothing is emailed - the link is returned for
    * the admin to share another way (e.g. while SMTP isn't set up yet).
    */
-  async createInvitation(user: { id: string } & SystemEmailRecipient, delivery: LinkDelivery = "email"): Promise<string> {
+  async createInvitation(user: { id: string } & SystemEmailRecipient, delivery: LinkDelivery = "email", details: InvitationDetails = {}): Promise<string> {
+    // A removed account comes back this way, and only this way (Security.md §1.12).
+    await this.users.restoreRemoved(user.id);
     const ttlHours = await this.settings.get("auth.invitation_ttl_hours");
     const token = await this.authTokens.create(user.id, "INVITATION", ttlHours);
     const url = await this.mailer.buildLink("invitation", token);
     if (delivery === "email") {
-      await this.mailer.send("user_invitation", user, { url, expiresInHours: ttlHours });
+      await this.mailer.send("user_invitation", user, { url, expiresInHours: ttlHours }, {
+        "inviter.name": details.inviter?.name?.trim() || details.inviter?.email || "",
+        "inviter.email": details.inviter?.email ?? "",
+        roles: (details.roles ?? []).join(", "),
+        message: details.message ?? "",
+      });
     }
     return url;
   }

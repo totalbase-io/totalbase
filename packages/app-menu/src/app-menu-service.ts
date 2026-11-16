@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
@@ -109,28 +110,49 @@ export class AppMenuService {
   }
 }
 
-async function insertNodes(client: Queryable, nodes: MenuInput[], parent: string | null): Promise<void> {
+/** One menu row as the arrangement writes it - its id given here, so a child names its group within the same batch. */
+interface MenuRowInput {
+  id: string;
+  parent: string | null;
+  kind: string;
+  dataview: string | null;
+  dashboard: string | null;
+  module: string | null;
+  name: string | null;
+  icon: string | null;
+  icon_open: string | null;
+  open_state: string | null;
+  position: number;
+}
+
+/** The tree as rows, parents before children - each group's id known before its children name it. */
+function flatten(nodes: MenuInput[], parent: string | null, rows: MenuRowInput[] = []): MenuRowInput[] {
   for (const [position, node] of nodes.entries()) {
+    const base = { parent, position, dataview: null, dashboard: null, module: null, name: null, icon: null, icon_open: null, open_state: null };
     if (node.kind === "GROUP") {
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO totalbase.menus (id, parent, kind, name, icon, icon_open, open_state, position)
-         VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, 'GROUP', $3, $4, $5, $6, $7) RETURNING id`,
-        [node.id ?? null, parent, node.name.trim(), node.icon ?? null, node.iconOpen ?? null, node.openState ?? "DEFAULT", position],
-      );
-      await insertNodes(client, node.children, rows[0]!.id);
+      const id = node.id ?? randomUUID();
+      rows.push({ ...base, id, kind: "GROUP", name: node.name.trim(), icon: node.icon ?? null, icon_open: node.iconOpen ?? null, open_state: node.openState ?? "DEFAULT" });
+      flatten(node.children, id, rows);
     } else if (node.kind === "MODULE") {
-      await client.query(
-        `INSERT INTO totalbase.menus (id, parent, kind, module, name, icon, position)
-         VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, 'MODULE', $3, $4, $5, $6)`,
-        [node.id ?? null, parent, node.module, node.name?.trim() || null, node.icon ?? null, position],
-      );
+      rows.push({ ...base, id: node.id ?? randomUUID(), kind: "MODULE", module: node.module, name: node.name?.trim() || null, icon: node.icon ?? null });
     } else {
-      await client.query(
-        `INSERT INTO totalbase.menus (parent, kind, dataview, dashboard, position) VALUES ($1, $2, $3, $4, $5)`,
-        [parent, node.kind, node.kind === "DATAVIEW" ? node.id : null, node.kind === "DASHBOARD" ? node.id : null, position],
-      );
+      rows.push({ ...base, id: randomUUID(), kind: node.kind, dataview: node.kind === "DATAVIEW" ? node.id : null, dashboard: node.kind === "DASHBOARD" ? node.id : null });
     }
   }
+  return rows;
+}
+
+/** The whole arrangement in one statement - a child's `parent` is checked once the statement ends, its group inserted with it. */
+async function insertNodes(client: Queryable, nodes: MenuInput[], parent: string | null): Promise<void> {
+  const rows = flatten(nodes, parent);
+  if (rows.length === 0) return;
+  await client.query(
+    `INSERT INTO totalbase.menus (id, parent, kind, dataview, dashboard, module, name, icon, icon_open, open_state, position)
+     SELECT m.id, m.parent, m.kind, m.dataview, m.dashboard, m.module, m.name, m.icon, m.icon_open, COALESCE(m.open_state, 'DEFAULT'), m.position
+     FROM jsonb_to_recordset($1::jsonb) AS m(id uuid, parent uuid, kind text, dataview uuid, dashboard uuid, module text, name text, icon text,
+       icon_open text, open_state text, position integer)`,
+    [JSON.stringify(rows)],
+  );
 }
 
 /** Shape only - names, lengths, uniqueness and existence are PostgreSQL's (CHECK, FK, UNIQUE). */

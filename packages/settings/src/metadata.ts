@@ -88,6 +88,10 @@ export const SETTINGS_GROUP_METADATA: Record<string, { label: string; descriptio
     label: "Authentication",
     description: "Account registration, session lifetime, and password policy for TotalBase users.",
   },
+  mail: {
+    label: "System emails",
+    description: "What every email TotalBase sends itself shares. Each email's own text is in Templates.",
+  },
   smtp: {
     label: "SMTP",
     description: "The mail relay for system emails and Workflow \"Send email\" steps.",
@@ -366,7 +370,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "files.transforms.cache_ttl_seconds": {
     label: "Transform cache lifetime",
-    description: "How long browsers may cache a transformed image, and how long its stored copy is kept before the hourly cleanup removes it (the next request regenerates it).",
+    description: "How long a transformed image's stored copy is kept before the hourly cleanup removes it (the next request regenerates it). Browsers revalidate it against the file's checksum.",
     unit: "seconds",
     section: "Image transformations",
     dependsOn: "files.transforms.enabled",
@@ -435,6 +439,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "auth.password_min_length": {
     label: "Minimum password length",
     description: "The shortest password TotalBase will accept when a user sets or changes theirs.",
+    section: "Accounts & sessions",
+  },
+  "auth.password_max_age_days": {
+    label: "Maximum password age",
+    description: "A password older than this many days must be changed at its owner's next sign-in, before a session is given. Current guidance (NIST SP 800-63B, OWASP ASVS) advises against periodic changes - turn it on only when a policy you answer to asks for it. 0 turns it off.",
+    unit: "days",
     section: "Accounts & sessions",
   },
   "auth.session_ttl_hours": {
@@ -626,6 +636,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   "smtp.from": {
     label: "From address",
     description: "The envelope/header From address outgoing mail is sent as.",
+  },
+  "mail.footer": {
+    label: "Footer",
+    description: "The line every system email ends with. {{instance.name}} and {{instance.public_url}} are filled in by TotalBase. Leave it empty to send them without a footer - when your users know your application, not this address.",
+    section: "System emails",
+    links: [{ page: "templates" }],
   },
   "s3.enabled": {
     label: "Enable S3 storage",

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 /** Shared across every ad-hoc repro/verification spec in this scratch project - see the chat: schema-drift fix, then the wide-fields widget survey. */
 /** The instance under test - the dev server, or another one (the lab) with E2E_BASE_URL. */
@@ -153,4 +153,14 @@ export async function deleteFile(page: Page, token: string, id: string) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   })
+}
+
+/**
+ * Replaces a Monaco editor's text the way a person does: a click into it, select all, type. Monaco 0.53 and later
+ * take input through the browser's EditContext, not a textarea `fill()` could reach.
+ */
+export async function typeInMonaco(page: Page, editor: Locator, text: string) {
+  await editor.locator('.view-lines').click()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.insertText(text)
 }

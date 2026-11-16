@@ -320,7 +320,7 @@ async function discardAndLeave() {
             </dt>
             <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
               <template v-if="account.hasPassword">
-                <span>{{ t('account.signIn.passwordSet') }}</span>
+                <span>{{ account.passwordExpiresAt ? t('account.signIn.passwordExpires', { date: dateTime(account.passwordExpiresAt) }) : t('account.signIn.passwordSet') }}</span>
                 <UButton
                   :label="t('account.signIn.changePassword')"
                   icon="i-lucide-key-round"

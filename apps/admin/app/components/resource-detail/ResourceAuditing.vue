@@ -50,31 +50,39 @@ const { data: tableDetail } = useAsyncData(
 )
 const columnNames = computed(() => (tableDetail.value?.columns ?? []).map(c => c.name))
 
-const { data: excludedFields, pending: exclusionsPending } = await useAsyncData(
+interface Exclusions { excludedFields: string[], eventExcludedFields: string[] }
+const { data: exclusions, pending: exclusionsPending } = await useAsyncData(
   `resource-audit-${props.resource.id}`,
-  async () => isTable.value
-    ? (await api.get<{ excludedFields: string[] }>(`/resources/${props.resource.id}/audit`)).data.excludedFields
-    : [],
-  { default: () => [] as string[] }
+  async (): Promise<Exclusions> => isTable.value
+    ? (await api.get<Exclusions>(`/resources/${props.resource.id}/audit`)).data
+    : { excludedFields: [], eventExcludedFields: [] },
+  { default: (): Exclusions => ({ excludedFields: [], eventExcludedFields: [] }) }
 )
 
-// Each change saves the whole list; only the latest answer is applied.
+// Each change saves both lists whole; only the latest answer is applied.
 const savingExclusions = ref(false)
 let saveSequence = 0
-async function saveExclusions(fields: string[]) {
-  const previous = excludedFields.value
-  excludedFields.value = fields
+async function saveExclusions(next: Exclusions) {
+  const previous = exclusions.value
+  exclusions.value = next
   const sequence = ++saveSequence
   savingExclusions.value = true
   try {
-    const { data } = await api.put<{ excludedFields: string[] }>(`/resources/${props.resource.id}/audit`, { data: { excludedFields: fields } })
-    if (sequence === saveSequence) excludedFields.value = data.excludedFields
+    const { data } = await api.put<Exclusions>(`/resources/${props.resource.id}/audit`, { data: next })
+    if (sequence === saveSequence) exclusions.value = data
   } catch (err) {
-    if (sequence === saveSequence) excludedFields.value = previous
+    if (sequence === saveSequence) exclusions.value = previous
     notifyError(err, t('database.resourceAuditing.columnsUpdateError'))
   } finally {
     if (sequence === saveSequence) savingExclusions.value = false
   }
+}
+/** A column no longer excluded from the audit log leaves the events' list with it. */
+function saveAuditExclusions(fields: string[]) {
+  return saveExclusions({ excludedFields: fields, eventExcludedFields: exclusions.value.eventExcludedFields.filter(field => fields.includes(field)) })
+}
+function saveEventExclusions(fields: string[]) {
+  return saveExclusions({ excludedFields: exclusions.value.excludedFields, eventExcludedFields: fields })
 }
 </script>
 
@@ -161,13 +169,28 @@ async function saveExclusions(fields: string[]) {
         :description="t('database.resourceAuditing.excludedColumnsDescription')"
       >
         <USelectMenu
-          :model-value="excludedFields"
+          :model-value="exclusions.excludedFields"
           multiple
           :items="columnNames"
           :aria-label="t('database.resourceAuditing.excludedColumns')"
           :loading="savingExclusions"
           class="w-full"
-          @update:model-value="saveExclusions"
+          @update:model-value="saveAuditExclusions"
+        />
+      </UFormField>
+      <UFormField
+        v-if="!exclusionsPending && exclusions.excludedFields.length > 0"
+        :label="t('database.resourceAuditing.eventExcludedColumns')"
+        :description="t('database.resourceAuditing.eventExcludedColumnsDescription')"
+      >
+        <USelectMenu
+          :model-value="exclusions.eventExcludedFields"
+          multiple
+          :items="exclusions.excludedFields"
+          :aria-label="t('database.resourceAuditing.eventExcludedColumns')"
+          :loading="savingExclusions"
+          class="w-full"
+          @update:model-value="saveEventExclusions"
         />
       </UFormField>
     </template>

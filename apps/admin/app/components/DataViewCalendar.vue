@@ -291,17 +291,9 @@ function downloadIcs(event: CalendarEvent) {
     'END:VEVENT',
     'END:VCALENDAR'
   ]
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  // Same "sanitize a builder-authored string before it becomes a
-  // filename" discipline DataViewGrid.vue's own CSV/Excel export
-  // already applies to `resourceName` - a title formula can contain
-  // slashes/colons/etc, none of which belong in a filename.
-  a.download = `${(event.title || 'event').replace(/[/\\?%*:|"<>]/g, '-')}.ics`
-  a.click()
-  URL.revokeObjectURL(url)
+  // Same "sanitize a builder-authored string before it becomes a filename" discipline as the grid's export - a title
+  // formula can contain slashes, colons and the like.
+  downloadText(lines.join('\r\n'), `${(event.title || 'event').replace(/[/\\?%*:|"<>]/g, '-')}.ics`, 'text/calendar;charset=utf-8;')
 }
 
 // --- Drag&drop (Month and Week) - native Drag and Drop API, same

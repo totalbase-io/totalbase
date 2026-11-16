@@ -7,7 +7,7 @@
  * the human-readable text the server already produced.
  */
 
-export interface AdminApiError {
+export interface AdminApiErrorItem {
   source: 'TOTALBASE' | 'POSTGRESQL'
   code: string
   message: string
@@ -26,7 +26,7 @@ export interface AdminApiError {
 }
 
 export interface AdminApiErrorEnvelope {
-  errors: AdminApiError[]
+  errors: AdminApiErrorItem[]
 }
 
 export interface AdminApiSuccessEnvelope<T> {

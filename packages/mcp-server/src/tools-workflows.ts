@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AdminClient } from "./admin-client.js";
-import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId } from "./tool-helpers.js";
+import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, publishOutcome } from "./tool-helpers.js";
 
 /**
  * Workflows (Workflows.md, Administration.md
@@ -302,7 +302,7 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
     {
       title: "Publish workflow",
       description:
-        "Publish the draft as the next immutable version - the live one - after the server checks it is ready (every step configured, templates name earlier steps, resources exist; WORKFLOW_NOT_PUBLISHABLE lists every issue). enabled=true then turns it on (triggers and production runs only reach an enabled workflow); role_ids sets who may run it on demand. Needs the current revision.",
+        "Publish the draft as the next immutable version - the live one (published=false: the draft already equaled it, nothing changed) - after the server checks it is ready (every step configured, templates name earlier steps, resources exist; WORKFLOW_NOT_PUBLISHABLE lists every issue). enabled=true then turns it on (triggers and production runs only reach an enabled workflow); role_ids sets who may run it on demand. Needs the current revision.",
       inputSchema: {
         id: z.string(),
         revision: z.string().describe("The workflow's current revision"),
@@ -313,10 +313,12 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
       annotations: ADDITIVE,
     },
     async ({ id, revision, enabled, role_ids, note }) => {
-      let workflow = await client.post<Workflow>(`/workflows/${id}/publish`, { data: { revision, ...(note && { note }) } });
+      const { data: version, status } = await client.postWithMeta<{ version: number }>(`/workflows/${id}/publish`, { data: { revision, ...(note && { note }) } });
+      // Publishing moves the revision on: the workflow is read again for the enable and the summary.
+      let workflow = await client.get<Workflow>(`/workflows/${id}`);
       if (enabled !== undefined && enabled !== workflow.enabled) workflow = await client.patch<Workflow>(`/workflows/${id}`, { data: { revision: workflow.revision, enabled } });
       const roles = role_ids ? await client.put<string[]>(`/workflows/${id}/roles`, { data: { roleIds: role_ids } }) : undefined;
-      return result({ ...summary(workflow), ...(roles && { roleIds: roles }) });
+      return result({ ...summary(workflow), ...publishOutcome(version.version, status), ...(roles && { roleIds: roles }) });
     },
   );
 

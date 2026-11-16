@@ -1,4 +1,5 @@
 import { UUID_PATTERN } from "@totalbase/shared";
+import { clientIp } from "../client-ip.js";
 import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import {
@@ -143,7 +144,7 @@ export function registerOpenApiRoutes(
       throw new TotalBaseError("RESOURCE_NOT_FOUND", "The OpenAPI document is not published on this instance.");
     }
     const token = extractBearerToken(request);
-    const dataPrincipal = await resolveDataPrincipal(context, token);
+    const dataPrincipal = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
     const principalType = dataPrincipal.principal.type === "API_KEY" ? "API_KEY" : "USER";
     return buildDataApiSpec(context, dataRoutes, dataPrincipal.roleIds, principalType);
   });

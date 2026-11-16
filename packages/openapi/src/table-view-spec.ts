@@ -166,7 +166,7 @@ export function buildTableOrViewSpec(input: TableViewSpecInput): TableViewSpecOu
         operationId: operationId("get", input.schema, input.name),
         summary: `Get one ${input.name} by primary key`,
         tags: [input.schema],
-        parameters: [pkParameter],
+        parameters: [pkParameter, { name: "fields", in: "query", schema: { type: "string" }, description: "Comma/bracket-notation field selection." }],
         responses: response("200", ref(rowSchemaName)),
       };
     }

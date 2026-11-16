@@ -225,12 +225,11 @@ const columns = computed<TableColumn<Backup>[]>(() => [
         :local-path="localPath"
         @download="download"
       />
-      <DataViewGridDeleteModal
+      <DeleteConfirmModal
         v-model:open="deleteOpen"
         :title="t('settings.backups.deleteTitle')"
-        :body="t('settings.backups.deleteBody', { name: deleting?.name ?? '' })"
+        :description="t('settings.backups.deleteBody', { name: deleting?.name ?? '' })"
         :loading="deleteBusy"
-        require-confirm
         @confirm="confirmDelete"
       />
     </template>

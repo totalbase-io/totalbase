@@ -8,13 +8,17 @@ import {
   type UserSearchFilter,
   type UserStatus,
 } from "@totalbase/auth";
+import { removeUser } from "@totalbase/mutations";
+import { invitationDetails, parseInvitationMessage } from "../invitation-email.js";
 import type { AppContext } from "../context.js";
 import { assertRecentAuthentication, requireAdmin } from "../auth-guards.js";
 import { isUuid } from "./user-filter.js";
 import { removeDeletedUserAvatar, removeUserAvatar, uploadUserAvatar, useProviderAvatar } from "../user-avatars.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, arrayOf, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
-import { LINK_DELIVERY_BODY, listEnvelope, USERS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { INVITE_BODY, LINK_DELIVERY_BODY, listEnvelope, USERS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { pageOf } from "../pagination.js";
+import { optionalData, requestData } from "../request-body.js";
 
 const ID_PARAM = { id: { ...UUID_PARAM, description: "The user's id." } };
 
@@ -36,7 +40,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         { name: "limit", in: "query", description: "Page size (1-200). Enables paging and the other filters.", schema: { type: "integer", minimum: 1, maximum: 200 } },
         { name: "offset", in: "query", schema: { type: "integer", minimum: 0, default: 0 } },
         { name: "q", in: "query", description: "Case-insensitive substring of the name or email.", schema: { type: "string" } },
-        { name: "status", in: "query", description: "INVITED = active, can sign in, no password yet; INACTIVE = deactivated; ACTIVE = the rest.", schema: { type: "string", enum: ["ACTIVE", "INVITED", "INACTIVE"] } },
+        { name: "status", in: "query", description: "INVITED = active, can sign in, no password yet; INACTIVE = deactivated; REMOVED = removed (the row kept, no way in left); ACTIVE = the rest.", schema: { type: "string", enum: ["ACTIVE", "INVITED", "INACTIVE"] } },
         { name: "role", in: "query", description: "Only users holding this role id.", schema: UUID },
         { name: "not_role", in: "query", description: "Only users not holding this role id.", schema: UUID },
         { name: "role_first", in: "query", description: "Holders of this role id first, then the rest, each by name (instead of newest first) - a role's Members tab.", schema: UUID },
@@ -123,8 +127,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const body = request.body?.data;
-      if (!body) throw new TotalBaseError("INVALID_QUERY", "A request body { data } is required.");
+      const body = requestData(request.body);
       const roles = body.roleIds === undefined ? [] : parseRoleIds(body.roleIds);
       // A new administrator (Security.md §2.19).
       if (roles.includes(await context.roles.getAdministratorsRoleId())) await assertRecentAuthentication(context, request);
@@ -180,7 +183,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
 
   // An admin sets a user's password (AuthService.adminSetPassword). Their
   // own account needs the current password and keeps their session.
-  app.put<{ Params: { id: string }; Body: { data?: { password?: string; currentPassword?: string; signOut?: boolean } } | undefined }>(
+  app.put<{ Params: { id: string }; Body: { data?: { password?: string; currentPassword?: string; signOut?: boolean; mustChange?: boolean } } | undefined }>(
     "/admin/api/users/:id/password",
     {
       preHandler,
@@ -195,6 +198,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
             password: { type: "string", description: "Must meet auth.password_min_length." },
             currentPassword: { type: "string", description: "Required when the target is the caller's own account." },
             signOut: { type: "boolean", default: true },
+            mustChange: { type: "boolean", default: false, description: "A temporary password: the user chooses their own at their next sign-in (PASSWORD_CHANGE_REQUIRED)." },
           }, ["password"])),
         },
         response: NO_CONTENT,
@@ -202,13 +206,16 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const body = request.body?.data;
+      const body = optionalData(request.body);
       const self = request.admin!.id === request.params.id;
       if (self && typeof body?.currentPassword !== "string") {
         throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "Enter your current password to change it.");
       }
       if (body?.signOut !== undefined && typeof body.signOut !== "boolean") {
         throw new TotalBaseError("INVALID_QUERY", "signOut must be true or false.");
+      }
+      if (body?.mustChange !== undefined && typeof body.mustChange !== "boolean") {
+        throw new TotalBaseError("INVALID_QUERY", "mustChange must be true or false.");
       }
       // Another account's password (Security.md §2.19); one's own asks for the current password instead.
       if (!self) await assertRecentAuthentication(context, request);
@@ -218,8 +225,9 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         signOut: body?.signOut ?? true,
         currentPassword: self ? body!.currentPassword : undefined,
         keepSessionId: self ? request.adminSession : undefined,
+        mustChange: body?.mustChange,
       });
-      request.auditMetadata = { user_id: request.params.id, sign_out: body?.signOut ?? true, self };
+      request.auditMetadata = { user_id: request.params.id, sign_out: body?.signOut ?? true, self, ...(body?.mustChange && { must_change: true }) };
       reply.code(204);
     },
   );
@@ -257,7 +265,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request) => {
-      const body = request.body?.data;
+      const body = optionalData(request.body);
       const verification = body?.verification;
       if (verification !== "SEND" && verification !== "VERIFIED") {
         throw new TotalBaseError("INVALID_QUERY", 'verification must be "SEND" or "VERIFIED".');
@@ -302,10 +310,35 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const avatarUrl = (await context.auth.users.findById(request.params.id))?.avatarUrl ?? null;
+      const user = await context.auth.users.findById(request.params.id);
       const deleted = await context.auth.users.delete(request.params.id, request.admin!.id);
       if (!deleted) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
-      await removeDeletedUserAvatar(context, avatarUrl);
+      // Who it was: the row is gone, and with it the name every other entry's user_id resolved to.
+      request.auditMetadata = { user_id: request.params.id, email: user?.email ?? null, name: user?.name ?? null };
+      await removeDeletedUserAvatar(context, user?.avatarUrl ?? null);
+      reply.code(204);
+    },
+  );
+
+  // Remove (Security.md §1.12): the row kept, every way in and every role taken away.
+  app.post<{ Params: { id: string } }>(
+    "/admin/api/users/:id/remove",
+    {
+      preHandler,
+      ...adminDoc("users", {
+        summary: "Remove a user",
+        description:
+          "Keeps the row - the audit log goes on naming them - and takes away every way in: the account is deactivated, its password, " +
+          "sessions, tokens, two-factor authentication, sign-in provider links, pending links and role assignments are gone. " +
+          "`POST /admin/api/users/{id}/invite` brings it back. 403 PERMISSION_DENIED for the caller's own account, the instance owner " +
+          "and the Workflows system user. 404 for an unknown id.",
+        pathParameters: ID_PARAM,
+        response: NO_CONTENT,
+      }),
+    },
+    async (request, reply) => {
+      const removed = await removeUser({ ...context, users: context.auth.users }, { actorUserId: request.admin!.id }, request.params.id);
+      request.auditMetadata = { user_id: removed.id, email: removed.email, name: removed.name, roles_added: [], roles_removed: removed.rolesRemoved };
       reply.code(204);
     },
   );
@@ -394,7 +427,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
   // isn't configured). Either way any earlier link of the same kind stops
   // working. A delivery failure is reported (SMTP_NOT_CONFIGURED /
   // EMAIL_SEND_FAILED), unlike the public forgot-password route.
-  app.post<{ Params: { id: string }; Body: { data?: { delivery?: LinkDelivery } } | undefined }>(
+  app.post<{ Params: { id: string }; Body: { data?: { delivery?: LinkDelivery; message?: unknown } } | undefined }>(
     "/admin/api/users/:id/invite",
     {
       preHandler,
@@ -402,15 +435,16 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         summary: "Send an invitation",
         description:
           "Issues a single-use link to set a password (any earlier invitation link stops working). With `delivery: \"email\"` " +
-          "a delivery failure is reported: 409 SMTP_NOT_CONFIGURED or 502 EMAIL_SEND_FAILED.",
+          "a delivery failure is reported: 409 SMTP_NOT_CONFIGURED or 502 EMAIL_SEND_FAILED. Inviting a removed user makes the account active again.",
         pathParameters: ID_PARAM,
-        requestBody: { schema: dataEnvelope(LINK_DELIVERY_BODY), required: false },
+        requestBody: { schema: dataEnvelope(INVITE_BODY), required: false },
         response: ok(ref("UsersLinkDelivery")),
         schemas: USERS_SCHEMAS,
       }),
     },
     async (request) => {
-      const delivery = parseDelivery(request.body?.data?.delivery);
+      const delivery = parseDelivery(optionalData(request.body).delivery);
+      const message = parseInvitationMessage(optionalData(request.body).message);
       const user = await context.auth.users.findById(request.params.id);
       if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
       if (!user.email) {
@@ -418,7 +452,8 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }
       // Holding the link is holding the account (Security.md §2.19).
       if (delivery === "link") await assertRecentAuthentication(context, request);
-      const actionUrl = await context.auth.createInvitation({ id: user.id, email: user.email, name: user.name }, delivery);
+      const details = await invitationDetails(context, request.admin!.id, user.id, message);
+      const actionUrl = await context.auth.createInvitation({ id: user.id, email: user.email, name: user.name }, delivery, details);
       return { data: delivery === "link" ? { delivered: false, actionUrl } : { delivered: true } };
     },
   );
@@ -439,7 +474,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request) => {
-      const delivery = parseDelivery(request.body?.data?.delivery);
+      const delivery = parseDelivery(optionalData(request.body).delivery);
       const user = await context.auth.users.findById(request.params.id);
       if (!user?.email) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
       // Holding the link is holding the account (Security.md §2.19).
@@ -465,7 +500,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const raw = request.body?.data?.expiresAt;
+      const raw = optionalData(request.body).expiresAt;
       const expiresAt = raw === null ? null : typeof raw === "string" && !Number.isNaN(Date.parse(raw)) ? new Date(raw) : undefined;
       if (expiresAt === undefined) throw new TotalBaseError("INVALID_QUERY", "expiresAt must be a date-time, or null.");
       if (!(await context.roleAssignments.setExpiry(request.params.id, request.params.role, expiresAt))) {
@@ -509,7 +544,7 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const roles = parseRoleIds(request.body?.data?.roleIds);
+      const roles = parseRoleIds(optionalData(request.body).roleIds);
       const user = await context.auth.users.findById(request.params.id);
       if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
       if (user.owner) {
@@ -561,7 +596,7 @@ interface UserListQuery {
   offset?: string;
 }
 
-const USER_STATUSES: readonly UserStatus[] = ["ACTIVE", "INVITED", "INACTIVE"];
+const USER_STATUSES: readonly UserStatus[] = ["ACTIVE", "INVITED", "INACTIVE", "REMOVED"];
 const MAX_PAGE_SIZE = 200;
 
 /** `?extra[<column>]=<value>` - nested by the query parser (`extra: { column: value }`) or flat; empty = no value. */
@@ -579,14 +614,10 @@ function extraFilters(query: Record<string, unknown>): { column: string; value: 
 }
 
 function parseUserListQuery(query: UserListQuery): UserSearchFilter {
-  const limit = Number(query.limit);
-  const offset = query.offset === undefined ? 0 : Number(query.offset);
-  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
-    throw new TotalBaseError("INVALID_QUERY", `limit must be between 1 and ${MAX_PAGE_SIZE}.`);
-  }
-  if (!Number.isInteger(offset) || offset < 0) throw new TotalBaseError("INVALID_QUERY", "offset must be 0 or more.");
+  // Only a paged request comes here - without `limit` the route lists every user.
+  const { limit, offset } = pageOf(query, { max: MAX_PAGE_SIZE, defaultLimit: MAX_PAGE_SIZE });
   if (query.status !== undefined && !(USER_STATUSES as readonly string[]).includes(query.status)) {
-    throw new TotalBaseError("INVALID_QUERY", "status must be ACTIVE, INVITED or INACTIVE.");
+    throw new TotalBaseError("INVALID_QUERY", "status must be ACTIVE, INVITED, INACTIVE or REMOVED.");
   }
   for (const key of ["role", "not_role", "role_first"] as const) {
     if (query[key] !== undefined && !isUuid(query[key])) throw new TotalBaseError("INVALID_QUERY", `${key} must be a role id.`);

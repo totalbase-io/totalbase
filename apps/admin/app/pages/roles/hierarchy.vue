@@ -107,7 +107,7 @@ async function confirmMove() {
     await rolesApi.update(move.role.id, { parent: move.parent?.id ?? null })
     toast.add({ title: t('users.roleHierarchy.moved', { role: move.role.name }), color: 'success' })
     pendingMove.value = null
-    await Promise.all([refreshRoles(), refreshNuxtData('role-options')])
+    await refreshRoles()
   } catch (err) {
     // PostgreSQL's refusal (a cycle, a fifth level) - the box stays where it was.
     notifyError(err, t('users.roleHierarchy.moveError'))
@@ -123,7 +123,7 @@ const createOpen = computed({
   set: (open: boolean) => { if (!open) createUnder.value = undefined }
 })
 async function onCreated(role: Role) {
-  await refreshNuxtData(['roles-all', 'role-options'])
+  await refreshNuxtData('roles-all')
   await navigateTo(`/roles/${role.id}`)
 }
 </script>

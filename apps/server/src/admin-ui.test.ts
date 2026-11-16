@@ -121,10 +121,10 @@ describe("admin icons", () => {
 });
 
 /**
- * A malformed request (bad JSON, an empty body declared as JSON) is the
- * caller's mistake: Fastify's own 4xx, never a 500 INTERNAL_ERROR.
+ * Malformed JSON is the caller's mistake: Fastify's own 4xx, never a 500 INTERNAL_ERROR. An empty body is no
+ * body, whatever Content-Type the client sends with every request (Data_API.md §2.4).
  */
-describe("request parsing errors", () => {
+describe("request parsing", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
@@ -135,15 +135,31 @@ describe("request parsing errors", () => {
     await app.close();
   });
 
-  it("answers an empty JSON body and malformed JSON with a 400", async () => {
-    const empty = await app.inject({
-      method: "DELETE",
-      url: "/admin/api/roles/00000000-0000-0000-0000-000000000000",
-      headers: { "content-type": "application/json" },
-    });
-    expect(empty.statusCode).toBe(400);
-    expect(empty.json().errors[0].code).toBe("INVALID_QUERY");
+  it("takes an empty body declared as JSON as no body", async () => {
+    const url = "/admin/api/roles/00000000-0000-0000-0000-000000000000";
+    const plain = await app.inject({ method: "DELETE", url });
+    for (const contentType of ["application/json", "application/json; charset=utf-8"]) {
+      const declared = await app.inject({ method: "DELETE", url, headers: { "content-type": contentType } });
+      expect(declared.statusCode).toBe(plain.statusCode);
+      expect(declared.json()).toEqual(plain.json());
+    }
+    expect(plain.statusCode).not.toBe(400);
 
+    // A route that needs a body refuses it as it does one sent without a Content-Type - never a 500
+    // (password/forgot answers 204 whatever it is sent).
+    const needBody = [
+      "/api/auth/login", "/admin/api/auth/login", "/api/auth/register", "/api/auth/password/forgot", "/api/auth/password/reset",
+      "/api/auth/password/change", "/api/auth/email/verify", "/api/auth/invitations/accept", "/api/auth/mfa/verify", "/api/auth/password/renew", "/api/transactions",
+    ];
+    for (const route of needBody) {
+      const declared = await app.inject({ method: "POST", url: route, headers: { "content-type": "application/json" } });
+      const bare = await app.inject({ method: "POST", url: route });
+      expect(declared.statusCode, route).toBe(bare.statusCode);
+      expect(declared.statusCode, `${route} ${declared.body}`).toBeLessThan(500);
+    }
+  });
+
+  it("answers malformed JSON with a 400", async () => {
     const malformed = await app.inject({
       method: "POST",
       url: "/api/auth/login",
@@ -151,5 +167,16 @@ describe("request parsing errors", () => {
       payload: "{not json",
     });
     expect(malformed.statusCode).toBe(400);
+    expect(malformed.json().errors[0].code).toBe("INVALID_QUERY");
+  });
+
+  it("still refuses a prototype-poisoning body", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { "content-type": "application/json" },
+      payload: '{"__proto__":{"admin":true}}',
+    });
+    expect(res.statusCode).toBe(400);
   });
 });

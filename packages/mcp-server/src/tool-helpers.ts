@@ -173,3 +173,13 @@ export function filterForStorage(filter: unknown): unknown {
     }),
   );
 }
+
+/**
+ * What a publish tool reports (Foundations.md §13.6): the live version, and whether this call published it - the
+ * server's 201 - or found the draft already equal to it (200), when the edits an agent expected aren't in the draft.
+ */
+export function publishOutcome(version: number, status: number): { version: number; published: boolean; note?: string } {
+  return status === 201
+    ? { version, published: true }
+    : { version, published: false, note: `The draft equals v${version}, the live version - nothing was published. If you expected changes, they are not in the draft.` };
+}

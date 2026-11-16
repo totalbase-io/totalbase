@@ -64,6 +64,7 @@ export const TOKEN_SCHEMAS: Record<string, JsonSchema> = {
       lastUsedAt: { type: ["string", "null"], format: "date-time" },
       rotatedAt: { type: ["string", "null"], format: "date-time" },
       previousExpiresAt: { type: ["string", "null"], format: "date-time", description: "Until when the secret replaced by the last regeneration still works." },
+      allowedIps: { type: ["array", "null"], items: { type: "string" }, description: "The addresses and CIDR ranges the token is accepted from; null: from anywhere." },
       revokedAt: { type: ["string", "null"], format: "date-time" },
       createdAt: { type: "string", format: "date-time" },
     },

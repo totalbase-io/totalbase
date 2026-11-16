@@ -6,6 +6,7 @@ import { requireAdmin } from "../auth-guards.js";
 import { parseUserFilter } from "./user-filter.js";
 import { dataEnvelope, type JsonSchema, type ParameterObject } from "@totalbase/openapi";
 import { adminDoc, arrayOf, DATE_TIME, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
+import { optionalData } from "../request-body.js";
 
 /** `days` (default 30), `tz` (IANA name, default UTC) and `offset` - the viewer's UTC offset in minutes east, used when PostgreSQL doesn't know `tz`. */
 export function insightsWindow(query: { days?: string; tz?: string; offset?: string }) {
@@ -42,7 +43,7 @@ const AUDIT_SCHEMAS: Record<string, JsonSchema> = {
     fields: { description: "Fields requested (reads)." },
     whereClause: { description: "The request's filter, when there was one." },
     payload: { description: "The written row (the resulting/existing row, so it always carries the primary key)." },
-    changes: { description: "An UPDATE's old and new value of each column it changed, the resource's excluded columns left out; null otherwise." },
+    changes: { description: "An UPDATE's old and new value of each column it changed (`{ old, new }`); an excluded column that changed is `{ excluded: true }`, without values; null otherwise." },
     metadata: { description: "Event-specific details; `metadata.event` names access events (auth.login, user.roles_set, ...); an entry a workflow step wrote carries `workflow`, `workflowRun`, `workflowStep` and `workflowInitiator`." },
     sqlText: { type: ["string", "null"], description: "SQL Console entries only." },
     sqlParams: {},
@@ -92,7 +93,10 @@ const AUDIT_SCHEMAS: Record<string, JsonSchema> = {
     topUsers: { ...arrayOf(object({ user: UUID, count: INT })), description: "Most active users (an API token's entries count for its owner); top 10." },
   }),
   AuditExclusions: object(
-    { excludedFields: { ...arrayOf({ type: "string" }), description: "Columns kept out of the audit log - every write's `payload` and an UPDATE's `changes` - in column order; [] = every column is recorded." } },
+    {
+      excludedFields: { ...arrayOf({ type: "string" }), description: "Columns kept out of the audit log - every write's `payload`, and their values in an UPDATE's `changes` (which says only that they changed) - in column order; [] = every column is recorded." },
+      eventExcludedFields: { ...arrayOf({ type: "string" }), description: "Those of `excludedFields` also kept out of the outbox event - the row and old row that webhooks and workflows receive. Each must be in `excludedFields`. Omitted on a write: none." },
+    },
     ["excludedFields"],
   ),
 };
@@ -351,17 +355,17 @@ export function registerAdminAuditRoutes(app: FastifyInstance, context: AppConte
   },
     async (request) => {
       await context.resourcesAdmin.get(request.params.resource);
-      return { data: { excludedFields: await context.auditExclusions.list(request.params.resource) } };
+      return { data: await context.auditExclusions.describe(request.params.resource) };
     },
   );
 
-  app.put<{ Params: { resource: string }; Body: { data?: { excludedFields?: unknown } } | null }>(
+  app.put<{ Params: { resource: string }; Body: { data?: { excludedFields?: unknown; eventExcludedFields?: unknown } } | null }>(
     "/admin/api/resources/:resource/audit",
     {
     preHandler,
     ...adminDoc("audit", {
       summary: "Set a resource's audit exclusions",
-      description: "Replaces the whole list; every name must be one of the resource's columns (400 INVALID_QUERY otherwise). [] records every column.",
+      description: "Replaces both lists whole; every name must be one of the resource's columns, and every event exclusion an audit exclusion too (400 INVALID_QUERY otherwise). [] records every column.",
       pathParameters: RESOURCE,
       requestBody: { schema: dataEnvelope(ref("AuditExclusions")) },
       response: ok(ref("AuditExclusions")),
@@ -369,13 +373,13 @@ export function registerAdminAuditRoutes(app: FastifyInstance, context: AppConte
     }),
   },
     async (request) => {
-      const fields = request.body?.data?.excludedFields;
-      if (!Array.isArray(fields) || !fields.every((field): field is string => typeof field === "string")) {
-        throw new TotalBaseError("INVALID_QUERY", '"excludedFields" must be an array of column names.');
-      }
+      const names = (value: unknown): value is string[] => Array.isArray(value) && value.every((field) => typeof field === "string");
+      const { excludedFields: fields, eventExcludedFields: eventFields = [] } = optionalData(request.body);
+      if (!names(fields)) throw new TotalBaseError("INVALID_QUERY", '"excludedFields" must be an array of column names.');
+      if (!names(eventFields)) throw new TotalBaseError("INVALID_QUERY", '"eventExcludedFields" must be an array of column names.');
       await context.resourcesAdmin.get(request.params.resource);
-      await context.auditExclusions.set(request.params.resource, fields);
-      return { data: { excludedFields: await context.auditExclusions.list(request.params.resource) } };
+      await context.auditExclusions.set(request.params.resource, fields, eventFields);
+      return { data: await context.auditExclusions.describe(request.params.resource) };
     },
   );
 

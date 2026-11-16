@@ -88,7 +88,7 @@ function setFontSize(size: number) {
 // toolbar button click already has user-activation for.
 async function copySelection() {
   const text = currentSelectionOrAll()
-  if (text) await navigator.clipboard.writeText(text)
+  if (text) await copyText(text)
 }
 
 async function pasteAtCursor() {

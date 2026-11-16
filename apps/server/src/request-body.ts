@@ -1,4 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
+import { UUID_PATTERN } from "@totalbase/shared";
 
 /**
  * A JSON request body: everything the client sends is in `data`
@@ -51,4 +52,16 @@ export function publishNote(body: { data?: { note?: unknown } } | null | undefin
 export function versionParam(raw: string): number {
   if (!/^[1-9]\d{0,8}$/.test(raw)) throw new TotalBaseError("INVALID_QUERY", `Invalid version number: ${raw}`);
   return Number(raw);
+}
+
+/**
+ * A body field that replaces a set of ids: required, a list of UUIDs (empty clears it) - never `?? []`, so a body
+ * sent without its envelope or the field answers 400 instead of silently clearing the set.
+ */
+export function idListField(body: DataBody<Record<string, unknown>> | null | undefined, field: string): string[] {
+  const value = requestData(body)[field];
+  if (!Array.isArray(value) || !value.every((id) => typeof id === "string" && UUID_PATTERN.test(id))) {
+    throw new TotalBaseError("INVALID_QUERY", `${field} must be a list of ids (empty to clear).`);
+  }
+  return [...new Set(value as string[])];
 }

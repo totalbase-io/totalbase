@@ -54,10 +54,7 @@ function fileIcon(mime: string | undefined): string {
 
 async function download() {
   try {
-    const response = await $fetch.raw(`/api/totalbase/table/files/${props.fileId}`, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    const response = await fetchFileContent(`/api/totalbase/table/files/${props.fileId}`)
     const url = URL.createObjectURL(response._data as Blob)
     const a = document.createElement('a')
     a.href = url

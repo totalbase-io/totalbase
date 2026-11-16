@@ -10,11 +10,11 @@
 // which needs `getWorkerUrl`/a global `require` we don't set up (we load
 // workers as Vite `?worker` modules, not AMD) - it throws deep inside
 // FileAccessImpl instead of failing gracefully.
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
+import JsonWorker from 'monaco-editor/language/json/json.worker?worker'
 // CSS too, the same way: Settings > Appearance edits custom CSS in Monaco.
-import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
-import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+import CssWorker from 'monaco-editor/language/css/css.worker?worker'
+import TypeScriptWorker from 'monaco-editor/language/typescript/ts.worker?worker'
 
 export default defineNuxtPlugin(() => {
   self.MonacoEnvironment = {

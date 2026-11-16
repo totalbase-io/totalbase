@@ -54,7 +54,8 @@ export const SYSTEM_EMAIL_DEFINITIONS: Record<SystemEmailSlot, SystemEmailDefini
     label: "Invitation",
     description: "Sent when an admin invites someone - the link lets them set their password.",
     hasAction: true,
-    variables: [...COMMON_VARIABLES, ...ACTION_VARIABLES],
+    // Who invites, the account's roles and the caller's own line (Security.md §2.9) - none in the default text.
+    variables: [...COMMON_VARIABLES, ...ACTION_VARIABLES, "inviter.name", "inviter.email", "roles", "message"],
   },
   password_reset: {
     label: "Password reset",
@@ -281,3 +282,25 @@ export function validatePublicUrl(value: unknown): string | null {
   }
   return null;
 }
+
+/**
+ * The footer every system email's HTML body ends with (`mail.footer`, Administration.md §8.3): one line, with
+ * these variables only. Its default is the instance's name and address; empty leaves the footer out - an
+ * application with a frontend of its own doesn't show its users TotalBase's address.
+ */
+export const MAIL_FOOTER_VARIABLES = ["instance.name", "instance.public_url"] as const;
+export const MAIL_FOOTER_DEFAULT = "{{instance.name}} · {{instance.public_url}}";
+const MAX_FOOTER_LENGTH = 500;
+
+/** Returns a human-readable problem with a system email footer, or null when it's valid. */
+export function validateMailFooter(value: unknown): string | null {
+  if (typeof value !== "string") return "Expected text.";
+  if (value.length > MAX_FOOTER_LENGTH) return `The footer can't be longer than ${MAX_FOOTER_LENGTH} characters.`;
+  const allowed = new Set<string>(MAIL_FOOTER_VARIABLES);
+  const unknown = templatePlaceholders(value).find((name) => !allowed.has(name));
+  if (unknown) return `Unknown variable {{${unknown}}} in the footer. Available: ${MAIL_FOOTER_VARIABLES.map((v) => `{{${v}}}`).join(", ")}.`;
+  return null;
+}
+
+/** The longest `message` an invitation's caller may add to its email (Security.md §2.9). */
+export const MAX_INVITATION_MESSAGE_LENGTH = 500;

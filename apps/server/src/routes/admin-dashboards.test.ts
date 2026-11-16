@@ -105,6 +105,10 @@ describe("Admin dashboards (/admin/api/dashboards)", () => {
     const published = await call("POST", `/${dashboardId}/publish`);
     expect(published.statusCode, published.body).toBe(201);
     expect(published.json().data.version).toBe(1);
+    expect(published.json().data).not.toHaveProperty("created");
+    // An unchanged draft publishes nothing: 200 with the live version.
+    const again = await call("POST", `/${dashboardId}/publish`);
+    expect([again.statusCode, again.json().data]).toEqual([200, published.json().data]);
 
     await call("PATCH", `/${dashboardId}/widgets/${widgetId}`, { query: `SELECT 0 AS total` });
     expect((await call("POST", `/${dashboardId}/publish`)).json().data.version).toBe(2);

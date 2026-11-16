@@ -187,6 +187,16 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
       },
       async (request, reply) => {
         const file = await authorizeRead(request);
+        // The URL stays the same when the content is replaced: the browser revalidates (no-cache) against the
+        // checksum, a 304 while it's unchanged - a cached original or rendition never outlives its content.
+        const etag = file.checksum ? `"${file.checksum}"` : undefined;
+        if (etag) {
+          reply.header("etag", etag);
+          reply.header("cache-control", "private, no-cache");
+          if (request.headers["if-none-match"]?.split(",").some((tag) => tag.trim().replace(/^W\//, "") === etag)) {
+            return reply.code(304).send();
+          }
+        }
         const transformed = file.checksum
           ? await context.filesTransform.resolve({
               fileId: file.id,
@@ -199,14 +209,12 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
 
         if (transformed) {
           reply.header("content-type", transformed.contentType);
-          reply.header("cache-control", `private, max-age=${transformed.cacheTtlSeconds}`);
           return reply.send(transformed.buffer);
         }
 
         const { content } = await context.filesAdmin.readContent(file.id);
         reply.header("content-type", file.mime_type);
         reply.header("content-disposition", `inline; filename="${encodeURIComponent(file.name)}"`);
-        if (file.checksum) reply.header("etag", `"${file.checksum}"`);
         return reply.send(content);
       },
     );

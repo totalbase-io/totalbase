@@ -42,10 +42,7 @@ const storedFailed = ref(false)
 async function loadStored(id: string) {
   storedFailed.value = false
   try {
-    const response = await $fetch.raw(`/api/totalbase/table/files/${id}`, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    const response = await fetchFileContent(`/api/totalbase/table/files/${id}`)
     setStored(URL.createObjectURL(response._data as Blob))
   } catch {
     setStored(null)

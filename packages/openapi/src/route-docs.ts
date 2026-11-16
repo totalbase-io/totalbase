@@ -32,7 +32,14 @@ export interface RouteDoc {
   /** Path parameter descriptions/schemas, by name - undeclared ones default to a plain string. */
   pathParameters?: Record<string, { description?: string; schema?: JsonSchema }>;
   requestBody?: { schema: JsonSchema; contentType?: string; required?: boolean };
-  response: { status: "200" | "201" | "202" | "204" | "302"; description?: string; schema?: JsonSchema; contentType?: string };
+  response: {
+    status: "200" | "201" | "202" | "204" | "302";
+    description?: string;
+    schema?: JsonSchema;
+    contentType?: string;
+    /** A second success status with the same body - a Publish's 200 when the draft was already live. */
+    also?: { status: "200" | "201"; description: string };
+  };
   /** Error statuses beyond the base set; writes get 409/422/413 automatically. */
   errors?: ErrorStatus[];
   /** Component schemas this route's `$ref`s point at (merged into the document). */
@@ -94,7 +101,11 @@ export function buildRouteOperation(route: DocumentedRoute): { path: string; met
     ...(doc.requestBody
       ? { requestBody: { required: doc.requestBody.required ?? true, content: { [doc.requestBody.contentType ?? "application/json"]: { schema: doc.requestBody.schema } } } }
       : {}),
-    responses: { ...errorResponses([...writeErrors, ...(doc.errors ?? [])]), [status]: success },
+    responses: {
+      ...errorResponses([...writeErrors, ...(doc.errors ?? [])]),
+      [status]: success,
+      ...(doc.response.also ? { [doc.response.also.status]: { ...success, description: doc.response.also.description } } : {}),
+    },
     ...(doc.access === "public" ? { security: [] } : {}),
   };
   return { path, method, operation };

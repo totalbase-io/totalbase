@@ -10,6 +10,34 @@ const variables = {
 };
 
 describe("renderMailTemplate", () => {
+  // mail.footer (Administration.md §8.3)
+  describe("the footer", () => {
+    const template = { subject: "s", html: "<p>x</p>", text: "t" };
+    const values = { "instance.name": "Acme & Co", "instance.public_url": "https://base.internal" };
+
+    it("is the instance's name and address by default", () => {
+      expect(renderMailTemplate(template, values).html).toContain(">Acme &amp; Co · https://base.internal</p>");
+    });
+
+    it("is the setting's text, its variables filled and escaped", () => {
+      const email = renderMailTemplate(template, values, "Sent by {{instance.name}} <support>");
+      expect(email.html).toContain(">Sent by Acme &amp; Co &lt;support&gt;</p>");
+      expect(email.html).not.toContain("base.internal");
+    });
+
+    it("is left out when empty - no paragraph, and never in the plain text", () => {
+      const email = renderMailTemplate(template, values, "  ");
+      expect(email.html).toBe(renderMailTemplate(template, values).html.replace(/\n<p style="margin-top:32px[^\n]*<\/p>/, ""));
+      expect(email.html).not.toContain("margin-top:32px");
+      expect(email.text).toBe("t");
+    });
+  });
+
+  it("centers its frame", () => {
+    const email = renderMailTemplate({ subject: "s", html: "<p>x</p>", text: "" }, { "instance.name": "Acme" });
+    expect(email.html).toMatch(/^<div style="[^"]*max-width:520px;margin:0 auto"/);
+  });
+
   it("wraps a non-empty HTML body in the layout, with an escaped instance footer", () => {
     const email = renderMailTemplate(
       { subject: "Hi {{user.name}}", html: "<p>Hi {{user.name}}</p>", text: "Hi {{user.name}}" },

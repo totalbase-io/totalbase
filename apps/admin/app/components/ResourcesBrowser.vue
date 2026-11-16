@@ -4,6 +4,7 @@ import type { AuditLog } from '~/types/audit'
 import type { CatalogRefreshResult, DataApiMethod, Resource } from '~/types/resource'
 import type { SqlExecuteResult } from '~/types/sql-console'
 import { APPLICABLE_METHODS } from '~/types/resource'
+import { methodColor } from '~/utils/resource-endpoints'
 // Absolute dates/times in the user's zone and format (My account > Preferences).
 const dates = useDateTimeFormat()
 
@@ -40,16 +41,13 @@ const copy = computed(() => {
 // current DDL as a CREATE OR REPLACE (Administration.md §4: "Create/edit
 // Views and Functions through SQL Console" - there's no POST/PATCH schema
 // endpoint that accepts full source). Tables don't get this action -
-// PostgreSQL has no CREATE OR REPLACE TABLE, so TableDrawer's structured
-// ALTER TABLE editor (add column, constraints, etc.) is the real editor
-// for those.
+// PostgreSQL has no CREATE OR REPLACE TABLE: a table's Edit opens its own
+// page, the one editor of its structure (columns, keys, constraints, indexes).
 const isSqlConsoleOpen = ref(false)
 const sqlConsoleMode = ref<'create' | 'edit'>('create')
 const sqlConsoleInitialSql = ref('')
 const sqlConsoleEditingLabel = ref('')
 const isCreateTableOpen = ref(false)
-const isEditTableOpen = ref(false)
-const editTableTarget = ref<Resource | null>(null)
 
 function openNewResource() {
   sqlConsoleMode.value = 'create'
@@ -287,13 +285,10 @@ async function saveEndpoints() {
   const target = exposeTarget.value
   exposing.value = true
   try {
-    // A minimum 1.5s "working" state so the confirmation reads as real work
-    // being done (endpoint generation), not an instant flip.
-    const [{ data }] = await Promise.all([
-      api.patch<Resource>(`/resources/${target.id}`, { data: { exposedMethods: exposeMethodsDraft.value } }),
-      new Promise(resolve => setTimeout(resolve, 1500))
-    ])
+    const { data } = await api.patch<Resource>(`/resources/${target.id}`, { data: { exposedMethods: exposeMethodsDraft.value } })
     updateResource(target.id, { exposedMethods: data.exposedMethods })
+    // The sidebar's database tree reads the shared list - the same refresh the detail pages make.
+    await refreshResourcesList()
     toast.add({ title: t('database.resourcesBrowser.endpointsUpdated'), color: 'success' })
     exposeTarget.value = null
   } catch (err) {
@@ -343,6 +338,7 @@ async function saveBulkManage() {
       failures += 1
     }
   }))
+  await refreshResourcesList()
   bulkManaging.value = false
   isBulkManageOpen.value = false
   if (failures === 0) {
@@ -361,57 +357,30 @@ async function saveBulkManage() {
 // toolbar's bulk Delete over a selection; a single row is just a
 // one-element target list through the same flow (same confirmation, same
 // sequential DROP loop) rather than two near-identical implementations. ---
-const dropTargets = ref<Resource[]>([])
-const isDropOpen = computed({
-  get: () => dropTargets.value.length > 0,
-  set: (open: boolean) => { if (!open) dropTargets.value = [] }
-})
 const dropCascade = ref(false)
-const dropConfirmed = ref(false)
-const dropping = ref(false)
+const drop = useBulkDelete<Resource>({
+  remove: (target) => {
+    const qs = dropCascade.value ? '?cascade=true' : ''
+    if (target.type === 'TABLE') return api.del(`/schema/${target.schema}/tables/${target.name}${qs}`)
+    if (target.type === 'VIEW') return api.del(`/schema/views/${target.id}${qs}`)
+    return api.del(`/schema/functions/${target.id}${qs}`)
+  },
+  // This list, and the sidebar's tree and schemas - a dropped resource leaves them all at once.
+  after: async () => {
+    rowSelection.value = {}
+    await Promise.all([refresh(), refreshResourcesList(), refreshSchemasList()])
+  },
+  deleted: n => t('database.resourcesBrowser.deleted', { n }, n),
+  failed: failures => t('database.resourcesBrowser.deleteFailed', { names: failures.map(r => `${r.schema}.${r.name}`).join(', ') })
+})
 const dropModalTitle = computed(() =>
-  dropTargets.value.length === 1
-    ? t(`database.resourcesBrowser.dropTitle.${COPY_KEY[dropTargets.value[0]!.type]}`)
-    : t('database.resourcesBrowser.dropTitleMany', { n: dropTargets.value.length })
+  drop.targets.value.length === 1
+    ? t(`database.resourcesBrowser.dropTitle.${COPY_KEY[drop.targets.value[0]!.type]}`)
+    : t('database.resourcesBrowser.dropTitleMany', { n: drop.targets.value.length })
 )
-
 function openDrop(targets: Resource[]) {
   dropCascade.value = false
-  dropConfirmed.value = false
-  dropTargets.value = targets
-}
-
-async function confirmDrop() {
-  const targets = dropTargets.value
-  const qs = dropCascade.value ? '?cascade=true' : ''
-  dropping.value = true
-  const failed: string[] = []
-  for (const target of targets) {
-    try {
-      if (target.type === 'TABLE') {
-        await api.del(`/schema/${target.schema}/tables/${target.name}${qs}`)
-      } else if (target.type === 'VIEW') {
-        await api.del(`/schema/views/${target.id}${qs}`)
-      } else {
-        await api.del(`/schema/functions/${target.id}${qs}`)
-      }
-    } catch {
-      failed.push(`${target.schema}.${target.name}`)
-    }
-  }
-  dropping.value = false
-  dropTargets.value = []
-  rowSelection.value = {}
-  await refresh()
-  if (failed.length === 0) {
-    toast.add({ title: t('database.resourcesBrowser.deleted', { n: targets.length }, targets.length), color: 'success' })
-  } else {
-    toast.add({
-      title: t('database.resourcesBrowser.deletedPartial', { done: targets.length - failed.length, total: targets.length }),
-      description: t('database.resourcesBrowser.deleteFailed', { names: failed.join(', ') }),
-      color: 'warning'
-    })
-  }
+  drop.start(targets)
 }
 
 // --- Activity sidebar ---
@@ -447,19 +416,11 @@ function actionItems(resource: Resource) {
     [
       { label: t('database.resourcesBrowser.viewInfo'), icon: 'i-lucide-info', onSelect: () => openDetail(resource) },
       { label: t('database.resourcesBrowser.endpoints'), icon: 'i-lucide-plug-zap', disabled: exposureFixed(resource), onSelect: () => openExpose(resource) },
-      // Tables have no CREATE OR REPLACE in PostgreSQL, so their Edit
-      // opens TableDrawer (the structured ALTER TABLE editor +
-      // read-only Data preview) instead of SQL Console's DDL-replace flow
-      // that View/Function use.
+      // Tables have no CREATE OR REPLACE in PostgreSQL: their Edit is their
+      // own page (the structure editor) instead of SQL Console's DDL-replace
+      // flow that View/Function use.
       resource.type === 'TABLE'
-        ? {
-            label: t('common.edit'),
-            icon: 'i-lucide-pencil',
-            onSelect: () => {
-              editTableTarget.value = resource
-              isEditTableOpen.value = true
-            }
-          }
+        ? { label: t('common.edit'), icon: 'i-lucide-pencil', onSelect: () => navigateTo(`/resources/${resource.id}`) }
         : { label: t('common.edit'), icon: 'i-lucide-pencil', onSelect: () => openEditResource(resource) }
     ],
     [
@@ -471,10 +432,6 @@ function actionItems(resource: Resource) {
 
 function typeColor(type: Resource['type']) {
   return RESOURCE_TYPE_STYLE[type].color
-}
-
-function methodColor(method: DataApiMethod) {
-  return { GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error', REALTIME: 'neutral' }[method] as 'info' | 'success' | 'warning' | 'error' | 'neutral'
 }
 
 function actionColor(action: string) {
@@ -559,12 +516,6 @@ const headerSelection = computed<HeaderSelection>(() => ({
     <NewTableModal
       v-model:open="isCreateTableOpen"
       @created="onTableCreated"
-    />
-
-    <TableDrawer
-      v-model:open="isEditTableOpen"
-      :resource="editTableTarget"
-      @saved="refresh"
     />
 
     <!-- The schema filter - creating, bulk actions, search and sync live
@@ -849,60 +800,34 @@ const headerSelection = computed<HeaderSelection>(() => ({
     <!-- Delete - one row's "Delete" action and the toolbar's bulk Delete
     both land here (openDrop takes a list either way; a single row is just
     a one-element list). -->
-    <UModal
-      v-model:open="isDropOpen"
+    <DeleteConfirmModal
+      v-model:open="drop.open.value"
       :title="dropModalTitle"
+      :description="t('database.resourcesBrowser.dropIntro')"
+      :loading="drop.deleting.value"
+      @confirm="drop.confirm"
     >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('database.resourcesBrowser.dropIntro') }}
-          </p>
-          <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
-            <li
-              v-for="r in dropTargets"
-              :key="r.id"
-              class="flex items-center gap-2 text-sm"
-            >
-              <UBadge
-                :color="typeColor(r.type)"
-                variant="subtle"
-                size="sm"
-              >
-                {{ r.type }}
-              </UBadge>
-              <span class="font-mono">{{ r.schema }}.{{ r.name }}</span>
-            </li>
-          </ul>
-          <div class="flex items-center gap-2">
-            <USwitch v-model="dropCascade" />
-            <span class="text-sm">{{ t('database.resourcesBrowser.cascade') }}</span>
-          </div>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="dropConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="dropping"
-                @click="dropTargets = []"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!dropConfirmed"
-                :loading="dropping"
-                @click="confirmDrop"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+      <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
+        <li
+          v-for="r in drop.targets.value"
+          :key="r.id"
+          class="flex items-center gap-2 text-sm"
+        >
+          <UBadge
+            :color="typeColor(r.type)"
+            variant="subtle"
+            size="sm"
+          >
+            {{ r.type }}
+          </UBadge>
+          <span class="font-mono">{{ r.schema }}.{{ r.name }}</span>
+        </li>
+      </ul>
+      <USwitch
+        v-model="dropCascade"
+        :label="t('database.resourcesBrowser.cascade')"
+      />
+    </DeleteConfirmModal>
 
     <!-- Bulk Endpoints -->
     <UModal

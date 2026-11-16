@@ -1,6 +1,7 @@
 {
   "common": {
     "rateLimited": "Demasiadas solicitudes: reintentando en {seconds} s",
+    "deletedPartial": "{done} de {total} eliminados",
     "collapse": "Contraer",
     "expand": "Expandir",
     "selectedPoint": "Punto elegido",
@@ -105,6 +106,7 @@
     "USER_TIMEZONE_LOCKED": "Tu organización define la zona horaria para todos.",
     "EMAIL_NOT_VERIFIED": "Verifica tu correo electrónico antes de iniciar sesión - revisa tu bandeja de entrada o pide un enlace nuevo.",
     "INVALID_CURRENT_PASSWORD": "Falta tu contraseña actual o es incorrecta.",
+    "PASSWORD_UNCHANGED": "La nueva contraseña debe ser distinta de la actual.",
     "RESOURCE_NOT_FOUND": "No encontrado.",
     "ROW_VERSION_CONFLICT": "Otra persona cambió este registro desde que lo abriste. Vuelve a cargarlo para ver sus cambios, o guarda de nuevo para reemplazarlos.",
     "ROW_NOT_FOUND": "Registro no encontrado.",
@@ -151,6 +153,7 @@
     "TEMPLATE_SLUG_DUPLICATE": "Ya existe una plantilla con este slug.",
     "TEMPLATE_PDF_GENERATION_FAILED": "No se pudo generar el PDF.",
     "USER_API_NAME_DUPLICATE": "Este usuario ya tiene un token con este nombre.",
+    "TOKEN_IP_NOT_ALLOWED": "Este token no se acepta desde esta dirección.",
     "INVALID_DESCRIPTION": "La descripción es demasiado larga.",
     "DATAVIEW_NOT_FOUND": "DataView no encontrado.",
     "DATAVIEW_NAME_DUPLICATE": "Ya existe un DataView con este nombre.",
@@ -283,6 +286,7 @@
       "title": "Inicio de sesión",
       "password": "Contraseña",
       "passwordSet": "Establecida",
+      "passwordExpires": "Establecida - vence el {date}",
       "changePassword": "Cambiar contraseña",
       "passwordNotSet": "Sin establecer - inicias sesión con un proveedor. Usa \"Olvidé mi contraseña\" en la página de inicio de sesión para añadir una.",
       "verifiedOn": "Verificado el {date}",
@@ -435,6 +439,7 @@
         "outboxBacklog": "{n} evento de datos esperando más de 5 minutos para procesarse | {n} eventos de datos esperando más de 5 minutos para procesarse",
         "tokensExpiring": "{n} token de API vence pronto | {n} tokens de API vencen pronto",
         "failedSignIns": "{n} inicio de sesión fallido en las últimas 24 horas | {n} inicios de sesión fallidos en las últimas 24 horas",
+        "tokensRefused": "{n} uso rechazado de un token de API en las últimas 24 horas | {n} usos rechazados de tokens de API en las últimas 24 horas",
         "backupFailed": "El último backup falló - mira por qué en Backups | El último backup falló - mira por qué en Backups"
       },
       "kpis": {
@@ -567,7 +572,10 @@
       "copyCreatedDescription": "Una copia nueva, sin publicar - sus roles empiezan vacíos.",
       "copyError": "No se pudo crear la copia",
       "publishedBy": "Publicada por",
-      "unknownUser": "Usuario desconocido"
+      "unknownUser": "Usuario desconocido",
+      "loadFailed": "No se pudo cargar la versión",
+      "nothingToPublish": "Nada que publicar",
+      "alreadyLive": "v{version} ya está publicada."
     },
     "embed": {
       "onlyEmbedded": "Solo disponible insertado",
@@ -635,7 +643,8 @@
     "auditDiff": {
       "before": "Antes: ",
       "after": "Después: ",
-      "empty": "(vacío)"
+      "empty": "(vacío)",
+      "notRecorded": "Cambió; su valor no se registra (excluida del registro de auditoría)"
     },
     "appPresentation": {
       "heading": "Presentación en la App",
@@ -738,6 +747,13 @@
     "linkIncomplete": {
       "title": "Enlace incompleto",
       "description": "Esta página necesita el enlace completo de tu correo. Ábrelo de nuevo desde el correo o copia la dirección completa en tu navegador."
+    },
+    "passwordRenew": {
+      "expiredTitle": "Tu contraseña venció",
+      "expiredDescription": "Esta instancia pide una contraseña nueva cada cierto tiempo. Elige una para terminar de iniciar sesión.",
+      "requestedTitle": "Elige una contraseña nueva",
+      "requestedDescription": "Un administrador pidió que cambies tu contraseña. Elige una para terminar de iniciar sesión.",
+      "submit": "Cambiar contraseña e iniciar sesión"
     },
     "tokenPassword": {
       "mustMatch": "Las dos contraseñas deben coincidir.",

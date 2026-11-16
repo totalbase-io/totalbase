@@ -1,5 +1,6 @@
 import type { Queryable } from "@totalbase/database";
 import { VIEW_LAYOUTS } from "./view-layouts.js";
+import { listAttributes } from "@totalbase/pg-catalog";
 
 /**
  * A DataView that names a column its source no longer has (DataViews.md §4.8): a view's
@@ -88,14 +89,16 @@ export async function brokenDataViewReferences(database: Queryable, dataviewId?:
     [dataviewId ?? null],
   );
   const oids = [...new Set(rows.flatMap((row) => (row.status === "ACTIVE" && row.oid !== null ? [row.oid] : [])))];
-  const { rows: attributes } = await database.query<{ oid: number; columns: string[]; attnums: number[] }>(
-    `SELECT attrelid::oid::int AS oid, array_agg(attname::text) AS columns, array_agg(attnum::int) AS attnums
-     FROM pg_attribute WHERE attrelid = ANY($1::oid[]) AND attnum > 0 AND NOT attisdropped
-     GROUP BY attrelid`,
-    [oids],
-  );
-  const columnsOf = new Map(attributes.map((a) => [a.oid, new Set(a.columns)]));
-  const attnumsOf = new Map(attributes.map((a) => [a.oid, new Set(a.attnums)]));
+  const columnsOf = new Map<number, Set<string>>();
+  const attnumsOf = new Map<number, Set<number>>();
+  for (const a of await listAttributes(database, oids)) {
+    if (!columnsOf.has(a.relation)) {
+      columnsOf.set(a.relation, new Set());
+      attnumsOf.set(a.relation, new Set());
+    }
+    columnsOf.get(a.relation)!.add(a.name);
+    attnumsOf.get(a.relation)!.add(a.attnum);
+  }
 
   const broken: BrokenDataViewReference[] = [];
   for (const row of rows) {

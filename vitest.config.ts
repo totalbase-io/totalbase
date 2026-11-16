@@ -10,6 +10,6 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     fileParallelism: false,
-    exclude: [...configDefaults.exclude, "e2e/**", "apps/admin/**"],
+    exclude: [...configDefaults.exclude, "**/dist/**", "e2e/**", "apps/admin/**"],
   },
 });

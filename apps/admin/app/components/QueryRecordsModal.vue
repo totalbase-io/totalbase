@@ -27,6 +27,7 @@ const PAGE_SIZE = 20
 const dataApi = useDataApi()
 const isCompact = useCompactUi()
 const { t } = useI18n()
+const errorMessage = useApiErrorMessage()
 
 const page = ref(1)
 const rows = ref<Record<string, unknown>[]>([])
@@ -62,7 +63,7 @@ async function load() {
     ms.value = Math.round(performance.now() - started)
     error.value = null
   } catch (err) {
-    if (current === request) error.value = err instanceof Error ? err.message : String(err)
+    if (current === request) error.value = errorMessage(err, err instanceof Error ? err.message : String(err))
   } finally {
     if (current === request) loading.value = false
   }

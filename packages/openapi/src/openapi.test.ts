@@ -21,7 +21,10 @@ describe("postgresTypeToSchema", () => {
   it("maps common PostgreSQL types", () => {
     expect(postgresTypeToSchema("uuid")).toEqual({ type: "string", format: "uuid" });
     expect(postgresTypeToSchema("character varying(255)")).toEqual({ type: "string" });
-    expect(postgresTypeToSchema("numeric(12,2)")).toEqual({ type: "number" });
+    // bigint and numeric come back as strings (Data_API.md §3), never rounded.
+    expect(postgresTypeToSchema("numeric(12,2)")).toEqual({ type: "string", format: "decimal" });
+    expect(postgresTypeToSchema("bigint")).toEqual({ type: "string", format: "int64" });
+    expect(postgresTypeToSchema("double precision")).toEqual({ type: "number" });
     expect(postgresTypeToSchema("timestamp with time zone")).toEqual({ type: "string", format: "date-time" });
     expect(postgresTypeToSchema("text[]")).toEqual({ type: "array", items: { type: "string" } });
     expect(postgresTypeToSchema("jsonb")).toEqual({});
@@ -239,7 +242,7 @@ describe("@totalbase/openapi (integration)", () => {
   it("marks nullable columns with a 3.1 type array and never emits `nullable`", async () => {
     const spec = await buildPublicOpenApiSpec(database, effectivePermissions, [roleId], OPTIONS);
     const properties = spec.components?.schemas?.["public_openapi_pkg_test_items"]?.properties;
-    expect(properties?.["price"]).toEqual({ type: ["number", "null"] });
+    expect(properties?.["price"]).toEqual({ type: ["string", "null"], format: "decimal" });
     expect(properties?.["name"]).toEqual({ type: "string" });
     expect(JSON.stringify(spec)).not.toContain('"nullable"');
   });

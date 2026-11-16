@@ -116,7 +116,7 @@
           "description": "The rows as they come - columns starting with _ never show.",
           "props": {
             "colorColumn": {
-              "description": "A column whose value - a palette name - tints its row. Unset, a column named _color. _<column>_color shows that column as colored badges."
+              "description": "A column whose value - a palette name - tints its row. Unset, a column named _color. _{'<'}column{'>'}_color shows that column as colored badges."
             },
             "click": {
               "description": "What a click on a row does. Its values are formulas over the clicked row and the variables."
@@ -608,7 +608,7 @@
       "types": {
         "DATE_RANGE": {
           "label": "Date range",
-          "description": "Use as $VAR.<name>.from / $VAR.<name>.to (timestamptz)."
+          "description": "Use as $VAR.{'<'}name{'>'}.from / $VAR.{'<'}name{'>'}.to (timestamptz)."
         },
         "SELECT": {
           "label": "Select",
@@ -712,7 +712,7 @@
       "runFailed": "Could not run the query.",
       "saveFailed": "Could not save widget",
       "widget": "Widget",
-      "queryDescription": "SQL runs read-only. Ctrl+Enter to run. Use $VAR.<name> for the dashboard's variables and $USER.<column> for the viewer.",
+      "queryDescription": "SQL runs read-only. Ctrl+Enter to run. Use $VAR.{'<'}name{'>'} for the dashboard's variables and $USER.{'<'}column{'>'} for the viewer.",
       "runToPreview": "Run the query to preview the widget.",
       "rows": "{n} rows | {n} row | {n} rows",
       "cutOff": " (cut off at {setting})",
@@ -730,7 +730,7 @@
       "results": "Results",
       "run": "Run",
       "duration": " · {ms} ms",
-      "presentationDescription": "Read-only SQL, optional: its formulas read the first row as {'{'}{'{'}row.<column>{'}'}{'}'} and every row as {'{'}{'{'}rows{'}'}{'}'}, beside {'{'}{'{'}vars.<name>{'}'}{'}'} and {'{'}{'{'}user.<field>{'}'}{'}'}.",
+      "presentationDescription": "Read-only SQL, optional: its formulas read the first row as {'{'}{'{'}row.{'<'}column{'>'}{'}'}{'}'} and every row as {'{'}{'{'}rows{'}'}{'}'}, beside {'{'}{'{'}vars.{'<'}name{'>'}{'}'}{'}'} and {'{'}{'{'}user.{'<'}field{'>'}{'}'}{'}'}.",
       "detailFirstRow": "Detail shows the first of {count} rows."
     },
     "variablesBar": {
@@ -753,7 +753,7 @@
       "queryHelp": "First column = value, optional second = label. May use $USER.* and other variables ($VAR.country) - its options then follow them.",
       "saveFailed": "Could not save variables",
       "title": "Variables",
-      "description": "Filters viewers pick in the bar above the canvas. Reference them in widget SQL as $VAR.<name>.",
+      "description": "Filters viewers pick in the bar above the canvas. Reference them in widget SQL as $VAR.{'<'}name{'>'}.",
       "empty": "No variables yet.",
       "add": "Add variable",
       "nameHelp": "Lowercase, digits, underscores.",
@@ -997,10 +997,6 @@
       "widgetMissing": "The widget it shows is no longer in the dashboard - it shows nothing until it's updated."
     },
     "editor": {
-      "openVersionFailed": "Could not open version",
-      "restored": "Restored v{version} into the draft",
-      "restoredHelp": "Nothing is published yet - publish to make it live.",
-      "restoreFailed": "Could not restore",
       "copyCreated": "Created \"{name}\"",
       "copyCreatedHelp": "An unpublished copy - publish it when ready.",
       "copyFailed": "Could not create the copy",

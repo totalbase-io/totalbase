@@ -1,6 +1,7 @@
 import { isProtectedField } from "@totalbase/mutations";
 import type { ResourceAction } from "@totalbase/permissions";
 import type { AppContext } from "./context.js";
+import { listAttributes } from "@totalbase/pg-catalog";
 
 /**
  * "Apply default permissions" on TotalBase's own tables
@@ -119,11 +120,7 @@ export async function applyTotalbaseDefaultGrants(context: AppContext, roleId: s
      WHERE "schema" = 'totalbase' AND status = 'ACTIVE' AND name = ANY($1)`,
     [TOTALBASE_DEFAULT_GRANTS.map((grant) => grant.table)],
   );
-  const { rows: columns } = await context.database.query<{ oid: number; name: string }>(
-    `SELECT attrelid::int AS oid, attname AS name FROM pg_attribute
-     WHERE attrelid = ANY($1::oid[]) AND attnum > 0 AND NOT attisdropped ORDER BY attnum`,
-    [resources.map((resource) => resource.postgres_oid)],
-  );
+  const columns = (await listAttributes(context.database, resources.map((resource) => resource.postgres_oid))).map((a) => ({ oid: a.relation, name: a.name }));
 
   const { rows: existing } = await context.database.query<{ resource: string; action: ResourceAction }>(
     `SELECT resource, action FROM totalbase.permissions WHERE role = $1 AND resource = ANY($2::uuid[])`,

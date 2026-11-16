@@ -1,9 +1,10 @@
+import { APPLICABLE_METHODS, type DataApiMethod } from "@totalbase/shared";
 import { parseFilter } from "@totalbase/query-engine";
 import { fixedExposure } from "./reconcile-resources.js";
 import { SINGLE_COLUMN_KEY_SQL, syncRealtimePublication } from "./realtime-publication.js";
-import type { Database } from "@totalbase/database";
+import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { getRelationDetail } from "@totalbase/pg-catalog";
+import { getRelationDetail, introspectRelationDetail } from "@totalbase/pg-catalog";
 import {
   COLUMN_PRESENTATION_KEYS,
   columnFormInput,
@@ -42,17 +43,7 @@ export function validateDefaultSort(input: unknown, columns: readonly string[]):
   });
 }
 
-export type DataApiMethod = "GET" | "POST" | "PATCH" | "DELETE" | "REALTIME";
-
-/**
- * What the Data API offers per resource type (Foundations.md §11.5) - the ceiling `exposed_methods` can select
- * from: the HTTP verbs, and a table's realtime subscriptions (`REALTIME`, Data_API.md §16).
- */
-export const APPLICABLE_METHODS: Record<"TABLE" | "VIEW" | "FUNCTION", DataApiMethod[]> = {
-  TABLE: ["GET", "POST", "PATCH", "DELETE", "REALTIME"],
-  VIEW: ["GET"],
-  FUNCTION: ["POST"],
-};
+export { APPLICABLE_METHODS, type DataApiMethod };
 
 export interface AdminResource {
   id: string;
@@ -339,6 +330,14 @@ export class ResourcesAdminService {
    * all in one transaction: all or none.
    */
   async updateColumnPresentations(resourceId: string, inputs: Record<string, unknown>): Promise<ResourceColumn[]> {
+    return this.database.transaction((client) => this.updateColumnPresentationsIn(client, resourceId, inputs, false));
+  }
+
+  /**
+   * updateColumnPresentations inside the caller's transaction - after a table edit's ALTERs, so the column is read
+   * as they left it (renamed, retyped) and the presentation commits with them or not at all.
+   */
+  async updateColumnPresentationsIn(client: Queryable, resourceId: string, inputs: Record<string, unknown>, uncommittedDdl = true): Promise<ResourceColumn[]> {
     const resource = await this.get(resourceId);
     if (resource.type === "FUNCTION") {
       throw new TotalBaseError("INVALID_COLUMN_PRESENTATION", "A function has no columns.");
@@ -346,7 +345,7 @@ export class ResourcesAdminService {
     if (resource.status !== "ACTIVE") {
       throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource is missing from PostgreSQL: ${resource.schema}.${resource.name}`);
     }
-    const detail = await getRelationDetail(this.database, resource.postgresOid);
+    const detail = uncommittedDdl ? await introspectRelationDetail(client, resource.postgresOid) : await getRelationDetail(this.database, resource.postgresOid);
     const parsed = Object.entries(inputs).map(([columnName, input]) => {
       const column = detail.columns.find(c => c.name === columnName);
       if (!column) throw new TotalBaseError("UNDEFINED_COLUMN", `Column not found: ${columnName}`);
@@ -355,7 +354,7 @@ export class ResourcesAdminService {
       return { column, foreignKey, presentation: parseColumnPresentation(input, column.dataType, foreignKey) };
     });
 
-    const { rows: current } = await this.database.query<{ name: string; input: string | null }>(
+    const { rows: current } = await client.query<{ name: string; input: string | null }>(
       `SELECT name, config ->> 'input' AS input FROM totalbase.resources_columns WHERE resource = $1`,
       [resourceId],
     );
@@ -367,24 +366,22 @@ export class ResourcesAdminService {
       assertPasswordInput(column.name, before, presentation.input);
     }
 
-    return this.database.transaction(async (client) => {
-      const saved: ResourceColumn[] = [];
-      for (const { column, presentation } of parsed) {
-        const { rows } = await client.query<{ name: string; config: unknown }>(
-          `INSERT INTO totalbase.resources_columns (resource, attnum, name, config)
-           VALUES ($1, $2, $3, $4::jsonb)
-           ON CONFLICT (resource, attnum)
-           DO UPDATE SET name = EXCLUDED.name,
-                         config = (totalbase.resources_columns.config - $5::text[]) || EXCLUDED.config,
-                         updated_at = now()
-           RETURNING name, config`,
-          [resourceId, column.attnum, column.name, JSON.stringify(presentation), [...COLUMN_PRESENTATION_KEYS]],
-        );
-        const row = rows[0]!;
-        saved.push({ columnName: row.name, presentation: pickColumnPresentation(row.config) });
-      }
-      return saved;
-    });
+    const saved: ResourceColumn[] = [];
+    for (const { column, presentation } of parsed) {
+      const { rows } = await client.query<{ name: string; config: unknown }>(
+        `INSERT INTO totalbase.resources_columns (resource, attnum, name, config)
+         VALUES ($1, $2, $3, $4::jsonb)
+         ON CONFLICT (resource, attnum)
+         DO UPDATE SET name = EXCLUDED.name,
+                       config = (totalbase.resources_columns.config - $5::text[]) || EXCLUDED.config,
+                       updated_at = now()
+         RETURNING name, config`,
+        [resourceId, column.attnum, column.name, JSON.stringify(presentation), [...COLUMN_PRESENTATION_KEYS]],
+      );
+      const row = rows[0]!;
+      saved.push({ columnName: row.name, presentation: pickColumnPresentation(row.config) });
+    }
+    return saved;
   }
 
   /**

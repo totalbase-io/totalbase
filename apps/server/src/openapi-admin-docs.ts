@@ -26,6 +26,13 @@ export function adminDoc(tag: string, openapi: Omit<RouteDoc, "tags" | "access">
 /** 200 `{ data: <schema> }`. */
 export const ok = (schema: JsonSchema) => ({ status: "200" as const, schema: dataEnvelope(schema) });
 export const created = (schema: JsonSchema) => ({ status: "201" as const, schema: dataEnvelope(schema) });
+/** A Publish (Foundations.md §13.6): 201 with the version it created, 200 with the live one when the draft already was it. */
+export const published = (schema: JsonSchema) => ({
+  status: "201" as const,
+  description: "Published - the version this call created.",
+  schema: dataEnvelope(schema),
+  also: { status: "200" as const, description: "Nothing to publish - the draft equals the live version, which is answered." },
+});
 export const NO_CONTENT = { status: "204" as const };
 export const UUID_PARAM = { schema: UUID };
 
@@ -241,7 +248,7 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     tables: arrayOf(ref("MaintenanceTable")),
   }),
   SystemInfo: object({
-    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.13)." },
+    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.14)." },
     environment: { type: "string", description: "NODE_ENV: development, staging or production." },
     postgres: object({
       version: { type: "string", description: "The server's version, e.g. 17.2." },

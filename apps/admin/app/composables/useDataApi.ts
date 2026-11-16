@@ -1,6 +1,5 @@
 import type { AdminApiError } from '~/utils/admin-api-error'
-import { apiHeaders } from '~/utils/api-headers'
-import { apiRequest, type ApiMethod, type ApiResult } from '~/utils/api-request'
+import type { ApiMethod, ApiResult } from '~/utils/api-request'
 
 export type DataApiResult<T> = ApiResult<T>
 
@@ -21,8 +20,8 @@ export type DataApiResult<T> = ApiResult<T>
 const PAGE_SIZE = 500
 
 export function useDataApi() {
-  const session = useSession()
-  const { retrying } = useReauthentication()
+  // The session's client (its token, re-authentication, a 401 back to login) on the Data API's routes.
+  const api = createSessionApi('/api')
 
   async function request<T>(
     method: ApiMethod,
@@ -30,31 +29,24 @@ export function useDataApi() {
     options: { body?: unknown, query?: Record<string, unknown>, idempotencyKey?: string, ifMatch?: string } = {}
   ): Promise<DataApiResult<T>> {
     try {
-      // A sensitive action (an administrator's token) asks to confirm the identity first (Security.md §2.19).
-      return await retrying(() => apiRequest<T>(`/api${path}`, method, {
+      return await api.request<T>(method, path, {
         body: options.body,
         query: options.query,
         headers: {
-          ...apiHeaders(),
           ...(options.idempotencyKey && { 'Idempotency-Key': options.idempotencyKey }),
           // The row's version the caller read - a write fails 409 if it changed since (Data_API.md §5.3).
           ...(options.ifMatch && { 'If-Match': `"${options.ifMatch}"` })
         }
-      }))
+      })
     } catch (error) {
-      const apiError = error as AdminApiError
-      if (apiError.status === 401 && session.isAuthenticated.value) {
-        session.clear()
-        navigateTo('/login')
-      }
       // A resource an administrator marked as requiring an Idempotency-Key
       // (Data_API.md §9.1) refuses a write without one before
       // running anything: this user action gets its own key and goes again.
       // Only those resources pay for the key's bookkeeping.
-      if (method === 'POST' && !options.idempotencyKey && apiError.code === 'IDEMPOTENCY_KEY_REQUIRED') {
+      if (method === 'POST' && !options.idempotencyKey && (error as AdminApiError).code === 'IDEMPOTENCY_KEY_REQUIRED') {
         return request<T>(method, path, { ...options, idempotencyKey: crypto.randomUUID() })
       }
-      throw apiError
+      throw error
     }
   }
 

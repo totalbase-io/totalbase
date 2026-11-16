@@ -63,7 +63,7 @@ describe("Executions status endpoint", () => {
     const created = await context.executions.create({
       type: "TEST",
       principalType: "API_KEY",
-      principal: (await context.usersApis.validate(apiKeyPlain))!.id,
+      principal: (await context.usersApis.validate(apiKeyPlain, undefined))!.id,
       request: { x: 1 },
     });
 

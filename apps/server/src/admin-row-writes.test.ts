@@ -4,7 +4,7 @@ import type { Database } from "@totalbase/database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AppContext } from "./context.js";
 import { loadServerEnv } from "./env.js";
-import { createTestApiToken, setupTestApp } from "./test-support.js";
+import { createTestApiToken, setupTestApp, waitFor } from "./test-support.js";
 
 const P = "admin-row-writes-test";
 const PASSWORD = "a-strong-enough-password";
@@ -102,6 +102,13 @@ describe("Admin writes on TotalBase's own rows", () => {
     const plain = await context.auth.users.create({ email: `${P}-plain@example.com`, name: "Plain" });
     expect((await call("DELETE", `/app/api/users/${plain.id}`, delegateToken)).statusCode).toBe(204);
     expect(await context.auth.users.findById(plain.id)).toBeNull();
+    // The entry names who was deleted - the row can no longer say (Security.md §11.6).
+    // Written once the response is sent.
+    const entry = await waitFor(async () => (await database.query<{ metadata: Record<string, unknown> }>(
+      `SELECT metadata FROM totalbase.logs WHERE event = 'user.delete' AND metadata ->> 'user_id' = $1`,
+      [plain.id],
+    )).rows[0]);
+    expect(entry.metadata).toMatchObject({ user_id: plain.id, email: `${P}-plain@example.com`, name: "Plain" });
 
     const admin = await context.auth.users.create({ email: `${P}-admin@example.com`, name: "Admin" });
     await context.roleAssignments.assignRoleToUser(admin.id, await context.roles.getAdministratorsRoleId());

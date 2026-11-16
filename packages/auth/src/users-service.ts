@@ -3,6 +3,7 @@ import { isProjectUserColumn } from "@totalbase/shared";
 import { TotalBaseError } from "@totalbase/errors";
 import { WORKFLOWS_SYSTEM_USER_EMAIL } from "@totalbase/shared";
 import { STORED_PREFERENCE_KEYS, toUserPreferences, type UserPreferences, type UserPreferencesPatch } from "./user-preferences.js";
+import { listAttributes } from "@totalbase/pg-catalog";
 
 /**
  * `Admin` is kept as a name for the projection of a `User` that the
@@ -60,6 +61,8 @@ function toUser(row: UserRow): User {
  * (an invited account that hasn't accepted yet).
  */
 export interface UserListItem extends User {
+  /** When the account was removed (Security.md §1.12) - inactive, no credential left; null otherwise. */
+  removedAt: Date | null;
   roles: string[];
   hasPassword: boolean;
   lastLoginAt: Date | null;
@@ -71,6 +74,20 @@ export interface UserListItem extends User {
   providerAvatar: { url: string; provider: string } | null;
   /** Two-factor authentication is on: a confirmed factor (Security.md §2.17). */
   mfaEnabled: boolean;
+  /** When the current password was set; null without one (Security.md §2.20). */
+  passwordChangedAt: Date | null;
+  /** An administrator asked for the password to be changed at the next sign-in. */
+  passwordChangeRequired: boolean;
+}
+
+/** A password's standing against auth.password_max_age_days and an administrator's request (Security.md §2.20). */
+export interface PasswordStatus {
+  changedAt: Date | null;
+  /** When it expires; null with the setting off, or without a password. */
+  expiresAt: Date | null;
+  changeRequired: boolean;
+  /** Why the next password sign-in must change it; null when it needn't. A request comes before the age. */
+  due: "REQUESTED" | "EXPIRED" | null;
 }
 
 const MAX_NAME_LENGTH = 200;
@@ -110,7 +127,7 @@ function mapEmailConflict(error: unknown): never {
 }
 
 /** How the Users screen classifies an account (mirrored by the admin's userStatus()). */
-export type UserStatus = "ACTIVE" | "INVITED" | "INACTIVE";
+export type UserStatus = "ACTIVE" | "INVITED" | "INACTIVE" | "REMOVED";
 
 export interface UserSearchFilter {
   q?: string | undefined;
@@ -132,7 +149,9 @@ export interface UserSearchFilter {
 
 /** SQL for each status, over alias `u` - INVITED is an active, sign-in-capable account with no password yet. */
 const STATUS_CONDITION: Record<UserStatus, string> = {
-  INACTIVE: "NOT u.active",
+  INACTIVE: "NOT u.active AND u.removed_at IS NULL",
+  // Removed (Security.md §1.12): the row kept for the audit log, no way in left.
+  REMOVED: "u.removed_at IS NOT NULL",
   INVITED: "u.active AND u.password_hash IS NULL AND u.can_login",
   ACTIVE: "u.active AND NOT (u.password_hash IS NULL AND u.can_login)",
 };
@@ -198,12 +217,7 @@ export class UsersService {
 
   /** The columns a project added to users (AGENTS.md §11) - read from PostgreSQL's catalog, TotalBase's own left out. */
   async projectColumns(): Promise<string[]> {
-    const { rows } = await this.database.query<{ name: string }>(
-      `SELECT a.attname AS name FROM pg_attribute a
-       WHERE a.attrelid = 'totalbase.users'::regclass AND a.attnum > 0 AND NOT a.attisdropped
-       ORDER BY a.attnum`,
-    );
-    return rows.map((r) => r.name).filter(isProjectUserColumn);
+    return (await listAttributes(this.database, ["totalbase.users"])).map((a) => a.name).filter(isProjectUserColumn);
   }
 
   /**
@@ -228,11 +242,12 @@ export class UsersService {
 
   /** Counts for the Users panel: every user, per status, and per role. */
   async summaryForAdmin(): Promise<{ total: number; byStatus: Record<UserStatus, number>; byRole: Record<string, number> }> {
-    const { rows } = await this.database.query<{ total: string; active: string; invited: string; inactive: string }>(
+    const { rows } = await this.database.query<{ total: string; active: string; invited: string; inactive: string; removed: string }>(
       `SELECT count(*) AS total,
               count(*) FILTER (WHERE ${STATUS_CONDITION.ACTIVE}) AS active,
               count(*) FILTER (WHERE ${STATUS_CONDITION.INVITED}) AS invited,
-              count(*) FILTER (WHERE ${STATUS_CONDITION.INACTIVE}) AS inactive
+              count(*) FILTER (WHERE ${STATUS_CONDITION.INACTIVE}) AS inactive,
+              count(*) FILTER (WHERE ${STATUS_CONDITION.REMOVED}) AS removed
        FROM totalbase.users u`,
     );
     const { rows: roleRows } = await this.database.query<{ role: string; count: string }>(
@@ -241,7 +256,7 @@ export class UsersService {
     const row = rows[0]!;
     return {
       total: Number(row.total),
-      byStatus: { ACTIVE: Number(row.active), INVITED: Number(row.invited), INACTIVE: Number(row.inactive) },
+      byStatus: { ACTIVE: Number(row.active), INVITED: Number(row.invited), INACTIVE: Number(row.inactive), REMOVED: Number(row.removed) },
       byRole: Object.fromEntries(roleRows.map((r) => [r.role, Number(r.count)])),
     };
   }
@@ -256,9 +271,12 @@ export class UsersService {
         failed_login_count: number;
         provider_avatar: { url: string; provider: string } | null;
         mfa_enabled: boolean;
+        removed_at: Date | null;
+        password_changed_at: Date | null;
+        password_change_required: boolean;
       }
     >(
-      `SELECT ${SELECT_COLUMNS}, password_hash IS NOT NULL AS has_password, last_login_at, failed_login_count,
+      `SELECT ${SELECT_COLUMNS}, removed_at, password_changed_at, password_change_required, password_hash IS NOT NULL AS has_password, last_login_at, failed_login_count,
               (SELECT jsonb_build_object('url', i.provider_avatar_url, 'provider', p.name)
                  FROM totalbase.identities i
                  JOIN totalbase.providers p ON p.id = i.provider
@@ -277,6 +295,7 @@ export class UsersService {
     );
     return rows.map((row) => ({
       ...toUser(row),
+      removedAt: row.removed_at,
       roles: row.roles,
       hasPassword: row.has_password,
       lastLoginAt: row.last_login_at,
@@ -284,6 +303,8 @@ export class UsersService {
       failedLoginCount: row.failed_login_count,
       providerAvatar: row.provider_avatar,
       mfaEnabled: row.mfa_enabled,
+      passwordChangedAt: row.password_changed_at,
+      passwordChangeRequired: row.password_change_required,
     }));
   }
 
@@ -445,6 +466,9 @@ export class UsersService {
     if (input.active === false && user.email === WORKFLOWS_SYSTEM_USER_EMAIL) {
       throw new TotalBaseError("PERMISSION_DENIED", "The Workflows system user cannot be deactivated.");
     }
+    if (input.active === true && (await this.isRemoved(id))) {
+      throw new TotalBaseError("PERMISSION_DENIED", "A removed user comes back by invitation - send them one.");
+    }
     const name = validateUserName(input.name);
 
     return this.database.transaction(async (client) => {
@@ -558,6 +582,48 @@ export class UsersService {
    * for any path that doesn't go through this service.
    */
   /** `actorId`: the admin deleting - an admin can't delete their own account (and lock themselves out). Whether there was such a user. */
+  /**
+   * Removes an account without deleting it (Security.md §1.12): the row stays - the audit log keeps
+   * resolving who did what - inactive, with no way in left: no password, every session revoked, its tokens,
+   * factors and recovery codes, identities, sign-in challenges and pending links deleted. Its role
+   * assignments are the caller's to clear, in the same transaction (`client`). Never one's own account, the
+   * owner's or the Workflows system user's (PostgreSQL's users_keep_active says the same to every writer).
+   * False when there is no such user; removing a removed account changes nothing.
+   */
+  async remove(id: string, actorId: string | undefined, client: Queryable): Promise<boolean> {
+    if (actorId === id) throw new TotalBaseError("PERMISSION_DENIED", "You can't remove your own account.");
+    const user = await this.findById(id);
+    if (!user) return false;
+    if (user.owner) throw new TotalBaseError("PERMISSION_DENIED", "The instance owner cannot be removed.");
+    if (user.email === WORKFLOWS_SYSTEM_USER_EMAIL) throw new TotalBaseError("PERMISSION_DENIED", "The Workflows system user cannot be removed.");
+    const { rowCount } = await client.query(
+      `UPDATE totalbase.users
+          SET active = false, password_hash = NULL, removed_at = coalesce(removed_at, now()),
+              failed_login_count = 0, locked_until = NULL, updated_at = now()
+        WHERE id = $1`,
+      [id],
+    );
+    if (rowCount === 0) return false;
+    // Deactivating revokes the sessions (users_revoke_sessions_on_deactivate) - an account already inactive had none left; said again for the one that wasn't.
+    await client.query(`UPDATE totalbase.sessions SET revoked_at = now() WHERE "user" = $1 AND revoked_at IS NULL`, [id]);
+    await client.query(`DELETE FROM totalbase.sessions_tickets WHERE session IN (SELECT id FROM totalbase.sessions WHERE "user" = $1)`, [id]);
+    for (const table of ["tokens", "factors", "challenges", "identities", "emails_tokens"]) {
+      await client.query(`DELETE FROM totalbase.${table} WHERE "user" = $1`, [id]);
+    }
+    return true;
+  }
+
+  /** Whether the account is removed (Security.md §1.12). */
+  async isRemoved(id: string): Promise<boolean> {
+    const { rows } = await this.database.query(`SELECT 1 FROM totalbase.users WHERE id = $1 AND removed_at IS NOT NULL`, [id]);
+    return rows.length > 0;
+  }
+
+  /** A removed account invited again (Security.md §1.12): active, still without a password - nothing signs in until the invitation is accepted. */
+  async restoreRemoved(id: string): Promise<void> {
+    await this.database.query(`UPDATE totalbase.users SET removed_at = NULL, active = true, updated_at = now() WHERE id = $1 AND removed_at IS NOT NULL`, [id]);
+  }
+
   async delete(id: string, actorId?: string, client: Queryable = this.database): Promise<boolean> {
     if (actorId === id) throw new TotalBaseError("PERMISSION_DENIED", "You can't delete your own account.");
     const user = await this.findById(id);
@@ -571,10 +637,42 @@ export class UsersService {
     return rowCount > 0;
   }
 
-  async setPasswordHash(userId: string, passwordHash: string): Promise<void> {
-    await this.database.query(
+  /** The trigger users_password_changed_at dates it and clears a request to change it (Security.md §2.20). */
+  async setPasswordHash(userId: string, passwordHash: string, client: Queryable = this.database): Promise<void> {
+    await client.query(
       `UPDATE totalbase.users SET password_hash = $2, updated_at = now() WHERE id = $1`,
       [userId, passwordHash],
+    );
+  }
+
+  /**
+   * Where the account's password stands (Security.md §2.20): one expression, PostgreSQL's clock, the setting
+   * read by the caller - so a change of auth.password_max_age_days applies to passwords already set.
+   */
+  async passwordStatus(userId: string, maxAgeDays: number): Promise<PasswordStatus> {
+    const { rows } = await this.database.query<{ changed_at: Date | null; expires_at: Date | null; change_required: boolean; expired: boolean }>(
+      `SELECT password_changed_at AS changed_at,
+              password_change_required AS change_required,
+              CASE WHEN $2::int > 0 THEN password_changed_at + make_interval(days => $2::int) END AS expires_at,
+              coalesce($2::int > 0 AND password_changed_at + make_interval(days => $2::int) <= now(), false) AS expired
+       FROM totalbase.users WHERE id = $1 AND password_hash IS NOT NULL`,
+      [userId, maxAgeDays],
+    );
+    const row = rows[0];
+    if (!row) return { changedAt: null, expiresAt: null, changeRequired: false, due: null };
+    return {
+      changedAt: row.changed_at,
+      expiresAt: row.expires_at,
+      changeRequired: row.change_required,
+      due: row.change_required ? "REQUESTED" : row.expired ? "EXPIRED" : null,
+    };
+  }
+
+  /** An administrator's "change it at the next sign-in" - nothing to ask of an account without a password. */
+  async requirePasswordChange(userId: string, client: Queryable = this.database): Promise<void> {
+    await client.query(
+      `UPDATE totalbase.users SET password_change_required = true, updated_at = now() WHERE id = $1 AND password_hash IS NOT NULL`,
+      [userId],
     );
   }
 

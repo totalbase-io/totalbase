@@ -35,3 +35,15 @@ export function allEndpointsForResource(resource: Resource): EndpointRow[] {
 export function endpointsForResource(resource: Resource): EndpointRow[] {
   return allEndpointsForResource(resource).filter(endpoint => endpoint.enabled)
 }
+
+/** The route a method's switch shows on a resource's page - its collection route, `{pk}` for a row's. */
+export function endpointPath(resource: Resource, method: DataApiMethod): string {
+  if (method === 'REALTIME') return '/api/realtime'
+  const base = `/api/${resource.schema}/${resource.type.toLowerCase()}/${resource.name}`
+  return method === 'GET' || method === 'POST' ? base : `${base}/{pk}`
+}
+
+/** A method's badge color, the same on every screen that lists endpoints. */
+export function methodColor(method: DataApiMethod): 'info' | 'success' | 'warning' | 'error' | 'neutral' {
+  return ({ GET: 'info', POST: 'success', PATCH: 'warning', DELETE: 'error', REALTIME: 'neutral' } as const)[method]
+}

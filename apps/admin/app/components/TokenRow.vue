@@ -68,6 +68,9 @@ const { tokenState, usable, expiryText, lastUsedText } = useTokenStatus()
         {{ lastUsedText(token) }} ·
         <span :class="TOKEN_EXPIRY_CLASS[tokenState(token)]">{{ expiryText(token) }}</span>
         · {{ t('users.tokens.createdOn', { date: dates.date(token.createdAt, TOKEN_DAY) }) }}
+        <template v-if="token.allowedIps?.length">
+          · {{ t('users.tokens.onlyFrom', { addresses: token.allowedIps.join(', ') }) }}
+        </template>
       </p>
     </div>
     <UDropdownMenu

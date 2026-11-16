@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { clientIp } from "../client-ip.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
 import { TotalBaseError } from "@totalbase/errors";
@@ -77,14 +78,14 @@ class Channel<T> implements AsyncIterableIterator<T> {
  * params, or `{ ticket }` - a Realtime ticket (Security.md §2.10), consumed once and binding the connection to its
  * session. Null when it carries none (the upgrade's credential, if any, stands).
  */
-async function credentialOf(context: AppContext, payload: unknown): Promise<RealtimeCredential | null> {
+async function credentialOf(context: AppContext, payload: unknown, address: string | undefined): Promise<RealtimeCredential | null> {
   if (typeof payload !== "object" || payload === null) return null;
   const { accessToken, authorization, Authorization, ticket } = payload as Record<string, unknown>;
-  if (typeof ticket === "string" && ticket !== "") return credentialFromMessage(context, { ticket });
-  if (typeof accessToken === "string" && accessToken !== "") return { token: accessToken };
+  if (typeof ticket === "string" && ticket !== "") return credentialFromMessage(context, { ticket }, address);
+  if (typeof accessToken === "string" && accessToken !== "") return { token: accessToken, address };
   const header = typeof authorization === "string" ? authorization : typeof Authorization === "string" ? Authorization : undefined;
   const match = header?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ? { token: match[1] } : null;
+  return match?.[1] ? { token: match[1], address } : null;
 }
 
 /**
@@ -111,7 +112,7 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
       return;
     }
     const upgrade = upgradeTokens.get(request) ?? null;
-    let credential: RealtimeCredential | null = upgrade === null ? null : { token: upgrade };
+    let credential: RealtimeCredential | null = upgrade === null ? null : { token: upgrade, address: clientIp(request) };
     let initialized = false;
     let acknowledged = false;
     let closed = false;
@@ -211,7 +212,7 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
       }
       initialized = true;
       try {
-        credential = (await credentialOf(context, payload)) ?? credential;
+        credential = (await credentialOf(context, payload, clientIp(request))) ?? credential;
         if (credential === null) {
           close(CLOSE_FORBIDDEN, "Forbidden: connection_init carries no credential");
           return;

@@ -20,7 +20,7 @@ const router = useRouter()
 const api = useAdminApi()
 const { t } = useI18n()
 const notifyError = useErrorToast()
-const toast = useToast()
+const publishToast = usePublishToast()
 const workflowId = String(route.params.id)
 
 const { data: draft, error, refresh: refreshDraft } = await useAsyncData(`workflow-settings-${workflowId}`, () => api.get<WorkflowDraft>(`/workflows/${workflowId}/draft`).then(r => r.data), { deep: true })
@@ -146,12 +146,9 @@ async function publish(note?: string) {
   publishing.value = true
   try {
     await Promise.all([autosave.flush(), triggerSave.flush()])
-    const previous = draft.value.workflow.liveVersion
-    const { data } = await api.post<{ liveVersion: number | null }>(`/workflows/${workflowId}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
+    const result = await api.post<{ version: number }>(`/workflows/${workflowId}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
     await Promise.all([refreshDraft(), refreshVersions()])
-    toast.add(data.liveVersion === previous
-      ? { title: t('workflows.editor.nothingToPublish'), description: t('workflows.editor.alreadyLive', { version: previous }), color: 'neutral' }
-      : { title: t('workflows.editor.published'), color: 'success' })
+    publishToast(result, t('workflows.editor.published'))
   } catch (error) {
     notifyError(error, t('workflows.editor.publishFailed'))
   } finally {

@@ -171,6 +171,8 @@ export const TOTALBASE_ERROR_CODES = [
   // scoped per-user (tokens_user_name_unique), not global.
   "USER_API_NAME_DUPLICATE",
   "INVALID_TOKEN_EXPIRY",
+  // A valid token presented from an address outside its allowed_ips (Security.md §3.5).
+  "TOKEN_IP_NOT_ALLOWED",
   // An admin changing their own password gave the wrong current one - a 400,
   // not 401: the caller's session is fine, only the confirmation failed.
   "INVALID_CURRENT_PASSWORD",
@@ -201,6 +203,14 @@ export const TOTALBASE_ERROR_CODES = [
   "INVALID_MFA_CODE",
   "MFA_ALREADY_ENABLED",
   "MFA_NOT_ENABLED",
+  // Password expiration (Security.md §2.20). The sign-in was right but the password is past
+  // auth.password_max_age_days, or an administrator asked for it to be changed: `meta` carries the challenge
+  // (and `reason`, EXPIRED or REQUESTED) for POST /api/auth/password/renew.
+  "PASSWORD_CHANGE_REQUIRED",
+  // That step's challenge is unknown, expired, used or for another surface - sign in again.
+  "INVALID_PASSWORD_CHALLENGE",
+  // The new password is the one the account already has.
+  "PASSWORD_UNCHANGED",
 
   // DataView (DataViews.md).
   "DATAVIEW_NOT_FOUND",
@@ -518,6 +528,7 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
 
   USER_API_NAME_DUPLICATE: 409,
   INVALID_TOKEN_EXPIRY: 400,
+  TOKEN_IP_NOT_ALLOWED: 403,
   INVALID_CURRENT_PASSWORD: 400,
   PASSWORD_TOO_SHORT: 400,
   PASSWORD_TOO_LONG: 400,
@@ -533,6 +544,9 @@ export const ERROR_CODE_HTTP_STATUS: Partial<Record<TotalBaseErrorCode, number>>
   INVALID_MFA_CODE: 401,
   MFA_ALREADY_ENABLED: 409,
   MFA_NOT_ENABLED: 409,
+  PASSWORD_CHANGE_REQUIRED: 403,
+  INVALID_PASSWORD_CHALLENGE: 401,
+  PASSWORD_UNCHANGED: 400,
 
   DATAVIEW_NOT_FOUND: 404,
   DATAVIEW_NAME_DUPLICATE: 409,

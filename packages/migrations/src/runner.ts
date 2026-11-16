@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { Database, Queryable } from "@totalbase/database";
+import { quoteLiteral, type Database, type Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 
 /**
@@ -103,11 +103,6 @@ export async function loadMigrationFiles(migrationsDir: string): Promise<Migrati
   return files;
 }
 
-/** A standard SQL string literal (single quotes doubled) - for the ledger row's trusted values only. */
-function sqlLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
 function checksumOf(sql: string): string {
   return createHash("sha256").update(sql, "utf8").digest("hex");
 }
@@ -173,7 +168,7 @@ export async function runMigrations(
       for (const notice of result.notices) notices.push({ migration: file.filename, message: notice.message });
       await client.queryRaw(
         `INSERT INTO totalbase.migrations (version, name, checksum, totalbase_version)
-         VALUES (${file.version.toString()}, ${sqlLiteral(file.name)}, ${sqlLiteral(file.checksum)}, ${sqlLiteral(options.totalbaseVersion)})`,
+         VALUES (${file.version.toString()}, ${quoteLiteral(file.name)}, ${quoteLiteral(file.checksum)}, ${quoteLiteral(options.totalbaseVersion)})`,
       );
     });
 

@@ -1,4 +1,4 @@
-import type { Database, Queryable } from "@totalbase/database";
+import type { Database, Published, Queryable } from "@totalbase/database";
 import type { DashboardDecisionLanguage } from "@totalbase/tb-catalog";
 import type { TypedResultColumn } from "./typed-result.js";
 import type { DashboardTab } from "./tabs.js";
@@ -67,6 +67,13 @@ export class DashboardsAdminService {
       rowSecured: new Map(),
     };
   }
+  /** Which of these dashboards an administrator marked delegable - ones a manager may share (Security.md §9.7). */
+  async delegableAmong(ids: string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const { rows } = await this.ctx.database.query<{ id: string }>(`SELECT id FROM totalbase.dashboards WHERE id = ANY($1::uuid[]) AND delegable`, [ids]);
+    return new Set(rows.map((row) => row.id));
+  }
+
 
   // --- Dashboards and their roles (dashboards-crud.ts)
 
@@ -228,7 +235,7 @@ export class DashboardsAdminService {
   // --- Versions (dashboards-versions.ts, Foundations.md §13)
 
   /** Snapshots the draft as the next version - a no-op when the draft equals the latest. See `publish`. */
-  publish(dashboardId: string, userId: string | null, note: string | null = null): Promise<AdminDashboardVersion> {
+  publish(dashboardId: string, userId: string | null, note: string | null = null): Promise<Published<AdminDashboardVersion>> {
     return versions.publish(this.ctx, dashboardId, userId, note);
   }
 

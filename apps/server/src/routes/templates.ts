@@ -6,6 +6,7 @@ import { canOnTotalbaseResource } from "../openapi-docs.js";
 import { extractBearerToken } from "../auth-guards.js";
 import { resolveDataPrincipal } from "../data-principal.js";
 import { assertTemplateReadAllowed } from "@totalbase/mutations";
+import { optionalData } from "../request-body.js";
 
 /**
  * Rendering a PDF over totalbase.templates is reading it
@@ -45,8 +46,7 @@ export function registerTemplatesRoutes(app: FastifyInstance, context: AppContex
         throw new TotalBaseError("TEMPLATE_WRONG_KIND", `Template ${template.id} is not a PDF template.`);
       }
 
-      const values = request.body?.data;
-      const pdf = await generateTemplatePdf(template.content, typeof values === "object" && values !== null && !Array.isArray(values) ? values : {});
+      const pdf = await generateTemplatePdf(template.content, optionalData(request.body));
       reply.header("content-type", "application/pdf");
       reply.header("content-disposition", `inline; filename="${encodeURIComponent(template.slug)}.pdf"`);
       return reply.send(pdf);

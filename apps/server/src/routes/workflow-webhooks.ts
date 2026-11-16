@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { clientIp, ipInRanges } from "../client-ip.js";
 import { TotalBaseError } from "@totalbase/errors";
 import { resolveDataPrincipalForConfiguredUser, runWorkflow, toRunResult, type WorkflowRunOutcome, type WorkflowRunRecord } from "@totalbase/workflows";
 import type { AppContext } from "../context.js";
@@ -78,6 +79,14 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
     const method = (config.method as "GET" | "POST" | undefined) ?? "POST";
     if (request.method !== method) throw new TotalBaseError("WORKFLOW_NOT_FOUND", "This webhook is not available.");
 
+    // Allowed addresses (Workflows.md §6.5), before any credential is read: from anywhere else the webhook
+    // answers as one that doesn't exist - a caller learns nothing, the log says why.
+    const allowedIps = config.allowed_ips;
+    if (Array.isArray(allowedIps) && allowedIps.length > 0 && !(await ipInRanges(context.database, clientIp(request), allowedIps as string[]))) {
+      request.log.info({ workflow: workflow.id, ip: request.ip }, "Webhook refused: the caller's address is not in its allowed addresses");
+      throw new TotalBaseError("WORKFLOW_NOT_FOUND", "This webhook is not available.");
+    }
+
     const access = (config.access as "PUBLIC" | "AUTHENTICATED" | undefined) ?? "PUBLIC";
     let executor: DataPrincipal;
     let initiator: unknown;
@@ -93,7 +102,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
       initiator = { type: "WEBHOOK", public: true };
     } else {
       const token = extractBearerToken(request);
-      const caller = await resolveDataPrincipal(context, token);
+      const caller = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
       const decision = await context.workflowPermissions.resolveInvoke(caller.roleIds, workflow.id);
       if (decision !== "ALLOW") throw new TotalBaseError("ACTION_DENIED", "INVOKE is not authorized for this workflow.");
       // "Optional - defaults to the authenticated caller when left unset" (WorkflowTriggerFields.vue's own description).
@@ -209,7 +218,7 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
    */
   app.get<{ Params: { runId: string } }>("/api/workflows/runs/:runId/result", async (request) => {
     const token = extractBearerToken(request);
-    const caller = await resolveDataPrincipal(context, token);
+    const caller = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
     const run = await context.workflowRuns.getRun(request.params.runId).catch(() => undefined);
     const initiator = run?.initiator as { type?: string; id?: string } | null;
     const isOwnRun = !!initiator && initiator.type === caller.principal.type && initiator.id === caller.principal.id;

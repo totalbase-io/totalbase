@@ -133,13 +133,17 @@ export async function readRows(
   }
 }
 
-/** One row by its single-column primary key, with its version (Data_API.md §4.2, §5.3). */
+/**
+ * One row by its single-column primary key, with its version (Data_API.md §4.2, §5.3). Of `rawQuery` it takes
+ * `fields` only, parsed and authorized as a list read's (relation paths, field permissions, the limits).
+ */
 export async function readRowByKey(
   context: AppContext,
   dataPrincipal: DataPrincipal,
   resource: ResolvedApiResource,
   pk: string,
   origin: ReadOrigin,
+  rawQuery: Record<string, unknown> = {},
 ): Promise<{ row: Record<string, unknown>; version: string | undefined }> {
   const permission = await context.effectivePermissions.resolve(dataPrincipal.roleIds, resource.id, "READ");
   const readAudit = new ReadAudit(context, origin, resource, dataPrincipal);
@@ -149,11 +153,13 @@ export async function readRowByKey(
     throw error;
   }
 
-  const [maxFilterDepth, maxRelationDepth] = await Promise.all([
+  const [maxFilterDepth, maxRelationDepth, maxQueryNodes] = await Promise.all([
     context.settings.get("api.max_filter_depth"),
     context.settings.get("api.max_relation_depth"),
+    context.settings.get("api.max_query_nodes"),
   ]);
-  const limits = { maxFilterDepth, maxRelationDepth };
+  const limits = { maxFilterDepth, maxRelationDepth, maxQueryNodes };
+  const { fields } = parseQuery({ fields: rawQuery["fields"] }, limits);
 
   const schemaContext = new SchemaContext(context.database);
   const root = await schemaContext.loadRoot(resource.schema, resource.name, resource.postgresOid);
@@ -178,7 +184,7 @@ export async function readRowByKey(
 
   const compiled = await compileSelect({
     root,
-    ast: { ...emptyAst(), where: pkFilter },
+    ast: { ...emptyAst(), fields, where: pkFilter },
     schemaContext,
     fieldDecision: withPasswordColumnsDenied(protectedFieldDecision(root, permission.fieldDecision), passwordColumns),
     rowFilter,
@@ -192,7 +198,7 @@ export async function readRowByKey(
   // A by-key read is audited with its key, found or not (a miss is
   // still a lookup someone made) - inside the read's own transaction.
   const pkColumn = root.primaryKey[0]!;
-  const auditDetail = { where: { [pkColumn]: { _eq: pk } }, pk };
+  const auditDetail = { fields, where: { [pkColumn]: { _eq: pk } }, pk };
   let rows: Record<string, unknown>[];
   try {
     rows = await context.database.transaction(async (client) => {

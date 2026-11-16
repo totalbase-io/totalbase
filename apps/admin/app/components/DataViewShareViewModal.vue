@@ -126,7 +126,7 @@ async function remove(id: string) {
 function copyLink() {
   if (!props.view) return
   const url = `${window.location.origin}/app/dataviews/${props.dataviewSlug}?view=${props.view.id}`
-  navigator.clipboard?.writeText(url)
+  copyText(url)
     .then(() => toast.add({ title: t('dataviews.shareView.linkCopied'), color: 'success' }))
     .catch(() => toast.add({ title: t('dataviews.shareView.copyError'), color: 'error' }))
 }

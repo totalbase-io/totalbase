@@ -123,7 +123,7 @@ function methodColor(method: string) {
 }
 
 async function copy(text: string, title: string) {
-  await navigator.clipboard.writeText(text)
+  await copyText(text)
   toast.add({ title, color: 'success' })
 }
 

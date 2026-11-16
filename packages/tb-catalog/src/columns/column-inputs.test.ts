@@ -43,7 +43,7 @@ describe("columnFormInput() - the rule (§15.2)", () => {
     expect(columnFormInput(facts("uuid"))).toMatchObject({ input: "uuid", widget: "TUuidInput", reason: "default" });
     // A ULID by its CHECK (PostgreSQL has no ulid type) - what Add Column writes.
     expect(columnFormInput(facts("character(26)", ["CHECK ((n ~ '^[0-9A-HJKMNP-TV-Z]{26}$'::text))"]))).toMatchObject({ input: "ulid", widget: "TUlidInput", reason: "pattern" });
-    expect(buildColumnCreationBody("ulid", "code", {})).toEqual({ dataType: "char(26)", check: "code ~ '^[0-9A-HJKMNP-TV-Z]{26}$'" });
+    expect(buildColumnCreationBody("ulid", "code", {})).toEqual({ dataType: "char(26)", check: "\"code\" ~ '^[0-9A-HJKMNP-TV-Z]{26}$'" });
     for (const type of ["character varying", "character varying(80)", "character varying(2000)", "character(3)", "inet"]) {
       expect(columnFormInput(facts(type)), type).toMatchObject({ input: "text", widget: "UInput" });
     }
@@ -112,6 +112,13 @@ describe("a column presentation's input", () => {
 });
 
 describe("buildColumnCreationBody()", () => {
+  it("quotes the column in its CHECK and refuses a config number that isn't one", () => {
+    expect(buildColumnCreationBody("rating", "MyCol", {})).toEqual({ dataType: "smallint", check: "\"MyCol\" BETWEEN 1 AND 5" });
+    expect(buildColumnCreationBody("pin", "order", { pinLength: 4 }).check).toBe("length(\"order\") = 4");
+    expect(() => buildColumnCreationBody("number-field", "qty", { min: "0) OR (true" as unknown as number })).toThrow("min must be a number");
+    expect(() => buildColumnCreationBody("rating", "stars", { ratingLength: 2.5 })).toThrow("ratingLength must be a whole number");
+  });
+
   it("UID: unique text plus the source it's generated from; no source is a bug", () => {
     expect(buildColumnCreationBody("uid", "slug", { uidSource: "title" })).toEqual({ dataType: "text", unique: true, uid: { source: "title" } });
     expect(() => buildColumnCreationBody("uid", "slug", {})).toThrow();
@@ -124,14 +131,14 @@ describe("buildColumnCreationBody()", () => {
   it("Text: varchar(n) once maxLength is set, plus a minLength CHECK", () => {
     expect(buildColumnCreationBody("text", "name", { maxLength: 255, minLength: 2 })).toEqual({
       dataType: "varchar(255)",
-      check: "length(name) >= 2",
+      check: "length(\"name\") >= 2",
     });
   });
 
   it("Email: fixed text + regex CHECK, independent of config", () => {
     expect(buildColumnCreationBody("email", "email", {})).toEqual({
       dataType: "text",
-      check: "email ~* '^[^@]+@[^@]+\\.[^@]+$'",
+      check: "\"email\" ~* '^[^@]+@[^@]+\\.[^@]+$'",
     });
   });
 
@@ -143,21 +150,21 @@ describe("buildColumnCreationBody()", () => {
   it("Integer: min/max become a combined CHECK", () => {
     expect(buildColumnCreationBody("number-stepper", "qty", { min: 0, max: 100 })).toEqual({
       dataType: "integer",
-      check: "(qty >= 0) AND (qty <= 100)",
+      check: "(\"qty\" >= 0) AND (\"qty\" <= 100)",
     });
   });
 
   it("Rating: BETWEEN 1 AND ratingLength, default 5", () => {
-    expect(buildColumnCreationBody("rating", "stars", {})).toEqual({ dataType: "smallint", check: "stars BETWEEN 1 AND 5" });
+    expect(buildColumnCreationBody("rating", "stars", {})).toEqual({ dataType: "smallint", check: "\"stars\" BETWEEN 1 AND 5" });
     expect(buildColumnCreationBody("rating", "stars", { ratingLength: 10 })).toEqual({
       dataType: "smallint",
-      check: "stars BETWEEN 1 AND 10",
+      check: "\"stars\" BETWEEN 1 AND 10",
     });
   });
 
   it("PIN: fixed-length CHECK only once pinLength is set", () => {
     expect(buildColumnCreationBody("pin", "code", {})).toEqual({ dataType: "text", check: undefined });
-    expect(buildColumnCreationBody("pin", "code", { pinLength: 6 })).toEqual({ dataType: "text", check: "length(code) = 6" });
+    expect(buildColumnCreationBody("pin", "code", { pinLength: 6 })).toEqual({ dataType: "text", check: "length(\"code\") = 6" });
   });
 
   it("Choice: text + CHECK IN (...) from options", () => {
@@ -170,21 +177,21 @@ describe("buildColumnCreationBody()", () => {
       }),
     ).toEqual({
       dataType: "text",
-      check: "status IN ('open', 'closed')",
+      check: "\"status\" IN ('open', 'closed')",
     });
   });
 
   it("Choice (multiple): text[] + CHECK <@ ARRAY[...]", () => {
     expect(buildColumnCreationBody("choice-multiple", "tags", { options: [{ value: "a", label: "A" }] })).toEqual({
       dataType: "text[]",
-      check: "tags <@ ARRAY['a']",
+      check: "\"tags\" <@ ARRAY['a']",
     });
   });
 
   it("escapes a single quote in an option value", () => {
     expect(buildColumnCreationBody("choice", "kind", { options: [{ value: "o'brien", label: "O'Brien" }] })).toEqual({
       dataType: "text",
-      check: "kind IN ('o''brien')",
+      check: "\"kind\" IN ('o''brien')",
     });
   });
 

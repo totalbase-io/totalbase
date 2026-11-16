@@ -76,10 +76,7 @@ export function useFilesApi() {
     },
     /** A file's content and stored name (its Content-Disposition) - READ on that file, like every other route here. */
     download: async (id: string): Promise<{ blob: Blob, filename: string }> => {
-      const response = await $fetch.raw(`/api${filesPath}/${id}`, {
-        baseURL: '',
-        responseType: 'blob'
-      })
+      const response = await fetchFileContent(`/api${filesPath}/${id}`)
       const disposition = response.headers.get('content-disposition') ?? ''
       const encoded = /filename="([^"]*)"/.exec(disposition)?.[1]
       return { blob: response._data as Blob, filename: encoded ? decodeURIComponent(encoded) : id }

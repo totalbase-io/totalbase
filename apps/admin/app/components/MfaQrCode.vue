@@ -15,7 +15,7 @@ const toast = useToast()
 const image = ref<string | null>(null)
 
 async function copySecret() {
-  await navigator.clipboard.writeText(props.secret)
+  await copyText(props.secret)
   toast.add({ title: t('common.copied'), color: 'success' })
 }
 

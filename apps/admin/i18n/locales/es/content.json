@@ -122,7 +122,7 @@
         "filesUpdated": "{n} archivos actualizados | {n} archivo actualizado | {n} archivos actualizados",
         "partialUpdated": "{done} de {total} actualizados",
         "deleted": "Archivo eliminado | {n} archivos eliminados",
-        "partialDeleted": "{done} de {total} eliminados",
+        "deleteFailed": "No se pudieron eliminar: {names}",
         "makePublic": "Hacer público",
         "makePrivate": "Hacer privado",
         "tags": "Etiquetas",
@@ -223,6 +223,7 @@
       },
       "securityViews": {
         "failed-sign-ins": "Inicios de sesión fallidos",
+        "refused-tokens": "Tokens rechazados",
         "access-changes": "Roles y permisos",
         "config-changes": "Configuración y secretos",
         "credential-changes": "Tokens y sesiones"
@@ -260,7 +261,11 @@
         "instancePublicUrl": "Configuración → General → URL pública.",
         "actionUrl": "El enlace de un solo uso que sigue la persona. Obligatorio.",
         "expiresIn": "Cuánto tiempo sigue siendo válido el enlace, p. ej. \"7 días\".",
-        "newEmail": "Solo para Correo electrónico cambiado: la nueva dirección (el correo se envía a la anterior, user.email)."
+        "newEmail": "Solo para Correo electrónico cambiado: la nueva dirección (el correo se envía a la anterior, user.email).",
+        "inviterName": "Solo para Invitación: quién invita; su nombre, o su correo electrónico si no tiene nombre.",
+        "inviterEmail": "Solo para Invitación: el correo electrónico de quien invita.",
+        "roles": "Solo para Invitación: los nombres de los roles de la cuenta, separados por comas.",
+        "message": "Solo para Invitación: la línea que agrega quien invita por la API (message). Vacío si no agrega ninguna."
       },
       "editor": {
         "saved": "Correo guardado",

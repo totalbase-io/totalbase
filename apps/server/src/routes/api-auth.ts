@@ -51,10 +51,11 @@ export function recordSignInFailure(request: FastifyRequest) {
   };
 }
 
-/** Who passed the password step of a sign-in that now waits for its second factor. */
+/** Who passed a step of a sign-in that now waits for another - its second factor, or a new password. */
 export function recordSecondStep(request: FastifyRequest) {
-  return (userId: string) => {
+  return (userId: string, details?: { recoveryCode?: boolean }) => {
     request.auditPrincipal = { type: "USER", id: userId };
+    if (details?.recoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
   };
 }
 
@@ -67,8 +68,43 @@ export function auditMfaChallenge(request: FastifyRequest, error: unknown): neve
     request.auditOutcome = { event: "auth.mfa_challenge", status: "EXECUTED" };
     request.auditMetadata = { ...request.auditMetadata, mfa: error.code === "MFA_REQUIRED" ? "VERIFY" : "ENROLL" };
   }
+  // The same for a password that must be changed first (Security.md §2.20): `auth.password_challenge`, with why.
+  if (error instanceof TotalBaseError && error.code === "PASSWORD_CHANGE_REQUIRED") {
+    request.auditOutcome = { event: "auth.password_challenge", status: "EXECUTED" };
+    request.auditMetadata = { ...request.auditMetadata, password: error.meta?.reason };
+  }
   throw error;
 }
+
+/**
+ * The password step changed the password and the sign-in now waits for the second factor to be set up
+ * (MFA_ENROLLMENT_REQUIRED): a step answered with a challenge like any other, saying the password did change -
+ * not yet a sign-in.
+ */
+export function auditRenewedThenEnroll(request: FastifyRequest, error: unknown): never {
+  if (error instanceof TotalBaseError && error.code === "MFA_ENROLLMENT_REQUIRED") {
+    request.auditOutcome = { event: "auth.mfa_challenge", status: "EXECUTED" };
+    request.auditMetadata = { ...request.auditMetadata, mfa: "ENROLL", password_renewed: true };
+  }
+  throw error;
+}
+
+const PASSWORD_RENEW_BODY: JsonSchema = {
+  type: "object",
+  required: ["challenge", "newPassword"],
+  properties: {
+    challenge: { type: "string", description: "The `meta.challenge` of the sign-in's PASSWORD_CHANGE_REQUIRED error." },
+    newPassword: { type: "string", description: "Must meet auth.password_min_length and differ from the current password." },
+    mode: SESSION_MODE,
+  },
+};
+
+export const PASSWORD_RENEW_DESCRIPTION =
+  "The step after `403 PASSWORD_CHANGE_REQUIRED` - the password is older than auth.password_max_age_days " +
+  "(`meta.reason` EXPIRED) or an administrator asked for a new one (REQUESTED): the challenge and the new password. " +
+  "Returns the session, as a sign-in does - or `403 MFA_ENROLLMENT_REQUIRED` when the instance requires a second " +
+  "factor the account hasn't set up. A refused password (PASSWORD_TOO_SHORT, PASSWORD_TOO_LONG, PASSWORD_TOO_COMMON, " +
+  "PASSWORD_UNCHANGED) leaves the challenge usable; an expired or used one is 401 INVALID_PASSWORD_CHALLENGE - sign in again.";
 
 /** The body of a sign-in's second step - an authentication route's own fields, not the `data` envelope. */
 interface MfaVerifyBody { challenge?: unknown; code?: unknown; recoveryCode?: unknown; mode?: unknown }
@@ -111,8 +147,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       const mode = await requestedSessionMode(context, request);
       // Without API access: the same generic 401 as a wrong password - it doesn't reveal the account exists.
       const result = await context.auth.login({
-        email: request.body.email,
-        password: request.body.password,
+        email: request.body?.email,
+        password: request.body?.password,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
         surface: "API",
@@ -170,12 +206,39 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
         admit: apiAdmission(context),
         ip: request.ip,
         userAgent: request.headers["user-agent"],
-      }, recordSignInFailure(request));
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditMfaChallenge(request, error));
       request.auditPrincipal = { type: "USER", id: result.user.id };
       if (result.usedRecoveryCode) request.auditMetadata = { ...request.auditMetadata, recovery_code: true };
       if (result.recoveryCodes) request.auditMetadata = { ...request.auditMetadata, enrolled: true };
       const token = await deliverSession(context, reply, mode, result.token);
       return { data: { token, user: await withExtra(request, result.user), recoveryCodes: result.recoveryCodes } };
+    },
+  );
+
+  // A password due for a change, changed inside the sign-in (Security.md §2.20).
+  app.post<{ Body: { challenge?: unknown; newPassword?: unknown; mode?: unknown } }>(
+    "/api/auth/password/renew",
+    doc({
+      summary: "Finish a sign-in by choosing a new password",
+      description: PASSWORD_RENEW_DESCRIPTION,
+      tags: TAG,
+      access: "public",
+      requestBody: { schema: PASSWORD_RENEW_BODY },
+      response: { status: "200", schema: dataEnvelope(SESSION_REF) },
+      schemas: SESSION_SCHEMAS,
+    }),
+    async (request, reply) => {
+      const mode = await requestedSessionMode(context, request);
+      const result = await context.auth.completePasswordStep({
+        challenge: request.body?.challenge,
+        newPassword: request.body?.newPassword,
+        surface: "API",
+        admit: apiAdmission(context),
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
+      }, recordSignInFailure(request), recordSecondStep(request)).catch((error: unknown) => auditRenewedThenEnroll(request, error));
+      request.auditPrincipal = { type: "USER", id: result.user.id };
+      return { data: { token: await deliverSession(context, reply, mode, result.token), user: await withExtra(request, result.user) } };
     },
   );
 
@@ -250,7 +313,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     }),
     async (request, reply) => {
       request.auditMetadata = { email: request.body?.email };
-      await context.auth.requestPasswordReset(request.body.email);
+      await context.auth.requestPasswordReset(request.body?.email);
       return reply.code(204).send();
     },
   );
@@ -265,7 +328,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       response: noContent,
     }),
     async (request, reply) => {
-      await context.auth.resetPassword(request.body.token, request.body.password);
+      await context.auth.resetPassword(request.body?.token, request.body?.password);
       return reply.code(204).send();
     },
   );
@@ -286,8 +349,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     async (request, reply) => {
       await context.auth.changePassword(
         request.userId!,
-        request.body.currentPassword,
-        request.body.newPassword,
+        request.body?.currentPassword,
+        request.body?.newPassword,
       );
       return reply.code(204).send();
     },
@@ -303,7 +366,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       response: noContent,
     }),
     async (request, reply) => {
-      await context.auth.verifyEmail(request.body.token);
+      await context.auth.verifyEmail(request.body?.token);
       return reply.code(204).send();
     },
   );
@@ -356,7 +419,7 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
     }),
     async (request, reply) => {
       const mode = await requestedSessionMode(context, request);
-      const result = await context.auth.acceptInvitation(request.body.token, request.body.password);
+      const result = await context.auth.acceptInvitation(request.body?.token, request.body?.password);
       request.auditPrincipal = { type: "USER", id: result.user.id };
       // The account is ready either way; only a user with API access also
       // gets a session back (an app-only user signs in through the portal) - and

@@ -33,7 +33,7 @@ const open = ref(false)
 
 async function onSaved(role: Role) {
   // A delegated user may assign the role they just created - re-read what they may assign.
-  await Promise.all([refresh(), refreshNuxtData('role-options'), session.access.value === 'ADMIN' ? undefined : session.refreshProfile()])
+  await Promise.all([refresh(), session.access.value === 'ADMIN' ? undefined : session.refreshProfile()])
   await navigateTo(`/roles/${role.id}`)
 }
 </script>

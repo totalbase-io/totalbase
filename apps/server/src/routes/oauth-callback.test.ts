@@ -28,6 +28,9 @@ class FakeOidcProvider {
   private readonly publicJwk: Record<string, unknown>;
   issuer = "";
   nextClaims: Record<string, unknown> = {};
+  /** Signs the next id_token with a key the JWKS doesn't publish - a forged token. */
+  signWithForeignKey = false;
+  private readonly foreignKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey;
 
   constructor() {
     const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -63,7 +66,7 @@ class FakeOidcProvider {
     const now = Math.floor(Date.now() / 1000);
     const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "test-key" }));
     const payload = base64url(JSON.stringify({ iss: this.issuer, aud: CLIENT_ID, iat: now, exp: now + 300, ...claims }));
-    const signature = sign("RSA-SHA256", Buffer.from(`${header}.${payload}`), this.privateKey);
+    const signature = sign("RSA-SHA256", Buffer.from(`${header}.${payload}`), this.signWithForeignKey ? this.foreignKey : this.privateKey);
     return `${header}.${payload}.${base64url(signature)}`;
   }
 }
@@ -240,6 +243,38 @@ describe("OAuth/OIDC callback", () => {
     expect((await app.inject({ method: "GET", url: "/api/auth/me", headers: { authorization: `Bearer ${token}` } })).statusCode).toBe(200);
     await database.query(`UPDATE totalbase.users SET can_login = false WHERE id = $1`, [user.id]);
     expect((await app.inject({ method: "GET", url: "/api/auth/me", headers: { authorization: `Bearer ${token}` } })).statusCode).toBe(401);
+  });
+
+  // The id_token is verified (signature against the JWKS, issuer, audience, expiry - jose's jwtVerify - then the
+  // nonce): each forgery below is INVALID_OAUTH_STATE with no account (a permanent regression, AGENTS.md section 23).
+  // Before, a jose failure surfaced as a 500.
+  it("refuses an id_token that is forged, for another client or issuer, expired, or from another login attempt", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const forgeries: Array<{ name: string; claims: Record<string, unknown>; foreignKey?: boolean }> = [
+      { name: "signed by another key", claims: {}, foreignKey: true },
+      { name: "another audience", claims: { aud: "someone-else" } },
+      { name: "another issuer", claims: { iss: "https://issuer.example.test" } },
+      { name: "expired", claims: { iat: now - 7200, exp: now - 3600 } },
+      { name: "another nonce", claims: { nonce: "not-this-attempt" } },
+    ];
+    for (const forgery of forgeries) {
+      const email = `${PREFIX}-forged-${randomUUID()}@example.test`;
+      const authorizeUrl = new URL(await context.oauth.start(SLUG, REDIRECT));
+      provider.nextClaims = { nonce: authorizeUrl.searchParams.get("nonce"), sub: randomUUID(), email, email_verified: true, ...forgery.claims };
+      provider.signWithForeignKey = forgery.foreignKey ?? false;
+      try {
+        const res = await app.inject({
+          method: "GET",
+          url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${encodeURIComponent(authorizeUrl.searchParams.get("state")!)}`,
+        });
+        expect(res.statusCode, forgery.name).toBe(401);
+        expect(res.json().errors[0].code, forgery.name).toBe("INVALID_OAUTH_STATE");
+      } finally {
+        provider.signWithForeignKey = false;
+      }
+      const created = await database.query(`SELECT id FROM totalbase.users WHERE email = $1`, [email]);
+      expect(created.rowCount, forgery.name).toBe(0);
+    }
   });
 
   it("rejects a tampered state", async () => {

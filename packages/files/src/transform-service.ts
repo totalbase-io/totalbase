@@ -11,8 +11,6 @@ import { DERIVATIVES_PREFIX, parseTransformParams, transformCacheKey, type Trans
 export interface TransformedFile {
   buffer: Buffer;
   contentType: string;
-  /** files.transforms.cache_ttl_seconds - the response's Cache-Control max-age. */
-  cacheTtlSeconds: number;
 }
 
 export interface DerivativePurgeResult {
@@ -59,7 +57,7 @@ export class FilesTransformService {
     query: Record<string, string | undefined>;
     readOriginal: () => Promise<Buffer>;
   }): Promise<TransformedFile | undefined> {
-    const [enabled, maxWidth, maxHeight, maxPixels, maxOperations, timeoutMs, maxConcurrent, cacheTtlSeconds] = await Promise.all([
+    const [enabled, maxWidth, maxHeight, maxPixels, maxOperations, timeoutMs, maxConcurrent] = await Promise.all([
       this.settings.get("files.transforms.enabled"),
       this.settings.get("files.transforms.max_width"),
       this.settings.get("files.transforms.max_height"),
@@ -67,7 +65,6 @@ export class FilesTransformService {
       this.settings.get("files.transforms.max_operations"),
       this.settings.get("files.transforms.timeout_ms"),
       this.settings.get("files.transforms.max_concurrent"),
-      this.settings.get("files.transforms.cache_ttl_seconds"),
     ]);
 
     const presets = await this.presets();
@@ -92,7 +89,7 @@ export class FilesTransformService {
     const cacheKey = transformCacheKey(params.fileId, params.sourceHash, transformParams);
     if (await storage.exists(cacheKey)) {
       const buffer = await storage.read(cacheKey);
-      return { buffer, contentType: sniffContentType(buffer, params.mimeType), cacheTtlSeconds };
+      return { buffer, contentType: sniffContentType(buffer, params.mimeType) };
     }
 
     return this.limiter.run(maxConcurrent, async () => {
@@ -100,12 +97,12 @@ export class FilesTransformService {
       // derivative could both miss the cache before either finishes.
       if (await storage.exists(cacheKey)) {
         const buffer = await storage.read(cacheKey);
-        return { buffer, contentType: sniffContentType(buffer, params.mimeType), cacheTtlSeconds };
+        return { buffer, contentType: sniffContentType(buffer, params.mimeType) };
       }
       const original = await params.readOriginal();
       const result = await transformImage(original, transformParams, timeoutMs);
       await storage.store(cacheKey, result.buffer);
-      return { buffer: result.buffer, contentType: result.contentType, cacheTtlSeconds };
+      return { buffer: result.buffer, contentType: result.contentType };
     }, timeoutMs);
   }
 

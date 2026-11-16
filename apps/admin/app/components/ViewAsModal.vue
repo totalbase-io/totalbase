@@ -12,7 +12,7 @@ const open = defineModel<boolean>('open', { required: true })
 /** Where the App opens - one DataView's or dashboard's page; the App's own by default. */
 const props = defineProps<{ path?: string }>()
 const { t } = useI18n()
-const toast = useToast()
+const notifyError = useErrorToast()
 const adminApi = useAdminApi()
 const rolesApi = useRolesApi()
 const dataApi = useDataApi()
@@ -64,7 +64,7 @@ async function start() {
     // A fresh App - its menu, its DataViews and their rows - read as the target.
     window.location.assign(`${useRuntimeConfig().app.baseURL.replace(/\/$/, '')}${props.path ?? '/app'}`)
   } catch (error) {
-    toast.add({ title: t('shell.viewAs.failed'), description: error instanceof Error ? error.message : undefined, color: 'error' })
+    notifyError(error, t('shell.viewAs.failed'))
     starting.value = false
   }
 }

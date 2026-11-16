@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { buildColumnCreationBody, isCheckConditionOperator, isColumnInputKey, type CheckCondition, type ColumnCreationBody, type CreationConfig } from "@totalbase/tb-catalog";
 import type { Queryable } from "@totalbase/database";
-import { dropColumnWidget, parseColumnPresentation, pushColumnPresentation } from "@totalbase/resources";
+import { activeResourceByName, dropColumnWidget, parseColumnPresentation, pushColumnPresentation } from "@totalbase/resources";
 import {
   applyTableEditPlan,
   buildCreateTableSql,
@@ -22,6 +22,7 @@ import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID } from ".
 import { CASCADE_PARAM, IDENTIFIER, NAMED, RESOURCE_ID_PARAM, SCHEMA_SCHEMAS } from "../openapi-admin-docs-database.js";
 import { resourceByPathId } from "../resource-by-path-id.js";
 import { requestData } from "../request-body.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 const doc = (openapi: Parameters<typeof adminDoc>[1]) => adminDoc("schema", { schemas: SCHEMA_SCHEMAS, ...openapi });
 const IDENT_PARAM = { schema: IDENTIFIER };
@@ -232,13 +233,7 @@ interface DdlTarget {
 
 /** The ACTIVE table resource a statement acts on - read on the DDL's own transaction, before the catalog reconcile renames or retires it. */
 async function tableResourceId(client: Queryable, schema: string, table: string): Promise<string | undefined> {
-  const { rows } = await client.query<{ id: string }>(
-    `SELECT id FROM totalbase.resources
-     WHERE "schema" = $1 AND name = $2 AND type = 'TABLE' AND status = 'ACTIVE'
-     ORDER BY updated_at DESC LIMIT 1`,
-    [schema, table],
-  );
-  return rows[0]?.id;
+  return (await activeResourceByName(client, schema, table, "TABLE"))?.id;
 }
 
 /**
@@ -258,46 +253,36 @@ async function auditedDdl<T>(
   run: (audit: DdlAuditor) => Promise<T>,
 ): Promise<T> {
   const startedAt = new Date();
-  const base = {
-    requestId: request.id,
-    principal: { type: "ADMIN" as const, id: request.admin!.id },
-    action: "DDL" as const,
-    source: "admin",
-    ip: request.ip,
-    userAgent: request.headers["user-agent"],
-    startedAt,
-  };
   const names = {
     ...(target.schema !== undefined ? { schema: target.schema } : {}),
     ...(target.table !== undefined ? { table: target.table } : {}),
     ...(target.name !== undefined ? { name: target.name } : {}),
-    ...(request.adminToken ? { token: request.adminToken } : {}),
   };
   const audit: DdlAuditor = async (client, record) => {
     const resourceId = target.resourceId
       ?? (target.schema !== undefined && target.table !== undefined ? await tableResourceId(client, target.schema, target.table) : undefined);
-    await context.audit.record(client, {
-      ...base,
+    await context.audit.record(client, adminAuditEntry(request, {
+      action: "DDL",
       resourceId,
       status: "EXECUTED",
       metadata: { operation: record.operation, ...names, statements: record.statements, ...(record.concurrent ? { concurrent: true } : {}) },
-      finishedAt: new Date(),
-    });
+      startedAt,
+    }));
   };
   try {
     return await run(audit);
   } catch (error) {
     try {
-      await context.audit.record(context.database, {
-        ...base,
+      await context.audit.record(context.database, adminAuditEntry(request, {
+        action: "DDL",
         resourceId: target.resourceId,
         status: "FAILED",
         metadata: { operation, ...names },
         error: error instanceof TotalBaseError
           ? { code: error.code, sqlstate: error.sqlstate, message: error.message, detail: error.detail, hint: error.hint }
           : { message: error instanceof Error ? error.message : String(error) },
-        finishedAt: new Date(),
-      });
+        startedAt,
+      }));
     } catch {
       // best-effort; never mask the DDL's own error
     }
@@ -783,14 +768,20 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
     async (request) => ({ data: await context.indexes.list(request.params.schema, request.params.table) }),
   );
 
-  // The Edit Table drawer's single "Save" - a batch of operations built
-  // by diffing its draft against the table's original state, run as one
-  // plan. Its preview route returns that same plan - the SQL split into
-  // the transactional batch and the CONCURRENTLY-only statements that
-  // can't join it (PostgreSQL forbids CONCURRENTLY inside a transaction
-  // block) - so the confirmation the admin sees can never drift from
-  // what actually runs.
-  const EDIT_BODY = dataBody(object({ operations: arrayOf(ref("SchemaEditOperation")) }, ["operations"]));
+  // A table page's structure editors (a column's panel, Primary key,
+  // Rename) - a batch of operations built by diffing a draft against the
+  // table as it is, run as one plan. Its preview route returns that same
+  // plan - the SQL split into the transactional batch and the
+  // CONCURRENTLY-only statements that can't join it (PostgreSQL forbids
+  // CONCURRENTLY inside a transaction block) - so the SQL the admin sees
+  // can never drift from what actually runs.
+  const EDIT_BODY = dataBody(object({
+    operations: arrayOf(ref("SchemaEditOperation")),
+    columnPresentation: object({
+      column: { type: "string", description: "The column's name once the operations ran (after a rename, the new one)." },
+      presentation: { type: "object", description: "Its whole presentation, as PUT /admin/api/resources/{id}/columns/{column}/presentation takes it." },
+    }, ["column", "presentation"]),
+  }, ["operations"]));
   const editPlan = (params: { schema: string; table: string }, requestBody: { data?: { operations: EditOperationBody[] } } | undefined) => {
     const { operations } = requestData(requestBody);
     if (!Array.isArray(operations)) throw new TotalBaseError("INVALID_QUERY", "operations must be a list.");
@@ -812,7 +803,7 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
     async (request) => ({ data: await editPlan(request.params, request.body) }),
   );
 
-  app.post<{ Params: { schema: string; table: string }; Body: { data?: { operations: EditOperationBody[] } } }>(
+  app.post<{ Params: { schema: string; table: string }; Body: { data?: { operations: EditOperationBody[]; columnPresentation?: unknown } } }>(
     "/admin/api/schema/:schema/tables/:table/edit",
     {
       preHandler,
@@ -822,7 +813,8 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
           "Every operation - rename, add/alter/drop columns, primary key, UNIQUE, foreign keys, CHECKs, indexes - in order, in " +
           "one transaction: all apply or none. Exception: CONCURRENTLY index operations, which PostgreSQL forbids inside a " +
           "transaction, run one by one after it commits. POST .../edit/preview answers the exact statements without running " +
-          "them. Operations apply in order; after a `rename_table` the later ones (CONCURRENTLY included) address the table by its new name.",
+          "them. Operations apply in order; after a `rename_table` the later ones (CONCURRENTLY included) address the table by its new name. " +
+          "`columnPresentation` saves one column's presentation in the same transaction, after the operations: if either fails, neither applies.",
         pathParameters: TABLE_PARAMS,
         requestBody: EDIT_BODY,
         response: NO_CONTENT,
@@ -830,12 +822,28 @@ export function registerAdminSchemaRoutes(app: FastifyInstance, context: AppCont
     },
     async (request, reply) => {
       const { schema, table } = request.params;
+      const within = await columnPresentationStep(schema, table, request.body);
       await auditedDdl(context, request, "edit_table", { schema, table }, async (audit) =>
-        applyTableEditPlan(context.database, await editPlan(request.params, request.body), audit));
+        applyTableEditPlan(context.database, await editPlan(request.params, request.body), audit, within));
       await refreshCatalog(context);
       reply.code(204);
     },
   );
+
+  /** A body's `columnPresentation`, as the step that saves it inside the edit's transaction - none without one. */
+  async function columnPresentationStep(schema: string, table: string, body: { data?: { columnPresentation?: unknown } } | undefined) {
+    const value = body?.data?.columnPresentation;
+    if (value === undefined) return undefined;
+    const { column, presentation } = (value ?? {}) as { column?: unknown; presentation?: unknown };
+    if (typeof column !== "string" || !presentation || typeof presentation !== "object" || Array.isArray(presentation)) {
+      throw new TotalBaseError("INVALID_QUERY", "columnPresentation must be { column, presentation }.");
+    }
+    const resourceId = await tableResourceId(context.database, schema, table);
+    if (!resourceId) throw new TotalBaseError("RESOURCE_NOT_FOUND", `No active table ${schema}.${table}.`);
+    return async (client: Queryable) => {
+      await context.resourcesAdmin.updateColumnPresentationsIn(client, resourceId, { [column]: presentation });
+    };
+  }
 
   // Views/functions are otherwise introspect-only (Administration.md §4.4)
   // - drop is the one write operation the admin UI's Resources

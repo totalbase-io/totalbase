@@ -194,18 +194,14 @@ async function saveDetails() {
 async function copyUrl() {
   if (template.value?.kind !== 'PDF') return
   const base = String(session.admin.value?.publicUrl || window.location.origin).replace(/\/+$/, '')
-  await navigator.clipboard.writeText(`${base}/api/totalbase/table/templates/${template.value.id}/pdf`)
+  await copyText(`${base}/api/totalbase/table/templates/${template.value.id}/pdf`)
   toast.add({ title: t('common.copied'), color: 'success' })
 }
 
 // --- Delete - modal with the Confirm checkbox (AGENTS.md §25), opened
 // from the "⋯" menu, same as the Workflows editor. ---
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 
 async function deleteTemplate() {
   if (!template.value) return
@@ -366,36 +362,13 @@ onBeforeUnmount(() => {
       </template>
     </USlideover>
 
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('content.templates.editor.deleteTitle')"
       :description="t('content.templates.editor.deleteDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteTemplate"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteTemplate"
+    />
 
     <UModal
       v-model:open="leaveOpen"

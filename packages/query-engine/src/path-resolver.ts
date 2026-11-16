@@ -12,6 +12,8 @@ export class JoinRegistry {
   private counter = 0;
   private readonly byPrefix = new Map<string, { alias: string; resource: ResolvedResource }>();
   readonly joins: JoinSpec[] = [];
+  private filtering = false;
+  private readonly filterAliases = new Set<string>();
 
   nextAlias(): string {
     this.counter += 1;
@@ -25,6 +27,33 @@ export class JoinRegistry {
 
   get(prefixKey: string): { alias: string; resource: ResolvedResource } | undefined {
     return this.byPrefix.get(prefixKey);
+  }
+
+  /**
+   * Runs `compile` - a clause that decides which rows a read returns (WHERE, the row filter, search) - noting
+   * every join its paths go through: the ones a count of those rows needs (filterJoins).
+   */
+  async whileFiltering<T>(compile: () => Promise<T>): Promise<T> {
+    this.filtering = true;
+    try {
+      return await compile();
+    } finally {
+      this.filtering = false;
+    }
+  }
+
+  /** A path went through this join - resolvePath calls it for every hop, new or reused. */
+  used(alias: string): void {
+    if (this.filtering) this.filterAliases.add(alias);
+  }
+
+  /**
+   * The joins a filtering clause used, in order. The others only bring columns to read or to order by: each
+   * is a LEFT JOIN on a foreign key to its target's key - one row or none - so it never changes how many rows
+   * there are.
+   */
+  get filterJoins(): JoinSpec[] {
+    return this.joins.filter((join) => this.filterAliases.has(join.alias));
   }
 }
 
@@ -58,6 +87,7 @@ export async function resolvePath(
     if (existing) {
       currentResource = existing.resource;
       currentAlias = existing.alias;
+      registry.used(existing.alias);
       continue;
     }
 
@@ -69,6 +99,7 @@ export async function resolvePath(
       `LEFT JOIN ${quoteIdentifier(relation.targetSchema)}.${quoteIdentifier(relation.targetTable)} AS ${alias} ` +
       `ON ${alias}.${quoteIdentifier(relation.targetColumn)} = ${currentAlias}.${quoteIdentifier(segment)}`;
     registry.register(prefixKey, alias, target, sql);
+    registry.used(alias);
 
     currentResource = target;
     currentAlias = alias;

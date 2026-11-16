@@ -3,6 +3,7 @@
  * order - a TABLE's shown columns - titled and formatted as the widget shows them, never a `_` column. CSV and
  * Excel as a DataView exports them (DataViewExportSlideover.vue): the text on screen, `xlsx` loaded on demand.
  */
+import { downloadCsv } from './download'
 import { dashboardWidgetDefinition, resolveDashboardRoles, type DashboardWidgetType } from '@totalbase/tb-catalog'
 import type { DashboardQueryResult } from '~/types/dashboard'
 import { BROWSER_DATES, categoryLabel, columnTitle, fileLink, formatTableCell, formatWidgetNumber, isFileColumn, isNumericColumn, pivotSpec, pivotTexts, resultColumn, tableColumns, type DateDisplay } from '~/utils/dashboard-widget-render'
@@ -64,15 +65,6 @@ export function dashboardExportTable(type: DashboardWidgetType, config: Record<s
   }
 }
 
-function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 /** A file name from the widget's title - its letters and digits, else "widget". */
 export function exportFileName(title: string, extension: string): string {
   const base = title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
@@ -81,9 +73,7 @@ export function exportFileName(title: string, extension: string): string {
 
 export async function downloadDashboardTable(table: DashboardExportTable, format: 'csv' | 'xlsx', title: string): Promise<void> {
   if (format === 'csv') {
-    const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
-    const lines = [table.headers.map(escape).join(','), ...table.rows.map(line => line.map(escape).join(','))]
-    download(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }), exportFileName(title, 'csv'))
+    downloadCsv([table.headers, ...table.rows], exportFileName(title, 'csv'))
     return
   }
   const XLSX = await import('xlsx')

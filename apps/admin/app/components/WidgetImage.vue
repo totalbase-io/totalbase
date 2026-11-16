@@ -57,10 +57,7 @@ watch(() => props.src, async (src) => {
     return
   }
   try {
-    const response = await $fetch.raw(path, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    const response = await fetchFileContent(path)
     objectUrl = URL.createObjectURL(response._data as Blob)
     url.value = objectUrl
   } catch {

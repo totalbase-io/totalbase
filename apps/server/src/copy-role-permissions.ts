@@ -40,12 +40,13 @@ export async function copyRolePermissions(
   }
 
   const grants = await context.permissions.listForRole(sourceId);
-  const withinCeiling: Permission[] = [];
-  const beyond: Permission[] = [];
-  for (const grant of grants) {
-    if (target.parent && !(await withinParent(context, target.parent, grant))) beyond.push(grant);
-    else withinCeiling.push(grant);
-  }
+  // Each grant against the parent's ceiling - independent checks, side by side.
+  const parent = target.parent;
+  const fits = parent
+    ? await Promise.all(grants.map(async (grant) => (await context.effectivePermissions.beyondCeiling(parent, grant.resource, grant.action, grant)) === null))
+    : grants.map(() => true);
+  const withinCeiling = grants.filter((_grant, index) => fits[index]);
+  const beyond = grants.filter((_grant, index) => !fits[index]);
   const written = await context.permissions.copyGrants(targetId, sourceId, withinCeiling.map((g) => g.id), options);
   const wasWritten = new Set(written.map((w) => `${w.resource}:${w.action}`));
 
@@ -56,14 +57,6 @@ export async function copyRolePermissions(
     kept: withinCeiling.filter((g) => !wasWritten.has(`${g.resource}:${g.action}`)).map(named),
     beyondCeiling: beyond.map(named),
   };
-}
-
-/** The same test as a delegated grant's (app-roles.ts): the parent may take the action and use each allowed field. A DENY never exceeds. */
-async function withinParent(context: AppContext, parent: string, grant: Permission): Promise<boolean> {
-  if (grant.effect !== "ALLOW") return true;
-  const ceiling = await context.effectivePermissions.resolve([parent], grant.resource, grant.action);
-  if (ceiling.action !== "ALLOW") return false;
-  return grant.fields.every((f) => f.effect !== "ALLOW" || ceiling.fieldDecision(f.field) === "ALLOW");
 }
 
 async function resourceNames(context: AppContext, ids: string[]): Promise<Map<string, string>> {

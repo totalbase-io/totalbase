@@ -2910,9 +2910,6 @@
       "htmlSource": "HTML source"
     },
     "settingsPage": {
-      "copyError": "Could not create the copy",
-      "created": "Created \"{name}\"",
-      "createdDescription": "An unpublished copy - publish it when ready.",
       "deleteDescription": "Its layout, every version and its saved viewer states are removed. This can't be undone. The data in its source table is NOT touched.",
       "deleteError": "Could not delete DataView",
       "deleteTitle": "Delete this DataView?",
@@ -2920,7 +2917,6 @@
       "formDesign": "Form design",
       "frame": "Frame",
       "general": "General",
-      "loadVersionError": "Could not load version",
       "openDataView": "Open DataView",
       "page": "Page",
       "pageDesign": "Page design",
@@ -2929,9 +2925,6 @@
       "publishError": "Could not publish",
       "publishNote": "Viewers see the current draft from now on.",
       "published": "Published as v{version}",
-      "restoreError": "Could not restore",
-      "restored": "Restored v{version} into the draft",
-      "restoredDescription": "Nothing is published yet - publish to make it live.",
       "saveError": "Could not save DataView",
       "security": "Security",
       "sections": {

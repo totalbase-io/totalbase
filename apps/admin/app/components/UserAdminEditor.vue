@@ -320,6 +320,20 @@ async function runAction(path: 'invite' | 'reset-password' | 'revoke-sessions', 
   }
 }
 
+// The user chooses a new password at their next sign-in (Security.md §2.20) - an administrator's write of the row.
+async function requirePasswordChange() {
+  actionLoading.value = true
+  try {
+    await dataApi.patch(dataApi.resourcePath('totalbase', 'users', 'table', userId), { data: { password_change_required: true } })
+    toast.add({ title: t('users.userEditor.passwordChangeRequired'), color: 'success' })
+    await Promise.all([refresh(), refreshUsersData()])
+  } catch (err) {
+    notifyError(err, t('users.userEditor.passwordChangeRequireError'))
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 // Ends a lockout (too many failed sign-ins) before it expires.
 async function unlock() {
   actionLoading.value = true
@@ -337,11 +351,7 @@ async function unlock() {
 // Reset two-factor authentication (Security.md §2.17): a lost phone - the app and recovery codes go,
 // the user sets it up again. Confirmed first: it can't be undone.
 const mfaResetOpen = ref(false)
-const mfaResetConfirmed = ref(false)
 const mfaResetting = ref(false)
-watch(mfaResetOpen, (isOpen) => {
-  if (isOpen) mfaResetConfirmed.value = false
-})
 async function resetMfa() {
   mfaResetting.value = true
   try {
@@ -385,6 +395,7 @@ const menuItems = computed(() => {
             { label: t('users.userEditor.menu.copyInvite'), icon: 'i-lucide-link', disabled: !canEmail, onSelect: () => copyLink(userId, 'invite') }
           ]),
       { label: t('users.userEditor.menu.revokeSessions'), icon: 'i-lucide-log-out', onSelect: () => runAction('revoke-sessions', t('users.userEditor.menu.sessionsRevoked'), t('users.userEditor.menu.sessionsError')) },
+      ...(u.hasPassword && u.canLogin && !u.passwordChangeRequired ? [{ label: t('users.userEditor.menu.requirePasswordChange'), icon: 'i-lucide-key-round', onSelect: requirePasswordChange }] : []),
       ...(u.lockedUntil ? [{ label: t('users.userEditor.menu.unlock'), icon: 'i-lucide-lock-open', onSelect: unlock }] : []),
       ...(u.mfaEnabled ? [{ label: t('users.userEditor.mfa.reset'), icon: 'i-lucide-shield-off', onSelect: () => { mfaResetOpen.value = true } }] : [])
     ]
@@ -406,12 +417,25 @@ const protectedReason = computed(() => {
 })
 const passwordOpen = ref(false)
 
+// Remove (Security.md §1.12): the row kept for the audit log, every way in and every role taken away.
+const removeOpen = ref(false)
+const removing = ref(false)
+async function removeUser() {
+  removing.value = true
+  try {
+    await api.post(`/users/${userId}/remove`)
+    removeOpen.value = false
+    toast.add({ title: t('users.userEditor.removed'), color: 'success' })
+    await Promise.all([refresh(), refreshUsersData()])
+  } catch (err) {
+    notifyError(err, t('users.userEditor.removeError'))
+  } finally {
+    removing.value = false
+  }
+}
+
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 async function deleteUser() {
   deleting.value = true
   try {
@@ -657,7 +681,12 @@ function formatDate(value: string | null) {
                 {{ t('users.userEditor.signIn.password') }}
               </dt>
               <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>{{ user.hasPassword ? t('users.userEditor.signIn.passwordSet') : t('users.userEditor.signIn.passwordNotSet') }}</span>
+                <span v-if="!user.hasPassword">{{ t('users.userEditor.signIn.passwordNotSet') }}</span>
+                <span
+                  v-else-if="user.passwordChangeRequired"
+                  class="text-warning"
+                >{{ t('users.userEditor.signIn.passwordMustChange') }}</span>
+                <span v-else>{{ user.passwordChangedAt ? t('users.userEditor.signIn.passwordSetOn', { date: formatDate(user.passwordChangedAt) }) : t('users.userEditor.signIn.passwordSet') }}</span>
                 <UButton
                   :label="isSelf ? t('users.password.changeButton') : t('users.password.setTitle')"
                   icon="i-lucide-key-round"
@@ -717,13 +746,31 @@ function formatDate(value: string | null) {
         </SettingsSection>
 
         <!-- Danger zone: one card per destructive action - what it does,
-        and its button. Deactivate is reversible (amber), Delete isn't (red). -->
+        and its button. Deactivate is reversible (amber), Remove comes back only by invitation
+        (amber), Delete isn't reversible (red). A removed user has neither of the first two: an
+        invitation, from the header's menu, is what brings them back. -->
         <section class="flex flex-col gap-3">
           <h2 class="text-base font-semibold text-error">
             {{ t('users.userEditor.danger.title') }}
           </h2>
           <div class="flex flex-col gap-3">
-            <div class="flex flex-wrap items-center gap-3 rounded-lg border border-warning/60 bg-warning/20 px-4 py-4">
+            <div
+              v-if="status === 'REMOVED'"
+              class="flex flex-wrap items-center gap-3 rounded-lg border border-default px-4 py-4"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-highlighted">
+                  {{ t('users.userEditor.danger.removedTitle') }}
+                </p>
+                <p class="text-sm text-muted">
+                  {{ t('users.userEditor.danger.removedHelp') }}
+                </p>
+              </div>
+            </div>
+            <div
+              v-if="status !== 'REMOVED'"
+              class="flex flex-wrap items-center gap-3 rounded-lg border border-warning/60 bg-warning/20 px-4 py-4"
+            >
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-medium text-highlighted">
                   {{ user.active ? t('users.userEditor.danger.deactivateTitle') : t('users.userEditor.danger.activateTitle') }}
@@ -743,6 +790,31 @@ function formatDate(value: string | null) {
                   :loading="actionLoading"
                   :disabled="!!protectedReason && user.active"
                   @click="toggleActive"
+                />
+              </UTooltip>
+            </div>
+            <div
+              v-if="status !== 'REMOVED'"
+              class="flex flex-wrap items-center gap-3 rounded-lg border border-warning/60 bg-warning/20 px-4 py-4"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-highlighted">
+                  {{ t('users.userEditor.danger.removeTitle') }}
+                </p>
+                <p class="text-sm text-muted">
+                  {{ t('users.userEditor.danger.removeHelp') }}
+                </p>
+              </div>
+              <UTooltip
+                :text="protectedReason ?? undefined"
+                :disabled="!protectedReason"
+              >
+                <UButton
+                  :label="t('users.userEditor.danger.removeTitle')"
+                  color="warning"
+                  variant="outline"
+                  :disabled="!!protectedReason"
+                  @click="removeOpen = true"
                 />
               </UTooltip>
             </div>
@@ -934,67 +1006,31 @@ function formatDate(value: string | null) {
       </template>
     </UModal>
 
-    <UModal
+    <DeleteConfirmModal
       v-model:open="mfaResetOpen"
       :title="t('users.userEditor.mfa.resetTitle')"
       :description="t('users.userEditor.mfa.resetDescription', { name: user?.name || user?.email || '' })"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="mfaResetConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="mfaResetting"
-              @click="mfaResetOpen = false"
-            />
-            <UButton
-              :label="t('users.userEditor.mfa.resetButton')"
-              color="error"
-              :loading="mfaResetting"
-              :disabled="!mfaResetConfirmed"
-              @click="resetMfa"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :confirm-label="t('users.userEditor.mfa.resetButton')"
+      :loading="mfaResetting"
+      @confirm="resetMfa"
+    />
 
-    <UModal
+    <DeleteConfirmModal
+      v-model:open="removeOpen"
+      :title="t('users.userEditor.removeTitle')"
+      :description="t('users.userEditor.removeDescription')"
+      :confirm-label="t('users.userEditor.removeConfirm')"
+      :loading="removing"
+      @confirm="removeUser"
+    />
+
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('users.userEditor.deleteTitle')"
       :description="t('users.userEditor.deleteDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteUser"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteUser"
+    />
 
     <UserPasswordModal
       v-if="user"

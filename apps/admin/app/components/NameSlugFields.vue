@@ -2,10 +2,12 @@
 // Shared name/description/slug input (AGENTS.md section 10.1) - used by
 // the Triggers wizard, Mailings templates, Integrations, and API
 // Keys forms. `slug` auto-proposes live from `name` as the user types
-// (client-side slugify(), see ~/utils/slugify.ts) and stops
+// (@totalbase/shared's slugify(), the server's own) and stops
 // auto-updating the moment the user edits it by hand (Foundations.md §9.3's
 // stability rule) - editing an existing row starts with slug already
 // "touched" so a saved slug is never silently overwritten.
+import { slugify } from '@totalbase/shared'
+
 const props = withDefaults(defineProps<{
   slugTouched?: boolean
   /** Hides the Description field entirely - for a form where the row is never picked from a list by description (e.g. Proxies), so the field would just be dead weight. */

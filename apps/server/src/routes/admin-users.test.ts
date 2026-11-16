@@ -254,11 +254,11 @@ describe("admin users - guards and validation", () => {
     const userId = track("users", created.json().data.id as string);
     const { token } = await context.auth.login({ email: `${EMAIL_PREFIX}-deact@example.com`, password: "a-strong-enough-password" });
     const { plainKey } = await context.usersApis.create({ userId, name: "deact", plane: "API" });
-    expect(await context.usersApis.validate(plainKey)).not.toBeNull();
+    expect(await context.usersApis.validate(plainKey, undefined)).not.toBeNull();
 
     expect((await inject("PATCH", `/api/totalbase/table/users/${userId}`, { data: { active: false } })).statusCode).toBe(200);
     expect(await context.auth.sessions.validate(token)).toBeNull();
-    expect(await context.usersApis.validate(plainKey)).toBeNull();
+    expect(await context.usersApis.validate(plainKey, undefined)).toBeNull();
     const { rows } = await database.query(`SELECT 1 FROM totalbase.sessions WHERE "user" = $1 AND revoked_at IS NULL`, [userId]);
     expect(rows.length).toBe(0);
   });
@@ -359,7 +359,7 @@ describe("admin users - guards and validation", () => {
     const created = await inject("POST", "/admin/api/users", { data: { email: `${EMAIL_PREFIX}-avatar@example.com`, name: "Avatar" } });
     const userId = created.json().data.id as string;
     const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-    const upload = (content: Buffer, type: string, name: string) => {
+    const upload = (content: Buffer<ArrayBuffer>, type: string, name: string) => {
       const form = new FormData();
       form.append("file", new Blob([content], { type }), name);
       return app.inject({ method: "POST", url: `/admin/api/users/${userId}/avatar`, headers: { authorization: `Bearer ${adminToken}` }, payload: form });

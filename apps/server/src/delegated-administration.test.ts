@@ -166,6 +166,10 @@ describe("Delegated administration", () => {
     expect([...put.json().data].sort()).toEqual([managerRoleId, foreignRoleId].sort()); // a role may manage itself
     const read = await call("GET", `/api/totalbase/table/roles_managers?where[role][_eq]=${foreignRoleId}&fields=manager`, undefined, admin);
     expect(read.json().data).toHaveLength(2);
+    // A body without its envelope, or without roleIds, is refused - never read as "no managers".
+    expect((await call("PUT", `/admin/api/roles/${foreignRoleId}/managers`, { roleIds: [] }, admin)).statusCode).toBe(400);
+    expect((await call("PUT", `/admin/api/roles/${foreignRoleId}/incompatible`, { data: {} }, admin)).statusCode).toBe(400);
+    expect((await call("GET", `/api/totalbase/table/roles_managers?where[role][_eq]=${foreignRoleId}&fields=manager`, undefined, admin)).json().data).toHaveLength(2);
     // Not through the portal for a non-administrator.
     expect((await call("PUT", `/admin/api/roles/${foreignRoleId}/managers`, { data: { roleIds: [] } })).statusCode).toBe(403);
 

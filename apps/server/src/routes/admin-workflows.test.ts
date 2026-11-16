@@ -154,7 +154,7 @@ describe("Admin workflows (/admin/api/workflows)", () => {
     expect((await call("POST", `/${id}/run`, { data: {} })).statusCode).toBeGreaterThanOrEqual(400);
 
     const published = await call("POST", `/${id}/publish`, { data: { revision: await revision() } });
-    expect(published.statusCode, published.body).toBe(200);
+    expect(published.statusCode, published.body).toBe(201);
     const enabled = await call("PATCH", `/${id}`, { data: { revision: await revision(), enabled: true } });
     expect(enabled.json().data.enabled).toBe(true);
 
@@ -192,7 +192,8 @@ describe("Admin workflows (/admin/api/workflows)", () => {
   it("refuses an on-demand run of a webhook workflow with 409 WORKFLOW_NOT_RUNNABLE", async () => {
     let webhook = await context.workflowsAdmin.create({ name: `Run webhook ${randomUUID().slice(0, 8)}`, startConfiguration: { trigger: "WEBHOOK", method: "POST", access: "AUTHENTICATED" } });
     try {
-      webhook = await context.workflowsAdmin.publish(webhook.id, webhook.revision, () => {});
+      await context.workflowsAdmin.publish(webhook.id, webhook.revision, () => {});
+      webhook = await context.workflowsAdmin.get(webhook.id);
       await context.workflowsAdmin.update(webhook.id, { revision: webhook.revision, enabled: true });
       const res = await call("POST", `/${webhook.id}/run`, { data: {} });
       expect([res.statusCode, res.json().errors[0].code]).toEqual([409, "WORKFLOW_NOT_RUNNABLE"]);
@@ -313,7 +314,7 @@ describe("Admin workflows (/admin/api/workflows)", () => {
     const restored = await call("POST", `/${id}/versions/1/restore`, { data: { revision: await revision() } });
     expect(restored.statusCode, restored.body).toBe(200);
     expect((await call("POST", `/${id}/run`, { data: {} })).json().data.run.result).toEqual({ data: { from: "v2" } });
-    expect((await call("POST", `/${id}/publish`, { data: { revision: await revision() } })).statusCode).toBe(200);
+    expect((await call("POST", `/${id}/publish`, { data: { revision: await revision() } })).statusCode).toBe(201);
     const run = await call("POST", `/${id}/run`, { data: {} });
     expect(run.json().data.run.result).toEqual({ data: { from: "v1" } });
 

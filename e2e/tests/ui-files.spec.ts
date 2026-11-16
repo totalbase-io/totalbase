@@ -89,7 +89,9 @@ test('rename a file and move it to another folder from its details', async ({ pa
   await renamedDetails.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(async () => (await apiRequest<{ description: string | null }>(page, token, 'GET', `/api/totalbase/table/files/${fileId}/info`)).description).toBe('kept')
 
-  // Move: a modal with the folders by path. The details now carry the new name.
+  // Save closes the details; opened again, they carry the new name. Move: a modal with the folders by path.
+  await expect(renamedDetails).toBeHidden()
+  await main.getByText('final notes.md', { exact: true }).click()
   await renamedDetails.getByRole('button', { name: 'Move to folder…' }).click()
   const move = page.getByRole('dialog', { name: 'Move to folder' })
   await move.getByLabel('Folder').click()

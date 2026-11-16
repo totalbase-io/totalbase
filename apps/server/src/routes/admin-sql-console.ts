@@ -5,6 +5,8 @@ import { reconcileCatalog } from "../catalog-refresh.js";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope, type JsonSchema } from "@totalbase/openapi";
 import { adminDoc, arrayOf, DATE_TIME, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
+import { pageOf } from "../pagination.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 interface ExecuteBody {
   sql: string;
@@ -123,19 +125,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
       });
 
       try {
-        await context.audit.record(context.database, {
-          requestId: request.id,
-          principal: { type: "ADMIN", id: admin.id },
-          ...(request.adminToken && { metadata: { token: request.adminToken } }),
-          action: "SQL_EXECUTE",
-          status: "EXECUTED",
-          source: "admin",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
-          sqlText: sql,
-          startedAt,
-          finishedAt: new Date(),
-        });
+        await context.audit.record(context.database, adminAuditEntry(request, { action: "SQL_EXECUTE", status: "EXECUTED", sqlText: sql, startedAt }));
         // The console's whole point is unrestricted DDL/DML - refresh
         // the catalog after every run rather than trying to sniff DDL
         // keywords out of arbitrary SQL text (Administration.md §5.5: "catalog
@@ -149,20 +139,13 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
       return { data: result };
     } catch (error) {
       try {
-        await context.audit.record(context.database, {
-          requestId: request.id,
-          principal: { type: "ADMIN", id: admin.id },
-          ...(request.adminToken && { metadata: { token: request.adminToken } }),
+        await context.audit.record(context.database, adminAuditEntry(request, {
           action: "SQL_EXECUTE",
           status: "FAILED",
-          source: "admin",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
           sqlText: sql,
-          error: error instanceof Error ? { message: error.message } : { message: String(error) },
+          error: { message: error instanceof Error ? error.message : String(error) },
           startedAt,
-          finishedAt: new Date(),
-        });
+        }));
       } catch {
         // best-effort; never mask the original error
       }
@@ -210,12 +193,8 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
       }),
     },
     async (request) => {
-      const { entries, total } = await context.sqlConsole.listHistory(
-        request.query.admin,
-        request.query.limit ? Number.parseInt(request.query.limit, 10) : undefined,
-        request.query.offset ? Number.parseInt(request.query.offset, 10) : undefined,
-        request.query.search,
-      );
+      const { limit, offset } = pageOf(request.query, { max: 500, defaultLimit: 50 });
+      const { entries, total } = await context.sqlConsole.listHistory(request.query.admin, limit, offset, request.query.search);
       return { data: entries, meta: { total } };
     },
   );
@@ -251,18 +230,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
     const deletedCount = await context.sqlConsole.purgeHistory(before);
 
     try {
-      await context.audit.record(context.database, {
-        requestId: request.id,
-        principal: { type: "ADMIN", id: admin.id },
-        ...(request.adminToken && { metadata: { token: request.adminToken } }),
-        action: "SQL_HISTORY_PURGE",
-        status: "EXECUTED",
-        source: "admin",
-        ip: request.ip,
-        userAgent: request.headers["user-agent"],
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      });
+      await context.audit.record(context.database, adminAuditEntry(request, { action: "SQL_HISTORY_PURGE", status: "EXECUTED" }));
     } catch {
       // best-effort; never mask a successful purge
     }

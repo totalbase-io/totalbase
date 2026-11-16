@@ -6,6 +6,8 @@ import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { ADMIN_SCHEMAS, adminDoc, arrayOf, object, ok, ref, UUID } from "../openapi-admin-docs.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
+import { optionalData } from "../request-body.js";
 
 /**
  * PostgreSQL maintenance (Administration.md §6) - Settings >
@@ -95,7 +97,7 @@ export function registerAdminMaintenanceRoutes(app: FastifyInstance, context: Ap
     async (request, reply) => {
       const operation = parseOperation(request.params.operation);
       const tableOid = pathOid(request.params.oid);
-      const index = request.body?.data?.index;
+      const index = optionalData(request.body).index;
       const indexOid = index === undefined || index === null ? undefined : parseOid(index, "an index");
       const target = await context.maintenance.resolveTarget(operation, tableOid, indexOid);
       reply.code(202);
@@ -136,8 +138,8 @@ export function registerAdminMaintenanceRoutes(app: FastifyInstance, context: Ap
       schemas: ADMIN_SCHEMAS,
     }),
   }, async (request, reply) => {
-    const operation = parseOperation(request.body?.data?.operation);
-    const rawTargets = request.body?.data?.targets;
+    const operation = parseOperation(optionalData(request.body).operation);
+    const rawTargets = optionalData(request.body).targets;
     if (!Array.isArray(rawTargets) || rawTargets.length === 0) throw new TotalBaseError("INVALID_QUERY", "targets must be a non-empty list.");
     if (rawTargets.length > MAX_BATCH_TARGETS) throw new TotalBaseError("INVALID_QUERY", `A batch holds at most ${MAX_BATCH_TARGETS} targets.`);
 
@@ -189,16 +191,7 @@ export function registerAdminMaintenanceRoutes(app: FastifyInstance, context: Ap
   }, async (request) => {
     const batch = await context.maintenance.stopBatch(request.params.id);
     try {
-      await context.audit.record(context.database, {
-        requestId: request.id,
-        principal: { type: "ADMIN", id: request.admin!.id },
-        action: "MAINTENANCE",
-        status: "EXECUTED",
-        source: "admin",
-        metadata: { batch: batch.id, stopped: true },
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      });
+      await context.audit.record(context.database, adminAuditEntry(request, { action: "MAINTENANCE", status: "EXECUTED", metadata: { batch: batch.id, stopped: true } }));
     } catch {
       // best-effort
     }

@@ -4,6 +4,7 @@ import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, arrayOf, created, object, UUID_PARAM, ok } from "../openapi-admin-docs.js";
 import { TotalBaseError } from "@totalbase/errors";
+import { idListField, optionalData } from "../request-body.js";
 
 /**
  * Roles are Data API rows (roles - Security.md §10):
@@ -29,7 +30,7 @@ export function registerAdminRolesRoutes(app: FastifyInstance, context: AppConte
         response: ok(arrayOf({ type: "string", format: "uuid" })),
       }),
     },
-    async (request) => ({ data: await context.roles.setManagers(request.params.id, request.body?.data?.roleIds ?? []) }),
+    async (request) => ({ data: await context.roles.setManagers(request.params.id, idListField(request.body, "roleIds")) }),
   );
 
   // A copy of a role (Security.md §9.5) - the starting point for the same role in another site.
@@ -48,7 +49,7 @@ export function registerAdminRolesRoutes(app: FastifyInstance, context: AppConte
       }),
     },
     async (request, reply) => {
-      const name = request.body?.data?.name;
+      const name = optionalData(request.body).name;
       if (typeof name !== "string") throw new TotalBaseError("INVALID_QUERY", "name is required.");
       reply.code(201);
       return { data: await context.roles.duplicate(request.params.id, name, { delegated: false }) };
@@ -96,6 +97,6 @@ export function registerAdminRolesRoutes(app: FastifyInstance, context: AppConte
         response: ok(arrayOf({ type: "string", format: "uuid" })),
       }),
     },
-    async (request) => ({ data: await context.roles.setIncompatible(request.params.id, request.body?.data?.roleIds ?? []) }),
+    async (request) => ({ data: await context.roles.setIncompatible(request.params.id, idListField(request.body, "roleIds")) }),
   );
 }

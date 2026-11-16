@@ -1,4 +1,4 @@
-import type { Database } from "@totalbase/database";
+import type { Database, Queryable } from "@totalbase/database";
 import { RelationDetailCache } from "./relation-detail-cache.js";
 
 export interface ColumnDefinition {
@@ -111,7 +111,11 @@ export function getRelationDetail(database: Database, oid: number): Promise<Rela
   return relationDetailCache.get(database, oid, () => introspectRelationDetail(database, oid));
 }
 
-async function introspectRelationDetail(database: Database, oid: number): Promise<RelationDetail> {
+/**
+ * The same detail read uncached through `database` - a transaction's client, which sees its own uncommitted DDL
+ * (a column renamed or retyped a statement ago) that the cache, and every other connection, don't yet.
+ */
+export async function introspectRelationDetail(database: Queryable, oid: number): Promise<RelationDetail> {
   const [columns, primaryKey, relations, uniqueConstraintGroups, checkConstraints] = await Promise.all([
     getColumns(database, oid),
     getPrimaryKey(database, oid),
@@ -193,7 +197,7 @@ export async function getRelationIndexes(database: Database, oid: number): Promi
   return [...byIndex.values()];
 }
 
-async function getColumns(database: Database, oid: number): Promise<ColumnDefinition[]> {
+async function getColumns(database: Queryable, oid: number): Promise<ColumnDefinition[]> {
   const { rows } = await database.query<{
     attnum: number;
     name: string;
@@ -262,7 +266,7 @@ async function getColumns(database: Database, oid: number): Promise<ColumnDefini
   }));
 }
 
-async function getPrimaryKey(database: Database, oid: number): Promise<string[]> {
+async function getPrimaryKey(database: Queryable, oid: number): Promise<string[]> {
   const { rows } = await database.query<{ name: string }>(
     `SELECT a.attname AS name
      FROM pg_constraint c
@@ -275,7 +279,7 @@ async function getPrimaryKey(database: Database, oid: number): Promise<string[]>
   return rows.map((row) => row.name);
 }
 
-async function getUniqueConstraintGroups(database: Database, oid: number): Promise<{ name: string; columns: string[]; message: string | null }[]> {
+async function getUniqueConstraintGroups(database: Queryable, oid: number): Promise<{ name: string; columns: string[]; message: string | null }[]> {
   const { rows } = await database.query<{ constraint_name: string; name: string; message: string | null }>(
     `SELECT c.conname AS constraint_name, a.attname AS name, obj_description(c.oid, 'pg_constraint') AS message
      FROM pg_constraint c
@@ -295,7 +299,7 @@ async function getUniqueConstraintGroups(database: Database, oid: number): Promi
   return [...byConstraint.entries()].map(([name, entry]) => ({ name, ...entry }));
 }
 
-async function getCheckConstraints(database: Database, oid: number): Promise<CheckConstraintDefinition[]> {
+async function getCheckConstraints(database: Queryable, oid: number): Promise<CheckConstraintDefinition[]> {
   const { rows } = await database.query<{ name: string; expression: string; message: string | null; columns: string[] }>(
     `SELECT c.conname AS name, pg_get_constraintdef(c.oid) AS expression, obj_description(c.oid, 'pg_constraint') AS message,
             coalesce((SELECT array_agg(a.attname::text ORDER BY k.ord)
@@ -309,7 +313,7 @@ async function getCheckConstraints(database: Database, oid: number): Promise<Che
   return rows.map((row) => ({ name: row.name, expression: row.expression, message: row.message, columns: row.columns }));
 }
 
-async function getSimpleForeignKeys(database: Database, oid: number): Promise<RelationDefinition[]> {
+async function getSimpleForeignKeys(database: Queryable, oid: number): Promise<RelationDefinition[]> {
   const { rows } = await database.query<{
     name: string;
     source_column: string;

@@ -6,6 +6,7 @@ import { type DataBody, requestData } from "../request-body.js";
 import { loadViewAsTarget } from "../view-as.js";
 import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, object, ok, UUID } from "../openapi-admin-docs.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 /**
  * What stops an App object from working, and for whom (DataViews.md §18): a DataView's, a
@@ -117,18 +118,11 @@ export function registerViewAsRoute(app: FastifyInstance, context: AppContext): 
     const { kind, id } = requestData(request.body);
     if ((kind !== "role" && kind !== "user") || typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) throw new TotalBaseError("INVALID_VIEW_AS", "kind is role or user, id a uuid.");
     const target = await loadViewAsTarget(context, kind, id);
-    await context.audit.record(context.database, {
-      requestId: request.id,
-      principal: { type: "ADMIN", id: request.admin!.id },
+    await context.audit.record(context.database, adminAuditEntry(request, {
       action: "AUTH",
       status: "EXECUTED",
-      source: "admin",
-      ip: request.ip,
-      userAgent: request.headers["user-agent"],
       metadata: { event: "view_as.start", kind, target: id, name: target.name },
-      startedAt: new Date(),
-      finishedAt: new Date(),
-    });
+    }));
     return { data: { kind, id, name: target.name } };
   });
 }

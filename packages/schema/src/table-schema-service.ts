@@ -4,7 +4,9 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { Knex } from "knex";
 import { runDdl, type DdlAuditor } from "./ddl-audit.js";
 import { knex } from "./knex-compiler.js";
+import { quoteLiteral } from "@totalbase/database";
 import { FK_ACTIONS, quoteIdentifier, validateDataType, validateFkAction, validateIdentifier, validateSqlExpression } from "./validation.js";
+import { findConstraintName, listAttributes, singleColumnPrimaryKey } from "@totalbase/pg-catalog";
 
 function qualified(schema: string, table: string): string {
   return `${quoteIdentifier(schema)}.${quoteIdentifier(table)}`;
@@ -274,12 +276,8 @@ export async function buildUidTriggerSql(client: Queryable, schema: string, tabl
   if (source === column) {
     throw new TotalBaseError("INVALID_SCHEMA_OPERATION", "A UID column is generated from another column, not from itself.");
   }
-  const { rows } = await client.query<{ attname: string; attnum: number }>(
-    `SELECT attname, attnum::int AS attnum FROM pg_attribute
-      WHERE attrelid = to_regclass($1) AND attname = ANY($2) AND attnum > 0 AND NOT attisdropped`,
-    [qualified(schema, table), [column, source]],
-  );
-  const attnum = (name: string) => rows.find((row) => row.attname === name)?.attnum;
+  const columns = await listAttributes(client, [qualified(schema, table)]);
+  const attnum = (name: string) => columns.find((c) => c.name === name)?.attnum;
   const sourceAttnum = attnum(source);
   const columnAttnum = attnum(column);
   if (sourceAttnum === undefined) {
@@ -526,10 +524,8 @@ export function buildCommentOnConstraintSql(schema: string, table: string, name:
   validateIdentifier(schema, "schema");
   validateIdentifier(table, "table");
   validateIdentifier(name, "constraint");
-  // COMMENT ON's grammar takes a string constant, not an expression, so
-  // the literal is inlined, safely, with standard SQL single-quote doubling.
-  const literal = `'${message.replace(/'/g, "''")}'`;
-  return `COMMENT ON CONSTRAINT ${quoteIdentifier(name)} ON ${qualified(schema, table)} IS ${literal}`;
+  // COMMENT ON's grammar takes a string constant, not an expression, so the literal is inlined, quoted centrally.
+  return `COMMENT ON CONSTRAINT ${quoteIdentifier(name)} ON ${qualified(schema, table)} IS ${quoteLiteral(message)}`;
 }
 
 /**
@@ -602,14 +598,14 @@ export class TableSchemaService {
   /** Replaces the key in one transaction: a new key PostgreSQL rejects leaves the old one in place. */
   async setPrimaryKey(schema: string, table: string, columns: string[], name?: string, audit?: DdlAuditor): Promise<void> {
     const sql = buildSetPrimaryKeySql(schema, table, columns, name);
-    const existing = await this.findConstraintName(schema, table, "p");
+    const existing = await findConstraintName(this.database, schema, table, "p");
     await runDdl(this.database, "set_primary_key", [...(existing ? [buildDropConstraintSql(schema, table, existing)] : []), sql], audit);
   }
 
   async dropPrimaryKey(schema: string, table: string, audit?: DdlAuditor): Promise<void> {
     validateIdentifier(schema, "schema");
     validateIdentifier(table, "table");
-    const existing = await this.findConstraintName(schema, table, "p");
+    const existing = await findConstraintName(this.database, schema, table, "p");
     if (!existing) {
       throw new TotalBaseError("UNDEFINED_OBJECT", `${schema}.${table} has no PRIMARY KEY.`);
     }
@@ -642,13 +638,7 @@ export class TableSchemaService {
 
   /** The cycle guard of a self-referencing column (buildCycleGuardStatements), its key being the table's single-column primary key. */
   async addCycleGuard(schema: string, table: string, parentColumn: string, audit?: DdlAuditor): Promise<void> {
-    const { rows } = await this.database.query<{ key: string }>(
-      `SELECT a.attname AS key FROM pg_index i
-         JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
-        WHERE i.indrelid = to_regclass($1) AND i.indisprimary AND array_length(i.indkey::int2[], 1) = 1`,
-      [`${quoteIdentifier(schema)}.${quoteIdentifier(table)}`],
-    );
-    const key = rows[0]?.key;
+    const key = (await singleColumnPrimaryKey(this.database, qualified(schema, table)))?.name;
     if (!key) throw new TotalBaseError("INVALID_QUERY", "A cycle guard needs a table with a single-column primary key.");
     await runDdl(this.database, "add_cycle_guard", buildCycleGuardStatements(schema, table, key, parentColumn), audit);
   }
@@ -663,29 +653,12 @@ export class TableSchemaService {
     validateIdentifier(schema, "schema");
     validateIdentifier(table, "table");
     if (conditions.length === 0) throw new TotalBaseError("INVALID_QUERY", "A CHECK needs at least one condition.");
-    const { rows } = await this.database.query<{ name: string; data_type: string }>(
-      `SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS data_type
-         FROM pg_attribute a
-        WHERE a.attrelid = to_regclass($1) AND a.attnum > 0 AND NOT a.attisdropped`,
-      [qualified(schema, table)],
-    );
-    if (rows.length === 0) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Table not found: ${schema}.${table}`);
+    const columns = await listAttributes(this.database, [qualified(schema, table)]);
+    if (columns.length === 0) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Table not found: ${schema}.${table}`);
     try {
-      return buildCheckExpression(conditions, rows.map((row) => ({ name: row.name, dataType: row.data_type })));
+      return buildCheckExpression(conditions, columns.map((column) => ({ name: column.name, dataType: column.type })));
     } catch (error) {
       throw new TotalBaseError("INVALID_QUERY", error instanceof Error ? error.message : "Invalid CHECK conditions.");
     }
-  }
-
-  private async findConstraintName(schema: string, table: string, contype: string): Promise<string | null> {
-    const { rows } = await this.database.query<{ conname: string }>(
-      `SELECT c.conname FROM pg_constraint c
-       JOIN pg_class t ON t.oid = c.conrelid
-       JOIN pg_namespace n ON n.oid = t.relnamespace
-       WHERE n.nspname = $1 AND t.relname = $2 AND c.contype = $3
-       LIMIT 1`,
-      [schema, table, contype],
-    );
-    return rows[0]?.conname ?? null;
   }
 }

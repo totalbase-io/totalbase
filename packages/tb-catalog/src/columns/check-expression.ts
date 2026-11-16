@@ -1,3 +1,4 @@
+import { quoteIdentifier, quoteLiteral } from "@totalbase/shared";
 import { columnValueKind } from "../widgets/widget-inference.js";
 
 /**
@@ -63,13 +64,6 @@ export function isCheckConditionOperator(value: unknown): value is CheckConditio
   return typeof value === "string" && (CHECK_CONDITION_OPERATORS as readonly string[]).includes(value);
 }
 
-function quoteIdentifier(name: string): string {
-  return `"${name.replace(/"/g, '""')}"`;
-}
-
-function quoteString(raw: string): string {
-  return `'${raw.replace(/'/g, "''")}'`;
-}
 
 /** A value as the column's kind writes it: a boolean or a number bare, anything else a quoted string PostgreSQL casts. */
 function literal(raw: string, dataType: string): string {
@@ -77,9 +71,9 @@ function literal(raw: string, dataType: string): string {
   if (kind === "boolean") return raw.trim().toLowerCase() === "false" ? "false" : "true";
   if (kind === "number") {
     const n = Number(raw);
-    return Number.isFinite(n) && raw.trim() !== "" ? String(n) : quoteString(raw);
+    return Number.isFinite(n) && raw.trim() !== "" ? String(n) : quoteLiteral(raw);
   }
-  return quoteString(raw);
+  return quoteLiteral(raw);
 }
 
 function conditionSql(condition: CheckCondition, dataType: string): string {

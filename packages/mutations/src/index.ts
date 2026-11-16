@@ -10,3 +10,5 @@ export * from "./response-projection.js";
 export * from "./table-row-authorization.js";
 export * from "./files-authorization.js";
 export * from "./templates-authorization.js";
+export * from "./user-invitation.js";
+export * from "./user-removal.js";

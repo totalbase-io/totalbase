@@ -437,7 +437,7 @@ describe("Data API integration - users security columns are administrator-writte
     app.inject({ method: method as "GET", url, headers: { authorization: `Bearer ${token}` }, ...(payload !== undefined && { payload: payload as Record<string, unknown> }) });
   const stateOf = async (id: string) =>
     (await database.query(
-      `SELECT email, email_verified_at, can_login, locked_until, failed_login_count, last_login_at, owner, name, active FROM totalbase.users WHERE id = $1`,
+      `SELECT email, email_verified_at, can_login, locked_until, failed_login_count, last_login_at, owner, name, active, password_changed_at, password_change_required FROM totalbase.users WHERE id = $1`,
       [id],
     )).rows[0];
   // Each column with a value that differs from the target's current one.
@@ -448,6 +448,8 @@ describe("Data API integration - users security columns are administrator-writte
     locked_until: null,
     failed_login_count: 0,
     last_login_at: "2026-01-01T00:00:00.000Z",
+    password_changed_at: "2026-01-01T00:00:00.000Z",
+    password_change_required: true,
     owner: true,
   };
 

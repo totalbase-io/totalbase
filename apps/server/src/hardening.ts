@@ -137,6 +137,8 @@ const SIGN_IN_PATHS = new Set([
   "/admin/api/auth/login",
   "/api/auth/mfa/verify",
   "/admin/api/auth/mfa/verify",
+  "/api/auth/password/renew",
+  "/admin/api/auth/password/renew",
   "/api/auth/password/reset",
   "/api/auth/invitations/accept",
   "/api/auth/email/verify",

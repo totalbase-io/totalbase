@@ -116,7 +116,7 @@
           "description": "Las filas tal como vienen - las columnas que empiezan con _ no se muestran.",
           "props": {
             "colorColumn": {
-              "description": "Una columna cuyo valor - un nombre de la paleta - tiñe su fila. Sin definir, una columna llamada _color. _<columna>_color muestra esa columna como insignias de color."
+              "description": "Una columna cuyo valor - un nombre de la paleta - tiñe su fila. Sin definir, una columna llamada _color. _{'<'}columna{'>'}_color muestra esa columna como insignias de color."
             },
             "click": {
               "description": "Qué hace un clic sobre una fila. Sus valores son fórmulas sobre la fila del clic y las variables."
@@ -608,7 +608,7 @@
       "types": {
         "DATE_RANGE": {
           "label": "Rango de fechas",
-          "description": "Úsala como $VAR.<name>.from / $VAR.<name>.to (timestamptz)."
+          "description": "Úsala como $VAR.{'<'}name{'>'}.from / $VAR.{'<'}name{'>'}.to (timestamptz)."
         },
         "SELECT": {
           "label": "Selección",
@@ -712,7 +712,7 @@
       "runFailed": "No se pudo ejecutar la consulta.",
       "saveFailed": "No se pudo guardar el widget",
       "widget": "Widget",
-      "queryDescription": "El SQL se ejecuta en solo lectura. Ctrl+Enter para ejecutar. Usa $VAR.<name> para las variables del dashboard y $USER.<column> para quien lo ve.",
+      "queryDescription": "El SQL se ejecuta en solo lectura. Ctrl+Enter para ejecutar. Usa $VAR.{'<'}name{'>'} para las variables del dashboard y $USER.{'<'}column{'>'} para quien lo ve.",
       "runToPreview": "Ejecuta la consulta para ver una vista previa del widget.",
       "rows": "{n} filas | {n} fila | {n} filas",
       "cutOff": " (cortado en {setting})",
@@ -730,7 +730,7 @@
       "results": "Resultados",
       "run": "Ejecutar",
       "duration": " · {ms} ms",
-      "presentationDescription": "SQL de solo lectura, opcional: sus fórmulas leen la primera fila como {'{'}{'{'}row.<columna>{'}'}{'}'} y todas como {'{'}{'{'}rows{'}'}{'}'}, junto a {'{'}{'{'}vars.<nombre>{'}'}{'}'} y {'{'}{'{'}user.<campo>{'}'}{'}'}.",
+      "presentationDescription": "SQL de solo lectura, opcional: sus fórmulas leen la primera fila como {'{'}{'{'}row.{'<'}columna{'>'}{'}'}{'}'} y todas como {'{'}{'{'}rows{'}'}{'}'}, junto a {'{'}{'{'}vars.{'<'}nombre{'>'}{'}'}{'}'} y {'{'}{'{'}user.{'<'}campo{'>'}{'}'}{'}'}.",
       "detailFirstRow": "Detalle muestra la primera de {count} filas."
     },
     "variablesBar": {
@@ -753,7 +753,7 @@
       "queryHelp": "Primera columna = valor, segunda opcional = etiqueta. Puede usar $USER.* y otras variables ($VAR.country) - entonces sus opciones las siguen.",
       "saveFailed": "No se pudieron guardar las variables",
       "title": "Variables",
-      "description": "Filtros que quien lo ve elige en la barra sobre el lienzo. Haz referencia a ellos en el SQL de los widgets como $VAR.<name>.",
+      "description": "Filtros que quien lo ve elige en la barra sobre el lienzo. Haz referencia a ellos en el SQL de los widgets como $VAR.{'<'}name{'>'}.",
       "empty": "Aún no hay variables.",
       "add": "Agregar variable",
       "nameHelp": "Minúsculas, dígitos y guiones bajos.",
@@ -997,10 +997,6 @@
       "widgetMissing": "El widget que muestra ya no está en el dashboard: no muestra nada hasta que se actualice."
     },
     "editor": {
-      "openVersionFailed": "No se pudo abrir la versión",
-      "restored": "Versión v{version} restaurada en el borrador",
-      "restoredHelp": "Todavía no se publicó nada - publica para que entre en vigor.",
-      "restoreFailed": "No se pudo restaurar",
       "copyCreated": "Se creó \"{name}\"",
       "copyCreatedHelp": "Una copia sin publicar - publícala cuando esté lista.",
       "copyFailed": "No se pudo crear la copia",

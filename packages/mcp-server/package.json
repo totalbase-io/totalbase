@@ -13,20 +13,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --no-file-parallelism",
+    "test": "vitest run --dir src --no-file-parallelism",
     "start": "node dist/cli.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "@totalbase/tb-catalog": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@totalbase/shared": "workspace:*",
-    "zod": "^4.0.0"
+    "@totalbase/tb-catalog": "workspace:*",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@totalbase/errors": "workspace:*",
     "@totalbase/templates": "workspace:*",
-    "@types/node": "^22.0.0",
-    "vitest": "^2.1.8"
+    "@types/node": "^26.6.6",
+    "vitest": "^5.1.0"
   },
   "types": "./dist/index.d.ts"
 }

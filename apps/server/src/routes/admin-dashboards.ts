@@ -7,7 +7,7 @@ import type { AppContext } from "../context.js";
 import { withFileLinks } from "../dashboard-files.js";
 import { requestViewer, runTimezone } from "../display-preferences.js";
 import { requireAdmin } from "../auth-guards.js";
-import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
+import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM, published } from "../openapi-admin-docs.js";
 import { DASHBOARD_RUN_META,
   DASHBOARD_COLOR,
   DASHBOARD_REFRESH_INTERVAL,
@@ -20,6 +20,7 @@ import { DASHBOARD_RUN_META,
 } from "../openapi-admin-docs-dashboards.js";
 import { type DataBody, optionalData, publishNote, versionParam } from "../request-body.js";
 import { registerDeleteVersionsRoute } from "./delete-versions.js";
+import { adminAuditEntry } from "../admin-audit-entry.js";
 
 /** A run's `200`: the result as `data`, the zone it ran in as `meta.timezone` (Dashboards.md §2.3). */
 const okRun = (schema: JsonSchema) => ({ status: "200" as const, schema: { type: "object", required: ["data"], properties: { data: schema, meta: DASHBOARD_RUN_META } } as JsonSchema });
@@ -239,12 +240,9 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     const body = optionalData(request.body);
     const language = await appLanguage(context);
     const result = await context.dashboardsAdmin.applySpec(id, { spec: body.spec, draftVersion: body.draftVersion, dryRun: body.dryRun === true }, language, async (client, summary) => {
-      await context.audit.record(client, {
-        requestId: request.id,
-        principal: { type: "ADMIN", id: request.admin!.id },
+      await context.audit.record(client, adminAuditEntry(request, {
         action: summary.created ? "CREATE" : "UPDATE",
         status: "EXECUTED",
-        source: "admin",
         metadata: {
           event: "dashboard.spec_applied",
           dashboard: summary.dashboardId,
@@ -256,9 +254,7 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
           widgetsChanged: summary.diff.widgets.changed.map((w) => w.id),
           widgetsDeleted: summary.diff.widgets.deleted.map((w) => w.id),
         },
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      });
+      }));
     });
     // Rows only when asked: applying twelve widgets doesn't run twelve queries.
     const rows = Number.isInteger(body.rows) && (body.rows as number) > 0 ? Math.min(body.rows as number, 50) : 0;
@@ -624,17 +620,17 @@ export function registerAdminDashboardsRoutes(app: FastifyInstance, context: App
     ...adminDoc("dashboards", {
       summary: "Publish the draft",
       description:
-        "Snapshots the draft's widgets and variables as the next version - what Apps renders. A no-op returning the latest " +
-        "version when the draft equals it; a draft equal to an older version is recorded as restored from it.",
+        "Snapshots the draft's widgets and variables as the next version - what Apps renders: 201 with that version. A draft " +
+        "equal to the latest version publishes nothing: 200 with it. A draft equal to an older version is recorded as restored from it.",
       pathParameters: ID,
       requestBody: { schema: dataEnvelope(object({ note: { type: "string", maxLength: 128, description: "What this version changes - the publisher's note, shown in the object's Versions." } })), required: false },
-      response: created(ref("DashboardVersion")),
+      response: published(ref("DashboardVersion")),
       schemas,
     }),
   },
     async (request, reply) => {
-      const version = await context.dashboardsAdmin.publish(request.params.id, request.admin?.id ?? null, publishNote(request.body));
-      reply.code(201);
+      const { created, ...version } = await context.dashboardsAdmin.publish(request.params.id, request.admin?.id ?? null, publishNote(request.body));
+      reply.code(created ? 201 : 200);
       return { data: version };
     },
   );

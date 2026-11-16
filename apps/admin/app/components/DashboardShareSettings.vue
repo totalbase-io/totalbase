@@ -376,7 +376,7 @@ function status(embed: Embed): { label: string, color: 'success' | 'neutral' | '
 /** `copied`: the toast once it's on the clipboard ("Link copied"). */
 async function copy(text: string, copied: string) {
   try {
-    await navigator.clipboard.writeText(text)
+    await copyText(text)
     toast.add({ title: copied, color: 'success' })
   } catch {
     toast.add({ title: t('dashboards.embedDrawer.copyFailed'), color: 'error' })

@@ -1,6 +1,7 @@
 {
   "common": {
     "rateLimited": "Too many requests - retrying in {seconds} s",
+    "deletedPartial": "{done} of {total} deleted",
     "collapse": "Collapse",
     "expand": "Expand",
     "selectedPoint": "Selected point",
@@ -105,6 +106,7 @@
     "USER_TIMEZONE_LOCKED": "Your organization sets the time zone for everyone.",
     "EMAIL_NOT_VERIFIED": "Verify your email address before signing in - check your inbox or ask for a new link.",
     "INVALID_CURRENT_PASSWORD": "Your current password is missing or incorrect.",
+    "PASSWORD_UNCHANGED": "The new password must be different from the current one.",
     "RESOURCE_NOT_FOUND": "Not found.",
     "ROW_VERSION_CONFLICT": "Someone else changed this record since you opened it. Reload it to see their changes, or save again to overwrite them.",
     "ROW_NOT_FOUND": "Record not found.",
@@ -151,6 +153,7 @@
     "TEMPLATE_SLUG_DUPLICATE": "A template with this slug already exists.",
     "TEMPLATE_PDF_GENERATION_FAILED": "Could not generate the PDF.",
     "USER_API_NAME_DUPLICATE": "This user already has a token with this name.",
+    "TOKEN_IP_NOT_ALLOWED": "This token is not accepted from this address.",
     "INVALID_DESCRIPTION": "The description is too long.",
     "DATAVIEW_NOT_FOUND": "DataView not found.",
     "DATAVIEW_NAME_DUPLICATE": "A DataView with this name already exists.",
@@ -283,6 +286,7 @@
       "title": "Sign-in",
       "password": "Password",
       "passwordSet": "Set",
+      "passwordExpires": "Set - expires on {date}",
       "changePassword": "Change password",
       "passwordNotSet": "Not set - you sign in with a provider. Use \"Forgot password\" on the sign-in page to add one.",
       "verifiedOn": "Verified on {date}",
@@ -435,6 +439,7 @@
         "outboxBacklog": "{n} data event waiting more than 5 minutes to be processed | {n} data events waiting more than 5 minutes to be processed",
         "tokensExpiring": "{n} API token expires soon | {n} API tokens expire soon",
         "failedSignIns": "{n} failed sign-in in the last 24 hours | {n} failed sign-ins in the last 24 hours",
+        "tokensRefused": "{n} refused use of an API token in the last 24 hours | {n} refused uses of API tokens in the last 24 hours",
         "backupFailed": "The last backup failed - see why in Backups | The last backup failed - see why in Backups"
       },
       "kpis": {
@@ -567,7 +572,10 @@
       "copyCreatedDescription": "A new, unpublished copy - its roles start empty.",
       "copyError": "Could not create the copy",
       "publishedBy": "Published by",
-      "unknownUser": "Unknown user"
+      "unknownUser": "Unknown user",
+      "loadFailed": "Could not load version",
+      "nothingToPublish": "Nothing to publish",
+      "alreadyLive": "v{version} is already live."
     },
     "embed": {
       "onlyEmbedded": "Only available embedded",
@@ -635,7 +643,8 @@
     "auditDiff": {
       "before": "Before: ",
       "after": "After: ",
-      "empty": "(empty)"
+      "empty": "(empty)",
+      "notRecorded": "Changed - its value isn't recorded (excluded from the audit log)"
     },
     "appPresentation": {
       "heading": "Presentation in the App",
@@ -738,6 +747,13 @@
     "linkIncomplete": {
       "title": "Link incomplete",
       "description": "This page needs the full link from your email. Open it again from the email, or copy the whole address into your browser."
+    },
+    "passwordRenew": {
+      "expiredTitle": "Your password has expired",
+      "expiredDescription": "This instance asks for a new password every so often. Choose one to finish signing in.",
+      "requestedTitle": "Choose a new password",
+      "requestedDescription": "An administrator asked you to change your password. Choose one to finish signing in.",
+      "submit": "Change password and sign in"
     },
     "tokenPassword": {
       "mustMatch": "The two passwords must match.",

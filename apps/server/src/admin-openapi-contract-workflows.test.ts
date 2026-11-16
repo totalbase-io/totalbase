@@ -84,7 +84,7 @@ describe("Admin OpenAPI matches real responses - workflows, SQL Console, OpenAPI
     contract.expectKeys(testRun.json().data.steps[0], keysOf("WorkflowRunStep"), "test-run step");
 
     const published = await call("POST", `/admin/api/workflows/${id}/publish`, { data: { revision: await revision() } });
-    expect(published.statusCode, published.body).toBe(200);
+    expect(published.statusCode, published.body).toBe(201);
     contract.expectKeys(published.json().data, contract.dataSchema("/admin/api/workflows/{id}/publish", "post"), "POST /publish");
 
     const enabled = await call("PATCH", `/admin/api/workflows/${id}`, { data: { revision: await revision(), enabled: true } });

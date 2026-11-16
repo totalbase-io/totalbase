@@ -55,10 +55,7 @@ const previewFailed = ref(false)
 async function loadPreview(id: string) {
   previewFailed.value = false
   try {
-    const response = await $fetch.raw(`/api/totalbase/table/files/${id}?width=320&fit=cover`, {
-      baseURL: '',
-      responseType: 'blob'
-    })
+    const response = await fetchFileContent(`/api/totalbase/table/files/${id}?width=320&fit=cover`)
     setPreview(URL.createObjectURL(response._data as Blob))
   } catch {
     setPreview(null)

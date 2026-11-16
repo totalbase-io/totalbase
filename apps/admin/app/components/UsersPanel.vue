@@ -20,9 +20,9 @@ const { data: roleOptions } = useRoleOptions()
 // Counts only - the list itself lives on the page, paged by the server.
 const { data: summary } = useUsersSummary()
 
-const STATUSES: UserStatus[] = ['ACTIVE', 'INVITED', 'INACTIVE']
+const STATUSES: UserStatus[] = ['ACTIVE', 'INVITED', 'INACTIVE', 'REMOVED']
 
-const statusCounts = computed(() => summary.value?.byStatus ?? { ACTIVE: 0, INVITED: 0, INACTIVE: 0 })
+const statusCounts = computed(() => summary.value?.byStatus ?? { ACTIVE: 0, INVITED: 0, INACTIVE: 0, REMOVED: 0 })
 const roleCounts = computed(() => new Map(Object.entries(summary.value?.byRole ?? {})))
 const sortedRoles = computed(() => [...(roleOptions.value ?? [])].sort((a, b) => a.name.localeCompare(b.name)))
 
@@ -90,7 +90,7 @@ async function onCreated(user: AdminUser) {
       >
         <span
           class="size-2 mx-1 shrink-0 rounded-full"
-          :class="{ 'bg-success': status === 'ACTIVE', 'bg-warning': status === 'INVITED', 'bg-(--ui-text-dimmed)': status === 'INACTIVE' }"
+          :class="{ 'bg-success': status === 'ACTIVE', 'bg-warning': status === 'INVITED', 'bg-(--ui-text-dimmed)': status === 'INACTIVE', 'bg-error': status === 'REMOVED' }"
         />
         <span class="truncate">{{ t(USER_STATUS_META[status].labelKey) }}</span>
         <span class="ms-auto text-xs text-muted">{{ statusCounts[status] }}</span>

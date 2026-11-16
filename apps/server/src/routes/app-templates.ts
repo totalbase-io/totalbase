@@ -5,6 +5,7 @@ import type { AppContext } from "../context.js";
 import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
 import { resolveDataPrincipal, type DataPrincipal } from "../data-principal.js";
 import { resolveTableGrant } from "@totalbase/mutations";
+import { optionalData } from "../request-body.js";
 
 const TABLE = "templates";
 const DENIED = "ACTION_DENIED";
@@ -26,7 +27,7 @@ export function registerAppTemplatesRoutes(app: FastifyInstance, context: AppCon
   app.post<{ Body: { data?: { content?: unknown } } | undefined }>("/app/api/templates/preview-pdf", { preHandler }, async (request, reply) => {
     const principal = await principalOf(context, request);
     await resolveTableGrant(context, principal, TABLE, "UPDATE", DENIED).catch(() => resolveTableGrant(context, principal, TABLE, "CREATE", DENIED));
-    const content = request.body?.data?.content;
+    const content = optionalData(request.body).content;
     if (!content || typeof content !== "object") throw new TotalBaseError("INVALID_QUERY", "content must be a PDF template object");
     const pdf = await generateTemplatePdf(content, samplePdfInputs(content));
     reply.header("content-type", "application/pdf");

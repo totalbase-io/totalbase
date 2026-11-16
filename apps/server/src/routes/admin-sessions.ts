@@ -6,6 +6,7 @@ import { parseUserFilter } from "./user-filter.js";
 import { requireAdmin } from "../auth-guards.js";
 import { adminDoc, arrayOf, object, ref, UUID } from "../openapi-admin-docs.js";
 import { listEnvelope, SESSIONS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { pageOf } from "../pagination.js";
 
 const MAX_PAGE_SIZE = 200;
 const SESSION_STATUSES: readonly SessionStatusFilter[] = ["ACTIVE", "EXPIRED", "REVOKED", "ALL"];
@@ -49,12 +50,7 @@ export function registerAdminSessionsRoutes(app: FastifyInstance, context: AppCo
     },
     async (request) => {
       const user = parseUserFilter(request.query.user);
-      const limit = request.query.limit === undefined ? undefined : Number(request.query.limit);
-      const offset = request.query.offset === undefined ? 0 : Number(request.query.offset);
-      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE)) {
-        throw new TotalBaseError("INVALID_QUERY", `limit must be between 1 and ${MAX_PAGE_SIZE}.`);
-      }
-      if (!Number.isInteger(offset) || offset < 0) throw new TotalBaseError("INVALID_QUERY", "offset must be 0 or more.");
+      const { limit, offset } = pageOf(request.query, { max: MAX_PAGE_SIZE });
       const status = (request.query.status ?? "ACTIVE") as SessionStatusFilter;
       if (!SESSION_STATUSES.includes(status)) {
         throw new TotalBaseError("INVALID_QUERY", `status must be one of ${SESSION_STATUSES.join(", ")}.`);

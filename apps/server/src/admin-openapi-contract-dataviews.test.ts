@@ -267,6 +267,10 @@ describe("Admin OpenAPI matches real responses - dataviews and app menu", () => 
     expect(publish.statusCode, publish.body).toBe(201);
     contract.expectKeys(publish.json().data, contract.dataSchema("/admin/api/dataviews/{id}/publish", "post", "201"), "POST publish");
     const version = publish.json().data.version as number;
+    // An unchanged draft publishes nothing: 200 with the live version, as documented.
+    const again = await call("POST", `/admin/api/dataviews/${tableDv}/publish`);
+    expect([again.statusCode, again.json().data.version]).toEqual([200, version]);
+    contract.expectKeys(again.json().data, contract.dataSchema("/admin/api/dataviews/{id}/publish", "post", "200"), "POST publish (unchanged)");
 
     await contract.expectMatches(`/admin/api/dataviews/${tableDv}/versions`, "/admin/api/dataviews/{id}/versions");
     await contract.expectMatches(`/admin/api/dataviews/${tableDv}/versions/${version}`, "/admin/api/dataviews/{id}/versions/{version}");

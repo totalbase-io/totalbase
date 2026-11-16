@@ -250,13 +250,17 @@ describe("Workflow engine and lifecycle", () => {
     expect([refused.statusCode, refused.json().errors[0].code]).toEqual([400, "WORKFLOW_INVALID_DESIGN"]);
     expect(refused.json().errors[0].message).toContain('"done"');
 
+    // 201 with the version it created; an unchanged draft publishes nothing - 200 with that same version, the revision kept.
     const published = await call("POST", `/workflows/${id}/publish`, { data: { revision } });
-    expect(published.statusCode, published.body).toBe(200);
-    const live = published.json().data;
-    expect(live.liveVersion).toBe(1);
+    expect(published.statusCode, published.body).toBe(201);
+    expect(published.json().data).toMatchObject({ version: 1 });
+    expect(published.json().data).not.toHaveProperty("created");
+    const live = (await call("GET", `/workflows/${id}`)).json().data;
+    expect(live).toMatchObject({ liveVersion: 1, hasUnpublishedChanges: false });
     const again = await call("POST", `/workflows/${id}/publish`, { data: { revision: live.revision } });
     expect(again.statusCode, again.body).toBe(200);
-    expect(again.json().data).toMatchObject({ liveVersion: 1, revision: live.revision, hasUnpublishedChanges: false });
+    expect(again.json().data).toEqual(published.json().data);
+    expect((await call("GET", `/workflows/${id}`)).json().data.revision).toBe(live.revision);
   });
 
   it("refuses a definition over its limits on create, draft save and publish (WORKFLOW_LIMIT_EXCEEDED)", async () => {

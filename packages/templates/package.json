@@ -11,18 +11,18 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --no-file-parallelism"
+    "test": "vitest run --dir src --no-file-parallelism"
   },
   "dependencies": {
+    "@pdfme/common": "^6.2.8",
+    "@pdfme/generator": "^6.2.8",
+    "@pdfme/schemas": "^6.2.8",
     "@totalbase/database": "workspace:*",
     "@totalbase/errors": "workspace:*",
-    "@totalbase/shared": "workspace:*",
-    "@pdfme/common": "^6.1.12",
-    "@pdfme/generator": "^6.1.12",
-    "@pdfme/schemas": "^6.1.12"
+    "@totalbase/shared": "workspace:*"
   },
   "devDependencies": {
     "@totalbase/migrations": "workspace:*",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   }
 }

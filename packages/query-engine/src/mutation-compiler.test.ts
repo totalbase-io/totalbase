@@ -2,7 +2,7 @@ import { Database, loadDatabaseConfigFromEnv } from "@totalbase/database";
 import type { PermissionDecision } from "@totalbase/permissions";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FilterNode } from "./ast.js";
-import { compileDelete, compileInsert, compileUpdate, type ConflictUpdateAuthorization, type MutationCompileContext } from "./mutation-compiler.js";
+import { compileDelete, compileInsert, compileInsertMany, compileUpdate, type ConflictUpdateAuthorization, type MutationCompileContext } from "./mutation-compiler.js";
 import { SchemaContext, type ResolvedResource } from "./schema-context.js";
 
 function allowAll(): PermissionDecision {
@@ -24,7 +24,9 @@ describe("mutation-compiler (integration)", () => {
         name     text NOT NULL,
         price    numeric NOT NULL,
         active   boolean NOT NULL DEFAULT true,
-        location point
+        location point,
+        schedule jsonb,
+        notes    json
       )
     `);
 
@@ -331,6 +333,55 @@ describe("mutation-compiler (integration)", () => {
       await expect(
         compileInsert(context(), { sku: "X", name: "X", price: 1 }, { target: ["name"], action: "NOTHING" }),
       ).rejects.toMatchObject({ code: "INVALID_ON_CONFLICT" });
+    });
+  });
+
+  // A JSON list bound for a json/jsonb column is JSON, not a PostgreSQL array ({...}) - Data_API.md §5.1.
+  describe("a list into a json/jsonb column", () => {
+    const schedule = [{ days: ["mon"], from: "22:00", to: "07:00" }];
+    const stored = async (sku: string) =>
+      (await database.query<{ schedule: unknown; notes: unknown }>(`SELECT schedule, notes FROM public.mc_test_products WHERE sku = $1`, [sku])).rows[0];
+
+    it("inserts a list of objects, a list of scalars and an empty list", async () => {
+      const compiled = await compileInsert(context(), { sku: "J1", name: "Rule", price: 1, schedule, notes: ["a", "b"] });
+      await database.query(compiled.sql, compiled.params);
+      expect(await stored("J1")).toEqual({ schedule, notes: ["a", "b"] });
+
+      const empty = await compileInsert(context(), { sku: "J2", name: "Rule", price: 1, schedule: [], notes: [] });
+      await database.query(empty.sql, empty.params);
+      expect(await stored("J2")).toEqual({ schedule: [], notes: [] });
+    });
+
+    it("updates to a list, and an upsert's DO UPDATE sets one", async () => {
+      const insert = await compileInsert(context(), { sku: "J3", name: "Rule", price: 1, schedule: { a: 1 } });
+      await database.query(insert.sql, insert.params);
+      const update = await compileUpdate(context(), { schedule, notes: [] }, { type: "comparison", path: ["sku"], operator: "_eq", value: "J3" });
+      await database.query(update.sql, update.params);
+      expect(await stored("J3")).toEqual({ schedule, notes: [] });
+
+      const upsert = await compileInsert(
+        context({ conflictUpdate: allowUpdate() }),
+        { sku: "J3", name: "Rule", price: 1 },
+        { target: ["sku"], action: "UPDATE", data: { schedule: [1, 2] } },
+      );
+      await database.query(upsert.sql, upsert.params);
+      expect((await stored("J3"))?.schedule).toEqual([1, 2]);
+    });
+
+    it("a multi-row insert stores each item's list", async () => {
+      const compiled = await compileInsertMany(context(), ["sku", "name", "price", "schedule"], [
+        { sku: "J4", name: "Rule", price: 1, schedule },
+        { sku: "J5", name: "Rule", price: 1, schedule: [] },
+      ]);
+      await database.query(compiled.sql, compiled.params);
+      expect((await stored("J4"))?.schedule).toEqual(schedule);
+      expect((await stored("J5"))?.schedule).toEqual([]);
+    });
+
+    it("still takes an object, and a JSON text", async () => {
+      const compiled = await compileInsert(context(), { sku: "J6", name: "Rule", price: 1, schedule: { a: [1] }, notes: '[{"b":2}]' });
+      await database.query(compiled.sql, compiled.params);
+      expect(await stored("J6")).toEqual({ schedule: { a: [1] }, notes: [{ b: 2 }] });
     });
   });
 

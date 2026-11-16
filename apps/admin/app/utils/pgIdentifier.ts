@@ -1,8 +1,7 @@
 // Client-side mirror of packages/schema's validateIdentifier()
 // (IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/, max 63 chars) - a
-// convenience-only live sanitizer for InputPgIdentifier.vue, same
-// "duplicated, not imported, server stays authoritative" tradeoff as
-// slugify.ts. Unlike slugify() (hyphens, for dataview slugs), this keeps
+// convenience-only live sanitizer for InputPgIdentifier.vue (the server
+// stays authoritative). Unlike slugify() (hyphens, for dataview slugs), this keeps
 // underscores and the leading-letter/underscore rule Postgres itself
 // enforces for unquoted identifiers.
 export function sanitizePgIdentifier(raw: string): string {

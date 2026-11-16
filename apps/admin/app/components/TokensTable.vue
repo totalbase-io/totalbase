@@ -55,7 +55,8 @@ function tokenFromRow(row: Record<string, unknown>): UserApiToken {
     lastUsedAt: (row.last_used_at ?? null) as string | null,
     rotatedAt: (row.rotated_at ?? null) as string | null,
     revokedAt: (row.revoked_at ?? null) as string | null,
-    createdAt: row.created_at as string
+    createdAt: row.created_at as string,
+    allowedIps: (row.allowed_ips ?? null) as string[] | null
   }
 }
 const listTokens = async (): Promise<UserApiToken[]> => props.self
@@ -193,10 +194,12 @@ function actionItems(token: UserApiToken) {
   return [
     [
       { label: t('users.tokens.regenerateEllipsis'), icon: 'i-lucide-refresh-cw', disabled: state === 'revoked', onSelect: () => { regenTarget.value = token } },
+      // The row itself, through the Data API - an administrator's list only; one's own tokens set them at creation.
+      ...(props.self ? [] : [{ label: t('users.tokens.allowedIpsEllipsis'), icon: 'i-lucide-network', disabled: state === 'revoked', onSelect: () => { ipsTarget.value = token } }]),
       { label: t('users.sessions.revoke'), icon: 'i-lucide-ban', disabled: state === 'revoked', onSelect: () => revokeTokens([token]) }
     ],
     [
-      { label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => openDrop([{ id: token.id, name: token.name }]) }
+      { label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => drop.start([{ id: token.id, name: token.name }]) }
     ]
   ]
 }
@@ -232,6 +235,8 @@ const newName = ref('')
 const newDescription = ref('')
 const newPlane = ref<'API' | 'ADMIN'>('API')
 const newTtlDays = ref<number | null>(null)
+// Allowed addresses (Security.md §3.5): empty is anywhere. PostgreSQL says what an address is.
+const newAllowedIps = ref<string[]>([])
 /** Remounts TokenExpiryField per opening, so it starts back at the default. */
 const formKey = ref(0)
 const creating = ref(false)
@@ -253,6 +258,7 @@ function openCreate() {
   newName.value = ''
   newDescription.value = ''
   newPlane.value = planeItems.value[0]?.value ?? 'API'
+  newAllowedIps.value = []
   formKey.value += 1
   isCreateOpen.value = true
 }
@@ -267,7 +273,8 @@ async function createToken() {
         name: newName.value.trim(),
         description: newDescription.value.trim() || null,
         plane: newPlane.value,
-        ttlDays: newTtlDays.value
+        ttlDays: newTtlDays.value,
+        allowedIps: newAllowedIps.value.length > 0 ? newAllowedIps.value : null
       }
     })
     isCreateOpen.value = false
@@ -277,6 +284,32 @@ async function createToken() {
     notifyError(err, t('users.tokens.createError'))
   } finally {
     creating.value = false
+  }
+}
+
+// --- Allowed addresses of an existing token: a plain write of its row (allowed_ips) through the Data API. ---
+const ipsTarget = ref<UserApiToken | null>(null)
+const isIpsOpen = computed({
+  get: () => ipsTarget.value !== null,
+  set: (open: boolean) => { if (!open) ipsTarget.value = null }
+})
+const editedIps = ref<string[]>([])
+watch(ipsTarget, (token) => {
+  editedIps.value = [...(token?.allowedIps ?? [])]
+})
+const savingIps = ref(false)
+async function saveAllowedIps() {
+  const token = ipsTarget.value
+  if (!token) return
+  savingIps.value = true
+  try {
+    await dataApi.patch(`${apisPath}/${token.id}`, { data: { allowed_ips: editedIps.value.length > 0 ? editedIps.value : null } })
+    ipsTarget.value = null
+    await refresh()
+  } catch (err) {
+    notifyError(err, t('users.tokens.allowedIpsError'))
+  } finally {
+    savingIps.value = false
   }
 }
 
@@ -355,21 +388,15 @@ async function revokeTokens(targets: UserApiToken[]) {
 // enables, even for one token (AGENTS.md §25 "Delete confirmation
 // checkbox"). A token's "Delete…" and the grid's bulk Delete both land
 // here (openDrop takes a list either way). ---
-const dropTargets = ref<Array<{ id: string, name: string }>>([])
-const isDeleteOpen = computed({
-  get: () => dropTargets.value.length > 0,
-  set: (open: boolean) => { if (!open) dropTargets.value = [] }
+const drop = useBulkDelete<{ id: string, name: string }>({
+  remove: target => deleteToken(target.id),
+  after: async () => {
+    rowSelection.value = {}
+    await refresh()
+  },
+  deleted: n => t('users.tokens.deleted', n),
+  failed: failures => t('users.sessions.failed', { n: failures.length })
 })
-const dropConfirmed = ref(false)
-const deleting = ref(false)
-const deleteModalTitle = computed(() =>
-  t('users.tokens.deleteTitle', dropTargets.value.length)
-)
-
-function openDrop(targets: Array<{ id: string, name: string }>) {
-  dropConfirmed.value = false
-  dropTargets.value = targets
-}
 
 // Header: Refresh (PageHeader's "⋮" on a phone) and the bulk actions
 // while tokens are selected.
@@ -380,42 +407,16 @@ const headerSelection = computed<HeaderSelection>(() => ({
   count: selectedTokens.value.length,
   actions: [
     { label: t('users.sessions.revoke'), icon: 'i-lucide-ban', color: 'warning', disabled: !selectedTokens.value.some(t => t.active), loading: revoking.value, onSelect: () => revokeTokens(selectedTokens.value) },
-    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDrop(selectedTokens.value.map(t => ({ id: t.id, name: t.name }))) }
+    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => drop.start(selectedTokens.value.map(t => ({ id: t.id, name: t.name }))) }
   ],
   onClear: () => {
     rowSelection.value = {}
   }
 }))
 
-async function confirmDrop() {
-  const targets = dropTargets.value
-  deleting.value = true
-  let failures = 0
-  for (const target of targets) {
-    try {
-      await deleteToken(target.id)
-    } catch {
-      failures += 1
-    }
-  }
-  deleting.value = false
-  dropTargets.value = []
-  rowSelection.value = {}
-  await refresh()
-  if (failures === 0) {
-    toast.add({ title: t('users.tokens.deleted', targets.length), color: 'success' })
-  } else {
-    toast.add({
-      title: t('users.tokens.deletedPartial', { done: targets.length - failures, total: targets.length }),
-      description: t('users.sessions.failed', { n: failures }),
-      color: 'warning'
-    })
-  }
-}
-
 async function copySecret() {
   if (!revealed.value) return
-  await navigator.clipboard.writeText(revealed.value.key)
+  await copyText(revealed.value.key)
   toast.add({ title: t('users.tokens.copied'), color: 'success' })
 }
 </script>
@@ -707,6 +708,18 @@ async function copySecret() {
           v-model="newTtlDays"
           :default-days="defaultTtlDays"
         />
+        <UFormField
+          :label="t('users.tokens.allowedIps')"
+          :description="t('users.tokens.allowedIpsHelp')"
+        >
+          <UInputTags
+            v-model="newAllowedIps"
+            add-on-blur
+            add-on-paste
+            :aria-label="t('users.tokens.allowedIps')"
+            class="w-full font-mono"
+          />
+        </UFormField>
       </form>
 
       <template #footer>
@@ -728,6 +741,43 @@ async function copySecret() {
         </div>
       </template>
     </AppDrawer>
+
+    <UModal
+      v-model:open="isIpsOpen"
+      :title="t('users.tokens.allowedIpsTitle', { name: ipsTarget?.name ?? '' })"
+      :description="t('users.tokens.allowedIpsDescription')"
+    >
+      <template #body>
+        <UFormField
+          :label="t('users.tokens.allowedIps')"
+          :description="t('users.tokens.allowedIpsHelp')"
+        >
+          <UInputTags
+            v-model="editedIps"
+            add-on-blur
+            add-on-paste
+            :aria-label="t('users.tokens.allowedIps')"
+            class="w-full font-mono"
+          />
+        </UFormField>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            :label="t('common.cancel')"
+            color="neutral"
+            variant="ghost"
+            :disabled="savingIps"
+            @click="ipsTarget = null"
+          />
+          <UButton
+            :label="t('common.save')"
+            :loading="savingIps"
+            @click="saveAllowedIps"
+          />
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="isRegenOpen"
@@ -781,48 +831,13 @@ async function copySecret() {
       </template>
     </UModal>
 
-    <UModal
-      v-model:open="isDeleteOpen"
-      :title="deleteModalTitle"
-    >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('users.tokens.deleteBody') }}
-          </p>
-          <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
-            <li
-              v-for="target in dropTargets"
-              :key="target.id"
-              class="text-sm truncate"
-            >
-              {{ target.name }}
-            </li>
-          </ul>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="dropConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="deleting"
-                @click="dropTargets = []"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!dropConfirmed"
-                :loading="deleting"
-                @click="confirmDrop"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+    <DeleteConfirmModal
+      v-model:open="drop.open.value"
+      :title="t('users.tokens.deleteTitle', drop.targets.value.length)"
+      :description="t('users.tokens.deleteBody')"
+      :items="drop.targets.value.map(target => target.name)"
+      :loading="drop.deleting.value"
+      @confirm="drop.confirm"
+    />
   </PageShell>
 </template>

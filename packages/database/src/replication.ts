@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import type { DatabaseConfig } from "./config.js";
-import { quoteIdentifier } from "./identifiers.js";
+import { quoteIdentifier, quoteLiteral } from "./identifiers.js";
 import type { Subscription } from "./listener.js";
 
 /**
@@ -342,9 +342,8 @@ export async function replicate(config: DatabaseConfig, options: ReplicationOpti
       const slot = `totalbase_realtime_${process.pid}_${randomBytes(4).toString("hex")}`;
       await next.query(`CREATE_REPLICATION_SLOT ${quoteIdentifier(slot)} TEMPORARY LOGICAL pgoutput (SNAPSHOT 'nothing')`);
       await next.query("SET lock_timeout = 0");
-      const publication = options.publication.replace(/'/g, "''");
       const stream = new ReplicationStream(
-        `START_REPLICATION SLOT ${quoteIdentifier(slot)} LOGICAL 0/0 (proto_version '1', publication_names '${publication}')`,
+        `START_REPLICATION SLOT ${quoteIdentifier(slot)} LOGICAL 0/0 (proto_version '1', publication_names ${quoteLiteral(options.publication)})`,
         new PgoutputDecoder(options.maxKeys),
         (transaction) => handlers.onTransaction(transaction),
         (error) => {

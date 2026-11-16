@@ -7,6 +7,7 @@ import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistr
 import {
   SYSTEM_EMAIL_SLOTS,
   validateLinkTemplate,
+  validateMailFooter,
   validateMailTemplate,
   validatePublicUrl,
 } from "./mail-templates.js";
@@ -152,6 +153,7 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   ...Object.fromEntries(
     SYSTEM_EMAIL_SLOTS.map((slot) => [`mail.templates.${slot}`, (value: unknown) => validateMailTemplate(slot, value)]),
   ),
+  "mail.footer": validateMailFooter,
 };
 
 /**

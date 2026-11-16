@@ -5,7 +5,8 @@
 // A row missing from the stored order is shown at the end, the way the
 // live board places it, and only written once a lane is moved - so
 // opening the settings page never reads as an edit.
-import { displayColumns, displayText, type DisplayConfig } from '~/utils/display-field'
+import type { DisplayConfig } from '~/utils/display-field'
+import { orderLanes } from '~/utils/dataview-columns'
 import type { DataViewField } from '~/types/dataview'
 import type { RelationDefinition } from '~/types/schema'
 
@@ -21,41 +22,14 @@ const props = defineProps<{
 }>()
 const { t } = useI18n()
 
-const dataApi = useDataApi()
-
-interface LaneRow { pk: string, label: string }
-const rows = ref<LaneRow[]>([])
-const orderedRows = computed(() => {
-  const byPk = new Map(rows.value.map(r => [r.pk, r]))
-  const ordered: LaneRow[] = []
-  for (const pk of laneOrder.value) {
-    const row = byPk.get(pk)
-    if (row) ordered.push(row)
-  }
-  const known = new Set(laneOrder.value)
-  return [...ordered, ...rows.value.filter(r => !known.has(r.pk))]
+// The relations too, not just the column: the source catalog and the stored groupColumn resolve independently, in
+// no fixed order.
+const rows = useLaneRows({
+  relation: () => props.groupColumn ? props.relations?.find(r => r.sourceColumn === props.groupColumn) : undefined,
+  display: () => props.fields.find(f => f.columnName === props.groupColumn)?.config as DisplayConfig | undefined,
+  orderColumn: () => props.orderColumn
 })
-
-// The relations too, not just the column: the source catalog and the
-// stored groupColumn resolve independently, in no fixed order.
-watch([() => props.groupColumn, () => props.relations, () => props.orderColumn], async ([columnName, relations, orderColumn]) => {
-  rows.value = []
-  if (!columnName) return
-  const relation = relations?.find(r => r.sourceColumn === columnName)
-  const field = props.fields.find(f => f.columnName === columnName)
-  const display = field?.config as DisplayConfig | undefined
-  const shownColumns = displayColumns(display)
-  if (!relation || shownColumns.length === 0) return
-  try {
-    const { data } = await dataApi.get<Record<string, unknown>[]>(
-      dataApi.resourcePath(relation.targetSchema, relation.targetTable),
-      { fields: [...new Set([relation.targetColumn, ...shownColumns])].join(','), order_by: orderColumn || shownColumns[0], limit: 100 }
-    )
-    rows.value = data.map(row => ({ pk: String(row[relation.targetColumn]), label: displayText(display, c => row[c]) ?? String(row[relation.targetColumn]) }))
-  } catch {
-    // Best-effort - the list just stays empty, same as an unmapped groupColumn.
-  }
-}, { immediate: true })
+const orderedRows = computed(() => orderLanes(rows.value, laneOrder.value))
 
 function move(index: number, direction: -1 | 1) {
   const order = orderedRows.value.map(r => r.pk)

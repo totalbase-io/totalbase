@@ -52,7 +52,7 @@ const locationItems = computed(() => [
 const when = computed(() => (props.backup ? new Intl.DateTimeFormat(ui.intlLocale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(props.backup.createdAt)) : ''))
 
 async function copy(text: string) {
-  await navigator.clipboard.writeText(text)
+  await copyText(text)
   toast.add({ title: t('settings.backups.restore.copied'), color: 'success' })
 }
 </script>

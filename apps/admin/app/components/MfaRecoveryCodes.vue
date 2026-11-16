@@ -14,17 +14,12 @@ const { instance } = useInstance()
 const text = computed(() => `${t('auth.mfa.codesFileTitle', { name: instance.value.name })}\n\n${props.codes.join('\n')}\n`)
 
 async function copy() {
-  await navigator.clipboard.writeText(text.value)
+  await copyText(text.value)
   toast.add({ title: t('common.copied'), color: 'success' })
 }
 
 function download() {
-  const url = URL.createObjectURL(new Blob([text.value], { type: 'text/plain' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'recovery-codes.txt'
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadText(text.value, 'recovery-codes.txt', 'text/plain')
 }
 </script>
 

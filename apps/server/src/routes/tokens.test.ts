@@ -53,4 +53,70 @@ describe("Self-service API tokens", () => {
     expect((await call("DELETE", `/api/tokens/${id}`)).statusCode).toBe(404);
     expect((await call("POST", `/api/tokens/${id}/revoke`)).statusCode).toBe(404);
   });
+  // Allowed addresses (Security.md §3.5), set at creation and changed as a plain row through the Data API.
+  it("issues a token with allowed addresses, refuses it from elsewhere on both planes, and lets an administrator change them", async () => {
+    const created = await call("POST", "/api/tokens", { data: { name: `${PREFIX}-ips`, plane: "ADMIN", ttlDays: 1, allowedIps: ["203.0.113.7", "10.50.0.0/16"] } });
+    expect(created.statusCode, created.body).toBe(201);
+    const { id, key, allowedIps } = created.json().data as { id: string; key: string; allowedIps: string[] };
+    expect(allowedIps).toEqual(["203.0.113.7", "10.50.0.0/16"]);
+    const from = (ip: string, url: string) => app.inject({ method: "GET", url, remoteAddress: ip, headers: { authorization: `Bearer ${key}` } });
+
+    for (const url of ["/admin/api/auth/me", "/api/totalbase/table/roles?limit=1"]) {
+      expect((await from("203.0.113.7", url)).statusCode, url).toBe(200);
+      expect((await from("10.50.3.4", url)).statusCode, url).toBe(200);
+      const refused = await from("203.0.113.8", url);
+      expect([refused.statusCode, refused.json().errors[0].code], url).toEqual([403, "TOKEN_IP_NOT_ALLOWED"]);
+    }
+
+    // The list reads them; a PATCH of the row replaces them, and null lifts the restriction.
+    const listed = await call("GET", "/api/tokens");
+    expect((listed.json().data as Array<{ id: string; allowedIps: string[] | null }>).find((t) => t.id === id)?.allowedIps).toEqual(["203.0.113.7", "10.50.0.0/16"]);
+    const patch = (allowed: unknown) => app.inject({ method: "PATCH", url: `/api/totalbase/table/tokens/${id}`, headers: { authorization: `Bearer ${token}` }, payload: { data: { allowed_ips: allowed } } });
+    const narrowed = await patch(["203.0.113.8"]);
+    expect(narrowed.statusCode, narrowed.body).toBe(200);
+    expect((await from("203.0.113.8", "/admin/api/auth/me")).statusCode).toBe(200);
+    expect((await from("203.0.113.7", "/admin/api/auth/me")).statusCode).toBe(403);
+    expect((await patch(["nope"])).statusCode).toBe(400);
+    expect((await patch(null)).statusCode).toBe(200);
+    expect((await from("198.51.100.20", "/admin/api/auth/me")).statusCode).toBe(200);
+
+    expect((await call("POST", "/api/tokens", { data: { name: `${PREFIX}-ips-bad`, ttlDays: 1, allowedIps: ["nope"] } })).statusCode).toBe(400);
+    expect((await call("DELETE", `/api/tokens/${id}`)).statusCode).toBe(204);
+  });
+  // Refused tokens in the audit log (Security.md §11.6): a secret that is some token's, never an invented one.
+  it("records a refused token as auth.token_refused, with its reason - once a minute per token and reason", async () => {
+    const created = await call("POST", "/api/tokens", { data: { name: `${PREFIX}-refused`, ttlDays: 1, allowedIps: ["203.0.113.7"] } });
+    const { id, key } = created.json().data as { id: string; key: string };
+    const use = (ip: string, bearer = key) => app.inject({ method: "GET", url: "/api/totalbase/table/roles?limit=1&secret=in-the-url", remoteAddress: ip, headers: { authorization: `Bearer ${bearer}` } });
+    const entries = async () => {
+      // Written after the response is sent.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return (await database.query<{ status: string; principal_type: string; ip: string; metadata: Record<string, unknown> }>(
+        `SELECT status, principal_type, host(ip) AS ip, metadata FROM totalbase.logs WHERE principal = $1 AND metadata->>'event' = 'auth.token_refused' ORDER BY started_at`, [id],
+      )).rows;
+    };
+
+    expect((await use("198.51.100.4")).statusCode).toBe(403);
+    expect((await use("198.51.100.4")).statusCode).toBe(403);
+    let rows = await entries();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: "DENIED", principal_type: "API_KEY", ip: "198.51.100.4" });
+    expect(rows[0]!.metadata).toMatchObject({ reason: "ip_not_allowed", route: "/api/:schema/table/:resource", method: "GET", statusCode: 403 });
+    expect(JSON.stringify(rows[0])).not.toContain("in-the-url");
+    expect(JSON.stringify(rows[0])).not.toContain(key);
+
+    // An accepted use records nothing; a revoked token is another reason, recorded at once.
+    expect((await use("203.0.113.7")).statusCode).toBe(200);
+    expect((await call("POST", `/api/tokens/${id}/revoke`)).statusCode).toBe(204);
+    expect((await use("203.0.113.7")).statusCode).toBe(401);
+    rows = await entries();
+    expect(rows.map((row) => row.metadata.reason)).toEqual(["ip_not_allowed", "revoked"]);
+
+    // An invented secret is nobody's: nothing to record.
+    const before = (await database.query<{ count: number }>(`SELECT count(*)::int AS count FROM totalbase.logs WHERE metadata->>'event' = 'auth.token_refused'`)).rows[0]!.count;
+    expect((await use("203.0.113.7", "tb_invented-secret-that-is-nobodys")).statusCode).toBe(401);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect((await database.query<{ count: number }>(`SELECT count(*)::int AS count FROM totalbase.logs WHERE metadata->>'event' = 'auth.token_refused'`)).rows[0]!.count).toBe(before);
+    expect((await call("DELETE", `/api/tokens/${id}`)).statusCode).toBe(204);
+  });
 });

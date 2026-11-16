@@ -24,7 +24,7 @@ const mcpJson = computed(() => JSON.stringify({
 }, null, 2))
 
 async function copy(text: string) {
-  await navigator.clipboard.writeText(text)
+  await copyText(text)
   toast.add({ title: t('settings.mcp.copied'), color: 'success' })
 }
 </script>

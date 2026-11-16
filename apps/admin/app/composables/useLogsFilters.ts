@@ -109,7 +109,8 @@ export const LOGS_CATEGORIES: LogsActionCategory[] = [
  * a URL. Event names come from apps/server/src/access-audit.ts.
  */
 export const LOGS_SECURITY_VIEWS: Array<{ key: string, labelKey: string, icon: string, event: string, status?: AuditStatus }> = [
-  { key: 'failed-sign-ins', labelKey: 'content.logs.securityViews.failed-sign-ins', icon: 'i-lucide-log-in', event: 'auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify', status: 'DENIED' },
+  { key: 'failed-sign-ins', labelKey: 'content.logs.securityViews.failed-sign-ins', icon: 'i-lucide-log-in', event: 'auth.login,auth.portal_login,auth.oauth_login,auth.mfa_verify,auth.portal_mfa_verify,auth.password_renew,auth.portal_password_renew', status: 'DENIED' },
+  { key: 'refused-tokens', labelKey: 'content.logs.securityViews.refused-tokens', icon: 'i-lucide-shield-alert', event: 'auth.token_refused' },
   { key: 'access-changes', labelKey: 'content.logs.securityViews.access-changes', icon: 'i-lucide-shield', event: 'role.*,permission.*,user.roles_set,assignment.*,role_manager.*,dataview_role.*,dashboard_role.*' },
   { key: 'config-changes', labelKey: 'content.logs.securityViews.config-changes', icon: 'i-lucide-settings', event: 'settings.*,secret.*,auth_provider.*,system_email.*' },
   { key: 'credential-changes', labelKey: 'content.logs.securityViews.credential-changes', icon: 'i-lucide-key-round', event: 'token.*,session.*,user.sessions_revoke,user.password_reset' }

@@ -16,7 +16,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import { DASHBOARD_WIDGET_TYPES, type DashboardWidgetType } from '@totalbase/tb-catalog'
 import type { WizardStep } from '~/components/WizardModal.vue'
-import type { AdminApiError as ApiErrorShape } from '~/types/api'
+import type { AdminApiErrorItem as ApiErrorShape } from '~/types/api'
 import { DASHBOARD_VARIABLE_TYPES, useDashboardCatalogText, type DashboardVariableType } from '~/types/dashboard'
 import { AdminApiError } from '~/utils/admin-api-error'
 import { useApiErrorMessage, useApiErrorText } from '~/utils/api-error-message'

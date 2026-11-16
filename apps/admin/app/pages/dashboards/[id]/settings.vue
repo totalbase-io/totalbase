@@ -15,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const api = useAdminApi()
 const toast = useToast()
+const publishToast = usePublishToast()
 const { t } = useI18n()
 const errorMessage = useApiErrorMessage()
 const catalog = useDashboardCatalogText()
@@ -40,9 +41,9 @@ async function publish(note?: string) {
   publishing.value = true
   try {
     await autosave.flush()
-    const { data } = await api.post<DashboardVersion>(`/dashboards/${dashboardId}/publish`, note ? { data: { note } } : undefined)
+    const result = await api.post<DashboardVersion>(`/dashboards/${dashboardId}/publish`, note ? { data: { note } } : undefined)
     await Promise.all([refreshVersions(), refreshDashboard()])
-    toast.add({ title: t('dashboards.editor.published', { version: data.version }), color: 'success' })
+    publishToast(result, t('dashboards.editor.published', { version: result.data.version }))
   } catch (error) {
     notifyError(error, t('dashboards.editor.publishFailed'))
   } finally {

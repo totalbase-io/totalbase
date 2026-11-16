@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, errors, jwtVerify, type JWTPayload } from "jose";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AuthProvider } from "./auth-providers-service.js";
 import type { OAuthEndpoints } from "./oauth-endpoints.js";
@@ -96,6 +96,9 @@ async function fetchGitHubIdentity(accessToken: string): Promise<OAuthIdentity> 
  * see resolveOAuthEndpoints's comment on the same tradeoff for discovery
  * documents.
  */
+/** jose's codes for a JWKS the provider didn't serve: unreachable or slow (generic), timed out, not a key set. */
+const PROVIDER_KEY_SET_FAILURES = new Set(["ERR_JOSE_GENERIC", "ERR_JWKS_TIMEOUT", "ERR_JWKS_INVALID"]);
+
 async function verifyIdTokenIdentity(
   idToken: string,
   jwks: { issuer: string; jwksUri: string },
@@ -103,7 +106,18 @@ async function verifyIdTokenIdentity(
   expectedNonce: string,
 ): Promise<OAuthIdentity> {
   const keySet = createRemoteJWKSet(new URL(jwks.jwksUri));
-  const { payload } = await jwtVerify(idToken, keySet, { issuer: jwks.issuer, audience: clientId });
+  // A token that fails verification - another key, issuer or audience, expired - is refused like a nonce mismatch
+  // (INVALID_OAUTH_STATE), not an internal error; a key set the provider can't serve is the provider's failure.
+  let payload: JWTPayload;
+  try {
+    ({ payload } = await jwtVerify(idToken, keySet, { issuer: jwks.issuer, audience: clientId }));
+  } catch (error) {
+    if (!(error instanceof errors.JOSEError)) throw error;
+    if (PROVIDER_KEY_SET_FAILURES.has(error.code)) {
+      throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `The provider's key set could not be read (${error.code}).`);
+    }
+    throw new TotalBaseError("INVALID_OAUTH_STATE", `The provider's id_token could not be verified (${error.code}).`);
+  }
 
   if (payload["nonce"] !== expectedNonce) {
     throw new TotalBaseError("INVALID_OAUTH_STATE", "The provider's id_token does not match this login attempt (nonce mismatch).");

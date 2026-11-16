@@ -27,7 +27,7 @@ async function submit() {
     const { data } = await api.post<{ id: string }>(`/roles/${props.roleId}/duplicate`, { data: { name: name.value.trim() } })
     open.value = false
     toast.add({ title: t('users.duplicateRole.done'), color: 'success' })
-    await refreshNuxtData(['roles-all', 'role-options'])
+    await refreshNuxtData('roles-all')
     await navigateTo(`/roles/${data.id}`)
   } catch (err) {
     notifyError(err, t('users.duplicateRole.error'))

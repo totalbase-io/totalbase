@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { whereParams, type AdminClient } from "./admin-client.js";
 import { columnInputWidgets, columnValueKind, GRID_CELL_CONFIG_KEYS, GRID_CELL_MAX_LINES, GRID_CELL_TEXT_WRAPS, GRID_CELL_VERTICAL_ALIGNS, GRID_COLUMN_DEFAULT_MAX_WIDTH, GRID_COLUMN_WIDTH_RANGE, gridCellConfigProblem, looksLikeSettingsTable, suggestSettingsLayout, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
-import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, schemaName } from "./tool-helpers.js";
+import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, schemaName, publishOutcome } from "./tool-helpers.js";
 
 /**
  * DataViews (DataViews.md, Administration.md
@@ -350,20 +350,20 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
     {
       title: "Publish DataView",
       description:
-        "Publish a DataView's draft as its next version - what users see in the App. role_ids replaces the roles that may open it (list_roles); without any, only administrators do. Those roles also need the source table's permissions (grant_permission) to read or write its rows - get_dataview shows what each role may do. A published, LISTED DataView joins the App menu.",
+        "Publish a DataView's draft as its next version - what users see in the App. published=false: the draft already equaled the live version, nothing changed. role_ids replaces the roles that may open it (list_roles); without any, only administrators do. Those roles also need the source table's permissions (grant_permission) to read or write its rows - get_dataview shows what each role may do. A published, LISTED DataView joins the App menu.",
       inputSchema: { id: z.string().describe("The DataView's id"), role_ids: z.array(roleId()).optional().describe("Every role that may open it - replaces the current set"), note: z.string().max(128).optional().describe("What this version changes - shown in its Versions") },
       annotations: ADDITIVE,
     },
     async ({ id, role_ids, note }) => {
       if (role_ids) await client.put(`/dataviews/${id}/roles`, { data: { roleIds: role_ids } });
-      const { data: version, meta } = await client.postWithMeta<{ version: number }>(`/dataviews/${id}/publish`, note ? { data: { note } } : {});
+      const { data: version, meta, status } = await client.postWithMeta<{ version: number }>(`/dataviews/${id}/publish`, note ? { data: { note } } : {});
       // A role opening it without a path its columns show - a related column, a reference's name (B44, M19).
       const missing = missingPaths(await client.get<Record<string, string[]>>(`/dataviews/${id}/related-access`).catch(() => ({})));
       const warnings = [
         ...(Array.isArray(meta?.["warnings"]) ? (meta["warnings"] as unknown[]) : meta?.["warnings"] !== undefined ? [meta["warnings"]] : []),
         ...(missing ? [`Roles that open it but can't read these paths of the source see a key or nothing there - grant them on its READ (grant_permission fields): ${JSON.stringify(missing)}`] : []),
       ];
-      return result({ id, version: version?.version, ...(role_ids && { roleIds: role_ids }), ...(warnings.length > 0 && { warnings }) });
+      return result({ id, ...publishOutcome(version.version, status), ...(role_ids && { roleIds: role_ids }), ...(warnings.length > 0 && { warnings }) });
     },
   );
 

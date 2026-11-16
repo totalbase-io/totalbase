@@ -27,7 +27,7 @@ const open = computed({
     if (!value) runId.value = undefined
   }
 })
-const run = ref<WorkflowRunSummary | null>(null)
+const runSummary = ref<WorkflowRunSummary | null>(null)
 const steps = ref<WorkflowRunStep[]>([])
 const step = ref<WorkflowRunStep | null>(null)
 const loading = ref(false)
@@ -36,7 +36,7 @@ async function load(id: string) {
   loading.value = true
   try {
     const { data } = await api.get<WorkflowRunOutcome>(`/workflows/runs/${id}`)
-    run.value = data.run
+    runSummary.value = data.run
     steps.value = data.steps
   } catch (error) {
     notifyError(error, t('workflows.runs.loadError'))
@@ -49,7 +49,7 @@ watch(runId, (id) => {
   step.value = null
   if (id) void load(id)
   else {
-    run.value = null
+    runSummary.value = null
     steps.value = []
   }
 }, { immediate: true })
@@ -57,15 +57,15 @@ watch(runId, (id) => {
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   timer = setInterval(() => {
-    if (runId.value && (run.value?.status === 'RUNNING' || run.value?.status === 'PENDING')) void load(runId.value)
+    if (runId.value && (runSummary.value?.status === 'RUNNING' || runSummary.value?.status === 'PENDING')) void load(runId.value)
   }, 3000)
 })
 onUnmounted(() => clearInterval(timer))
 
 const canceling = ref(false)
 async function cancelRun() {
-  if (!run.value) return
-  const id = run.value.id
+  if (!runSummary.value) return
+  const id = runSummary.value.id
   canceling.value = true
   try {
     await api.post(`/workflows/runs/${id}/cancel`)
@@ -94,12 +94,12 @@ function stepName(item: WorkflowRunStep): WorkflowRunStepName | undefined {
     <template #body>
       <div class="flex flex-col gap-4">
         <UEmpty
-          v-if="loading && !run"
+          v-if="loading && !runSummary"
           loading
           variant="naked"
           size="sm"
         />
-        <template v-else-if="run && !step">
+        <template v-else-if="runSummary && !step">
           <div
             class="flex items-center justify-end gap-2"
           >
@@ -109,10 +109,10 @@ function stepName(item: WorkflowRunStep): WorkflowRunStepName | undefined {
               size="xs"
               color="neutral"
               variant="outline"
-              :to="{ path: '/logs', query: { workflow_run: run.id, range: 'all' } }"
+              :to="{ path: '/logs', query: { workflow_run: runSummary.id, range: 'all' } }"
             />
             <UButton
-              v-if="run.status === 'RUNNING'"
+              v-if="runSummary.status === 'RUNNING'"
               :label="t('workflows.runs.cancelRun')"
               icon="i-lucide-circle-stop"
               size="xs"
@@ -122,31 +122,31 @@ function stepName(item: WorkflowRunStep): WorkflowRunStepName | undefined {
               @click="cancelRun"
             />
           </div>
-          <WorkflowRunSummaryCard :run="run" />
+          <WorkflowRunSummaryCard :run="runSummary" />
           <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
             {{ t('workflows.runs.steps') }}
           </h3>
           <p
-            v-if="run.historyLevel === 'SUMMARY'"
+            v-if="runSummary.historyLevel === 'SUMMARY'"
             class="text-xs text-muted"
           >
             {{ t('workflows.runs.summaryHistory') }}
           </p>
           <component
-            :is="run.historyLevel === 'SUMMARY' ? 'div' : 'button'"
+            :is="runSummary.historyLevel === 'SUMMARY' ? 'div' : 'button'"
             v-for="item in steps"
             :key="item.id"
-            :type="run.historyLevel === 'SUMMARY' ? undefined : 'button'"
+            :type="runSummary.historyLevel === 'SUMMARY' ? undefined : 'button'"
             class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
-            :class="run.historyLevel === 'SUMMARY' ? 'opacity-60' : 'hover:bg-elevated'"
-            @click="run.historyLevel === 'SUMMARY' ? undefined : (step = item)"
+            :class="runSummary.historyLevel === 'SUMMARY' ? 'opacity-60' : 'hover:bg-elevated'"
+            @click="runSummary.historyLevel === 'SUMMARY' ? undefined : (step = item)"
           >
             <WorkflowRunStepHeader
               :step="item"
               :name="stepName(item)"
             />
             <UIcon
-              v-if="run.historyLevel !== 'SUMMARY'"
+              v-if="runSummary.historyLevel !== 'SUMMARY'"
               name="i-lucide-chevron-right"
               class="size-4 shrink-0 text-muted"
             />

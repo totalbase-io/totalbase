@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DataViewField } from '~/types/dataview'
-import { columnOptions } from './dataview-columns'
+import { columnOptions, orderLanes } from './dataview-columns'
 
 const column = (patch: Partial<DataViewField>): DataViewField => ({
   id: '1', kind: 'COLUMN', parent: null, gridX: 0, gridY: 0, gridW: 12, gridH: 1, label: null, icon: null,
@@ -19,5 +19,16 @@ describe('columnOptions()', () => {
       { name: 'vence_el', label: 'Vence El' },
       { name: 'cliente.razon_social', label: 'Cliente · Razon Social' }
     ])
+  })
+})
+
+describe('orderLanes', () => {
+  const lane = (pk: string) => ({ pk })
+  it('puts lanes in the stored order, and one missing from it at the end in the order it came', () => {
+    expect(orderLanes([lane('a'), lane('b'), lane('c'), lane('d')], ['c', 'a']).map(l => l.pk)).toEqual(['c', 'a', 'b', 'd'])
+  })
+  it('keeps the fetch order with no stored order, and ignores a stored key with no lane', () => {
+    expect(orderLanes([lane('b'), lane('a')], undefined).map(l => l.pk)).toEqual(['b', 'a'])
+    expect(orderLanes([lane('b'), lane('a')], ['x', 'a']).map(l => l.pk)).toEqual(['a', 'b'])
   })
 })

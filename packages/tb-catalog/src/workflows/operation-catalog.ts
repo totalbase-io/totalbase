@@ -67,6 +67,12 @@ export interface OperationDefinition {
    * named fields (a loop's list), or none - Execute SQL, Execute JavaScript and Wait take theirs literally.
    */
   templates: "configuration" | readonly string[] | "none";
+  /**
+   * Fields that are HTML (Send email's `htmlBody`, §5.16): a `{{...}}` written inside one is replaced by its value as
+   * text - HTML-escaped - so what a step or a trigger carries can't become markup. A field that is, in full, one
+   * `{{...}}` is that value as it is: the HTML another step built.
+   */
+  htmlTemplates?: readonly string[];
   /** The resource a step names, resolved by id at publish and at run time (§5.1). */
   resource?: { field: string; types: readonly OperationResourceType[]; noun: string };
   /** What it can't be published without (§3.5). */
@@ -392,6 +398,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
+    htmlTemplates: ["htmlBody"],
     required: [{ field: "to", missing: "no recipient" }, { field: ["template", "subject"], missing: "no subject or template" }],
     configuration: {
       type: "object",
@@ -407,6 +414,7 @@ const CATALOG = [
         textBody: TEXT,
         htmlBody: TEXT,
         attachments: { type: "oneOf", forms: [TEXT, { type: "list", of: TEXT }], label: "a file id, a {{template}} or a list of them" },
+        retries: { type: "number", integer: true, min: 0, max: 5 },
       },
     },
   },

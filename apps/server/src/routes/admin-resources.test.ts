@@ -51,6 +51,20 @@ describe("admin resource column routes", () => {
     expect((await put("total", { label: "Total" }, null)).statusCode).toBe(401);
   });
 
+  it("refuses a body without the presentation rather than resetting it", async () => {
+    await put("total", { label: "Kept" });
+    const bare = await app.inject({
+      method: "PUT",
+      url: `/admin/api/resources/${resourceId}/columns/total/presentation`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { presentation: { label: "Unwrapped" } },
+    });
+    expect(bare.statusCode).toBe(400);
+    expect((await put("total", undefined)).statusCode).toBe(400);
+    const list = await app.inject({ method: "GET", url: `/admin/api/resources/${resourceId}/columns`, headers: { authorization: `Bearer ${adminToken}` } });
+    expect(list.json().data).toContainEqual(expect.objectContaining({ columnName: "total", presentation: expect.objectContaining({ label: "Kept" }) }));
+  });
+
   it("sets a column's presentation and lists it", async () => {
     const res = await put("total", { label: "Total", displayFormat: "CURRENCY:ARS" });
     expect(res.statusCode).toBe(200);

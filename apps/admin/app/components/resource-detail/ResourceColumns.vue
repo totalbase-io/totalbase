@@ -105,6 +105,15 @@ function dataviewFixPath(reference: BrokenDataViewReference): string {
 
 const isAddOpen = ref(false)
 
+// --- The primary key (Administration.md §3.6); a column's own structure is its panel's Database tab. ---
+const primaryKeyOpen = ref(false)
+/** A rename or a type change reaches what names the column: the list, the broken references, the shared tables. */
+function structureSaved() {
+  refreshAll()
+  void refreshResourcesList()
+  void presentationSaved()
+}
+
 // --- A column's presentation (DataViews.md §15):
 // how it reads in every view that shows it. ---
 const editing = ref<CatalogColumn | null>(null)
@@ -178,6 +187,16 @@ async function removeColumn(columnName: string) {
           :resource="resource"
           :columns="detail.columns.map(c => c.name)"
           @saved="presentationSaved"
+        />
+        <UButton
+          v-if="resource.type === 'TABLE' && detail"
+          :label="t('database.tableEdit.primaryKey')"
+          icon="i-lucide-key-round"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          :disabled="detail.canAlter === false"
+          @click="primaryKeyOpen = true"
         />
         <UButton
           v-if="resource.type === 'TABLE'"
@@ -296,13 +315,13 @@ async function removeColumn(columnName: string) {
           />
         </template>
         <template #actions-cell="{ row }">
-          <UTooltip :text="t('database.resourceColumns.howItShows')">
+          <UTooltip :text="t('database.tableEdit.editColumn')">
             <UButton
               icon="i-lucide-pencil"
               size="xs"
               color="neutral"
               variant="ghost"
-              :aria-label="t('database.resourceColumns.howColumnShows', { name: row.original.name })"
+              :aria-label="t('database.tableEdit.editColumnAria', { name: row.original.name })"
               @click="editPresentation(row.original)"
             />
           </UTooltip>
@@ -321,6 +340,12 @@ async function removeColumn(columnName: string) {
               :loading="removing === row.original.name"
             />
           </ConfirmDeletePopover>
+          <!-- A primary key column can't be dropped: its slot stays, so every row's icons line up. -->
+          <span
+            v-else-if="resource.type === 'TABLE' && detail.canAlter"
+            class="inline-block size-6 align-middle"
+            aria-hidden="true"
+          />
         </template>
       </UTable>
     </template>
@@ -339,12 +364,22 @@ async function removeColumn(columnName: string) {
       :inputs="metaByColumn.get(editing.name)?.inputs"
       :resource="resource"
       :columns="detail?.columns"
-      @saved="presentationSaved"
+      :structure="resource.type === 'TABLE' && detail ? { column: editing, detail, readOnly: detail.canAlter === false } : undefined"
+      @saved="(structural: boolean) => structural ? structureSaved() : presentationSaved()"
     />
 
     <AffectedDataViewsModal
       v-model:open="affectedOpen"
       :dataviews="affected"
+    />
+
+    <PrimaryKeyModal
+      v-if="resource.type === 'TABLE' && detail"
+      v-model:open="primaryKeyOpen"
+      :schema="resource.schema"
+      :table="resource.name"
+      :detail="detail"
+      @saved="structureSaved"
     />
 
     <AddColumnModal

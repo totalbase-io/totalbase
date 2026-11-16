@@ -133,6 +133,7 @@ const { t } = useI18n()
 const notifyError = useErrorToast()
 const api = useAdminApi()
 const toast = useToast()
+const publishToast = usePublishToast()
 
 const { dataview, fields, pending, fieldsPending, error, refreshDataview, refreshFields, primaryKey } = useDataViewById(id)
 
@@ -679,11 +680,20 @@ const { data: status, refresh: refreshStatus } = useAsyncData(
   () => api.get<DataView>(`/dataviews/${id.value}`).then(r => ({ liveVersion: r.data.liveVersion ?? null, hasUnpublishedChanges: r.data.hasUnpublishedChanges ?? true })),
   { watch: [id] }
 )
-const { data: versions, refresh: refreshVersions } = useAsyncData(
-  () => `dataview-versions-${id.value}`,
-  () => api.get<DataViewPublish[]>(`/dataviews/${id.value}/versions`).then(r => r.data),
-  { watch: [id], default: (): DataViewPublish[] => [] }
-)
+// Versions (Foundations.md §13.4): previewing one shows it read-only; Restore flushes a pending autosave first, so
+// it can't land on top of the restored draft afterwards.
+const {
+  versions, refreshVersions, preview: previewVersion, selectVersion, restoring, restore,
+  saveAsOpen, savingAs, saveAs, deleteVersionsOpen, onVersionsDeleted, versionsMobileMenu
+} = useObjectVersions<DataViewPublish, DataViewVersionSnapshot>({
+  path: () => `/dataviews/${id.value}`,
+  key: () => `dataview-versions-${id.value}`,
+  watch: [id],
+  beforeRestore: () => autosave.flush(),
+  afterRestore: () => Promise.all([refreshDataview(), refreshFields(), refreshStatus()]),
+  afterCopy: () => useAppsNavDataViews().refresh(),
+  copyUrl: copy => `/dataviews/${copy.id}/settings`
+})
 const liveVersion = computed(() => status.value?.liveVersion ?? null)
 const hasUnpublishedChanges = computed(() => status.value?.hasUnpublishedChanges ?? false)
 // The DataViews sidebar colors each entry by this same status.
@@ -698,9 +708,10 @@ async function publish(note?: string): Promise<boolean> {
   publishing.value = true
   try {
     await autosave.flush()
-    const { data, meta } = await api.post<DataViewPublish>(`/dataviews/${dataview.value.id}/publish`, note ? { data: { note } } : undefined)
+    const result = await api.post<DataViewPublish>(`/dataviews/${dataview.value.id}/publish`, note ? { data: { note } } : undefined)
+    const { data, meta } = result
     await Promise.all([refreshStatus(), refreshVersions(), useAppsNavDataViews().refresh()])
-    toast.add({ title: t('designer.settingsPage.published', { version: data.version }), color: 'success' })
+    publishToast(result, t('designer.settingsPage.published', { version: data.version }))
     // Published anyway, worth a look - a single-record form over a table with more than one row.
     for (const warning of (meta?.warnings as string[] | undefined) ?? []) toast.add({ title: t('designer.publishWarning'), description: warning, color: 'warning' })
     return true
@@ -740,78 +751,15 @@ const headerActions = computed<HeaderAction[]>(() => previewVersion.value
     ])
 const viewAsOpen = ref(false)
 
-const previewVersion = ref<DataViewVersionSnapshot | null>(null)
-const previewLoading = ref(false)
-async function selectVersion(version: number | null) {
-  if (version === null || !dataview.value) {
-    previewVersion.value = null
-    return
-  }
-  previewLoading.value = true
-  try {
-    const { data } = await api.get<DataViewVersionSnapshot>(`/dataviews/${dataview.value.id}/versions/${version}`)
-    previewVersion.value = data
-  } catch (err) {
-    notifyError(err, t('designer.settingsPage.loadVersionError'))
-  } finally {
-    previewLoading.value = false
-  }
-}
-
-// Restore (Foundations.md §13.4): that version replaces the draft - nothing is published.
-// VersionPreviewBanner confirms first when there are unpublished changes,
-// which this replaces. A pending autosave is flushed first, so it can't
-// land on top of the restored draft afterwards.
-const restoring = ref(false)
-async function restore() {
-  if (!previewVersion.value || !dataview.value) return
-  const version = previewVersion.value.version
-  restoring.value = true
-  try {
-    await autosave.flush()
-    await api.post(`/dataviews/${dataview.value.id}/versions/${version}/restore`)
-    previewVersion.value = null
-    await Promise.all([refreshDataview(), refreshFields(), refreshStatus(), refreshVersions()])
-    toast.add({ title: t('designer.settingsPage.restored', { version }), description: t('designer.settingsPage.restoredDescription'), color: 'success' })
-  } catch (err) {
-    notifyError(err, t('designer.settingsPage.restoreError'))
-  } finally {
-    restoring.value = false
-  }
-}
-
 /** After Settings › Versions restored one: the draft, its fields, the status and the history re-read. */
 async function onRestored() {
   await Promise.all([refreshDataview(), refreshFields(), refreshStatus(), refreshVersions()])
 }
 
-// Save as (Foundations.md §13.4): a new, unpublished DataView from that version.
-const saveAsOpen = ref(false)
-const savingAs = ref(false)
-async function saveAs(input: { name: string, slug: string }) {
-  if (!previewVersion.value || !dataview.value) return
-  savingAs.value = true
-  try {
-    const { data } = await api.post<DataView>(`/dataviews/${dataview.value.id}/versions/${previewVersion.value.version}/duplicate`, { data: input })
-    saveAsOpen.value = false
-    await useAppsNavDataViews().refresh()
-    toast.add({ title: t('designer.settingsPage.created', { name: data.name }), description: t('designer.settingsPage.createdDescription'), color: 'success' })
-    await navigateTo(`/dataviews/${data.id}/settings`)
-  } catch (err) {
-    notifyError(err, t('designer.settingsPage.copyError'))
-  } finally {
-    savingAs.value = false
-  }
-}
-
 // Object actions - the "⋯" menu next to the title (same header layout as
 // the Dashboards and Workflows editors).
 const deleteOpen = ref(false)
-const deleteConfirmed = ref(false)
 const deleting = ref(false)
-watch(deleteOpen, (isOpen) => {
-  if (isOpen) deleteConfirmed.value = false
-})
 const objectMenuItems = computed(() => [
   [{
     label: t('designer.settingsPage.openDataView'),
@@ -821,18 +769,6 @@ const objectMenuItems = computed(() => [
   }],
   [{ label: t('common.deleteEllipsis'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => { deleteOpen.value = true } }]
 ])
-// On a phone the versions chip moves into PageHeader's "⋮".
-const { mobileMenu: versionsMobileMenu } = useVersionMenu(() => versions.value ?? [], () => previewVersion.value?.version ?? null, selectVersion, openDeleteVersions)
-// "Delete old versions…" (Foundations.md §13.4): a preview of a deleted version goes back to the draft.
-const deleteVersionsOpen = ref(false)
-function openDeleteVersions() {
-  deleteVersionsOpen.value = true
-}
-async function onVersionsDeleted(deleted: number[]) {
-  const viewing = previewVersion.value?.version
-  if (viewing !== undefined && deleted.includes(viewing)) await selectVersion(null)
-  await refreshVersions()
-}
 async function deleteDataview() {
   if (!dataview.value) return
   deleting.value = true
@@ -1272,36 +1208,13 @@ async function deleteDataview() {
       </div>
     </template>
 
-    <UModal
+    <DeleteConfirmModal
       v-model:open="deleteOpen"
       :title="t('designer.settingsPage.deleteTitle')"
       :description="t('designer.settingsPage.deleteDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full items-center justify-between gap-2">
-          <UCheckbox
-            v-model="deleteConfirmed"
-            :label="t('common.confirm')"
-          />
-          <div class="flex gap-2">
-            <UButton
-              :label="t('common.cancel')"
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              :label="t('common.delete')"
-              color="error"
-              :loading="deleting"
-              :disabled="!deleteConfirmed"
-              @click="deleteDataview"
-            />
-          </div>
-        </div>
-      </template>
-    </UModal>
+      :loading="deleting"
+      @confirm="deleteDataview"
+    />
     <DataViewPreviewDrawer
       v-if="draftPreviewMounted && dataview"
       v-model:open="draftPreviewOpen"

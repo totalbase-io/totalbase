@@ -14,7 +14,7 @@ export interface MutationsContext {
   database: Database;
   settings: Pick<SettingsService, "get">;
   audit: Pick<AuditService, "record" | "recordMany">;
-  auditExclusions: Pick<AuditExclusionsService, "excludedFields">;
+  auditExclusions: Pick<AuditExclusionsService, "exclusions">;
   effectivePermissions: Pick<EffectivePermissionService, "resolve" | "isAdministrators">;
   capabilityPermissions: Pick<CapabilityPermissionService, "resolve">;
   /** Fire-and-forget: admits DATA_EVENT-triggered workflow runs for one committed outbox event. */

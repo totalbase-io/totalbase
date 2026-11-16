@@ -117,6 +117,19 @@ export async function validateExecutionReadiness(definition: Record<string, unkn
         }
         if (configuration.for_each !== undefined && configuration.for_each !== "ROW" && configuration.for_each !== "STATEMENT") issues.push(`${label(op)}: For each must be ROW or STATEMENT.`);
       }
+      // A Webhook's allowed addresses (§6.5): PostgreSQL reads them as it will compare them (inet).
+      if (configuration.trigger === "WEBHOOK" && configuration.allowed_ips !== undefined && configuration.allowed_ips !== null) {
+        const allowedIps = configuration.allowed_ips;
+        if (!Array.isArray(allowedIps) || allowedIps.some((entry) => typeof entry !== "string")) issues.push(`${label(op)}: its allowed addresses must be a list of IP addresses and CIDR ranges.`);
+        else if (allowedIps.length > 50) issues.push(`${label(op)}: at most 50 allowed addresses.`);
+        else {
+          try {
+            await context.database.query(`SELECT $1::inet[]`, [allowedIps]);
+          } catch (error) {
+            issues.push(`${label(op)}: its allowed addresses are invalid - ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      }
       // A Schedule the dispatcher would skip on every tick (cron-dispatcher.ts): refused now instead.
       if (configuration.trigger === "CRON") issues.push(...(await scheduleIssues(configuration, context)).map((issue) => `${label(op)}: ${issue}`));
       continue;

@@ -1,4 +1,5 @@
 import { UUID_PATTERN } from "@totalbase/shared";
+import { clientIp } from "../client-ip.js";
 import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
@@ -8,7 +9,7 @@ import { signal } from "../invalidations.js";
 import { OPERATION_HANDLERS, nextOccurrences, parseCronExpression, requestRunCancellation, runWorkflowManual, runWorkflowTest, validateExecutionReadiness } from "@totalbase/workflows";
 import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
 import type { JsonSchema } from "@totalbase/openapi";
-import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
+import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM, published } from "../openapi-admin-docs.js";
 import { WORKFLOW_SCHEMAS } from "../openapi-admin-docs-workflows.js";
 import { registerDeleteVersionsRoute } from "./delete-versions.js";
 import { type DataBody, optionalData, publishNote, revisionOf, versionParam } from "../request-body.js";
@@ -210,17 +211,20 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     ...docs({
       summary: "Publish the draft as the next version",
       description:
-        "Snapshots the draft as a new immutable version, which becomes the live one. A draft equal to the live version is a no-op " +
-        "answering the workflow unchanged. Re-checks the definition limits (422 WORKFLOW_LIMIT_EXCEEDED), the graph rules (400 WORKFLOW_INVALID_DESIGN) and execution readiness (422 " +
+        "Snapshots the draft as a new immutable version, which becomes the live one: 201 with that version (the workflow's " +
+        "revision moves on - read it again before the next write). A draft equal to the live version publishes nothing: 200 " +
+        "with it, the revision unchanged. Re-checks the definition limits (422 WORKFLOW_LIMIT_EXCEEDED), the graph rules (400 WORKFLOW_INVALID_DESIGN) and execution readiness (422 " +
         "WORKFLOW_NOT_PUBLISHABLE: an operation type without a runtime handler). Doesn't enable the workflow - PATCH `enabled: true` " +
         "separately. 409 WORKFLOW_REVISION_CONFLICT.",
       pathParameters: ID_PARAMS,
       requestBody: { schema: dataBody(object({ revision: REVISION, note: { type: "string", maxLength: 128, description: "What this version changes - the publisher's note, shown in the object's Versions." } }, ["revision"])) },
-      response: ok(ref("Workflow")),
+      response: published(ref("WorkflowVersion")),
     }),
-  }, async (request) => ({
-    data: await context.workflowsAdmin.publish(request.params.id, revisionOf(request.body), (definition) => validateExecutionReadiness(definition, context), request.admin?.id ?? null, publishNote(request.body)),
-  }));
+  }, async (request, reply) => {
+    const { created, ...version } = await context.workflowsAdmin.publish(request.params.id, revisionOf(request.body), (definition) => validateExecutionReadiness(definition, context), request.admin?.id ?? null, publishNote(request.body));
+    reply.code(created ? 201 : 200);
+    return { data: version };
+  });
 
   // Runs the current DRAFT synchronously, as the requesting admin - "Probar"
   // in the visual editor (specs/Workflows.md §10:
@@ -243,7 +247,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request) => {
     const token = extractBearerToken(request);
-    const dataPrincipal = await resolveDataPrincipal(context, token);
+    const dataPrincipal = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
     return { data: await runWorkflowTest(context, dataPrincipal, request.params.id, request.body?.data ?? null, { emailRedirect: request.body?.emailRedirect }) };
   });
 
@@ -269,7 +273,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request) => {
     const token = extractBearerToken(request);
-    const dataPrincipal = await resolveDataPrincipal(context, token);
+    const dataPrincipal = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
     return { data: await runWorkflowManual(context, dataPrincipal, request.params.id, request.body?.data ?? null) };
   });
 

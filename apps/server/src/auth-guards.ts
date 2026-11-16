@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { clientIp } from "./client-ip.js";
 import type { RouteDoc } from "@totalbase/openapi";
 import type { Admin } from "@totalbase/auth";
 import { portalAccessOf, type PortalAccess } from "@totalbase/permissions";
@@ -86,11 +87,13 @@ async function resolveAdmin(
   context: AppContext,
   token: string,
   assertRole: (context: AppContext, roleIds: string[]) => Promise<PortalAccess>,
+  /** Where the request came from: a token with allowed addresses is accepted only from them (Security.md §3.5). */
+  address: string | undefined,
 ): Promise<{ admin: Admin; access: PortalAccess; token?: string; session?: string }> {
   // Routed by shape, as resolveDataPrincipal does: a personal access token starts with "tb_", a session token
   // is base64url - so a token is looked up as a token first, a session as a session, not both every time.
   const fromToken = async () => {
-    const tokenResult = await context.usersApis.validate(token);
+    const tokenResult = await context.usersApis.validate(token, address);
     if (!tokenResult || tokenResult.plane !== "ADMIN") return null;
     // usersApis.validate() already re-checks Administrators membership
     // live for plane="ADMIN" tokens (returns null otherwise), but the
@@ -126,7 +129,7 @@ async function resolveAdmin(
 export function requireAdmin(context: AppContext) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
     const token = extractBearerToken(request);
-    const resolved = await resolveAdmin(context, token, assertAdminAccess);
+    const resolved = await resolveAdmin(context, token, assertAdminAccess, clientIp(request));
     request.admin = resolved.admin;
     request.access = resolved.access;
     if (resolved.token) request.adminToken = resolved.token;
@@ -144,7 +147,7 @@ export function requireAdmin(context: AppContext) {
 export function requireAppAccess(context: AppContext) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
     const token = extractBearerToken(request);
-    const resolved = await resolveAdmin(context, token, assertAppAccess);
+    const resolved = await resolveAdmin(context, token, assertAppAccess, clientIp(request));
     request.admin = resolved.admin;
     request.access = resolved.access;
     if (resolved.token) request.adminToken = resolved.token;

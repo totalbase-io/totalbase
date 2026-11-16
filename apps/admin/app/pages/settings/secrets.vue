@@ -102,7 +102,7 @@ function generate() {
 }
 async function copyValue() {
   try {
-    await navigator.clipboard.writeText(draftValue.value)
+    await copyText(draftValue.value)
     toast.add({ title: t('settings.secrets.generator.copied'), color: 'success' })
   } catch {
     toast.add({ title: t('settings.secrets.generator.copyFailed'), color: 'error' })
@@ -154,7 +154,7 @@ async function save() {
 function actionItems(secret: SecretMetadata) {
   return [
     { label: t('settings.secrets.replace'), icon: 'i-lucide-refresh-cw', onSelect: () => openReplace(secret) },
-    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => openDrop([secret]) }
+    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => drop.start([secret]) }
   ]
 }
 
@@ -162,47 +162,16 @@ function actionItems(secret: SecretMetadata) {
 // here (openDrop takes a list either way; a single row is just a
 // one-element list) - same shape as files.vue/templates.vue's delete
 // flow. ---
-const dropTargets = ref<SecretMetadata[]>([])
-const isDeleteOpen = computed({
-  get: () => dropTargets.value.length > 0,
-  set: (open: boolean) => { if (!open) dropTargets.value = [] }
+const drop = useBulkDelete<SecretMetadata>({
+  remove: target => api.del(`/secrets/${encodeURIComponent(target.key)}`),
+  after: async () => {
+    rowSelection.value = {}
+    await refresh()
+  },
+  deleted: n => t('settings.secrets.deleted', n),
+  failed: failures => t('settings.secrets.deleteFailures', { n: failures.length })
 })
-const dropConfirmed = ref(false)
-const deleting = ref(false)
-const deleteModalTitle = computed(() =>
-  t('settings.secrets.deleteTitle', dropTargets.value.length)
-)
 
-function openDrop(targets: SecretMetadata[]) {
-  dropConfirmed.value = false
-  dropTargets.value = targets
-}
-
-async function confirmDrop() {
-  const targets = dropTargets.value
-  deleting.value = true
-  let failures = 0
-  for (const target of targets) {
-    try {
-      await api.del(`/secrets/${encodeURIComponent(target.key)}`)
-    } catch {
-      failures += 1
-    }
-  }
-  deleting.value = false
-  dropTargets.value = []
-  rowSelection.value = {}
-  await refresh()
-  if (failures === 0) {
-    toast.add({ title: t('settings.secrets.deleted', targets.length), color: 'success' })
-  } else {
-    toast.add({
-      title: t('settings.secrets.partiallyDeleted', { done: targets.length - failures, total: targets.length }),
-      description: t('settings.secrets.deleteFailures', { n: failures }),
-      color: 'warning'
-    })
-  }
-}
 // Header: Refresh (PageHeader's "⋮" on a phone) and the bulk actions
 // while rows are selected.
 const headerActions = computed<HeaderAction[]>(() => [
@@ -210,7 +179,7 @@ const headerActions = computed<HeaderAction[]>(() => [
 ])
 const headerSelection = computed<HeaderSelection>(() => ({
   count: selectedSecrets.value.length,
-  actions: [{ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDrop(selectedSecrets.value) }],
+  actions: [{ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => drop.start(selectedSecrets.value) }],
   onClear: () => {
     rowSelection.value = {}
   }
@@ -443,48 +412,14 @@ const headerSelection = computed<HeaderSelection>(() => ({
     <!-- Delete - one row's action and the toolbar's bulk Delete both land
     here (openDrop takes a list either way; a single row is just a
     one-element list). -->
-    <UModal
-      v-model:open="isDeleteOpen"
-      :title="deleteModalTitle"
-    >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('settings.secrets.deleteBody') }}
-          </p>
-          <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
-            <li
-              v-for="s in dropTargets"
-              :key="s.key"
-              class="text-sm font-mono truncate"
-            >
-              {{ s.key }}
-            </li>
-          </ul>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="dropConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="deleting"
-                @click="dropTargets = []"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!dropConfirmed"
-                :loading="deleting"
-                @click="confirmDrop"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+    <DeleteConfirmModal
+      v-model:open="drop.open.value"
+      :title="t('settings.secrets.deleteTitle', drop.targets.value.length)"
+      :description="t('settings.secrets.deleteBody')"
+      :items="drop.targets.value.map(s => s.key)"
+      mono
+      :loading="drop.deleting.value"
+      @confirm="drop.confirm"
+    />
   </PageShell>
 </template>

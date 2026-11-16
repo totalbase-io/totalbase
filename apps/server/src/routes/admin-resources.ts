@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { DataApiMethod } from "@totalbase/resources";
 import { TotalBaseError } from "@totalbase/errors";
+import { requestData, optionalData } from "../request-body.js";
 import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
@@ -130,7 +131,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => ({
-      data: await context.resourcesAdmin.updateColumnPresentation(request.params.id, request.params.column, request.body?.data?.presentation ?? {}),
+      data: await context.resourcesAdmin.updateColumnPresentation(request.params.id, request.params.column, presentationOf(request.body)),
     }),
   );
 
@@ -148,7 +149,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => {
-      const columns = request.body?.data?.columns;
+      const columns = optionalData(request.body).columns;
       if (typeof columns !== "object" || columns === null || Array.isArray(columns)) {
         throw new TotalBaseError("INVALID_COLUMN_PRESENTATION", "The request body must be { \"data\": { \"columns\": { \"<column>\": { ... } } } }.");
       }
@@ -203,7 +204,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => {
-      const { columns, row } = request.body?.data ?? {};
+      const { columns, row } = optionalData(request.body);
       const isMap = (value: unknown) => typeof value === "object" && value !== null && !Array.isArray(value);
       if ((columns !== undefined && !isMap(columns)) || (row !== undefined && !isMap(row))) {
         throw new TotalBaseError("INVALID_COLUMN_PRESENTATION", "columns must map each column to its keys; row must be an object.");
@@ -241,7 +242,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       }),
     },
     async (request) => {
-      const ids = request.body?.data?.resourceIds;
+      const ids = optionalData(request.body).resourceIds;
       if (ids !== undefined && !(Array.isArray(ids) && ids.every(id => typeof id === "string"))) {
         throw new TotalBaseError("INVALID_QUERY", "resourceIds must be a list of resource ids.");
       }
@@ -318,7 +319,7 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       schemas: ADMIN_SCHEMAS,
     }),
   }, async (request) => {
-    const body = request.body?.data ?? {};
+    const body = optionalData(request.body);
     return {
       data: await context.resourcesAdmin.update(request.params.id, {
         exposedMethods: body.exposedMethods,
@@ -329,4 +330,11 @@ export function registerAdminResourcesRoutes(app: FastifyInstance, context: AppC
       }),
     };
   });
+}
+
+/** The presentation a PUT replaces: required (`{}` resets it) - a body without it is a 400, never a silent reset. */
+function presentationOf(body: { data?: { presentation?: unknown } } | null | undefined): unknown {
+  const presentation = requestData(body ?? undefined).presentation;
+  if (presentation === undefined) throw new TotalBaseError("INVALID_QUERY", "presentation is required ({} resets it).");
+  return presentation;
 }

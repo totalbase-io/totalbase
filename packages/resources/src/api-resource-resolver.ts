@@ -124,3 +124,23 @@ export async function resolveTableResourceById(
   if (!row) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${id}`);
   return toResolved(row, row.schema, row.name);
 }
+
+/**
+ * The ACTIVE resource a schema and name are - TotalBase's identity for a PostgreSQL object by its current name
+ * (Foundations.md §11) - with what its callers read of it; the newest when a type isn't given. Undefined when none.
+ */
+export async function activeResourceByName(
+  database: Queryable,
+  schema: string,
+  name: string,
+  type?: "TABLE" | "VIEW" | "FUNCTION",
+): Promise<{ id: string; postgresOid: number; rowPresentation: Record<string, unknown> | null } | undefined> {
+  const { rows } = await database.query<{ id: string; postgres_oid: number; row_presentation: Record<string, unknown> | null }>(
+    `SELECT id, postgres_oid, row_presentation FROM totalbase.resources
+     WHERE "schema" = $1 AND name = $2 AND status = 'ACTIVE' AND ($3::text IS NULL OR type = $3)
+     ORDER BY updated_at DESC LIMIT 1`,
+    [schema, name, type ?? null],
+  );
+  const row = rows[0];
+  return row ? { id: row.id, postgresOid: row.postgres_oid, rowPresentation: row.row_presentation } : undefined;
+}

@@ -1,4 +1,4 @@
-import { buildUpdateChanges, withoutExcludedFields, type AuditLogEntry, type AuditWriteAction } from "@totalbase/audit";
+import { buildUpdateChanges, withoutExcludedFields, type AuditLogEntry, type AuditWriteAction, type Exclusions } from "@totalbase/audit";
 import type { Queryable } from "@totalbase/database";
 import { TotalBaseError, deniedMessage } from "@totalbase/errors";
 import type { EffectivePermission, ResourceAction } from "@totalbase/permissions";
@@ -236,7 +236,7 @@ function auditMetadata(deps: MutationDeps, action: AuditWriteAction): Record<str
 export interface WriteBatch {
   audits: AuditLogEntry[];
   outbox: OutboxEventInput[];
-  excluded?: Set<string>;
+  excluded?: Exclusions;
 }
 
 export function newWriteBatch(): WriteBatch {
@@ -261,12 +261,16 @@ export async function queueAuditAndOutbox(
   newRow = withoutProtectedFields(deps.root, newRow);
   // Audited whole by default (Security.md §11.4): the row in
   // `payload`, and an UPDATE's old/new of every column it changed in
-  // `changes` - minus the columns the administrator excluded, from both.
-  // The outbox event below keeps the whole row: a workflow needs its data.
+  // `changes` - minus the columns the administrator excluded, from both
+  // (an excluded column that changed is named in `changes`, without values).
+  // The outbox event below keeps the whole row - a workflow needs its data -
+  // minus the columns excluded from events too.
   // On this transaction's client - a second connection borrowed while this one is held starves the pool under load.
-  batch.excluded ??= await deps.context.auditExclusions.excludedFields(deps.resourceId, client);
-  const excluded = batch.excluded;
+  batch.excluded ??= await deps.context.auditExclusions.exclusions(deps.resourceId, client);
+  const { audit: excluded, event: eventExcluded } = batch.excluded;
   const payload = newRow ?? oldRow ?? {};
+  // An event keeps the primary key too: it is how a subscriber finds the row.
+  const forEvent = (row: Record<string, unknown>) => ({ ...withoutExcludedFields(row, eventExcluded), ...primaryKeyOf(deps.root, row) });
   const changes = action === "UPDATE" ? buildUpdateChanges(oldRow, newRow, excluded) : undefined;
   // The excluded columns never include the primary key's in practice, but
   // the entry keeps it regardless: a row's history ("View history") filters
@@ -295,14 +299,15 @@ export async function queueAuditAndOutbox(
     requestId: deps.audit.requestId,
     resource: deps.resourceId,
     event: action,
-    payload,
+    payload: forEvent(payload),
     source: deps.audit.source,
     ...(deps.dataPrincipal.onBehalfOf !== undefined && { onBehalfOf: deps.dataPrincipal.onBehalfOf }),
     // The event itself says it is a workflow's write - the dispatcher never consults the audit log for it (which audit.enabled may switch off).
     ...(deps.audit.workflowAncestry !== undefined && { workflowAncestry: deps.audit.workflowAncestry }),
     // An UPDATE also carries the row before it and what changed - a DATA_EVENT Start matches on them.
     ...(action === "UPDATE" && oldRow && newRow && {
-      oldPayload: oldRow,
+      oldPayload: forEvent(oldRow),
+      // Every changed column by name, an excluded one included - what changed is no secret, its value is.
       changedColumns: Object.keys(newRow).filter((column) => JSON.stringify(newRow[column]) !== JSON.stringify(oldRow[column])),
     }),
   });

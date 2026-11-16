@@ -157,14 +157,14 @@ describe("role access flags", () => {
 
     const userId = (await context.auth.users.findByEmail(API_EMAIL))!.id;
     const { plainKey } = await context.usersApis.create({ userId, name: "flag change", plane: "API" });
-    expect(await context.usersApis.validate(plainKey)).not.toBeNull();
+    expect(await context.usersApis.validate(plainKey, undefined)).not.toBeNull();
 
     await context.roles.update(appRoleId, { appAccess: false });
     await context.roles.update(apiRoleId, { apiAccess: false });
     try {
       expect((await get("/app/api/dataviews", token)).statusCode).toBe(403);
       expect((await get("/admin/api/auth/me", token)).statusCode).toBe(403);
-      expect(await context.usersApis.validate(plainKey)).toBeNull();
+      expect(await context.usersApis.validate(plainKey, undefined)).toBeNull();
     } finally {
       await context.roles.update(appRoleId, { appAccess: true });
       await context.roles.update(apiRoleId, { apiAccess: true });

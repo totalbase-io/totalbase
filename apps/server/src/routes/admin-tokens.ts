@@ -7,6 +7,7 @@ import { assertRecentAuthentication, requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, created, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 import { TOKENS_SCHEMAS } from "../openapi-admin-docs-users.js";
+import { optionalData, requestData } from "../request-body.js";
 
 const TTL_DAYS = { type: "integer", minimum: 1, maximum: 3650, description: "Lifetime in days; api_keys.default_ttl_days when omitted." };
 
@@ -23,7 +24,7 @@ const MAX_IDS = 100;
 export function registerAdminTokensRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
 
-  app.post<{ Body: { data?: { userId: string; name: string; description?: string | null; plane?: UserApiPlane; ttlDays?: number } } | undefined }>(
+  app.post<{ Body: { data?: { userId: string; name: string; description?: string | null; plane?: UserApiPlane; ttlDays?: number; allowedIps?: string[] | null } } | undefined }>(
     "/admin/api/tokens",
     {
       preHandler,
@@ -33,7 +34,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
           "The plaintext `key` is returned only in this response. A token has no roles of its own: `plane: \"API\"` " +
           "acts with the user's live roles (which must grant API access), `plane: \"ADMIN\"` requires the user to hold " +
           "the Administrators role - both re-checked on every use. System accounts can't hold tokens (403). A name " +
-          "already used by that user is 409 USER_API_NAME_DUPLICATE. List, revoke or delete tokens through the Data API.",
+          "already used by that user is 409 USER_API_NAME_DUPLICATE. List, revoke or delete tokens, and change a token's `allowed_ips`, through the Data API.",
         requestBody: {
           schema: dataEnvelope(object({
             userId: UUID,
@@ -41,6 +42,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
             description: { type: ["string", "null"], maxLength: 128 },
             plane: { type: "string", enum: ["API", "ADMIN"], default: "API" },
             ttlDays: TTL_DAYS,
+            allowedIps: { type: ["array", "null"], maxItems: 50, items: { type: "string" }, description: "IP addresses and CIDR ranges the token is accepted from (`203.0.113.7`, `10.0.0.0/8`); omitted, null or empty: from anywhere. Elsewhere the token answers 403 TOKEN_IP_NOT_ALLOWED." },
           }, ["userId", "name"])),
         },
         response: created(ref("TokensIssued")),
@@ -48,8 +50,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
       }),
     },
     async (request, reply) => {
-      const body = request.body?.data;
-      if (!body) throw new TotalBaseError("INVALID_QUERY", "A request body { data } is required.");
+      const body = requestData(request.body);
       // An administrator's token is the instance's keys (Security.md §2.19).
       if (body.plane === "ADMIN") await assertRecentAuthentication(context, request);
       const { plainKey, userApi } = await context.usersApis.create({
@@ -58,6 +59,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
         description: body.description,
         plane: body.plane ?? "API",
         ttlDays: body.ttlDays,
+        allowedIps: body.allowedIps,
       });
       await context.auth.notifyTokenCreated(userApi.user, userApi);
       reply.code(201);
@@ -85,7 +87,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
     },
     async (request) => {
       if ((await context.usersApis.findById(request.params.id))?.plane === "ADMIN") await assertRecentAuthentication(context, request);
-      const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, request.body?.data?.ttlDays, request.body?.data?.graceHours);
+      const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, optionalData(request.body).ttlDays, optionalData(request.body).graceHours);
       await context.auth.notifyTokenCreated(userApi.user, userApi);
       return { data: { ...userApi, key: plainKey } };
     },

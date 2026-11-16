@@ -11,6 +11,10 @@ function exampleFor(schema: JsonSchema): unknown {
       return "2026-01-31T12:00:00Z";
     case "time":
       return "12:00:00";
+    case "int64":
+      return "1";
+    case "decimal":
+      return "1.50";
   }
   switch (schema.type) {
     case "integer":
@@ -61,9 +65,11 @@ function baseSchema(dataType: string): JsonSchema {
     case "smallint":
     case "integer":
       return { type: "integer" };
+    // What node-postgres reads them as, never rounded (Data_API.md §3): a string, in requests too.
     case "bigint":
-      return { type: "integer", format: "int64" };
+      return { type: "string", format: "int64" };
     case "numeric":
+      return { type: "string", format: "decimal" };
     case "real":
     case "double precision":
       return { type: "number" };

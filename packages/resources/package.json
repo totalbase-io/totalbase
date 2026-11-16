@@ -11,19 +11,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --no-file-parallelism"
+    "test": "vitest run --dir src --no-file-parallelism"
   },
   "dependencies": {
-    "@totalbase/tb-catalog": "workspace:*",
-    "@totalbase/pg-catalog": "workspace:*",
     "@totalbase/database": "workspace:*",
     "@totalbase/errors": "workspace:*",
+    "@totalbase/pg-catalog": "workspace:*",
     "@totalbase/query-engine": "workspace:*",
     "@totalbase/schema": "workspace:*",
-    "@totalbase/shared": "workspace:*"
+    "@totalbase/shared": "workspace:*",
+    "@totalbase/tb-catalog": "workspace:*"
   },
   "devDependencies": {
     "@totalbase/migrations": "workspace:*",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   }
 }

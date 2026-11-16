@@ -10,3 +10,5 @@ export * from "./view-layouts.js";
 export * from "./broken-references.js";
 export * from "./settings-writable.js";
 export * from "./dataviews-diagnosis.js";
+export { viewerRowActions, type RowActions } from "./dataviews-viewer.js";
+export * from "./column-reference.js";

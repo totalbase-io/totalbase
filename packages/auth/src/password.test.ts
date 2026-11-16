@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PASSWORD_MAX_LENGTH, assertPasswordStrength } from "./password.js";
+import { PASSWORD_MAX_LENGTH, assertPasswordStrength, hashPassword, verifyPassword } from "./password.js";
 
 const code = (fn: () => void): string | undefined => {
   try {
@@ -28,5 +28,22 @@ describe("assertPasswordStrength (Security.md §2.3)", () => {
 
   it("accepts an uncommon password of the minimum length", () => {
     expect(code(() => assertPasswordStrength("tb-correct-horse", 12))).toBeUndefined();
+  });
+});
+
+describe("hashPassword / verifyPassword (Security.md §2.3)", () => {
+  // Made by argon2 0.41 (Argon2id, its defaults): what a stored password looks like. Every later argon2 must still
+  // verify it - an upgrade never locks anyone out.
+  const STORED = "$argon2id$v=19$m=65536,t=3,p=4$VCCAR3VKo/sml3/y7CBhtQ$ZxBqqGK8OA5WmpUTpKOBL78l8AXI5Cwn6qvIFRgd7BI";
+
+  it("verifies a hash stored by an earlier argon2, and only with its password", async () => {
+    expect(await verifyPassword(STORED, "correct horse battery staple")).toBe(true);
+    expect(await verifyPassword(STORED, "correct horse battery stapler")).toBe(false);
+  });
+
+  it("hashes with Argon2id and verifies what it hashed", async () => {
+    const hash = await hashPassword("correct horse battery staple");
+    expect(hash).toMatch(/^\$argon2id\$v=19\$/);
+    expect(await verifyPassword(hash, "correct horse battery staple")).toBe(true);
   });
 });

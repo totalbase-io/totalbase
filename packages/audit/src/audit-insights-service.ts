@@ -9,7 +9,7 @@ import { TotalBaseError } from "@totalbase/errors";
  */
 
 /** Sign-in attempts: the public API, the portal and OAuth (apps/server's ACCESS_EVENTS). */
-export const SIGN_IN_EVENTS = ["auth.login", "auth.portal_login", "auth.oauth_login", "auth.mfa_verify", "auth.portal_mfa_verify"] as const;
+export const SIGN_IN_EVENTS = ["auth.login", "auth.portal_login", "auth.oauth_login", "auth.mfa_verify", "auth.portal_mfa_verify", "auth.password_renew", "auth.portal_password_renew"] as const;
 
 export const MAX_INSIGHTS_DAYS = 366;
 
@@ -89,7 +89,8 @@ export interface DashboardInsights {
   /** Denied and failed entries per day - same days as perDay. */
   problemsPerDay: Array<{ day: string; denied: number; failed: number }>;
   /** The rolling last 24 hours. */
-  last24h: { actions: number; denied: number; failed: number; signIns: number; failedSignIns: number };
+  /** `refusedTokens`: personal access tokens refused (`auth.token_refused`, Security.md §11.6) - one entry a minute per token and reason. */
+  last24h: { actions: number; denied: number; failed: number; signIns: number; failedSignIns: number; refusedTokens: number };
   /** The application's most used resources over the last 7 days - TotalBase's own tables left out. */
   topResources: Array<{ id: string; schema: string; name: string; type: string; count: number }>;
 }
@@ -244,7 +245,8 @@ export class AuditInsightsService {
                 count(*) FILTER (WHERE status = 'DENIED')::int AS denied,
                 count(*) FILTER (WHERE status = 'FAILED')::int AS failed,
                 count(*) FILTER (WHERE ${signIns} AND status = 'EXECUTED')::int AS "signIns",
-                count(*) FILTER (WHERE ${signIns} AND status <> 'EXECUTED')::int AS "failedSignIns"
+                count(*) FILTER (WHERE ${signIns} AND status <> 'EXECUTED')::int AS "failedSignIns",
+                count(*) FILTER (WHERE metadata->>'event' = 'auth.token_refused')::int AS "refusedTokens"
          FROM totalbase.logs
          WHERE created_at >= now() - interval '24 hours'`,
         [[...SIGN_IN_EVENTS]],

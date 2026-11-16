@@ -22,6 +22,8 @@ const NOT_ADMIN_ONLY = new Set([
   "GET /admin/api/auth/me",
   // A sign-in's second step (Security.md §2.17): public like login - the challenge is the credential.
   "POST /admin/api/auth/mfa/verify",
+  // A sign-in's password step (Security.md §2.20): the same.
+  "POST /admin/api/auth/password/renew",
   // A backup's archive (Administration.md §12.4): followed by the browser, authorized by the signature of a link an
   // administrator was given - never by a session. Without a valid one it names nothing (asserted below).
   "GET /admin/api/backups/{id}/archive",

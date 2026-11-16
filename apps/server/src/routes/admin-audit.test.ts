@@ -100,6 +100,19 @@ describe("admin audit routes", () => {
       const res = await put(data);
       expect([res.statusCode, res.json().errors[0].code], JSON.stringify(data)).toEqual([400, "INVALID_QUERY"]);
     }
-    expect((await get(url)).json().data).toEqual({ excludedFields: [] });
+    expect((await get(url)).json().data).toEqual({ excludedFields: [], eventExcludedFields: [] });
+
+    // Both lists by the Admin API, as a set-up script writes them: an event exclusion is an audit exclusion first.
+    try {
+      const outside = await put({ excludedFields: ["description"], eventExcludedFields: ["name"] });
+      expect([outside.statusCode, outside.json().errors[0].code]).toEqual([400, "INVALID_QUERY"]);
+      expect((await put({ excludedFields: ["description"], eventExcludedFields: "description" })).statusCode).toBe(400);
+      const saved = await put({ excludedFields: ["description", "name"], eventExcludedFields: ["description"] });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(saved.json().data).toEqual({ excludedFields: ["name", "description"], eventExcludedFields: ["description"] });
+      expect((await get(url)).json().data).toEqual(saved.json().data);
+    } finally {
+      await put({ excludedFields: [] });
+    }
   });
 });

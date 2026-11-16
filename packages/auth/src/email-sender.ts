@@ -37,6 +37,36 @@ export interface EmailSender {
   verify(): Promise<void>;
 }
 
+/**
+ * A send the relay did not take (`EMAIL_SEND_FAILED`). `notAccepted` says whether that is CERTAIN - the only
+ * case a caller may send again without risking a second copy (a workflow's Send email retries, Workflows.md
+ * §5.16):
+ *
+ * - the relay answered 4xx - a temporary refusal, at whatever command;
+ * - the connection never got as far as a mail command: the name didn't resolve, the connect was refused or
+ *   timed out, the greeting never came, TLS couldn't be set up.
+ *
+ * Anything else - the connection dropped or went silent mid-session - may have delivered the message, and a
+ * permanent 5xx answer will not change by asking again: `notAccepted` is false for both.
+ */
+export class EmailSendError extends TotalBaseError {
+  readonly notAccepted: boolean;
+
+  constructor(cause: unknown) {
+    super("EMAIL_SEND_FAILED", `The SMTP server did not accept the message: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
+    this.notAccepted = certainlyNotAccepted(cause);
+  }
+}
+
+/** nodemailer's own marks (smtp-connection): `responseCode` of the relay's answer, `timeoutType` of a setup phase, `code` and the socket's `syscall`. */
+function certainlyNotAccepted(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { responseCode, timeoutType, code, syscall } = error as { responseCode?: unknown; timeoutType?: unknown; code?: unknown; syscall?: unknown };
+  if (typeof responseCode === "number") return responseCode >= 400 && responseCode < 500;
+  if (timeoutType === "CONNECT_TIMEOUT" || timeoutType === "GREETING_TIMEOUT" || timeoutType === "UPGRADE_TIMEOUT") return true;
+  return code === "EDNS" || code === "ETLS" || syscall === "connect" || syscall === "getaddrinfo";
+}
+
 /** How long "Test connection" waits for the relay before failing. */
 const SMTP_VERIFY_TIMEOUT_MS = 30_000;
 
@@ -97,10 +127,7 @@ export class SmtpEmailSender implements EmailSender {
         ...(input.attachments?.length ? { attachments: input.attachments } : {}),
       });
     } catch (err) {
-      throw new TotalBaseError(
-        "EMAIL_SEND_FAILED",
-        `The SMTP server did not accept the message: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      throw new EmailSendError(err);
     }
   }
 

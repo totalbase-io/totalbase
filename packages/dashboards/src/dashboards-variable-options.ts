@@ -1,4 +1,4 @@
-import { quoteIdentifier } from "@totalbase/database";
+import { quoteIdentifier, quoteLiteral } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import type { DashboardVariable } from "./variables.js";
 import type { DashboardQueryLimits, DashboardsContext, DashboardVariableOption, DashboardViewer } from "./dashboards-types.js";
@@ -6,11 +6,8 @@ import { DENIED_USER_FIELDS, VariableResolver } from "./dashboards-variable-reso
 import { getDashboard } from "./dashboards-crud.js";
 import { executeQuery } from "./dashboards-runner.js";
 import { getPublishedVariables, getVersion } from "./dashboards-versions.js";
+import { listAttributes, singleColumnPrimaryKey } from "@totalbase/pg-catalog";
 
-/** A row presentation's literal text as a SQL string - an administrator's, standard_conforming_strings on. */
-export function sqlLiteral(text: string): string {
-  return `'${text.replace(/'/g, "''")}'`;
-}
 
 /** What variables name outside themselves, checked against the catalog (D22): a list's table and its filter columns, a default's user field. */
 export async function checkVariableSources(ctx: DashboardsContext, variables: DashboardVariable[]): Promise<void> {
@@ -23,9 +20,7 @@ export async function checkVariableSources(ctx: DashboardsContext, variables: Da
       }
     }
     if (variable.default?.source === "user") {
-      userColumns ??= new Set((await ctx.database.query<{ name: string }>(
-        `SELECT attname AS name FROM pg_catalog.pg_attribute WHERE attrelid = 'totalbase.users'::regclass AND attnum > 0 AND NOT attisdropped`,
-      )).rows.map((r) => r.name));
+      userColumns ??= new Set((await listAttributes(ctx.database, ["totalbase.users"])).map((a) => a.name));
       const field = variable.default.field;
       if (!userColumns.has(field) || DENIED_USER_FIELDS.has(field)) throw new TotalBaseError("DASHBOARD_VARIABLE_INVALID", `Variable "${variable.name}": its default reads $USER.${field}, which isn't a column of the user it may read.`);
     }
@@ -48,7 +43,7 @@ export async function tableOptionsQuery(ctx: DashboardsContext, options: { resou
     const parts = template.split(/(\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\})/).filter((p) => p !== "");
     label = parts.map((part) => {
       const name = /^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(part)?.[1];
-      return name && columns.has(name) ? `coalesce(${quote(name)}::text, '')` : `${sqlLiteral(part)}`;
+      return name && columns.has(name) ? `coalesce(${quote(name)}::text, '')` : quoteLiteral(part);
     }).join(" || ");
   } else {
     const shown = target.rowPresentation.displayField && columns.has(target.rowPresentation.displayField) ? target.rowPresentation.displayField : target.defaultColumn;
@@ -71,13 +66,8 @@ export async function optionsTable(ctx: DashboardsContext, resourceId: string): 
   );
   const resource = rows[0];
   if (!resource) throw new TotalBaseError("DASHBOARD_VARIABLE_INVALID", `options.resource ${resourceId} is not an active table.`);
-  const { rows: attrs } = await ctx.database.query<{ name: string; type: string; key: boolean }>(
-    `SELECT a.attname AS name, format_type(a.atttypid, NULL) AS type,
-            EXISTS (SELECT 1 FROM pg_catalog.pg_constraint c WHERE c.conrelid = a.attrelid AND c.contype = 'p' AND c.conkey = ARRAY[a.attnum]) AS key
-     FROM pg_catalog.pg_attribute a WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum`,
-    [resource.oid],
-  );
-  const key = attrs.find((a) => a.key)?.name;
+  const [attrs, primaryKey] = await Promise.all([listAttributes(ctx.database, [resource.oid]), singleColumnPrimaryKey(ctx.database, resource.oid)]);
+  const key = primaryKey?.name;
   if (!key) throw new TotalBaseError("DASHBOARD_VARIABLE_INVALID", `${resource.name} has no single-column primary key to be a list's value.`);
   const named = attrs.find((a) => ["name", "label", "title", "display_name"].includes(a.name.toLowerCase()));
   const text = attrs.find((a) => a.name !== key && /^(text|character varying|character|citext)/.test(a.type));

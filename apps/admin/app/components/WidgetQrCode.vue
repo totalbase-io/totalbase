@@ -59,12 +59,7 @@ const side = computed(() => `${Math.max(48, Number(props.size) || 200)}px`)
 
 function save() {
   if (!svg.value) return
-  const url = URL.createObjectURL(new Blob([svg.value], { type: 'image/svg+xml' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'qr.svg'
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadText(svg.value, 'qr.svg', 'image/svg+xml')
 }
 function print() {
   if (!svg.value) return

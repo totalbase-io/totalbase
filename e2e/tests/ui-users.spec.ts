@@ -266,7 +266,7 @@ test('edit a user: name, email, roles and avatar', async ({ page }) => {
   })
   await expect(page.getByRole('button', { name: 'Replace' })).toBeVisible()
   expect((await getUser(user.id)).avatarUrl).not.toBeNull()
-  await page.getByRole('button', { name: 'Remove' }).click()
+  await page.getByRole('button', { name: 'Remove', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Upload' })).toBeVisible()
   expect((await getUser(user.id)).avatarUrl).toBeNull()
   expect(failures).toEqual([])
@@ -282,7 +282,7 @@ test('set a user\'s password, send a password reset, revoke sessions', async ({ 
   await page.getByRole('button', { name: 'Set password' }).click()
   const dialog = page.getByRole('dialog', { name: 'Set password' })
   const newPassword = 'UiUsers-Changed-67890'
-  await dialog.getByLabel('New password').fill(newPassword)
+  await dialog.getByLabel('New password', { exact: true }).fill(newPassword)
   await dialog.getByLabel('Confirm password').fill(newPassword)
   await dialog.getByRole('button', { name: 'Save' }).click()
   await expect(toast(page, 'Password set')).toBeVisible()

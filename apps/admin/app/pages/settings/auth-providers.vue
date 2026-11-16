@@ -7,7 +7,6 @@ import type { KnownProviderDef } from '~/utils/known-auth-providers'
 const dates = useDateTimeFormat()
 
 const api = useAdminApi()
-const rolesApi = useRolesApi()
 const toast = useToast()
 const { t } = useI18n()
 const notifyError = useErrorToast()
@@ -45,11 +44,8 @@ const { data: secretKeys, refresh: refreshSecretKeys } = await useAsyncData(
   () => api.get<SecretMetadata[]>('/secrets').then(r => r.data.map(s => s.key)),
   { default: () => [] }
 )
-const { data: roles } = await useAsyncData(
-  'auth-providers-roles',
-  () => rolesApi.list(),
-  { default: () => [] }
-)
+// The roles a first sign-in can be given - assignable ones, the Workflows role left out.
+const { data: roles } = await useRoleOptions()
 const roleOptions = computed(() => [
   { label: t('settings.authProviders.noRole'), value: null },
   ...(roles.value ?? []).map(r => ({ label: r.name, value: r.id }))
@@ -76,7 +72,7 @@ function actionItems(provider: AuthProvider) {
   return [
     { label: t('common.edit'), icon: 'i-lucide-pencil', onSelect: () => openEdit(provider) },
     { label: provider.enabled ? t('settings.authProviders.disable') : t('settings.authProviders.enable'), icon: provider.enabled ? 'i-lucide-pause' : 'i-lucide-play', onSelect: () => toggleEnabled(provider) },
-    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => openDrop([{ id: provider.id, name: provider.name }]) }
+    { label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => drop.start([{ id: provider.id, name: provider.name }]) }
   ]
 }
 
@@ -243,7 +239,7 @@ async function openEdit(provider: AuthProvider) {
 
 async function copyRedirectUri() {
   if (!redirectUri.value) return
-  await navigator.clipboard.writeText(redirectUri.value)
+  await copyText(redirectUri.value)
   toast.add({ title: t('common.copied'), color: 'success' })
 }
 
@@ -296,48 +292,17 @@ async function save() {
 }
 
 // --- Delete ---
-const dropTargets = ref<Array<{ id: string, name: string }>>([])
-const isDeleteOpen = computed({
-  get: () => dropTargets.value.length > 0,
-  set: (open: boolean) => { if (!open) dropTargets.value = [] }
+const drop = useBulkDelete<{ id: string, name: string }>({
+  remove: target => api.del(`/auth-providers/${target.id}`),
+  after: async (targets) => {
+    rowSelection.value = {}
+    if (draft.value.id && targets.some(target => target.id === draft.value.id)) isFormOpen.value = false
+    await refresh()
+  },
+  deleted: n => t('settings.authProviders.deleted', n),
+  failed: failures => t('settings.authProviders.deleteFailures', { n: failures.length })
 })
-const dropConfirmed = ref(false)
-const deleting = ref(false)
-const deleteModalTitle = computed(() =>
-  t('settings.authProviders.deleteTitle', dropTargets.value.length)
-)
 
-function openDrop(targets: Array<{ id: string, name: string }>) {
-  dropConfirmed.value = false
-  dropTargets.value = targets
-}
-
-async function confirmDrop() {
-  const targets = dropTargets.value
-  deleting.value = true
-  let failures = 0
-  for (const target of targets) {
-    try {
-      await api.del(`/auth-providers/${target.id}`)
-    } catch {
-      failures += 1
-    }
-  }
-  deleting.value = false
-  dropTargets.value = []
-  rowSelection.value = {}
-  if (draft.value.id && targets.some(target => target.id === draft.value.id)) isFormOpen.value = false
-  await refresh()
-  if (failures === 0) {
-    toast.add({ title: t('settings.authProviders.deleted', targets.length), color: 'success' })
-  } else {
-    toast.add({
-      title: t('settings.secrets.partiallyDeleted', { done: targets.length - failures, total: targets.length }),
-      description: t('settings.authProviders.deleteFailures', { n: failures }),
-      color: 'warning'
-    })
-  }
-}
 // Header: Refresh (PageHeader's "⋮" on a phone) and the bulk actions
 // while rows are selected.
 const headerActions = computed<HeaderAction[]>(() => [
@@ -345,7 +310,7 @@ const headerActions = computed<HeaderAction[]>(() => [
 ])
 const headerSelection = computed<HeaderSelection>(() => ({
   count: selectedProviders.value.length,
-  actions: [{ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDrop(selectedProviders.value) }],
+  actions: [{ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => drop.start(selectedProviders.value) }],
   onClear: () => {
     rowSelection.value = {}
   }
@@ -720,7 +685,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
             color="error"
             variant="outline"
             class="self-start"
-            @click="openDrop([{ id: draft.id!, name: draft.name }])"
+            @click="drop.start([{ id: draft.id!, name: draft.name }])"
           />
         </div>
       </template>
@@ -743,48 +708,13 @@ const headerSelection = computed<HeaderSelection>(() => ({
     </UModal>
 
     <!-- Delete -->
-    <UModal
-      v-model:open="isDeleteOpen"
-      :title="deleteModalTitle"
-    >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-muted">
-            {{ t('settings.authProviders.deleteBody') }}
-          </p>
-          <ul class="flex flex-col gap-1 max-h-48 overflow-y-auto border border-default rounded-lg p-2">
-            <li
-              v-for="p in dropTargets"
-              :key="p.id"
-              class="text-sm truncate"
-            >
-              {{ p.name }}
-            </li>
-          </ul>
-          <div class="flex items-center justify-between gap-2 border-t border-default pt-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="dropConfirmed" />
-              <span class="text-sm">{{ t('common.confirm') }}</span>
-            </label>
-            <div class="flex gap-2">
-              <UButton
-                :label="t('common.cancel')"
-                color="neutral"
-                variant="ghost"
-                :disabled="deleting"
-                @click="dropTargets = []"
-              />
-              <UButton
-                :label="t('common.delete')"
-                color="error"
-                :disabled="!dropConfirmed"
-                :loading="deleting"
-                @click="confirmDrop"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
+    <DeleteConfirmModal
+      v-model:open="drop.open.value"
+      :title="t('settings.authProviders.deleteTitle', drop.targets.value.length)"
+      :description="t('settings.authProviders.deleteBody')"
+      :items="drop.targets.value.map(p => p.name)"
+      :loading="drop.deleting.value"
+      @confirm="drop.confirm"
+    />
   </PageShell>
 </template>

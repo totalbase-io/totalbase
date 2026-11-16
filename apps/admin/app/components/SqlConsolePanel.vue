@@ -122,7 +122,7 @@ function loadFromHistory(entry: SqlHistoryEntry) {
 }
 
 async function copyHistoryEntry(entry: SqlHistoryEntry) {
-  await navigator.clipboard.writeText(entry.sqlText)
+  await copyText(entry.sqlText)
   toast.add({ title: t('database.sqlConsolePanel.copiedToClipboard') })
 }
 
@@ -131,7 +131,7 @@ async function copyHistoryEntry(entry: SqlHistoryEntry) {
 // itself only loads it without touching the clipboard or the editor's
 // actual keyboard focus.
 async function useInEditor(entry: SqlHistoryEntry) {
-  await navigator.clipboard.writeText(entry.sqlText)
+  await copyText(entry.sqlText)
   sql.value = entry.sqlText
   activeView.value = 'editor'
   await nextTick()
@@ -308,16 +308,6 @@ async function runExplain() {
   }
 }
 
-function downloadBlob(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const sqlFileInput = ref<HTMLInputElement | null>(null)
 
 function openSqlFile() {
@@ -335,24 +325,18 @@ async function onSqlFileSelected(event: Event) {
 }
 
 function saveSqlFile() {
-  downloadBlob(sql.value, 'query.sql', 'text/plain')
-}
-
-function csvCell(value: unknown): string {
-  const text = value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  downloadText(sql.value, 'query.sql', 'text/plain')
 }
 
 function exportCsv() {
   if (!result.value || result.value.rows.length === 0) return
-  const header = result.value.columns.map(c => csvCell(c.name)).join(',')
-  const lines = result.value.rows.map(row => result.value!.columns.map(c => csvCell(row[c.name])).join(','))
-  downloadBlob([header, ...lines].join('\n'), 'results.csv', 'text/csv')
+  const { columns, rows } = result.value
+  downloadCsv([columns.map(c => c.name), ...rows.map(row => columns.map(c => row[c.name]))], 'results.csv')
 }
 
 function exportJson() {
   if (!result.value || result.value.rows.length === 0) return
-  downloadBlob(JSON.stringify(result.value.rows, null, 2), 'results.json', 'application/json')
+  downloadText(JSON.stringify(result.value.rows, null, 2), 'results.json', 'application/json')
 }
 
 // `active` stands in for the drawer's `open` - true the whole time for a

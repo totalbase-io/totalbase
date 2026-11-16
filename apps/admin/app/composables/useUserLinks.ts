@@ -26,7 +26,7 @@ export function useUserLinks() {
   async function copyLink(userId: string, kind: UserLinkKind) {
     try {
       const { data } = await api.post<{ actionUrl: string }>(`/users/${userId}/${kind}`, { data: { delivery: 'link' } })
-      await navigator.clipboard.writeText(data.actionUrl)
+      await copyText(data.actionUrl)
       toast.add({
         title: t(`users.userLinks.${LINK_KEY[kind]}.copied`),
         description: t('users.userLinks.copiedDescription'),

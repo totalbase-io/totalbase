@@ -11,17 +11,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --no-file-parallelism --passWithNoTests"
+    "test": "vitest run --dir src --no-file-parallelism --passWithNoTests"
   },
   "dependencies": {
     "@totalbase/database": "workspace:*",
     "@totalbase/errors": "workspace:*",
     "@totalbase/settings": "workspace:*",
     "@totalbase/shared": "workspace:*",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@totalbase/migrations": "workspace:*",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   }
 }

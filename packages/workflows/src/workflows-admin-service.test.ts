@@ -55,12 +55,15 @@ describe("WorkflowsAdminService versioning (integration, Foundations.md §13)", 
     let wf = await workflows.get(id);
     await workflows.saveDraft(id, wf.revision, definitionWith("one"));
     wf = await workflows.get(id);
-    wf = await workflows.publish(id, wf.revision, accept);
+    const first = await workflows.publish(id, wf.revision, accept);
+    expect([first.version, first.created]).toEqual([1, true]);
+    wf = await workflows.get(id);
     expect(wf.liveVersion).toBe(1);
     expect(wf.hasUnpublishedChanges).toBe(false);
     expect(markerOf((await workflows.getPublished(id)).definition)).toBe("one");
     const again = await workflows.publish(id, wf.revision, () => { throw new Error("readiness must not run for a no-op publish"); });
-    expect([again.liveVersion, again.revision, again.hasUnpublishedChanges]).toEqual([1, wf.revision, false]);
+    expect([again.version, again.id, again.created]).toEqual([1, first.id, false]);
+    expect((await workflows.get(id)).revision).toBe(wf.revision);
     expect(await workflows.listVersions(id)).toHaveLength(1);
     // A stale revision is still a conflict, no-op or not.
     await expectCode(workflows.publish(id, "0", accept), "WORKFLOW_REVISION_CONFLICT");
@@ -88,8 +91,7 @@ describe("WorkflowsAdminService versioning (integration, Foundations.md §13)", 
     wf = await workflows.get(id);
     expect(wf.hasUnpublishedChanges).toBe(true);
     expect(markerOf((await workflows.getPublished(id)).definition)).toBe("one");
-    wf = await workflows.publish(id, wf.revision, accept);
-    expect(wf.liveVersion).toBe(2);
+    expect((await workflows.publish(id, wf.revision, accept)).version).toBe(2);
     expect(markerOf((await workflows.getVersion(id, 1)).definition)).toBe("one");
   });
 
@@ -110,7 +112,8 @@ describe("WorkflowsAdminService versioning (integration, Foundations.md §13)", 
     expect(markerOf((await workflows.getPublished(id)).definition)).not.toBe("one");
     await expectCode(workflows.restore(id, "0", 1), "WORKFLOW_REVISION_CONFLICT");
 
-    wf = await workflows.publish(id, wf.revision, accept);
+    expect((await workflows.publish(id, wf.revision, accept)).version).toBe(3);
+    wf = await workflows.get(id);
     expect(wf.liveVersion).toBe(3);
     expect(wf.hasUnpublishedChanges).toBe(false);
     const published = await workflows.getPublished(id);

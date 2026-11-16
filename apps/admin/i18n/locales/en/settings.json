@@ -337,7 +337,6 @@
       "replace": "Replace",
       "deleteTitle": "Delete secret? | Delete {n} secrets?",
       "deleted": "Secret deleted | {n} secrets deleted",
-      "partiallyDeleted": "{done} of {total} deleted",
       "deleteFailures": "{n} failed - still referenced elsewhere, most likely.",
       "refresh": "Refresh secrets",
       "searchByKey": "Search by key...",
@@ -509,6 +508,10 @@
         "graphql": {
           "label": "GraphQL",
           "description": "The GraphQL API: the Data API's tables at /api/graphql, each caller seeing only what their roles allow."
+        },
+        "mail": {
+          "label": "System emails",
+          "description": "What every email TotalBase sends itself shares. Each email's own text is in Templates."
         }
       },
       "sections": {
@@ -548,7 +551,8 @@
         "color": "Color",
         "schedule": "Schedule",
         "destination": "Destination",
-        "content": "Content"
+        "content": "Content",
+        "systemEmails": "System emails"
       },
       "units": {
         "bytes": "bytes",
@@ -718,7 +722,7 @@
         },
         "files__transforms__cache_ttl_seconds": {
           "label": "Transform cache lifetime",
-          "description": "How long browsers may cache a transformed image, and how long its stored copy is kept before the hourly cleanup removes it (the next request regenerates it)."
+          "description": "How long a transformed image's stored copy is kept before the hourly cleanup removes it (the next request regenerates it). Browsers revalidate it against the file's checksum."
         },
         "files__transforms__max_operations": {
           "label": "Maximum operations per transform",
@@ -752,6 +756,10 @@
           "label": "Default role for self-registration",
           "description": "Given to every account created through self-registration. None: a new account has no roles until someone assigns one."
         },
+        "auth__registration_columns": {
+          "label": "Registration columns",
+          "description": "The columns your project added to the users table that a self-registration may set through `extra` (a company name, a country, a time zone) - written in the account's own INSERT, where a trigger that creates the tenant reads them. Never a TotalBase column or a Password column."
+        },
         "auth__email_verification_required": {
           "label": "Require email verification",
           "description": "A newly registered account can't sign in until its email address is verified."
@@ -759,6 +767,10 @@
         "auth__password_min_length": {
           "label": "Minimum password length",
           "description": "The shortest password TotalBase will accept when a user sets or changes theirs."
+        },
+        "auth__password_max_age_days": {
+          "label": "Maximum password age",
+          "description": "A password older than this many days must be changed at its owner's next sign-in, before a session is given. Current guidance (NIST SP 800-63B, OWASP ASVS) advises against periodic changes - turn it on only when a policy you answer to asks for it. 0 turns it off."
         },
         "auth__session_ttl_hours": {
           "label": "Session lifetime",
@@ -906,7 +918,7 @@
         },
         "s3__endpoint": {
           "label": "Endpoint",
-          "description": "The service's base URL, e.g. https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com or http://minio:9000."
+          "description": "The service's base URL, e.g. https://s3.us-east-1.amazonaws.com, https://{'<'}account{'>'}.r2.cloudflarestorage.com or http://minio:9000."
         },
         "s3__region": {
           "label": "Region",
@@ -940,6 +952,10 @@
           "label": "Requests per minute",
           "description": "The most requests one IP address can make in a one-minute window before being throttled."
         },
+        "security__rate_limit_per_user_per_minute": {
+          "label": "Requests per minute per user",
+          "description": "The most requests one signed-in session or personal token can make in a minute, counted on the credential rather than the address - so people behind one office connection, or an application whose server sends every request from one address, each get their own limit. A request with no credential, or a credential that is refused, counts against its address."
+        },
         "security__rate_limit_sign_in_per_minute": {
           "label": "Failed sign-ins per minute",
           "description": "The most failed sign-in attempts from one IP address in a minute - a correct sign-in doesn't count. Each account also locks after its own failed attempts, in Access."
@@ -955,6 +971,10 @@
         "security__trust_proxy": {
           "label": "Trust reverse proxy headers",
           "description": "Reads the caller's real IP from X-Forwarded-For - only enable this behind a proxy you control. Applies after a restart."
+        },
+        "security__trusted_proxies": {
+          "label": "Trusted proxies",
+          "description": "Addresses or CIDR ranges (10.0.0.5, 172.16.0.0/12) whose X-Forwarded-For is believed - your reverse proxy, or your application's server in front of the Data API. When set, only these are trusted, whatever Trust reverse proxy headers says. Applies after a restart."
         },
         "auth__access_review_interval_days": {
           "label": "Access review interval",
@@ -1055,6 +1075,10 @@
         "catalog__track_comments": {
           "label": "Sync descriptions with COMMENT ON",
           "description": "Fills a resource's empty description from PostgreSQL's COMMENT ON, and an empty comment from the description, on every sync."
+        },
+        "catalog__excluded_schemas": {
+          "label": "Excluded schemas",
+          "description": "Schemas the catalog leaves out altogether - an extension's working schema such as _timescaledb_internal: their tables and functions are no resources, their changes run no sync, and a resource registered there before leaves on the next sync."
         },
         "openapi__enabled": {
           "label": "Publish the OpenAPI document",
@@ -1471,8 +1495,7 @@
           "options": {
             "SHARED": "Shared",
             "STANDALONE": "Standalone"
-          }
-,
+          },
           "optionDescriptions": {
             "SHARED": "The App beside the rail, as administrators see it.",
             "STANDALONE": "No rail: the menu is the only sidebar, with your logo, their account and the modules you place."
@@ -1549,6 +1572,10 @@
         "graphql__max_depth": {
           "label": "Selection depth",
           "description": "How deep a request's selection may nest, introspection included. How far relations go is api.max_relation_depth."
+        },
+        "mail__footer": {
+          "label": "Footer",
+          "description": "The line every system email ends with. {'{'}{'{'}instance.name{'}'}{'}'} and {'{'}{'{'}instance.public_url{'}'}{'}'} are filled in by TotalBase. Leave it empty to send them without a footer - when your users know your application, not this address."
         }
       }
     },

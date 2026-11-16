@@ -23,8 +23,8 @@ describe("UPDATE audit rows carry old and new values", () => {
 
   const ITEMS = "update_audit_test_items";
 
-  function request(method: "POST" | "PATCH", url: string, payload: unknown) {
-    return app.inject({ method, url, headers: { authorization: `Bearer ${apiKeyPlain}` }, payload: payload as object });
+  function request(method: "POST" | "PATCH" | "DELETE", url: string, payload?: unknown) {
+    return app.inject({ method, url, headers: { authorization: `Bearer ${apiKeyPlain}` }, ...(payload !== undefined && { payload: payload as object }) });
   }
 
   async function insertItem(name: string, price: number): Promise<number> {
@@ -55,7 +55,7 @@ describe("UPDATE audit rows carry old and new values", () => {
     const { rows } = await database.query<{ id: string }>(
       `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
        VALUES (to_regclass($1)::oid, 'public', $2, 'TABLE', 'ACTIVE', $3) RETURNING id`,
-      [`public.${ITEMS}`, ITEMS, ["GET", "POST", "PATCH"]],
+      [`public.${ITEMS}`, ITEMS, ["GET", "POST", "PATCH", "DELETE"]],
     );
     itemsId = rows[0]!.id;
 
@@ -64,6 +64,8 @@ describe("UPDATE audit rows carry old and new values", () => {
     const allow = (...fields: string[]) => fields.map((field) => ({ field, effect: "ALLOW" as const }));
     await context.permissions.set(roleId, itemsId, "READ", { effect: "ALLOW", fields: allow("id", "name", "price") });
     await context.permissions.set(roleId, itemsId, "UPDATE", { effect: "ALLOW", fields: allow("name", "price", "secret") });
+    await context.permissions.set(roleId, itemsId, "CREATE", { effect: "ALLOW", fields: allow("name", "price", "secret") });
+    await context.permissions.set(roleId, itemsId, "DELETE", { effect: "ALLOW" });
     await context.capabilityPermissions.setGrant(roleId, "TRANSACTIONS", "ALLOW");
 
     ({ plainKey: apiKeyPlain, userId: apiKeyUserId, tokenId: apiKeyId } = await createTestApiToken(context, {
@@ -166,8 +168,10 @@ describe("UPDATE audit rows carry old and new values", () => {
     expect(res.statusCode).toBe(200);
     const logs = await updateLogs(id);
     expect(logs).toHaveLength(1);
-    expect(logs[0]!.changes).toEqual({ name: { old: "excl", new: "excl2" } });
+    // The entry says the excluded column changed - never what it was or is.
+    expect(logs[0]!.changes).toEqual({ name: { old: "excl", new: "excl2" }, secret: { excluded: true } });
     expect(logs[0]!.payload).toEqual({ id, name: "excl2", price: "1" });
+    expect(JSON.stringify(logs[0])).not.toMatch(/rotated|TOP-SECRET/);
     // A workflow still gets the whole row, before and after, and exactly what changed.
     const { rows: outbox } = await database.query<{ payload: Record<string, unknown>; old_payload: Record<string, unknown>; changed_columns: string[] }>(
       `SELECT payload, old_payload, changed_columns FROM totalbase.outbox WHERE resource = $1 AND event = 'UPDATE' AND payload ->> 'id' = $2`,
@@ -176,6 +180,58 @@ describe("UPDATE audit rows carry old and new values", () => {
     expect(outbox[0]!.payload).toMatchObject({ name: "excl2", secret: "rotated" });
     expect(outbox[0]!.old_payload).toEqual({ id, name: "excl", price: "1", secret: "TOP-SECRET" });
     expect([...outbox[0]!.changed_columns].sort()).toEqual(["name", "secret"]);
+  });
+
+  // Event exclusions (Security.md §11.4): a column kept out of the audit log may be kept out of the event too.
+  it("keeps an event-excluded column out of the outbox event - payload and old payload - on every action, the key and the changed columns kept", async () => {
+    await context.auditExclusions.set(itemsId, ["secret", "id"], ["secret", "id"]);
+    try {
+      const created = await request("POST", `/api/public/table/${ITEMS}`, { data: { name: "evt", price: 1, secret: "first" } });
+      expect(created.statusCode, created.body).toBe(201);
+      const id = created.json().data.id as number;
+      const updated = await request("PATCH", `/api/public/table/${ITEMS}/${id}`, { data: { secret: "second" } });
+      expect(updated.statusCode, updated.body).toBe(200);
+      // In bulk too.
+      const bulk = await request("PATCH", `/api/public/table/${ITEMS}?bulk=true`, { data: [{ id, secret: "third", name: "evt2" }] });
+      expect(bulk.statusCode, bulk.body).toBe(200);
+      const deleted = await request("DELETE", `/api/public/table/${ITEMS}/${id}`);
+      expect(deleted.statusCode, deleted.body).toBe(200);
+
+      const { rows: events } = await database.query<{ event: string; payload: Record<string, unknown>; old_payload: Record<string, unknown> | null; changed_columns: string[] | null }>(
+        `SELECT event, payload, old_payload, changed_columns FROM totalbase.outbox WHERE resource = $1 AND payload ->> 'id' = $2 ORDER BY created_at, id`,
+        [itemsId, String(id)],
+      );
+      expect(events.map((event) => event.event)).toEqual(["CREATE", "UPDATE", "UPDATE", "DELETE"]);
+      for (const event of events) {
+        expect(event.payload).not.toHaveProperty("secret");
+        // The primary key stays, excluded or not: it is how a subscriber finds the row.
+        expect(event.payload.id).toBe(id);
+        if (event.old_payload) expect(event.old_payload).not.toHaveProperty("secret");
+      }
+      expect(JSON.stringify(events)).not.toMatch(/first|second|third/);
+      expect(events[1]!.changed_columns).toEqual(["secret"]);
+      expect([...events[2]!.changed_columns!].sort()).toEqual(["name", "secret"]);
+      expect(events[2]!.old_payload).toEqual({ id, name: "evt", price: "1" });
+
+      const { rows: logs } = await database.query<{ payload: unknown; changes: unknown }>(
+        `SELECT payload, changes FROM totalbase.logs WHERE resource = $1 AND payload ->> 'id' = $2`,
+        [itemsId, String(id)],
+      );
+      expect(logs.length).toBe(4);
+      expect(JSON.stringify(logs)).not.toMatch(/first|second|third/);
+    } finally {
+      await context.auditExclusions.set(itemsId, []);
+    }
+  });
+
+  it("an event exclusion is an audit exclusion first", async () => {
+    await expect(context.auditExclusions.set(itemsId, ["name"], ["secret"])).rejects.toMatchObject({ code: "INVALID_QUERY" });
+    await context.auditExclusions.set(itemsId, ["secret", "name"], ["secret"]);
+    expect(await context.auditExclusions.describe(itemsId)).toEqual({ excludedFields: ["name", "secret"], eventExcludedFields: ["secret"] });
+    // Setting the audit list alone clears the events' one.
+    await context.auditExclusions.set(itemsId, ["secret"]);
+    expect(await context.auditExclusions.describe(itemsId)).toEqual({ excludedFields: ["secret"], eventExcludedFields: [] });
+    await context.auditExclusions.set(itemsId, []);
   });
 
   it("records no changes when an update changes nothing", async () => {

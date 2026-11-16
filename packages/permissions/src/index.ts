@@ -6,3 +6,4 @@ export * from "./permissions-service.js";
 export * from "./workflow-permission-service.js";
 export * from "./admin-roles.js";
 export * from "./role-scope.js";
+export * from "./object-access.js";

@@ -66,6 +66,9 @@ const resent = ref(false)
 // The password was right and a second factor is due (MFA_REQUIRED / MFA_ENROLLMENT_REQUIRED, Security.md
 // §2.17): the card shows that step instead of the form.
 const mfa = ref<{ challenge: string, purpose: 'VERIFY' | 'ENROLL' } | null>(null)
+// The sign-in was right and the password must be changed first (PASSWORD_CHANGE_REQUIRED, Security.md §2.20):
+// after the code of an account with a second factor, before setting up one the instance requires.
+const renew = ref<{ challenge: string, reason: 'EXPIRED' | 'REQUESTED' } | null>(null)
 
 async function resendVerification() {
   if (!unverifiedEmail.value) return
@@ -114,6 +117,14 @@ async function submit() {
       const challenge = error.errors[0]?.meta?.challenge
       if (typeof challenge === 'string') {
         mfa.value = { challenge, purpose: error.code === 'MFA_REQUIRED' ? 'VERIFY' : 'ENROLL' }
+        password.value = ''
+        return
+      }
+    }
+    if (error instanceof AdminApiError && error.code === 'PASSWORD_CHANGE_REQUIRED') {
+      const meta = error.errors[0]?.meta
+      if (typeof meta?.challenge === 'string') {
+        renew.value = { challenge: meta.challenge, reason: meta.reason === 'REQUESTED' ? 'REQUESTED' : 'EXPIRED' }
         password.value = ''
         return
       }
@@ -347,11 +358,20 @@ async function submit() {
             </div>
           </template>
 
+          <PasswordRenewStep
+            v-if="renew"
+            :challenge="renew.challenge"
+            :reason="renew.reason"
+            @done="signedIn"
+            @mfa="(step) => { renew = null; mfa = step }"
+            @cancel="renew = null"
+          />
           <MfaSignInStep
-            v-if="mfa"
+            v-else-if="mfa"
             :challenge="mfa.challenge"
             :purpose="mfa.purpose"
             @done="signedIn"
+            @password="(step) => { mfa = null; renew = step }"
             @cancel="mfa = null"
           />
           <form
@@ -417,7 +437,7 @@ async function submit() {
             />
           </form>
           <SignInProviders
-            v-if="!mfa"
+            v-if="!mfa && !renew"
             :providers="instance.login.providers"
             class="mt-4"
           />

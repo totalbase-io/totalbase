@@ -9,8 +9,17 @@ const PNG = Buffer.from(
   "base64",
 );
 
-/** A transformed image's Cache-Control follows files.transforms.cache_ttl_seconds (Administration.md §10.8). */
-describe("image transformation Cache-Control", () => {
+// Another image: a 1x1 PNG.
+const PNG_EDITED = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/**
+ * A file's content - original or rendition - is revalidated against its checksum (Administration.md §10.8): the URL
+ * doesn't change when the content is replaced, so a cached copy must never outlive it.
+ */
+describe("file content revalidation", () => {
   let app: FastifyInstance;
   let context: AppContext;
   let fileId: string;
@@ -26,17 +35,32 @@ describe("image transformation Cache-Control", () => {
   });
 
   afterAll(async () => {
-    await context.settings.reset("files.transforms.cache_ttl_seconds");
     await context.filesAdmin.remove(fileId).catch(() => undefined);
     await app.close();
   });
 
-  it("answers the configured lifetime, and a changed one on the next request", async () => {
-    const get = () => app.inject({ method: "GET", url: `/api/totalbase/table/files/${fileId}?width=1` });
+  it.each([["a rendition", "?width=1"], ["the original", ""]])("answers %s with its checksum, 304 while unchanged, and the new content once replaced", async (_label, query) => {
+    const get = (ifNoneMatch?: string) => app.inject({
+      method: "GET",
+      url: `/api/totalbase/table/files/${fileId}${query}`,
+      headers: ifNoneMatch ? { "if-none-match": ifNoneMatch } : {},
+    });
     const first = await get();
     expect(first.statusCode).toBe(200);
-    expect(first.headers["cache-control"]).toBe("private, max-age=2592000");
-    await context.settings.set("files.transforms.cache_ttl_seconds", 600);
-    expect((await get()).headers["cache-control"]).toBe("private, max-age=600");
+    expect(first.headers["cache-control"]).toBe("private, no-cache");
+    const etag = first.headers.etag as string;
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    expect((await get(etag)).statusCode).toBe(304);
+    expect((await get(`W/${etag}`)).statusCode).toBe(304);
+
+    await context.filesAdmin.updateContent(fileId, PNG_EDITED);
+    try {
+      const replaced = await get(etag);
+      expect(replaced.statusCode).toBe(200);
+      expect(replaced.headers.etag).not.toBe(etag);
+    } finally {
+      await context.filesAdmin.updateContent(fileId, PNG);
+    }
   });
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { deleteVersionsBefore, publishVersion, type Database, type VersionsTable } from "@totalbase/database";
+import { deleteVersionsBefore, publishVersion, type Database, type Published, type VersionsTable } from "@totalbase/database";
 import { remapUniqueViolation, TotalBaseError } from "@totalbase/errors";
 import { slugify, validateDescription, validateName, validateSlug } from "@totalbase/shared";
 import { validateDefinitionLimits } from "./execution/definition-limits.js";
@@ -329,25 +329,26 @@ export class WorkflowsAdminService {
   }
 
   /**
-   * Publishing (Workflows.md §10.2): a draft equal to the live
-   * version is a no-op answering the workflow as it is (like DataViews and
-   * Dashboards, Foundations.md §13.4). Otherwise it re-checks the graph
-   * rules, then execution readiness (the injected `validate`: which
-   * operation types have a runtime handler), and snapshots the draft as the
-   * next version. Does not enable the workflow; that's a separate PATCH.
+   * Publishing (Workflows.md §10.2): a draft equal to the live version is a no-op answering that version (like
+   * DataViews and Dashboards, Foundations.md §13.4). Otherwise it re-checks the graph rules, then execution
+   * readiness (the injected `validate`: which operation types have a runtime handler), and snapshots the draft as
+   * the next version, the workflow's revision moving on. Does not enable the workflow; that's a separate PATCH.
    */
-  async publish(id: string, revision: string, validate: (definition: Record<string, unknown>) => void | Promise<void>, userId: string | null = null, note: string | null = null): Promise<WorkflowRecord> {
+  async publish(id: string, revision: string, validate: (definition: Record<string, unknown>) => void | Promise<void>, userId: string | null = null, note: string | null = null): Promise<Published<WorkflowVersionRecord>> {
     const { workflow, definition } = await this.getDraft(id);
     if (workflow.revision !== revision) throw new TotalBaseError("WORKFLOW_REVISION_CONFLICT", "Workflow was changed by another request.");
-    if (!workflow.hasUnpublishedChanges) return workflow;
+    if (!workflow.hasUnpublishedChanges) {
+      const live = (await this.listVersions(id))[0];
+      if (live) return { ...live, created: false };
+    }
     validateDefinition(definition);
     await this.assertDataEventStart(definition);
     await validate(definition);
     // `@totalbase/database`'s `publishVersion` locks the workflow's row, then snapshots the validated definition
     // (MAX + 1, `restored_from_version` when it equals an older version); the revision bump inside the snapshot
     // callback is the editor's optimistic-concurrency check, under that same lock.
-    await this.database.transaction((client) =>
-      publishVersion(client, WORKFLOW_VERSIONS, id, userId, async () => {
+    const { row, created } = await this.database.transaction((client) =>
+      publishVersion<VersionRow>(client, WORKFLOW_VERSIONS, id, userId, async () => {
         const { rowCount } = await client.query(
           `UPDATE totalbase.workflows SET revision = revision + 1, updated_at = now() WHERE id = $1 AND revision = $2`,
           [id, revision],
@@ -357,7 +358,7 @@ export class WorkflowsAdminService {
       }, note),
     );
     this.forgetDataEventStartCache();
-    return this.get(id);
+    return { ...toVersionRecord(row), created };
   }
 
   /** Newest first, summary only. `id` is what a run references (Logs filter by it). */

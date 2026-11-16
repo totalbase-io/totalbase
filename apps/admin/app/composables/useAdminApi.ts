@@ -17,10 +17,11 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
   const session = useSession()
   const { retrying } = useReauthentication()
 
-  async function request<T>(method: ApiMethod, path: string, options: { body?: unknown, query?: Record<string, unknown> } = {}): Promise<ApiResult<T>> {
+  /** One call - `headers` beside the session's own (an Idempotency-Key, an If-Match). */
+  async function request<T>(method: ApiMethod, path: string, options: { body?: unknown, query?: Record<string, unknown>, headers?: Record<string, string> } = {}): Promise<ApiResult<T>> {
     try {
       // A sensitive action asks to confirm the identity first, then goes again (Security.md §2.19).
-      return await retrying(() => apiRequest<T>(`${prefix}${path}`, method, { ...options, headers: apiHeaders() }))
+      return await retrying(() => apiRequest<T>(`${prefix}${path}`, method, { body: options.body, query: options.query, headers: { ...apiHeaders(), ...options.headers } }))
     } catch (error) {
       throw await afterError(error as AdminApiError)
     }
@@ -50,7 +51,8 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
     del: <T>(path: string, query?: Record<string, unknown>) => request<T>('DELETE', path, { query }),
-    postBlob
+    postBlob,
+    request
   }
 }
 

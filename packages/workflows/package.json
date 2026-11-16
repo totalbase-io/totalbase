@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --no-file-parallelism --passWithNoTests"
+    "test": "vitest run --dir src --no-file-parallelism --passWithNoTests"
   },
   "dependencies": {
     "@totalbase/auth": "workspace:*",
@@ -28,13 +28,13 @@
     "@totalbase/sql-console": "workspace:*",
     "@totalbase/tb-catalog": "workspace:*",
     "@totalbase/templates": "workspace:*",
-    "fast-xml-parser": "^4.5.7",
-    "isolated-vm": "^7.0.1",
-    "node-forge": "^1.4.0"
+    "fast-xml-parser": "^5.12.0",
+    "isolated-vm": "^7.0.2",
+    "node-forge": "^1.4.3"
   },
   "devDependencies": {
     "@totalbase/migrations": "workspace:*",
     "@types/node-forge": "^1.3.14",
-    "vitest": "^2.1.8"
+    "vitest": "^5.1.0"
   }
 }

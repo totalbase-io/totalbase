@@ -136,7 +136,9 @@ const webhook = ref({
   waitSeconds: 30,
   timeoutAction: 'CONTINUE' as 'CONTINUE' | 'CANCEL',
   access: 'PUBLIC' as 'AUTHENTICATED' | 'PUBLIC',
-  executeAs: null as string | null
+  executeAs: null as string | null,
+  /** Allowed addresses (Workflows.md §6.5): empty is anywhere. */
+  allowedIps: [] as string[]
 })
 
 // Seeds every field this component controls directly. A saved
@@ -174,7 +176,8 @@ function parseInitial(config: Record<string, unknown> | undefined) {
       waitSeconds: (config.wait_seconds as number | undefined) ?? 30,
       timeoutAction: (config.timeout_action as 'CONTINUE' | 'CANCEL' | undefined) ?? 'CONTINUE',
       access: (config.access as 'AUTHENTICATED' | 'PUBLIC' | undefined) ?? 'PUBLIC',
-      executeAs: (config.execute_as as string | null | undefined) ?? null
+      executeAs: (config.execute_as as string | null | undefined) ?? null,
+      allowedIps: Array.isArray(config.allowed_ips) ? [...config.allowed_ips as string[]] : []
     }
   }
 }
@@ -222,7 +225,8 @@ function buildConfiguration(): Record<string, unknown> {
       response_mode: webhook.value.responseMode,
       ...(webhook.value.responseMode === 'SYNC' ? { wait_seconds: webhook.value.waitSeconds, timeout_action: webhook.value.timeoutAction } : {}),
       access: webhook.value.access,
-      execute_as: webhook.value.executeAs
+      execute_as: webhook.value.executeAs,
+      ...(webhook.value.allowedIps.length > 0 ? { allowed_ips: webhook.value.allowedIps } : {})
     }
   }
   if (kind.value === 'MANUAL') {
@@ -547,6 +551,19 @@ defineExpose({ buildConfiguration, valid })
               { label: t('workflows.triggerFields.public'), value: 'PUBLIC' },
               { label: t('workflows.triggerFields.authenticated'), value: 'AUTHENTICATED' }
             ]"
+          />
+        </UFormField>
+
+        <UFormField
+          :label="t('workflows.triggerFields.allowedIps')"
+          :description="t('workflows.triggerFields.allowedIpsDescription')"
+        >
+          <UInputTags
+            v-model="webhook.allowedIps"
+            add-on-blur
+            add-on-paste
+            :aria-label="t('workflows.triggerFields.allowedIps')"
+            class="w-full font-mono"
           />
         </UFormField>
 

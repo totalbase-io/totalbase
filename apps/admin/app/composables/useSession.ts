@@ -28,6 +28,8 @@ export interface AdminAccount {
   modules?: DelegatedModule[]
   /** How the App is framed for a non-administrator (app.shell, app.menu_header - Admin_UI.md §3.1.1); an administrator keeps the rail whatever it says. */
   app?: { shell: AppShell, menuHeader: MenuHeader }
+  /** Whether a file's uploader may make it Public (files.uploader_can_publish - Administration.md §10.6). */
+  files?: { uploaderCanPublish: boolean }
   /** Per delegated module, the actions the user may take on its table (READ/CREATE/UPDATE/DELETE). */
   moduleActions?: Partial<Record<DelegatedModule | 'folders' | 'assignments', Array<'READ' | 'CREATE' | 'UPDATE' | 'DELETE'>>>
   /** A non-administrator's roles they may assign or remove - created by them, or managed by one of their roles. */

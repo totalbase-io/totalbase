@@ -31,3 +31,12 @@ describe("a pivot's aggregation (D17)", () => {
     expect(pivotSql("SELECT * FROM t", { ...spec, sortBy: { value: "nope", direction: "DESC" } }, 10)).not.toContain("OVER");
   });
 });
+
+// Security regression: a pivot's aggregate went into its SQL as the stored text - any expression an edited definition held.
+describe("pivotSql's aggregate", () => {
+  it("is one of the five names, never other text", () => {
+    const spec = (aggregate: string) => ({ rows: ["a"], columns: [], values: [{ column: "v", aggregate }] }) as never;
+    expect(() => pivotSql("SELECT 1", spec("sum"), 10)).not.toThrow();
+    expect(() => pivotSql("SELECT 1", spec("pg_sleep(10)::int + sum"), 10)).toThrow(/not a pivot aggregate/);
+  });
+});

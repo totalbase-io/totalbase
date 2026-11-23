@@ -2,9 +2,10 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DASHBOARD_WIDGET_CATALOG, DASHBOARD_WIDGET_TYPES, dashboardValueKind, isPresentationWidget, type DashboardWidgetType } from "@totalbase/tb-catalog";
 import { AdminApiError, type AdminClient } from "./admin-client.js";
-import { ADDITIVE, DESTRUCTIVE, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, publishOutcome } from "./tool-helpers.js";
+import { ADDITIVE, DESTRUCTIVE, deleteEach, deletedOutput, deleteTargets, IDEMPOTENT, jsonObject, listOf, NAME_RULE, passthrough, publishOutput, READ_ONLY, result, roleId, publishOutcome } from "./tool-helpers.js";
 import { dashboardWidgetSection } from "./guides-text.js";
-import { FULL_POLICY, refuseDestructive, type McpPolicy } from "./policy.js";
+import { FULL_POLICY, refuseDestructive, refuseRemovedRoles, type McpPolicy } from "./policy.js";
+import { heldRoles } from "./tools-users.js";
 
 /**
  * Dashboards (Dashboards.md, Administration.md
@@ -110,6 +111,27 @@ const gridSchema = z
   .object({ x: z.number().int().min(0).max(11), y: z.number().int().min(0), w: z.number().int().min(1).max(12), h: z.number().int().min(1) })
   .describe("Position on the 12-column canvas: x 0-11, w 1-12 (6 = half, 4 = a third, 3 = a quarter), y and h in rows");
 
+/** A widget as widgetSummary answers it. */
+const widgetOutput = z.object({
+  id: z.string(),
+  type: z.string(),
+  label: z.string().nullable(),
+  grid: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }),
+  tab: z.string().optional(),
+  query: z.string().optional(),
+  config: jsonObject().optional(),
+});
+/** A query's run as sample answers it: its columns and first rows. */
+const sampleOutput = z.object({
+  columns: z.array(z.looseObject({ name: z.string(), type: z.string(), kind: z.string().nullable().optional(), lossy: z.boolean().optional(), origin: z.string().optional().describe("schema.table.column") })),
+  rows: z.array(jsonObject()),
+  rowCount: z.number(),
+  truncated: z.boolean().optional(),
+  totals: jsonObject().optional(),
+  marks: jsonObject().optional(),
+  roles: jsonObject().optional(),
+});
+
 export function registerDashboardTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
   server.registerTool(
     "describe_dashboard_widgets",
@@ -117,9 +139,13 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "Describe dashboard widgets",
       description: "Each widget type's contract: what its query must return (its roles, by column kind), its props with their defaults, and an example - read the types a dashboard uses before save_widget. totalbase://guide/dashboards has the rules every widget shares.",
       inputSchema: { types: z.array(z.enum(DASHBOARD_WIDGET_TYPES as unknown as [DashboardWidgetType, ...DashboardWidgetType[]])).min(1) },
+      outputSchema: { text: z.string().describe("Each type's section of the widgets reference, as Markdown") },
       annotations: READ_ONLY,
     },
-    async ({ types }) => ({ content: [{ type: "text" as const, text: [...new Set(types)].map(dashboardWidgetSection).join("\n\n") }] }),
+    async ({ types }) => {
+      const text = [...new Set(types)].map(dashboardWidgetSection).join("\n\n");
+      return { content: [{ type: "text" as const, text }], structuredContent: { text } };
+    },
   );
 
   server.registerTool(
@@ -128,6 +154,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "List dashboards",
       description: "Every dashboard: id, name, slug, its live version (null: never published) and whether its draft has unpublished changes.",
       inputSchema: {},
+      outputSchema: listOf(z.object({ id: z.string(), name: z.string(), slug: z.string(), liveVersion: z.number().nullable(), hasUnpublishedChanges: z.boolean() })),
       annotations: READ_ONLY,
     },
     async () => {
@@ -143,6 +170,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       description:
         "A dashboard's draft as a spec - name, slug, description, icon, menuLabel, scope, refreshIntervalSeconds, variables ($VAR.*), tabs and widgets (id, type, label, tab, grid, query, config) - with draftVersion (pass it to apply_dashboard), liveVersion, hasUnpublishedChanges and access (its roles and embeds, read-only: change them with update_dashboard and the embed tools). The spec goes back to apply_dashboard as is: applied unchanged, nothing changes.",
       inputSchema: { id: z.string().describe("The dashboard's id (list_dashboards)") },
+      outputSchema: passthrough("The draft as a spec - what apply_dashboard takes back - with its draftVersion"),
       annotations: READ_ONLY,
     },
     async ({ id }) => result(await client.get(`/dashboards/${id}/spec`)),
@@ -161,6 +189,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         dry_run: z.boolean().optional().describe("Check and answer the difference - nothing applied"),
         rows: z.number().int().min(0).max(50).optional().describe("Each widget's first rows in the answer (0, the default: none run)"),
       },
+      outputSchema: passthrough("The dashboard applied, or with dry_run what would change: its id, draftVersion, the diff and each widget's run"),
       annotations: DESTRUCTIVE,
     },
     async ({ id, draft_version, spec, dry_run, rows }) => {
@@ -181,7 +210,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         return result(id ? await client.put(`/dashboards/${id}/spec`, body) : await client.post(`/dashboards/spec`, body));
       } catch (error) {
         // Every problem at once, each at its path - nothing was applied.
-        if (error instanceof AdminApiError && error.errors.length) return { ...result({ applied: false, errors: error.errors.map(({ source: _source, ...e }) => e) }), isError: true };
+        if (error instanceof AdminApiError && error.errors.length) return { content: result({ applied: false, errors: error.errors.map(({ source: _source, ...e }) => e) }).content, isError: true };
         throw error;
       }
     },
@@ -199,6 +228,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         icon: z.string().optional().describe("A Lucide icon, e.g. 'i-lucide-chart-pie'"),
         refresh_interval_seconds: z.union(REFRESH).optional().describe("Re-run every widget this often while it is open"),
       },
+      outputSchema: { id: z.string(), name: z.string(), slug: z.string() },
       annotations: ADDITIVE,
     },
     async ({ name, slug, description, icon, refresh_interval_seconds }) => {
@@ -231,9 +261,11 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         embedding_enabled: z.boolean().optional().describe("Whether its embeds work (create_embed) - off: every embed answers not found"),
         role_ids: z.array(roleId()).optional().describe("Replaces the roles that may view it, now - no publish needed"),
       },
+      outputSchema: { id: z.string(), name: z.string(), scope: z.string(), variables: z.array(z.unknown()), tabs: z.array(jsonObject()), embeddingEnabled: z.boolean(), roleIds: z.array(z.string()).optional() },
       annotations: IDEMPOTENT,
     },
     async ({ id, name, description, menu_label, scope, refresh_interval_seconds, show_descriptions, variables, tabs, embedding_enabled, role_ids }) => {
+      if (role_ids) await refuseRemovedRoles(policy, "Replacing who may open the dashboard", role_ids, () => heldRoles(client, "dashboards_roles", "dashboard", id));
       if (role_ids) await client.put(`/dashboards/${id}/roles`, { data: { roleIds: role_ids } });
       const updated = await client.patch<Dashboard>(`/dashboards/${id}`, {
         data: {
@@ -264,6 +296,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         variables: z.record(z.string(), z.unknown()).optional().describe("$VAR values to bind, e.g. {\"region\": \"North\"}"),
         rows: z.number().int().min(1).max(100).default(10).describe("How many rows to answer"),
       },
+      outputSchema: sampleOutput,
       annotations: READ_ONLY,
     },
     async ({ dashboard_id, query, variables, rows }) => {
@@ -288,6 +321,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         config: z.record(z.string(), z.unknown()).optional().describe("Replaces the whole config. A data widget: its roles and props, {\"roles\":{\"value\":\"total\"},\"displayFormat\":\"$ #,##0\"} - every nested key checked, a refusal naming its path; roles assign the query's columns (by name), each checked against what the query returns; a role or prop left out takes its default. A presentation widget (TImage, THeading, TText...): its page props and formulas, {\"props\":{\"level\":\"h2\"},\"bindings\":{\"label\":{\"kind\":\"formula\",\"formula\":\"\\\"Sales of \\\" + {{vars.seller.label}}\"}}}. Any widget: bindings.title, its title as a formula (totalbase://guide/dashboards)"),
         grid: gridSchema.optional(),
       },
+      outputSchema: { widget: widgetOutput, run: z.union([z.string(), sampleOutput, z.object({ error: z.string() })]).describe("Its first rows; PostgreSQL's error when the query fails; a note when it has no query") },
       annotations: IDEMPOTENT,
     },
     async ({ dashboard_id, widget_id, type, label, query, config, grid, tab }) => {
@@ -361,6 +395,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "List embeds",
       description: "A dashboard's embeds (Settings › Share): public links and signed embeds, with their variables, display, sites, expiry and whether revoked - a link's URL secret included. What each widget's click does in an embed: only a FILTER on a variable the visitor may change, and a URL marked inEmbeds.",
       inputSchema: { dashboard_id: z.string() },
+      outputSchema: passthrough("The dashboard's embeds, under items"),
       annotations: READ_ONLY,
     },
     async ({ dashboard_id }) => result(await client.get(`/dashboards/${dashboard_id}/embeds`)),
@@ -382,6 +417,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         origins: z.array(z.string()).optional().describe("The sites that may frame it, among dashboards.embed_allowed_origins - none: all of those"),
         expires_at: z.string().nullable().optional().describe("ISO timestamp it stops working at; null: never"),
       },
+      outputSchema: passthrough("The embed, with its token and snippet - shown this once"),
       annotations: ADDITIVE,
     },
     async ({ dashboard_id, name, type, variables, display, widget, origins, expires_at }) =>
@@ -403,14 +439,26 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
         origins: z.array(z.string()).optional(),
         expires_at: z.string().nullable().optional(),
       },
+      outputSchema: passthrough("The embed after the change"),
       annotations: IDEMPOTENT,
     },
-    async ({ dashboard_id, embed_id, name, variables, display, widget, origins, expires_at }) =>
-      result(
+    async ({ dashboard_id, embed_id, name, variables, display, widget, origins, expires_at }) => {
+      // Ending an embed (an expiry already past) or narrowing where it opens is revoke_embed's, out of STANDARD.
+      if (policy.mode !== "FULL") {
+        if (typeof expires_at === "string" && !(Date.parse(expires_at) > Date.now())) refuseDestructive(policy, "Ending an embed (expires_at)");
+        // An empty list is every allowed site (Dashboards.md §2): going to it only widens.
+        if (origins && origins.length > 0) {
+          const current = (await client.get<{ id: string; origins?: string[] }[]>(`/dashboards/${dashboard_id}/embeds`)).find((embed) => embed.id === embed_id);
+          const held = current?.origins ?? [];
+          if (!current || held.length === 0 || held.some((origin) => !origins.includes(origin))) refuseDestructive(policy, "Narrowing where an embed opens (origins)");
+        }
+      }
+      return result(
         await client.patch(`/dashboards/${dashboard_id}/embeds/${embed_id}`, {
           data: { ...(name !== undefined && { name }), ...(variables && { variables }), ...(display && { display }), ...(widget !== undefined && { widget }), ...(origins && { origins }), ...(expires_at !== undefined && { expiresAt: expires_at }) },
         }),
-      ),
+      );
+    },
   );
 
   server.registerTool(
@@ -419,6 +467,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "Revoke embed",
       description: "Stop an embed at once - its link or tokens answer not found from now on; kept, listed as revoked (never reactivated: create another). Requires confirm=true.",
       inputSchema: { dashboard_id: z.string(), embed_id: z.string(), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: passthrough("The embed, revoked"),
       annotations: DESTRUCTIVE,
     },
     async ({ dashboard_id, embed_id }) => result(await client.post(`/dashboards/${dashboard_id}/embeds/${embed_id}/revoke`, {})),
@@ -430,6 +479,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "Delete widget",
       description: "Remove a widget from a dashboard's draft (the live version keeps it until the next publish). Requires confirm=true.",
       inputSchema: { dashboard_id: z.string(), widget_id: z.string(), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: { deleted: z.string() },
       annotations: DESTRUCTIVE,
     },
     async ({ dashboard_id, widget_id }) => {
@@ -445,9 +495,11 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       description:
         "Publish a dashboard's draft as its next version - what viewers see. published=false: the draft already equaled the live version, nothing changed. role_ids replaces the roles that may view it (list_roles); without any, only administrators do. Viewers see every widget's data whatever their own grants (the SQL runs with the dashboard's authority, filtered only by $USER.* in it) - publish only to roles that may see all of it. A published, LISTED dashboard joins the App menu.",
       inputSchema: { id: z.string(), role_ids: z.array(roleId()).optional().describe("Every role that may view it - replaces the current set"), note: z.string().max(128).optional().describe("What this version changes - shown in its Versions") },
+      outputSchema: { id: z.string(), ...publishOutput(), roleIds: z.array(z.string()).optional() },
       annotations: ADDITIVE,
     },
     async ({ id, role_ids, note }) => {
+      if (role_ids) await refuseRemovedRoles(policy, "Replacing who may open the dashboard", role_ids, () => heldRoles(client, "dashboards_roles", "dashboard", id));
       if (role_ids) await client.put(`/dashboards/${id}/roles`, { data: { roleIds: role_ids } });
       const { data: version, status } = await client.postWithMeta<{ version: number }>(`/dashboards/${id}/publish`, note ? { data: { note } } : {});
       return result({ id, ...publishOutcome(version.version, status), ...(role_ids && { roleIds: role_ids }) });
@@ -460,6 +512,7 @@ export function registerDashboardTools(server: McpServer, client: AdminClient, p
       title: "Delete dashboard",
       description: "Delete a dashboard with its widgets and versions - it leaves the App menu. Requires confirm=true; ask the user first.",
       inputSchema: { ...deleteTargets(), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: deletedOutput(),
       annotations: DESTRUCTIVE,
     },
     async ({ id, ids }) => result(await deleteEach(client, "/dashboards", { id, ids })),

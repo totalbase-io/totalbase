@@ -1,8 +1,8 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { embedPreviewKey, isPreviewToken, signEmbedPreviewToken, signEmbedToken, verifyEmbedPreviewToken, verifyEmbedToken } from "./embed-token.js";
+import { MIN_EMBED_SECRET_LENGTH, embedPreviewKey, isPreviewToken, signEmbedPreviewToken, signEmbedToken, verifyEmbedPreviewToken, verifyEmbedToken } from "./embed-token.js";
 
-const SECRET = "s3cret-for-tests";
+const SECRET = "s3cret-for-tests-long-enough-0123456789";
 const NOW = 1_800_000_000;
 const EMBED = "6f1c2c1e-6b7a-4c2e-9d6f-0a1b2c3d4e5f";
 const claims = (extra: Partial<{ exp: number; params: Record<string, unknown> }> = {}) => ({ embed: EMBED, params: { customer: 42 }, exp: NOW + 600, ...extra });
@@ -21,7 +21,7 @@ describe("embed tokens", () => {
 
   it("refuses another secret, a tampered payload, alg none and another algorithm", () => {
     const token = signEmbedToken(claims(), SECRET);
-    expect(() => verifyEmbedToken(token, "other", 3600, NOW)).toThrow(/signature/);
+    expect(() => verifyEmbedToken(token, "another-secret-long-enough-0123456789", 3600, NOW)).toThrow(/signature/);
     const [h, , s] = token.split(".");
     const tampered = `${h}.${Buffer.from(JSON.stringify({ resource: { embed: EMBED }, params: { customer: 7 }, exp: NOW + 600 })).toString("base64url")}.${s}`;
     expect(() => verifyEmbedToken(tampered, SECRET, 3600, NOW)).toThrow(/signature/);
@@ -54,5 +54,12 @@ describe("embed tokens", () => {
     expect(verifyEmbedPreviewToken(preview, key, 600, NOW)).toMatchObject({ dashboard: EMBED, display: { theme: "dark" }, widget: EMBED });
     expect(() => verifyEmbedPreviewToken(preview, SECRET, 600, NOW)).toThrow(/signature/);
     expect(() => verifyEmbedToken(preview, key, 600, NOW)).toThrow(/names no embed/);
+  });
+  // Security regression (Dashboards.md §9.5): any non-empty secret signed portals' tokens - one short enough to guess
+  // offline from a token a browser saw opened every signed embed to forgery.
+  it("refuses to check a token with a secret shorter than MIN_EMBED_SECRET_LENGTH", () => {
+    const short = "short-secret";
+    expect(short.length).toBeLessThan(MIN_EMBED_SECRET_LENGTH);
+    expect(() => verifyEmbedToken(signEmbedToken(claims(), short), short, 3600, NOW)).toThrow(/shorter than 32/);
   });
 });

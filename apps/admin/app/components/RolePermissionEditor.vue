@@ -298,7 +298,7 @@ async function savePermission() {
   saving.value = true
   try {
     const fields: FieldGrant[] = orderedDraftFields.value.map(field => ({ field, effect: 'ALLOW' as const }))
-    await api.put(`/roles/${props.roleId}/resources/${editorResource.value.id}/permissions/${editorAction.value}`, {
+    const written = await api.put(`/roles/${props.roleId}/resources/${editorResource.value.id}/permissions/${editorAction.value}`, {
       data: {
         effect: draftEffect.value,
         fields,
@@ -307,7 +307,10 @@ async function savePermission() {
       }
     })
     emit('saved')
-    toast.add({ title: t('users.permissionEditor.saved'), color: 'success' })
+    // The server's advice (Security.md §6.10): rows the grant reaches past the role's row filter elsewhere.
+    const advice = (written.meta as { warnings?: string[] } | undefined)?.warnings ?? []
+    if (advice.length > 0) toast.add({ title: t('users.permissionEditor.savedWithAdvice'), description: advice.join('\n'), color: 'warning', duration: 0 })
+    else toast.add({ title: t('users.permissionEditor.saved'), color: 'success' })
     isEditorOpen.value = false
   } catch (err) {
     // The server structurally validates where/payload checks before

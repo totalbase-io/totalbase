@@ -8,7 +8,7 @@ import {
 } from "@totalbase/query-engine";
 import { TotalBaseError, deniedMessage } from "@totalbase/errors";
 import type { ResolvedApiResource } from "@totalbase/resources";
-import { buildRowFilter, dataApiTransactionContext, loadPasswordColumns, protectedFieldDecision, userVariableResolver, withPasswordColumnsDenied } from "@totalbase/mutations";
+import { buildRowFilter, dataApiTransactionContext, loadPasswordColumns, protectedFieldDecision, readCeiling, userVariableResolver, withPasswordColumnsDenied } from "@totalbase/mutations";
 import type { AppContext } from "./context.js";
 import type { DataPrincipal } from "./data-principal.js";
 import { loadQueryFeatures } from "./query-features.js";
@@ -76,6 +76,7 @@ async function prepareRows(
     schemaContext,
     fieldDecision: withPasswordColumnsDenied(protectedFieldDecision(root, permission.fieldDecision), passwordColumns),
     rowFilter,
+    rowCeiling: await readCeiling(context, dataPrincipal, resource, limits),
     resolveUserVariable: userVariableResolver(dataPrincipal),
     defaultLimit,
     maxLimit,
@@ -188,6 +189,7 @@ export async function readRowByKey(
     schemaContext,
     fieldDecision: withPasswordColumnsDenied(protectedFieldDecision(root, permission.fieldDecision), passwordColumns),
     rowFilter,
+    rowCeiling: await readCeiling(context, dataPrincipal, resource, limits),
     resolveUserVariable: userVariableResolver(dataPrincipal),
     defaultLimit: 1,
     maxLimit: 1,

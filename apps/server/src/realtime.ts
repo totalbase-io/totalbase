@@ -12,6 +12,7 @@ import type { AppContext } from "./context.js";
 import { extractBearerToken, requireAdmin } from "./auth-guards.js";
 import { adminDoc, object, ok } from "./openapi-admin-docs.js";
 import { resolveDataPrincipal, resolveSessionPrincipal, type DataPrincipal } from "./data-principal.js";
+import { lockdownRefusal } from "./lockdown.js";
 import { authorizeRows, readRows } from "./data-read.js";
 import type { ReadOrigin } from "./read-audit.js";
 import { isSameOrigin } from "./session-cookie.js";
@@ -52,8 +53,11 @@ const CHANGE_OF: Record<RealtimeEvent, "insert" | "update" | "delete"> = { creat
 export type RealtimeCredential = { token: string; address: string | undefined } | { session: string };
 
 /** The connection's principal, live - the credential resolved again (Data_API.md §16.3), a token from the address the connection came from (Security.md §3.5). */
-export function resolveSubscriberPrincipal(context: AppContext, credential: RealtimeCredential | null): Promise<DataPrincipal> {
-  if (credential === null) return Promise.reject(new TotalBaseError("AUTHENTICATION_REQUIRED", "The connection holds no credential."));
+export async function resolveSubscriberPrincipal(context: AppContext, credential: RealtimeCredential | null): Promise<DataPrincipal> {
+  if (credential === null) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "The connection holds no credential.");
+  // A WebSocket's upgrade passes the lockdown's gate (lockdown.ts): its credential is held to it here, every time.
+  const refusal = await lockdownRefusal(context, credential);
+  if (refusal) throw refusal;
   return "token" in credential ? resolveDataPrincipal(context, credential.token, undefined, undefined, credential.address) : resolveSessionPrincipal(context, credential.session);
 }
 
@@ -71,8 +75,9 @@ export async function credentialFromMessage(context: AppContext, data: { accessT
     return credential;
   }
   if (typeof data.accessToken !== "string" || data.accessToken === "") throw new TotalBaseError("INVALID_REALTIME_MESSAGE", "auth needs data.accessToken or data.ticket.");
-  await resolveDataPrincipal(context, data.accessToken, undefined, undefined, address);
-  return { token: data.accessToken, address };
+  const credential: RealtimeCredential = { token: data.accessToken, address };
+  await resolveSubscriberPrincipal(context, credential);
+  return credential;
 }
 
 export interface RealtimeSubscriber {
@@ -93,6 +98,8 @@ export interface RealtimeSubscriber {
 export interface Subscription {
   uid: string;
   subscriber: RealtimeSubscriber;
+  /** Whose it is - the user acting (a session's, a token's owner): the hub caps each one's (realtime.max_subscriptions_per_user). */
+  owner: string;
   resource: ResolvedApiResource;
   keyColumn: string;
   /** int2/int4 keys go out as numbers, like the Data API's rows; every other key as text. */
@@ -189,11 +196,29 @@ export class RealtimeHub {
 
   constructor(private readonly context: AppContext) {}
 
-  /** Adds a subscription, starting the slot with the process's first; a slot that can't start is REALTIME_UNAVAILABLE. */
-  async add(subscription: Subscription): Promise<void> {
-    this.maxKeys = await this.context.settings.get("api.max_limit");
-    const started = (this.lifecycle = this.lifecycle.catch(() => undefined).then(() => this.start()));
-    await started;
+  /** Each owner's subscriptions in this process, every connection's together - each one re-read on every write. */
+  private readonly byOwner = new Map<string, number>();
+
+  /**
+   * Adds a subscription, starting the slot with the process's first; a slot that can't start is REALTIME_UNAVAILABLE.
+   * An owner past `maxPerOwner` - across all their connections, both WebSocket surfaces - is TOO_MANY_SUBSCRIPTIONS:
+   * every write is re-read for each subscription, so one user's thousands slowed delivery for everyone. Reserved
+   * before anything waits, so subscriptions opened together can't all pass.
+   */
+  async add(subscription: Subscription, maxPerOwner: number): Promise<void> {
+    const held = this.byOwner.get(subscription.owner) ?? 0;
+    if (held >= maxPerOwner) {
+      throw new TotalBaseError("TOO_MANY_SUBSCRIPTIONS", "This user holds as many subscriptions as realtime.max_subscriptions_per_user allows, across their connections.");
+    }
+    this.byOwner.set(subscription.owner, held + 1);
+    try {
+      this.maxKeys = await this.context.settings.get("api.max_limit");
+      const started = (this.lifecycle = this.lifecycle.catch(() => undefined).then(() => this.start()));
+      await started;
+    } catch (error) {
+      this.release(subscription.owner);
+      throw error;
+    }
     const oid = subscription.resource.postgresOid;
     let set = this.byTable.get(oid);
     if (!set) this.byTable.set(oid, (set = new Set()));
@@ -201,9 +226,16 @@ export class RealtimeHub {
     this.count += 1;
   }
 
+  private release(owner: string): void {
+    const held = (this.byOwner.get(owner) ?? 1) - 1;
+    if (held <= 0) this.byOwner.delete(owner);
+    else this.byOwner.set(owner, held);
+  }
+
   remove(subscription: Subscription): void {
     const set = this.byTable.get(subscription.resource.postgresOid);
     if (!set?.delete(subscription)) return;
+    this.release(subscription.owner);
     if (set.size === 0) this.byTable.delete(subscription.resource.postgresOid);
     this.count -= 1;
     if (this.count === 0) this.lifecycle = this.lifecycle.catch(() => undefined).then(() => this.stopIfIdle());
@@ -371,9 +403,11 @@ export async function openSubscription(
   const resource = await resolveTableResource(context, intent.schema, intent.table, "REALTIME");
   const key = await primaryKeyOf(context, resource.postgresOid);
   if (!key) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${intent.schema}.${intent.table}`);
+  const principal = await resolveSubscriberPrincipal(context, subscriber.credential);
   const subscription: Subscription = {
     uid,
     subscriber,
+    owner: principal.actorUserId ?? `${principal.principal.type}:${principal.principal.id ?? "anonymous"}`,
     resource,
     keyColumn: key.column,
     keyIsNumber: key.isNumber,
@@ -381,9 +415,8 @@ export async function openSubscription(
     mode: intent.mode,
     query: intent.query,
   };
-  const principal = await resolveSubscriberPrincipal(context, subscriber.credential);
   await authorizeIntent(context, principal, subscription, subscriber.origin());
-  await hub.add(subscription);
+  await hub.add(subscription, await context.settings.get("realtime.max_subscriptions_per_user"));
   return subscription;
 }
 
@@ -403,7 +436,7 @@ export async function upgradeToken(context: AppContext, request: FastifyRequest)
   if (token !== null && request.headers.authorization === undefined && !isSameOrigin(request, await context.auth.mailer.publicUrl())) {
     throw new TotalBaseError("CROSS_SITE_REQUEST_REFUSED", "A session cookie is only accepted from this instance's own pages.");
   }
-  if (token !== null) await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
+  if (token !== null) await resolveSubscriberPrincipal(context, { token, address: clientIp(request) });
   return token;
 }
 
@@ -451,6 +484,21 @@ export async function realtimeRequirements(context: AppContext): Promise<Realtim
     usedReplicationSlots: row.used_slots,
     ready: row.wal_level === "logical" && row.replication,
   };
+}
+
+/**
+ * The refusal while a requirement is missing (`503 REALTIME_UNAVAILABLE`), naming each one and what an operator does
+ * about it - not only "logical replication"; null when ready.
+ */
+export function realtimeUnavailable(requirements: RealtimeRequirements): TotalBaseError | null {
+  if (requirements.ready) return null;
+  const missing = [
+    ...(requirements.walLevel === "logical" ? [] : [`wal_level is ${requirements.walLevel}, it must be logical (postgresql.conf, then a restart)`]),
+    ...(requirements.replication ? [] : ["TotalBase's PostgreSQL role lacks the REPLICATION attribute (ALTER ROLE ... REPLICATION, by a superuser or a role with it)"]),
+  ];
+  return new TotalBaseError("REALTIME_UNAVAILABLE", `Realtime needs PostgreSQL's logical replication: ${missing.join("; ")}. Settings > Realtime shows its requirements.`, {
+    meta: { walLevel: requirements.walLevel, replication: requirements.replication },
+  });
 }
 
 interface SubscribeMessage {
@@ -503,9 +551,8 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
     // Refused before the upgrade, as an HTTP answer in the error envelope (Data_API.md §16.3).
     preValidation: async (request) => {
       if (!(await context.settings.get("realtime.enabled"))) throw new TotalBaseError("REALTIME_DISABLED", "Realtime is turned off (Settings > Realtime).");
-      if (!(await realtimeRequirements(context)).ready) {
-        throw new TotalBaseError("REALTIME_UNAVAILABLE", "Realtime needs PostgreSQL's logical replication (Settings > Realtime shows its requirements).");
-      }
+      const unavailable = realtimeUnavailable(await realtimeRequirements(context));
+      if (unavailable) throw unavailable;
       upgradeTokens.set(request, await upgradeToken(context, request));
     },
   }, async (socket, request) => {
@@ -520,8 +567,10 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
         connection.close(CLOSE_TRY_LATER, new TotalBaseError("INVALID_REALTIME_MESSAGE", "No pong since the last ping."));
         return;
       }
-      void context.settings.get("realtime.enabled").then((enabled) => {
+      void Promise.all([context.settings.get("realtime.enabled"), connection.credential === null ? null : lockdownRefusal(context, connection.credential)]).then(([enabled, lockdown]) => {
         if (!enabled) connection.close(CLOSE_TRY_LATER, new TotalBaseError("REALTIME_DISABLED", "Realtime was turned off."));
+        // A lockdown that began since (Security.md §2.21): everyone but administrators is disconnected within one heartbeat.
+        else if (lockdown) connection.close(CLOSE_TRY_LATER, lockdown);
         else {
           connection.awaitingPong = true;
           connection.send({ type: "ping" });
@@ -594,6 +643,9 @@ export async function registerRealtimeRoutes(app: FastifyInstance, context: AppC
       }
       const uid = requestedUid ?? connection.generatedUid();
       try {
+        // Each subscribe is a request of the connection's credential, as over HTTP (Administration.md §7.7).
+        const held = connection.credential;
+        await app.operationRateLimit?.(request.ip, held);
         if (connection.subscriptions.has(uid)) throw invalid(`This connection already has a subscription "${uid}".`);
         const data = message.data;
         if (typeof data !== "object" || data === null) throw invalid("subscribe needs data.resource.");

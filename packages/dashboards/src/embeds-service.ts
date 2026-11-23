@@ -156,6 +156,11 @@ function validateVariables(raw: unknown, type: EmbedType, known: readonly string
     if (mode === "LOCKED" && type === "LINK" && (value === undefined || value === null || value === "")) {
       throw invalid(`Variable "${name}" is locked: a public link needs its value.`);
     }
+    // Locked to nothing is never a restriction: a query written `($VAR.x IS NULL OR col = $VAR.x)` would show every
+    // row. A signed embed leaves the value out for its token to give instead.
+    if (mode === "LOCKED" && (value === null || value === "")) {
+      throw invalid(`Variable "${name}" is locked: give it a value, or leave it out for the embed's token to give.`);
+    }
     out[name] = value === undefined ? { mode: mode as EmbedVariableMode } : { mode: mode as EmbedVariableMode, value };
   }
   return out;

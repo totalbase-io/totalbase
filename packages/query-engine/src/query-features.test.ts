@@ -22,6 +22,10 @@ describe("assertQueryFeatures", () => {
       [{ where: { tags: { _contains: "{x}" } } }, { contains: false }],
       [{ where: { tags: { _contained_by: "{x}" } } }, { contains: false }],
       [{ where: { tags: { _overlap: "{x}" } } }, { contains: false }],
+      // Security regression (Data_API.md §3.12): a flag's filter skipped the switches - a regex or a containment on
+      // every row of a table the operator turned them off for.
+      [{ flags: { slow: { name: { _regex: "^(a+)+$" } } } }, { regex: false }],
+      [{ flags: { slow: { tags: { _contains: "{x}" } } } }, { contains: false }],
     ];
     for (const [raw, off] of cases) {
       expect(() => assertQueryFeatures(parseQuery(raw, LIMITS), { ...ALL, ...off }), JSON.stringify(raw)).toThrow(

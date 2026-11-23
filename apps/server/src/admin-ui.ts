@@ -27,6 +27,37 @@ export function isServerPath(url: string): boolean {
 }
 
 /**
+ * The path a hook decides on: the route the router matched - its pattern (`/api/:schema/table/:name`), found from
+ * the path the router decoded - or, when no route did, the request's path decoded the same way. Never the raw
+ * request target: `/%61pi/...` and `http://host/api/...` reach `/api/...` routes, since find-my-way decodes the
+ * path and strips an absolute form before matching, while their raw text starts with neither.
+ */
+export function routePath(request: FastifyRequest): string {
+  return request.routeOptions.url ?? decodedPath(request.url);
+}
+
+/** A request that reaches the server's own routes (isServerPath), decided on routePath. */
+export function isServerRequest(request: FastifyRequest): boolean {
+  return isServerPath(routePath(request));
+}
+
+function decodedPath(target: string): string {
+  let path = target.split(/[?#]/, 1)[0] ?? "";
+  if (!path.startsWith("/")) {
+    try {
+      path = new URL(path).pathname;
+    } catch {
+      return path;
+    }
+  }
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
  * The `'sha256-...'` source of every inline script in the built pages
  * (the color mode's and Nuxt's own config, its import map): the only
  * inline scripts the UI's Content-Security-Policy lets run. A JSON data
@@ -128,7 +159,7 @@ export async function registerAdminUi(
   // Added before the SPA handlers below, so it applies to them - the dev
   // proxy's answers and the static build's alike.
   app.addHook("onSend", async (request, reply, payload) => {
-    if (isServerPath(request.url)) return payload;
+    if (isServerRequest(request)) return payload;
     const path = request.url.split("?")[0] ?? "";
     const frameAncestors = path.startsWith("/embed/") ? await embedFrameAncestors(path) : "'self'";
     reply.header("Content-Security-Policy", uiContentSecurityPolicy(scriptSources, frameAncestors));
@@ -153,9 +184,14 @@ export async function registerAdminUi(
 
   if (devProxyTarget) {
     app.log.info({ target: devProxyTarget }, "admin UI: proxying the SPA's paths to a local `nuxt dev` process");
-    await app.register(fastifyHttpProxy, {
-      upstream: devProxyTarget,
-      websocket: true, // Vite's HMR client connects over ws for live reload.
+    // In a scope of its own, without the server's body parsers (server.ts): the proxy adds its own, which pass a
+    // body through untouched, and Fastify refuses a second parser for a content type.
+    await app.register(async (scope) => {
+      scope.removeAllContentTypeParsers();
+      await scope.register(fastifyHttpProxy, {
+        upstream: devProxyTarget,
+        websocket: true, // Vite's HMR client connects over ws for live reload.
+      });
     });
     return;
   }

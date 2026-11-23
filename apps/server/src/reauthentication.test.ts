@@ -104,6 +104,28 @@ describe("re-authentication", () => {
     expect(code(await call("DELETE", `/admin/api/users/${targetId}/mfa`, token))).toEqual([403, "REAUTHENTICATION_REQUIRED"]);
   });
 
+  // Security regression (Security.md §2.8, §2.19): an administrator without a password (signed in through a provider)
+  // set one for themselves with any "current password" - a stolen session gave itself a way back in; and their own id
+  // in upper case wasn't "self", so it skipped the current password.
+  it("one's own password needs the current one - or, with none yet, a recent sign-in - whatever the id's letter case", async () => {
+    const providerOnly = await context.auth.users.create({ email: `reauth-test-oauth-${SUFFIX}@example.com`, name: "OAuth admin", passwordHash: null, emailVerified: true });
+    track("users", providerOnly.id);
+    await context.roleAssignments.assignRoleToUser(providerOnly.id, administratorsRoleId);
+    const { token: providerToken } = await context.auth.sessions.create({ user: providerOnly.id, ttlHours: 1, maxSessionsPerUser: 10 });
+    await aged(providerToken);
+    const own = await call("PUT", `/admin/api/users/${providerOnly.id}/password`, providerToken, { data: { password: "a-password-the-thief-picks", currentPassword: "anything" } });
+    expect(code(own)).toEqual([403, "REAUTHENTICATION_REQUIRED"]);
+    expect((await context.auth.users.findByIdWithPasswordHash(providerOnly.id))?.passwordHash).toBeNull();
+
+    const token = await signIn();
+    const me = (await context.auth.me(token)).id;
+    const upper = await call("PUT", `/admin/api/users/${me.toUpperCase()}/password`, token, { data: { password: "another-password-for-me" } });
+    expect(code(upper)).toEqual([400, "INVALID_CURRENT_PASSWORD"]);
+    // SEC-89: never deleted by one's own id in upper case.
+    expect(code(await call("DELETE", `/admin/api/users/${me.toUpperCase()}`, token))).toEqual([403, "PERMISSION_DENIED"]);
+    expect((await context.auth.users.findById(me))?.active).toBe(true);
+  });
+
   it("an account's email is never changed through the Data API - its route asks; created with one, it is", async () => {
     const token = await signIn();
     const res = await call("PATCH", `/api/totalbase/table/users/${targetId}`, token, { data: { email: `reauth-test-data-api-${SUFFIX}@example.com` } });

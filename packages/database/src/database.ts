@@ -67,6 +67,8 @@ export interface QueryResult<Row extends pg.QueryResultRow = pg.QueryResultRow> 
   notices: PostgresNotice[];
   /** Column name/type metadata, e.g. for the SQL Console's result grid. */
   fields: ResultField[];
+  /** PostgreSQL's command tag (SELECT, INSERT, ...), when the driver gave it. */
+  command?: string | undefined;
 }
 
 /** One statement of a raw multi-statement script (Database.queryRaw). */
@@ -81,6 +83,36 @@ export interface RawStatementResult {
 /** queryRaw's result: the last statement's, as QueryResult, and every statement's in order. */
 export interface RawQueryResult<Row extends pg.QueryResultRow = pg.QueryResultRow> extends QueryResult<Row> {
   statements: RawStatementResult[];
+}
+
+/** A result column as a statement's description gives it - with its type modifier (`numeric(12,2)`, `varchar(5)`). */
+export interface DescribedField extends ResultField {
+  /** pg_attribute.atttypmod's meaning: -1 when the type has none. */
+  dataTypeModifier: number;
+}
+
+/** A read-only transaction's handle (Database.readOnlyTransaction): queries, and a statement described without running it. */
+export interface ReadOnlyQueryable extends Queryable {
+  /**
+   * The columns `sql` returns, as PostgreSQL's parse analysis gives them (Parse and Describe of an unnamed
+   * statement, then Sync): nothing is planned or executed, so no function the statement calls runs. A syntax error,
+   * an unknown table or column - PostgreSQL's refusal, as from a query. `paramTypeIds` declares its parameters'
+   * types (pg_type oids); undeclared ones PostgreSQL infers.
+   */
+  describe(sql: string, paramTypeIds?: number[]): Promise<DescribedField[]>;
+}
+
+/**
+ * A parameter value as the text PostgreSQL's input function reads - the form node-postgres sends it in (dates,
+ * arrays, JSON as it serializes them), `bytea` as `\x` hex - for a `text[]` that carries several values to SQL that
+ * casts each (`($1[2]::numeric)`). Null stays null.
+ */
+export function parameterText(value: unknown): string | null {
+  // `pg.utils.prepareValue` is what node-postgres applies to every value it sends (missing from @types/pg).
+  const prepared = (pg as unknown as { utils: { prepareValue(v: unknown): unknown } }).utils.prepareValue(value);
+  if (prepared === null || prepared === undefined) return null;
+  if (Buffer.isBuffer(prepared)) return `\\x${prepared.toString("hex")}`;
+  return String(prepared);
 }
 
 /** A queryable handle, either the pool itself or a client bound to a transaction. */
@@ -181,7 +213,7 @@ export class Database implements Queryable {
     try {
       return await runQueryRaw<Row>(client, sql, this.pool);
     } finally {
-      client.release();
+      client.release(await resetSession(client));
     }
   }
 
@@ -199,7 +231,7 @@ export class Database implements Queryable {
       });
       throw await toTotalBaseError(error, this.pool);
     } finally {
-      client.release();
+      client.release(await resetSession(client));
     }
   }
 
@@ -243,9 +275,10 @@ export class Database implements Queryable {
    * would otherwise outlive the transaction on this pooled connection: a
    * session-level setting (`set_config('TimeZone', ..., false)`, SET
    * SESSION) - which a later request served by the same connection would
-   * inherit. Nothing is committed: there is nothing to commit.
+   * inherit - and then releases every session advisory lock, which a
+   * ROLLBACK keeps. Nothing is committed: there is nothing to commit.
    */
-  async readOnlyTransaction<T>(fn: (client: Queryable) => Promise<T>, context?: ReadOnlyTransactionContext): Promise<T> {
+  async readOnlyTransaction<T>(fn: (client: ReadOnlyQueryable) => Promise<T>, context?: ReadOnlyTransactionContext): Promise<T> {
     const client = await this.pool.connect();
     try {
       await runQuery(client, "BEGIN READ ONLY", [], null);
@@ -257,12 +290,15 @@ export class Database implements Queryable {
       }
       return await fn({
         query: (sql, params = []) => runQuery(client, sql, params, null),
+        describe: (sql, paramTypeIds = []) => describeStatement(client, sql, paramTypeIds),
       });
     } finally {
-      await client.query("ROLLBACK").catch(() => {
-        /* best-effort: a failed rollback leaves the transaction aborted - pg resets it on the next BEGIN */
-      });
-      client.release();
+      // What ROLLBACK doesn't undo goes too before the connection serves anyone else: a session-level advisory lock
+      // the SQL took (`pg_advisory_lock`), which would hold TotalBase's own (reconcile, maintenance) until the
+      // connection closed. A connection that can't be cleaned is destroyed, never handed back.
+      // The SQL Console's read-only mode runs a statement of its own here, not wrapped: what outlives a ROLLBACK
+      // (`PREPARE`) goes as well - resetSession() is the raw paths' whole cleanup.
+      client.release(await resetSession(client));
     }
   }
 
@@ -339,6 +375,42 @@ function toResultField(field: pg.FieldDef): ResultField {
   return { name: field.name, dataTypeId: field.dataTypeID, tableId: field.tableID ?? 0, columnId: field.columnID ?? 0 };
 }
 
+/**
+ * Parse and Describe of an unnamed statement, then Sync (ReadOnlyQueryable.describe): the row description PostgreSQL
+ * sends without binding or executing anything - a statement with no result (NoData) describes as no columns. A
+ * submittable of node-postgres': the client queues it as any query, and on an ErrorResponse it clears it before the
+ * ReadyForQuery that follows, so a refusal settles at the error.
+ */
+function describeStatement(client: pg.PoolClient, sql: string, paramTypeIds: number[]): Promise<DescribedField[]> {
+  return new Promise((resolve, reject) => {
+    let fields: pg.FieldDef[] = [];
+    const submittable = {
+      submit(connection: { parse(q: { text: string; types: number[] }): void; describe(m: { type: "S"; name?: string }): void; sync(): void }) {
+        connection.parse({ text: sql, types: paramTypeIds });
+        connection.describe({ type: "S" });
+        connection.sync();
+      },
+      handleRowDescription(message: { fields: pg.FieldDef[] }) {
+        fields = message.fields;
+      },
+      handleError(error: unknown) {
+        toTotalBaseError(error, null).then(reject, reject);
+      },
+      handleReadyForQuery() {
+        resolve(fields.map((field) => ({ ...toResultField(field), dataTypeModifier: field.dataTypeModifier ?? -1 })));
+      },
+      handleDataRow() {},
+      handleCommandComplete() {},
+      handleEmptyQuery() {},
+      handlePortalSuspended() {},
+      handleCopyInResponse() {},
+      handleCopyData() {},
+    };
+    // A submittable is returned as is, not a promise: it settles through its own handlers above.
+    void client.query(submittable as unknown as pg.QueryConfig);
+  });
+}
+
 async function runQuery<Row extends pg.QueryResultRow = pg.QueryResultRow>(
   queryable: pg.Pool | pg.PoolClient,
   sql: string,
@@ -369,7 +441,7 @@ async function runQuery<Row extends pg.QueryResultRow = pg.QueryResultRow>(
     const config: pg.QueryConfig & { queryMode: "extended" } = { text: sql, values: params, queryMode: "extended" };
     const result = await queryable.query(config);
     const fields: ResultField[] = (result.fields ?? []).map(toResultField);
-    return { rows: result.rows as Row[], rowCount: result.rowCount ?? 0, notices, fields };
+    return { rows: result.rows as Row[], rowCount: result.rowCount ?? 0, notices, fields, command: result.command };
   } catch (error) {
     throw await toTotalBaseError(error, lookup);
   } finally {
@@ -564,6 +636,9 @@ function createPool(config: DatabaseConfig): pg.Pool {
     // own context (`applyContext`, SET LOCAL) still overrides it for its
     // duration; the session value is back once it ends.
     statement_timeout: config.statementTimeoutMs,
+    // quoteLiteral (`@totalbase/shared`) writes a backslash as itself: every connection reads strings so, whatever the
+    // server's or the role's default says.
+    options: "-c standard_conforming_strings=on",
     types: {
       getTypeParser: (oid: number, format?: string) =>
         oid === POINT_OID ? parsePoint
@@ -580,3 +655,24 @@ function createPool(config: DatabaseConfig): pg.Pool {
   });
   return pool;
 }
+
+/**
+ * What raw SQL (the SQL Console, an Execute SQL step) may leave on its pooled connection, undone before it serves
+ * anyone else: a transaction it left open, a role it took (`SET ROLE`), a prepared statement, a session setting (`SET standard_conforming_strings = off`, which the
+ * quoting TotalBase relies on assumes on - `Foundations.md` §19), a session advisory lock, a LISTEN, an open
+ * cursor, a temporary table. `RESET ALL` returns each setting to the connection's own start value - the pool's
+ * options included. Answers the error to destroy the connection with, when it can't be cleaned.
+ */
+async function resetSession(client: pg.PoolClient): Promise<Error | undefined> {
+  try {
+    // DISCARD ALL, statement by statement (it can't follow a ROLLBACK in one string): RESET ALL leaves the role
+    // (`SET ROLE`) and the session authorization alone, so they go first.
+    await client.query(
+      "ROLLBACK; SET SESSION AUTHORIZATION DEFAULT; RESET ROLE; CLOSE ALL; RESET ALL; DEALLOCATE ALL; UNLISTEN *; SELECT pg_advisory_unlock_all(); DISCARD TEMP; DISCARD SEQUENCES",
+    );
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
+

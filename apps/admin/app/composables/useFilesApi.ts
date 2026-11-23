@@ -69,7 +69,7 @@ export function useFilesApi() {
     replaceContent: async (id: string, body: FormData | { content: string }): Promise<FileNode> =>
       (await dataApi.put<FileNode>(`${filesPath}/${id}/content`, body instanceof FormData ? body : { data: body })).data,
     /** Metadata, and rename (`name`) / move (`folder`, null = root) - Administration.md §10.12. */
-    updateMetadata: async (id: string, patch: { visibility?: 'PRIVATE' | 'PUBLIC', description?: string | null, tags?: string[], name?: string, folder?: string | null }): Promise<FileNode> =>
+    updateMetadata: async (id: string, patch: { visibility?: 'PRIVATE' | 'LINKED' | 'PUBLIC', description?: string | null, tags?: string[], name?: string, folder?: string | null }): Promise<FileNode> =>
       (await dataApi.patch<FileNode>(`${filesPath}/${id}`, { data: patch })).data,
     remove: async (id: string): Promise<void> => {
       await dataApi.del(`${filesPath}/${id}`)

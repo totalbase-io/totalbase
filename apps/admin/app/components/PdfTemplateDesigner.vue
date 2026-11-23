@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { withoutExternalContent } from '~/utils/pdf-template-safe'
 // Wraps pdfme's Designer (vanilla JS, framework-agnostic - see pdfme.com
 // docs) as a Vue component. Lazy-loaded via dynamic import from
 // pages/templates/[id].vue so its canvas/pdf.js-heavy bundle only downloads when a
@@ -187,7 +188,8 @@ onMounted(async () => {
     // JSON round-trip strips reactivity; content is always JSON anyway (a
     // jsonb column), so nothing is lost.
     const raw = props.content && typeof props.content === 'object' ? JSON.parse(JSON.stringify(props.content)) : BLANK_TEMPLATE
-    const template = raw as ConstructorParameters<typeof Designer>[0]['template']
+    // Nothing in it is fetched from elsewhere: someone else may have written it (pdf-template-safe.ts).
+    const template = withoutExternalContent(raw, BLANK_BASE_PDF) as ConstructorParameters<typeof Designer>[0]['template']
 
     const basePdf = template.basePdf
     if (basePdf && typeof basePdf === 'object' && 'width' in basePdf && 'height' in basePdf) {

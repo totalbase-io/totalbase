@@ -6,6 +6,7 @@ export * from "./junction.js";
 export * from "./function-detail.js";
 export * from "./ddl.js";
 export * from "./maintenance-stats.js";
+export * from "./connection-security.js";
 export * from "./result-columns.js";
 export * from "./object-ownership.js";
 export * from "./attributes.js";

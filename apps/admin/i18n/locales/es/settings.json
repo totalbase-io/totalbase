@@ -172,6 +172,10 @@
       "showOnSignIn": "Mostrar en el inicio de sesión",
       "showOnSignInDescription": "Un botón en la página de inicio de sesión del portal: se entra al admin o a la App con este proveedor. Su propio callback no necesita una URL de redirección permitida."
     },
+    "mfa": {
+      "appsTitle": "Apps de autenticación",
+      "appsDescription": "Sirve cualquier app que genere códigos TOTP. Estas son las que se le muestran a cada persona al configurar MFA: bajo el código QR, en Mi cuenta y al iniciar sesión."
+    },
     "instanceAbout": {
       "title": "Acerca de esta instancia",
       "description": "Lo que corre esta instancia: para las notas de actualización y al reportar un problema.",
@@ -371,7 +375,16 @@
           "UUID": "UUID v4"
         }
       },
-      "deleteBody": "Si algún proveedor de autenticación u otra referencia todavía apunta a uno de estos secretos, se rechazará su eliminación: elimina o cambia antes esa referencia. Esta acción no se puede deshacer."
+      "deleteBody": "Si algún proveedor de autenticación u otra referencia todavía apunta a uno de estos secretos, se rechazará su eliminación: elimina o cambia antes esa referencia. Esta acción no se puede deshacer.",
+      "scope": "Lo usa",
+      "scopeDescription": "La única función que lo lee. Cambiarla requiere un valor nuevo.",
+      "scopes": {
+        "SMTP": "Correo (SMTP)",
+        "S3": "Almacenamiento S3",
+        "DASHBOARD_EMBEDS": "Dashboards embebidos",
+        "AUTH_PROVIDERS": "Proveedores de acceso",
+        "WORKFLOWS": "Workflows"
+      }
     },
     "smtp": {
       "needsHostAndFrom": "Primero completa el host SMTP y la dirección del remitente, y guarda.",
@@ -425,12 +438,16 @@
           "label": "Autenticación",
           "description": "Registro de cuentas, duración de las sesiones y política de contraseñas de los usuarios de TotalBase."
         },
+        "mfa": {
+          "label": "MFA",
+          "description": "Autenticación multifactor: después de la contraseña, un código de una app de autenticación. A quién se le exige y el aviso cuando se desactiva."
+        },
         "smtp": {
           "label": "SMTP",
           "description": "El servidor de correo para los correos del sistema y los pasos \"Enviar correo\" de los Workflows."
         },
         "s3": {
-          "label": "Almacenamiento S3",
+          "label": "S3",
           "description": "Una conexión a un bucket compatible con S3 (Amazon S3, Cloudflare R2, MinIO y otros) donde Files puede guardar lo que se sube."
         },
         "security": {
@@ -489,6 +506,10 @@
           "label": "Eventos de datos",
           "description": "El outbox de cambios de datos confirmados que inicia los workflows DATA_EVENT: reintentos y retención."
         },
+        "lockdown": {
+          "label": "Lockdown",
+          "description": "La instancia para ti - para una importación, una restauración, un cambio de esquema: mientras un lockdown está activo, por su interruptor o dentro de su ventana programada, solo se responde a los administradores."
+        },
         "appearance": {
           "label": "Apariencia",
           "description": "Cómo ve todo el mundo esta instancia: su color, su página de inicio de sesión y el CSS que quieras añadir. Es público: todo llega al navegador antes de iniciar sesión."
@@ -525,8 +546,12 @@
         "imageTransformations": "Transformaciones de imagen",
         "accountsSessions": "Cuentas y sesiones",
         "signInProtection": "Protección del inicio de sesión",
+        "requirement": "Exigencia",
         "emailLinks": "Enlaces de correo",
         "notices": "Avisos",
+        "when": "Cuándo",
+        "whileItIsOn": "Mientras está activo",
+        "notice": "Aviso",
         "instance": "Instancia",
         "dateTime": "Fecha y hora",
         "language": "Idioma",
@@ -577,7 +602,9 @@
         "levels": "niveles",
         "nodes": "nodos",
         "writes": "escrituras",
-        "queries": "consultas"
+        "queries": "consultas",
+        "fields": "campos",
+        "runs": "ejecuciones"
       },
       "keys": {
         "api__default_limit": {
@@ -683,6 +710,10 @@
         "files__default_visibility_public": {
           "label": "Público de forma predeterminada",
           "description": "Si un archivo recién subido empieza como público cuando el formulario de subida no elige otra cosa."
+        },
+        "files__uploader_can_publish": {
+          "label": "Quien sube un archivo puede hacerlo público",
+          "description": "Si quien subió un archivo puede hacerlo Público. Apagado, solo un administrador puede."
         },
         "files__storage_provider": {
           "label": "Proveedor de almacenamiento",
@@ -802,7 +833,7 @@
         },
         "auth__lockout_max_attempts": {
           "label": "Bloquear tras inicios de sesión fallidos",
-          "description": "Contraseñas incorrectas consecutivas que bloquean la cuenta durante un tiempo. La persona ve el habitual \"correo electrónico o contraseña no válidos\" en cualquier caso; un administrador puede desbloquearla antes. 0 desactiva el bloqueo."
+          "description": "Contraseñas incorrectas consecutivas desde una dirección que bloquean esa dirección para la cuenta durante un tiempo, nunca la cuenta para todos; pasado el límite, las direcciones desde las que la cuenta nunca inició sesión se demoran. La persona ve el habitual \"correo electrónico o contraseña no válidos\" en cualquier caso. 0 desactiva el bloqueo."
         },
         "auth__dormant_account_days": {
           "label": "Desactivar cuentas sin uso",
@@ -810,20 +841,11 @@
         },
         "auth__reauthentication_minutes": {
           "label": "Confirmar identidad para acciones sensibles",
-          "description": "Cuánto tiempo después de iniciar sesión, o de volver a confirmar su contraseña, un administrador puede emitir un token de administrador, asignar Administrators o cambiar el correo, la contraseña o la verificación en dos pasos de otra cuenta. Pasado ese tiempo, primero se le pide su contraseña (o un código)."
+          "description": "Cuánto tiempo después de iniciar sesión, o de volver a confirmar su contraseña, un administrador puede emitir un token de administrador, asignar Administrators o cambiar el correo, la contraseña o la MFA de otra cuenta. Pasado ese tiempo, primero se le pide su contraseña (o un código)."
         },
         "auth__lockout_duration_minutes": {
           "label": "Duración del bloqueo",
-          "description": "Cuánto tiempo sigue bloqueada una cuenta bloqueada. Un restablecimiento de contraseña o el desbloqueo de un administrador lo termina antes."
-        },
-        "auth__mfa_required": {
-          "label": "Exigir verificación en dos pasos",
-          "description": "Quién debe iniciar sesión con un código de una app de autenticación. A quien se le exige y aún no la configuró se le pide en su próximo inicio de sesión; las sesiones ya abiertas siguen.",
-          "options": {
-            "NONE": "Nadie",
-            "ADMINISTRATORS": "Administradores",
-            "EVERYONE": "Todos"
-          }
+          "description": "Cuánto espera una dirección bloqueada (o una cuenta bloqueada por pruebas incorrectas en una sesión). Un restablecimiento de contraseña o el desbloqueo de un administrador lo termina antes."
         },
         "auth__links__invitation": {
           "label": "Enlace de invitación",
@@ -845,9 +867,27 @@
           "label": "Aviso de correo cambiado",
           "description": "Envía un correo a la dirección anterior cada vez que un administrador cambia el correo electrónico de un usuario: un aviso de seguridad."
         },
-        "auth__mfa_disabled_email_enabled": {
-          "label": "Aviso de verificación en dos pasos desactivada",
-          "description": "Enviar un correo al titular de la cuenta cada vez que se desactiva su verificación en dos pasos, o un administrador la restablece: un aviso de seguridad."
+        "mfa__required": {
+          "label": "Exigir MFA",
+          "description": "Quién debe iniciar sesión con un código de una app de autenticación. A quien se le exige y aún no la configuró se le pide en su próximo inicio de sesión, y no puede desactivarla; las sesiones ya abiertas siguen.",
+          "options": {
+            "NONE": "Nadie",
+            "EVERYONE": "Todos",
+            "ROLES": "Roles seleccionados"
+          },
+          "optionDescriptions": {
+            "NONE": "Cada persona decide si lo activa.",
+            "EVERYONE": "Toda cuenta que inicia sesión.",
+            "ROLES": "Quien tenga alguno de los roles de abajo."
+          }
+        },
+        "mfa__required_roles": {
+          "label": "Roles",
+          "description": "Quien tenga alguno de estos roles debe usar MFA. Administrators es un buen punto de partida."
+        },
+        "mfa__disabled_email_enabled": {
+          "label": "Aviso de MFA desactivada",
+          "description": "Envía un correo al titular de la cuenta cada vez que se desactiva su MFA, o un administrador la restablece: un aviso de seguridad."
         },
         "auth__token_created_email_enabled": {
           "label": "Aviso de nuevo token de API",
@@ -876,6 +916,68 @@
         "system__timezone_user_choice": {
           "label": "Los usuarios pueden elegir su propia zona horaria",
           "description": "Desactivado: todos trabajan en la Zona horaria de arriba; la elección propia de un usuario se conserva, sin usarse, hasta que esto se vuelva a activar. Necesita una Zona horaria definida: sin ella, decide el navegador de cada persona."
+        },
+        "lockdown__enabled": {
+          "label": "Lockdown",
+          "description": "Activado: la instancia solo responde a los administradores - sus sesiones y sus tokens ADMIN - cuando lo indique la configuración de abajo. Todos los demás, cualquier otro token, los webhooks y las páginas públicas incluidos, reciben 503 LOCKDOWN. Desactivado: no hay lockdown, sin importar lo que esté configurado abajo."
+        },
+        "lockdown__when": {
+          "label": "Cuándo",
+          "description": "Cuándo está activo el lockdown.",
+          "options": {
+            "NOW": "Ahora",
+            "ONCE": "Programado una vez",
+            "RECURRING": "Repetido"
+          },
+          "optionDescriptions": {
+            "NOW": "Desde que guardas, hasta que desactives Lockdown.",
+            "ONCE": "Entre Desde y Hasta: empieza y termina solo, una vez.",
+            "RECURRING": "En cada ocurrencia de una programación, durante un tiempo - una ventana de mantenimiento cada noche, o cada semana."
+          }
+        },
+        "lockdown__from": {
+          "label": "Desde",
+          "description": "Programado una vez: cuándo empieza solo el lockdown."
+        },
+        "lockdown__until": {
+          "label": "Hasta",
+          "description": "Programado una vez: cuándo termina solo - después de Desde, y en el futuro. A quien llama se le dice cuánto esperar (Retry-After)."
+        },
+        "lockdown__recurring_schedule": {
+          "label": "Empieza",
+          "description": "Repetido: cuándo empieza cada lockdown, como expresión cron en la zona horaria de la instancia (Configuración › General). 0 3 * * 0: todos los domingos a las 03:00."
+        },
+        "lockdown__recurring_minutes": {
+          "label": "Dura",
+          "description": "Repetido: cuánto dura cada uno, desde que empieza. Hasta un día (1440)."
+        },
+        "lockdown__mode": {
+          "label": "Modo",
+          "description": "Qué pueden hacer todos los demás durante un lockdown.",
+          "options": {
+            "FULL": "Cerrado",
+            "READ_ONLY": "Solo lectura"
+          },
+          "optionDescriptions": {
+            "FULL": "Solo se responde a los administradores. Todos los demás esperan: no pueden iniciar sesión, leer ni escribir.",
+            "READ_ONLY": "Todos inician sesión y leen como siempre; solo los administradores cambian algo. Las escrituras, las llamadas a funciones, los webhooks y el registro reciben 503 LOCKDOWN."
+          }
+        },
+        "lockdown__allowed_roles": {
+          "label": "Excepciones",
+          "description": "Roles para los que el lockdown hace una excepción: sus usuarios también pueden iniciar sesión y seguir trabajando mientras esté activo - sus sesiones y sus tokens, con los permisos que ya tienen (en Solo lectura, también pueden escribir). Para quien revisa el resultado antes de que vuelvan todos, o la integración que hace el trabajo."
+        },
+        "lockdown__pause_workflows": {
+          "label": "Pausar workflows",
+          "description": "Activado: durante un lockdown ningún workflow empieza solo. Una ejecución programada se saltea; un evento de la base de datos espera e inicia sus workflows cuando el lockdown termina. Desactivado: siguen corriendo. Un workflow que un administrador ejecuta a mano siempre corre."
+        },
+        "lockdown__notice_minutes": {
+          "label": "Avisar antes a los usuarios",
+          "description": "Cuánto antes de un lockdown programado o repetido quienes usan la instancia ven un aviso, arriba de cada página. 0: no se les avisa - solo los administradores lo ven venir."
+        },
+        "lockdown__message": {
+          "label": "Mensaje",
+          "description": "Se muestra a quien es rechazado durante un lockdown, después de \"Esta instancia está en lockdown.\", y en el aviso previo - por qué, o a quién preguntar. Hasta 500 caracteres."
         },
         "system__language": {
           "label": "Idioma predeterminado",
@@ -945,8 +1047,8 @@
           "description": "La clave de una entrada de Configuración › Seguridad › Secretos que guarda la clave secreta de acceso; nunca se guarda aquí en texto plano."
         },
         "security__rate_limit_enabled": {
-          "label": "Activar la limitación de solicitudes",
-          "description": "Limita las solicitudes y los inicios de sesión fallidos de cada dirección IP. Detrás de un proxy, activa también Confiar en las cabeceras del proxy inverso: si no, todos tienen la dirección del proxy y comparten un mismo límite."
+          "label": "Limitar por dirección",
+          "description": "Limita las solicitudes sin credencial y los inicios de sesión fallidos de cada dirección IP. Detrás de un proxy, activa también Confiar en las cabeceras del proxy inverso: si no, todos tienen la dirección del proxy y comparten un mismo límite."
         },
         "security__rate_limit_per_minute": {
           "label": "Solicitudes por minuto",
@@ -954,7 +1056,7 @@
         },
         "security__rate_limit_per_user_per_minute": {
           "label": "Solicitudes por minuto por usuario",
-          "description": "La mayor cantidad de solicitudes que una sesión iniciada o un token personal puede hacer en un minuto, contadas por la credencial y no por la dirección: así, las personas detrás de una misma conexión de oficina, o una aplicación cuyo servidor envía todas las solicitudes desde una dirección, tienen cada una su propio límite. Una solicitud sin credencial, o con una credencial rechazada, cuenta contra su dirección."
+          "description": "La mayor cantidad de solicitudes que un usuario puede hacer en un minuto, sumando todas sus sesiones y tokens personales: se cuenta por usuario y no por dirección, así que vale detrás de cualquier proxy, y las personas detrás de una misma conexión de oficina tienen cada una su propio límite. Siempre activo, diga lo que diga Limitar por dirección; 0 lo apaga."
         },
         "security__rate_limit_sign_in_per_minute": {
           "label": "Inicios de sesión fallidos por minuto",
@@ -1200,6 +1302,10 @@
           "label": "Token de inserción más largo",
           "description": "Se rechaza un token cuyo vencimiento (exp) está más lejos que esto: mantén los tokens de inserción de corta duración y firma uno nuevo por cada vista de página."
         },
+        "dashboards__query_role": {
+          "label": "Rol de las consultas de widgets",
+          "description": "Un rol de PostgreSQL con el que corre cada consulta de widget: solo lo que ese rol puede leer llega a un dashboard, y la consulta no puede abandonarlo. Lo creás vos (NOLOGIN, SELECT sobre lo que leen los dashboards, nada sobre el esquema totalbase) y se lo otorgás al rol propio de TotalBase. Vacío: el rol propio de TotalBase."
+        },
         "dashboards__embed_allowed_origins": {
           "label": "Sitios que pueden insertar",
           "description": "Orígenes autorizados a enmarcar un dashboard insertado (https://app.example.com): se envían como frame-ancestors de Content-Security-Policy. Vacío: ningún sitio puede enmarcarlo."
@@ -1207,6 +1313,10 @@
         "workflows__max_sync_wait_ms": {
           "label": "Espera síncrona máxima",
           "description": "Lo máximo que el modo de respuesta síncrona de un disparador WEBHOOK mantiene abierta la conexión esperando a que termine la ejecución, sea cual sea el tiempo de espera configurado en cada workflow."
+        },
+        "workflows__webhook_max_concurrent_runs": {
+          "label": "Ejecuciones simultáneas por webhook",
+          "description": "Cuántas ejecuciones puede tener en curso a la vez un workflow con webhook; una solicitud que lo supera se rechaza (429) hasta que termine alguna, para que una avalancha de llamadas no ocupe todas las conexiones."
         },
         "workflows__max_run_duration_ms": {
           "label": "Duración máxima de una ejecución",
@@ -1553,6 +1663,10 @@
           "label": "Suscripciones por conexión",
           "description": "La mayor cantidad de suscripciones que mantiene un WebSocket a la vez."
         },
+        "realtime__max_subscriptions_per_user": {
+          "label": "Suscripciones por usuario",
+          "description": "La mayor cantidad de suscripciones que mantiene un usuario a la vez, sumando todas sus conexiones: cada una se vuelve a leer en cada cambio de su tabla."
+        },
         "realtime__heartbeat_seconds": {
           "label": "Heartbeat",
           "description": "Cada cuánto el servidor hace ping a cada conexión; la que no responde antes del siguiente ping se cierra."
@@ -1572,6 +1686,10 @@
         "graphql__max_depth": {
           "label": "Profundidad de la selección",
           "description": "Cuánto puede anidarse la selección de una petición, introspección incluida. Hasta dónde llegan las relaciones lo fija api.max_relation_depth."
+        },
+        "graphql__max_fields": {
+          "label": "Campos por petición",
+          "description": "La mayor cantidad de campos que selecciona una petición, introspección incluida: los campos de un fragmento cuentan de nuevo en cada lugar donde se usa."
         },
         "mail__footer": {
           "label": "Pie",

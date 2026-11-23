@@ -1,3 +1,4 @@
+import { redirectEntryProblem } from "@totalbase/auth";
 import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AuthProviderConfig, AuthProviderType } from "@totalbase/auth";
@@ -43,12 +44,32 @@ function assertValidConfiguration(type: AuthProviderType, configuration: AuthPro
   if (type === "OIDC" && !configuration.issuer?.trim()) {
     throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", "An OIDC provider requires an issuer.");
   }
+  // Each entry is the open-redirect boundary (Security.md §2.11): an absolute http(s) URL, never `/*` or a non-string.
+  for (const entry of configuration.allowed_redirect_urls as unknown[]) {
+    const problem = redirectEntryProblem(entry);
+    if (problem) throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", problem);
+  }
+}
+
+/**
+ * A provider's `default_role_id` - what every account its first sign-in creates gets - is never a reserved or an
+ * administrator role, the rule `auth.registration_default_role` has: anyone with an account at that provider would be
+ * an administrator here.
+ */
+async function assertDefaultRoleAssignable(context: AppContext, roleId: string | null | undefined): Promise<void> {
+  if (!roleId) return;
+  const { rows } = await context.database.query<{ reserved: boolean; admin_access: boolean }>(`SELECT reserved, admin_access FROM totalbase.roles WHERE id = $1`, [roleId]);
+  const role = rows[0];
+  if (!role) throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", "default_role_id is not a role.");
+  if (role.reserved || role.admin_access) {
+    throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", "default_role_id can't be a reserved or an administrator role - every account the provider creates would get it.");
+  }
 }
 
 /** The client secret must exist now - otherwise the provider only fails later, at someone's sign-in. */
 async function assertSecretExists(context: AppContext, key: string): Promise<void> {
-  if (!(await context.secrets.exists(key))) {
-    throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", `No secret named "${key}" - create it under Settings > Secrets first.`);
+  if (!(await context.secrets.exists(key, "AUTH_PROVIDERS"))) {
+    throw new TotalBaseError("INVALID_AUTH_PROVIDER_PAYLOAD", `No Auth providers secret named "${key}" - create it under Settings > Secrets first.`);
   }
 }
 
@@ -117,6 +138,7 @@ export function registerAdminAuthProvidersRoutes(app: FastifyInstance, context: 
     if (!body.name?.trim()) throw new TotalBaseError("INVALID_NAME", "Name is required.");
     assertValidConfiguration(body.type, body.configuration, body.showOnSignIn === true);
     await assertSecretExists(context, body.configuration.client_secret_key);
+    await assertDefaultRoleAssignable(context, body.configuration.default_role_id);
     const created = await context.authProviders.create({
       type: body.type,
       name: body.name,
@@ -157,6 +179,7 @@ export function registerAdminAuthProvidersRoutes(app: FastifyInstance, context: 
       // Turning the button off checks the stored URLs too: a provider must still be able to complete a login.
       assertValidConfiguration(current.type, body.configuration ?? current.configuration, showOnSignIn);
       if (body.configuration) await assertSecretExists(context, body.configuration.client_secret_key);
+      if (body.configuration) await assertDefaultRoleAssignable(context, body.configuration.default_role_id);
       const updated = await context.authProviders.update(request.params.id, {
         name: body.name,
         enabled: body.enabled,

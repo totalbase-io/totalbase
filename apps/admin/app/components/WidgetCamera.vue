@@ -180,6 +180,8 @@ async function usePhoto() {
     const blob = await renderPhoto(photo.image, source, props.maxSize, props.quality)
     const formData = new FormData()
     formData.append('file', new File([blob], photoFileName(new Date(), t('dataviews.widgetCamera.fileStem')), { type: 'image/jpeg' }))
+    // A record's file: reached by whoever reads the record, and nobody else (Administration.md §10.6).
+    formData.append('visibility', 'LINKED')
     const { data } = await dataApi.post<FileNode>('/totalbase/table/files', formData)
     modelValue.value = data.id
     close()

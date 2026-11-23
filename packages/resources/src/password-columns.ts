@@ -11,7 +11,12 @@ import type { Database } from "@totalbase/database";
  */
 export async function getPasswordColumns(database: Database, resourceId: string): Promise<Set<string>> {
   const { rows } = await database.query<{ name: string }>(
-    `SELECT name FROM totalbase.resources_columns WHERE resource = $1 AND config ->> 'input' = 'password'`,
+    // By attnum, named as PostgreSQL names the column now: renamed outside TotalBase (the SQL Console), it is still
+    // a Password column before the next catalog sync catches the name up.
+    `SELECT a.attname AS name FROM totalbase.resources_columns c
+       JOIN totalbase.resources r ON r.id = c.resource
+       JOIN pg_catalog.pg_attribute a ON a.attrelid = r.postgres_oid AND a.attnum = c.attnum AND NOT a.attisdropped
+       WHERE c.resource = $1 AND c.config ->> 'input' = 'password'`,
     [resourceId],
   );
   return new Set(rows.map((row) => row.name));

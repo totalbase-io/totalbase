@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { Database, loadDatabaseConfigFromEnv, postgresClientEnv } from "@totalbase/database";
@@ -95,6 +95,8 @@ describe.skipIf(!HAS_TOOLS)("built-in backups (integration)", () => {
     expect(done).toMatchObject({ status: "COMPLETED", manifest: { files: true, masterKeyVerifier: "the-verifier", migration: expect.any(String) } });
     expect(done.sizeBytes).toBeGreaterThan(0);
     expect(await readdir(backupsDir)).toEqual([done.name]);
+    // Readable by the server's user only (0600), whatever the umask: it holds the whole database.
+    expect((await stat(join(backupsDir, done.name))).mode & 0o777).toBe(0o600);
     expect(events).toEqual(["COMPLETED"]);
   }, 120_000);
 
@@ -118,15 +120,18 @@ describe.skipIf(!HAS_TOOLS)("built-in backups (integration)", () => {
       pgBinDir: PG_BIN,
       migrationsDir: MIGRATIONS,
       workDir: join(root, "work"),
+      dataDir: root,
       log: () => undefined,
     };
-    await expect(restoreBackup({ ...options, masterKeyVerifier: "another-key" })).rejects.toThrow(/master key/);
-    await expect(restoreBackup({ ...options, database: source, clientEnv: clientEnv(sourceName), masterKeyVerifier: "the-verifier" })).rejects.toThrow(/isn't empty/);
+    // Security regression: the archive's manifest chose where its files went - anywhere an archive someone else made said.
+    await expect(restoreBackup({ ...options, dataDir: join(root, "elsewhere"), masterKeyVerifiers: ["the-verifier"] })).rejects.toThrow(/outside the data directory/);
+    await expect(restoreBackup({ ...options, masterKeyVerifiers: ["another-key"] })).rejects.toThrow(/master key/);
+    await expect(restoreBackup({ ...options, database: source, clientEnv: clientEnv(sourceName), masterKeyVerifiers: ["the-verifier"] })).rejects.toThrow(/isn't empty/);
     // The files directory the backup names holds its files: a restore never writes over them.
-    await expect(restoreBackup({ ...options, masterKeyVerifier: "the-verifier" })).rejects.toThrow(/files directory/);
+    await expect(restoreBackup({ ...options, masterKeyVerifiers: ["the-verifier"] })).rejects.toThrow(/files directory/);
 
     await rm(filesDir, { recursive: true });
-    await restoreBackup({ ...options, masterKeyVerifier: "the-verifier" });
+    await restoreBackup({ ...options, masterKeyVerifiers: ["the-verifier"] });
     const { rows } = await target.query<{ body: string }>(`SELECT body FROM public.notes ORDER BY id`);
     expect(rows.map((r) => r.body)).toEqual(["kept", "also kept"]);
     expect(await readFile(join(filesDir, "ab/cd/report.pdf"), "utf8")).toBe("the report");

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import { defineAdminThemes } from '~/utils/monaco-theme'
 
 // Read-only JSON viewer (openapi.vue's spec dump) - a trimmed-down
@@ -51,6 +52,7 @@ onMounted(async () => {
   // Loaded dynamically so Monaco (a few MB) is only fetched when this
   // viewer is actually mounted - same rationale as SqlEditor.vue.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
 

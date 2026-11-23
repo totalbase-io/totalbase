@@ -28,8 +28,13 @@ export interface DerivativePurgeResult {
  * this is ever called - this assumes the caller already has access to the
  * file.
  */
+/** New renditions a file may get per hour: far more than a page's sizes, far fewer than a flood of parameter sets. */
+export const MAX_NEW_RENDITIONS_PER_HOUR = 64;
+
 export class FilesTransformService {
   private readonly limiter = new ConcurrencyLimiter();
+  /** New renditions made per file in the current hour (Administration.md §10.8) - each a sharp run and a stored file. */
+  private readonly renditionsMade = new Map<string, { hour: number; count: number }>();
 
   constructor(
     private readonly settings: SettingsService,
@@ -99,11 +104,30 @@ export class FilesTransformService {
         const buffer = await storage.read(cacheKey);
         return { buffer, contentType: sniffContentType(buffer, params.mimeType) };
       }
+      this.countRendition(params.fileId);
       const original = await params.readOriginal();
       const result = await transformImage(original, transformParams, timeoutMs);
       await storage.store(cacheKey, result.buffer);
       return { buffer: result.buffer, contentType: result.contentType };
     }, timeoutMs);
+  }
+
+  /**
+   * Every distinct set of parameters is a new rendition - an image processed, a file stored - and a PUBLIC file's are
+   * asked for by anyone: at most MAX_NEW_RENDITIONS_PER_HOUR new ones per file an hour, every one already made still
+   * served from the cache. Past it, RATE_LIMIT_EXCEEDED.
+   */
+  private countRendition(fileId: string): void {
+    const hour = Math.floor(Date.now() / 3_600_000);
+    const made = this.renditionsMade.get(fileId);
+    const count = made && made.hour === hour ? made.count : 0;
+    if (count >= MAX_NEW_RENDITIONS_PER_HOUR) {
+      throw new TotalBaseError("RATE_LIMIT_EXCEEDED", `This file has had ${MAX_NEW_RENDITIONS_PER_HOUR} new renditions this hour - ask for one already made, or later.`);
+    }
+    this.renditionsMade.set(fileId, { hour, count: count + 1 });
+    if (this.renditionsMade.size > 10_000) {
+      for (const [key, value] of this.renditionsMade) if (value.hour !== hour) this.renditionsMade.delete(key);
+    }
   }
 
   /**

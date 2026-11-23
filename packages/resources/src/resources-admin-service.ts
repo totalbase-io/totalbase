@@ -201,15 +201,23 @@ export class ResourcesAdminService {
    * and how many are MISSING (their PostgreSQL object is gone - a catalog
    * refresh reconciles them).
    */
-  async summary(): Promise<{ total: number; exposed: number; missing: number }> {
-    const { rows } = await this.database.query<{ total: number; exposed: number; missing: number }>(
-      `SELECT count(*) FILTER (WHERE status = 'ACTIVE')::int AS total,
-              count(*) FILTER (WHERE status = 'ACTIVE' AND exposed_methods <> '{}')::int AS exposed,
-              count(*) FILTER (WHERE status = 'MISSING')::int AS missing
-       FROM totalbase.resources
-       WHERE "schema" <> 'totalbase'`,
+  /**
+   * The application's resources, counted (`totalbase` excluded): active, exposed, missing - and `definerFunctions`,
+   * the exposed functions declared SECURITY DEFINER (`pg_proc.prosecdef`), which run with their owner's privileges
+   * whoever calls them (Administration.md §1.6).
+   */
+  async summary(): Promise<{ total: number; exposed: number; missing: number; definerFunctions: number }> {
+    const { rows } = await this.database.query<{ total: number; exposed: number; missing: number; definer_functions: number }>(
+      `SELECT count(*) FILTER (WHERE r.status = 'ACTIVE')::int AS total,
+              count(*) FILTER (WHERE r.status = 'ACTIVE' AND r.exposed_methods <> '{}')::int AS exposed,
+              count(*) FILTER (WHERE r.status = 'MISSING')::int AS missing,
+              count(*) FILTER (WHERE r.status = 'ACTIVE' AND r.type = 'FUNCTION' AND r.exposed_methods <> '{}' AND p.prosecdef)::int AS definer_functions
+       FROM totalbase.resources r
+       LEFT JOIN pg_catalog.pg_proc p ON r.type = 'FUNCTION' AND p.oid = r.postgres_oid
+       WHERE r."schema" <> 'totalbase'`,
     );
-    return rows[0]!;
+    const { definer_functions: definerFunctions, ...counts } = rows[0]!;
+    return { ...counts, definerFunctions };
   }
 
   async list(filter?: {

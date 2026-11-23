@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { TotalBaseError } from "@totalbase/errors";
 import type { Principal } from "@totalbase/shared";
-import { Database } from "./database.js";
+import { Database, parameterText } from "./database.js";
 import { loadDatabaseConfigFromEnv } from "./config.js";
 
 const TABLE = "database_pkg_test_scratch";
@@ -36,6 +36,11 @@ describe("Database (integration)", () => {
     await database.close();
   });
 
+  // quoteLiteral writes a backslash as itself: every connection must read strings so, whatever the role's default.
+  it("pins standard_conforming_strings on every connection", async () => {
+    expect((await database.query<{ on: string }>("SELECT current_setting('standard_conforming_strings') AS on")).rows[0]!.on).toBe("on");
+  });
+
   it("readOnlyTransaction() refuses writes, and leaves nothing on its pooled connection - not even a session setting", async () => {
     // One connection: the next query is served by the very connection the transaction used.
     const single = new Database({ ...loadDatabaseConfigFromEnv(), poolMax: 1 });
@@ -50,6 +55,68 @@ describe("Database (integration)", () => {
 
       await expect(single.readOnlyTransaction((client) => client.query(`INSERT INTO public."${TABLE}" (code) VALUES ('ro')`))).rejects.toBeInstanceOf(TotalBaseError);
       expect((await single.query(`SELECT 1 FROM public."${TABLE}" WHERE code = 'ro'`)).rowCount).toBe(0);
+
+      // Security regression (Dashboards.md §2.3): a session advisory lock survives ROLLBACK - taken by a widget's SQL,
+      // it stayed on the pooled connection, holding TotalBase's own locks until the connection closed.
+      const held = `SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()`;
+      await single.readOnlyTransaction((client) => client.query("SELECT pg_advisory_lock(424242)"));
+      expect((await single.query<{ n: number }>(held)).rows[0]!.n).toBe(0);
+    } finally {
+      await single.close();
+    }
+  });
+
+  it("parameterText() writes a value as PostgreSQL reads it back from text - each cast, in one text[]", async () => {
+    const values = [null, 41, "a,b", ["x", "y,z", null], { k: 1 }, Buffer.from("hi"), new Date("2026-01-02T03:04:05Z")];
+    const { rows } = await database.query<Record<string, unknown>>(
+      `SELECT $1::text[] IS NOT NULL AS ok, ($1::text[])[1] IS NULL AS a, ($1::text[])[2]::int + 1 AS b, ($1::text[])[3] AS c, ($1::text[])[4]::text[] AS d,
+              ($1::text[])[5]::jsonb ->> 'k' AS e, convert_from(($1::text[])[6]::bytea, 'UTF8') AS f, ($1::text[])[7]::timestamptz = '2026-01-02T03:04:05Z' AS g`,
+      [values.map(parameterText)],
+    );
+    expect(rows[0]).toEqual({ ok: true, a: true, b: 42, c: "a,b", d: ["x", "y,z", null], e: "1", f: "hi", g: true });
+  });
+
+  // The widget query role's column list (Dashboards.md §2.10) comes from a description: it must run nothing.
+  it("readOnlyTransaction()'s describe() gives the columns, origins and typmods without running the statement", async () => {
+    await database.readOnlyTransaction(async (client) => {
+      const fields = await client.describe(`SELECT set_config('totalbase.describe_probe', 'ran', true) AS ran, code, 1.5::numeric(5,2) AS n, $1[1]::int AS p FROM public."${TABLE}"`, [1009]);
+      expect(fields.map(({ name, dataTypeModifier }) => [name, dataTypeModifier])).toEqual([["ran", -1], ["code", -1], ["n", (5 << 16) + 2 + 4], ["p", -1]]);
+      expect(fields[1]!.tableId).toBeGreaterThan(0);
+      expect((await client.query<{ v: string | null }>("SELECT current_setting('totalbase.describe_probe', true) AS v")).rows[0]!.v).toBeFalsy();
+    });
+    await expect(database.readOnlyTransaction((client) => client.describe("SELECT FROM nowhere_at_all"))).rejects.toMatchObject({ code: "UNDEFINED_TABLE" });
+    // A refusal leaves the connection usable, its transaction rolled back.
+    await expect(database.query<{ n: number }>("SELECT 1 AS n")).resolves.toMatchObject({ rows: [{ n: 1 }] });
+  });
+
+  // Security regression (Foundations.md §19, Administration.md §5): raw SQL's session state stayed on its pooled
+  // connection - `SET standard_conforming_strings = off` turned the quoting TotalBase relies on into an injection
+  // for the next request, and a BEGIN left open, a lock, a LISTEN or a temporary table outlived the statement.
+  it("queryRaw() and transactionRaw() leave nothing on their pooled connection", async () => {
+    const single = new Database({ ...loadDatabaseConfigFromEnv(), poolMax: 1 });
+    const state = () =>
+      single.query<{ scs: string; tx: boolean; locks: number; listens: number; temps: number; role: boolean; prepared: number }>(
+        `SELECT current_setting('standard_conforming_strings') AS scs, to_regclass('public.raw_left_open') IS NOT NULL AS tx,
+                current_user = session_user AS role, (SELECT count(*)::int FROM pg_prepared_statements) AS prepared,
+                (SELECT count(*)::int FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()) AS locks,
+                (SELECT count(*)::int FROM pg_listening_channels()) AS listens,
+                (SELECT count(*)::int FROM pg_class WHERE relpersistence = 't' AND pg_table_is_visible(oid)) AS temps`,
+      );
+    try {
+      await single.queryRaw("SET standard_conforming_strings = off; SELECT pg_advisory_lock(434343); LISTEN raw_left; CREATE TEMP TABLE raw_left (x int); BEGIN; CREATE TABLE public.raw_left_open (x int)");
+      expect((await state()).rows[0]).toEqual({ scs: "on", tx: false, locks: 0, listens: 0, temps: 0, role: true, prepared: 0 });
+      // SEC-85: RESET ALL leaves a SET ROLE in place - later requests on the connection ran as that role.
+      await single.query(`DROP ROLE IF EXISTS raw_left_role`);
+      await single.query(`CREATE ROLE raw_left_role`);
+      try {
+        await single.query(`GRANT raw_left_role TO CURRENT_USER`);
+        await single.queryRaw("SET ROLE raw_left_role; PREPARE raw_left_stmt AS SELECT 1");
+        expect((await state()).rows[0]).toMatchObject({ role: true, prepared: 0 });
+      } finally {
+        await single.query(`DROP ROLE IF EXISTS raw_left_role`);
+      }
+      await single.transactionRaw((client) => client.queryRaw("SET SESSION standard_conforming_strings = off"));
+      expect((await state()).rows[0]!.scs).toBe("on");
     } finally {
       await single.close();
     }

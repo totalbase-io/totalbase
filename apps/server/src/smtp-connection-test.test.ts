@@ -54,7 +54,7 @@ describe("SMTP connection test", () => {
   }
 
   async function useRelay(options: { port: number; password: string }): Promise<void> {
-    await context.secrets.set(secretKey, options.password);
+    await context.secrets.set(secretKey, options.password, "SMTP");
     await context.settings.set("smtp.host", "127.0.0.1");
     await context.settings.set("smtp.port", options.port);
     await context.settings.set("smtp.secure", false);

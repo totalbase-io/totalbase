@@ -371,6 +371,8 @@ async function publish(note?: string) {
     await refresh()
     await refreshVersions()
     publishToast(result, t('workflows.editor.published'))
+    // The server's advice (Workflows.md §6.5): a public webhook anyone with its URL sets off.
+    for (const warning of (result.meta?.warnings as string[] | undefined) ?? []) toast.add({ title: t('designer.publishWarning'), description: warning, color: 'warning', duration: 0 })
   } catch (error) {
     notifyError(error, t('workflows.editor.publishFailed'))
   } finally {

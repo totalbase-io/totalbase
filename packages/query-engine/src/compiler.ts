@@ -1,4 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
+import { searchTerms } from "./search-terms.js";
 import type { PermissionDecision } from "@totalbase/permissions";
 import type { AggregateNode, CompiledQuery, FieldNode, FilterNode, OrderNode, QueryAST } from "./ast.js";
 import { compileFilter } from "./filter-compiler.js";
@@ -15,6 +16,11 @@ export interface CompileOptions {
   fieldDecision: (dottedPath: string) => PermissionDecision;
   /** Effective row filter from the permission resolver (already OR-combined across roles). undefined = unrestricted. */
   rowFilter: FilterNode | undefined;
+  /**
+   * A fixed rule ANDed with the row filter, built by the caller as SQL over the root's alias - a file's visibility
+   * (Administration.md §10.6), which no grant widens. Given the root alias and how many parameters come before it.
+   */
+  rowCeiling?: ((rootAlias: string, paramOffset: number) => Promise<{ sql: string; params: unknown[] }>) | undefined;
   resolveUserVariable: (field: string) => unknown;
   defaultLimit: number;
   maxLimit: number;
@@ -162,6 +168,11 @@ export async function compileSelect(options: CompileOptions): Promise<CompiledQu
     if (options.rowFilter) {
       const compiled = await compileFilter(options.rowFilter, rowFilterContext, params.length);
       whereParts.push(compiled.sql);
+      params.push(...compiled.params);
+    }
+    if (options.rowCeiling) {
+      const compiled = await options.rowCeiling(registry.rootAlias, params.length);
+      whereParts.push(`(${compiled.sql})`);
       params.push(...compiled.params);
     }
     if (ast.search) {
@@ -426,7 +437,7 @@ async function compileSearch(
   // Every word is a term; a row matches when each term is found in some field (AND across terms, OR across
   // fields). Text by substring, case and accents aside; a number, a UUID, a date (ISO) or a time (HH:mm) only
   // by its exact value, and only in a field of that kind.
-  const terms = search.trim().split(/\s+/).filter((t) => t.length > 0);
+  const terms = searchTerms(search);
   const termParts: string[] = [];
   for (const term of terms) {
     const parts: string[] = [];

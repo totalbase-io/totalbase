@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import multipart from "@fastify/multipart";
+import multipart, { type MultipartFile } from "@fastify/multipart";
 import { TotalBaseError } from "@totalbase/errors";
 import { FilesAdminService, type FileRecord } from "@totalbase/files";
 import type { AppContext } from "../context.js";
@@ -8,8 +8,9 @@ import { resolveDataPrincipal } from "../data-principal.js";
 import {
   assertColumnsGranted,
   assertFileActionAllowed,
-  assertFileCreateAllowed,
+  createFileAuthorized,
   assertFileReadAllowed,
+  assertVisibilityAllowed,
   resolveTableGrant,
   rowFilterLimits,
   rowPassesGrant,
@@ -18,6 +19,9 @@ import type { DataPrincipal } from "../data-principal.js";
 import { dataEnvelope, type ParameterObject } from "@totalbase/openapi";
 import { canOnTotalbaseResource, FILE_REF, FILE_SCHEMAS } from "../openapi-docs.js";
 import { optionalData } from "../request-body.js";
+import { sendFileContent, sendFileRendition } from "../file-response.js";
+import { resolveTableResource } from "@totalbase/resources";
+import { ReadAudit, readOrigin } from "../read-audit.js";
 
 /**
  * Where and how a file is stored is TotalBase's own business: the Data API
@@ -43,6 +47,7 @@ async function updateFileAuthorized(
   fileId: string,
   columns: readonly string[],
   change: (files: FilesAdminService) => Promise<FileRecord>,
+  visibility?: string,
 ): Promise<FileRecord> {
   const grant = await resolveTableGrant(context, dataPrincipal, "files", "UPDATE", "FILE_ACCESS_DENIED");
   assertColumnsGranted(grant, [...columns], "FILE_ACCESS_DENIED");
@@ -51,12 +56,25 @@ async function updateFileAuthorized(
     if (!(await rowPassesGrant(client, context, dataPrincipal, grant, fileId, limits))) {
       throw new TotalBaseError("FILE_ACCESS_DENIED", "UPDATE is not authorized for Files.");
     }
+    // A new visibility is the uploader's, or an administrator's, to set (Administration.md §10.6).
+    if (visibility !== undefined) {
+      const { rows } = await client.query<{ created_by: string | null; visibility: string }>(
+        `SELECT created_by, visibility FROM totalbase.files WHERE id = $1`, [fileId]);
+      if (rows[0] && rows[0].visibility !== visibility) await assertVisibilityAllowed(context, dataPrincipal, visibility, rows[0].created_by);
+    }
     const record = await change(new FilesAdminService(client, context.settings, context.filesStorage));
     if (!(await rowPassesGrant(client, context, dataPrincipal, grant, fileId, limits))) {
       throw new TotalBaseError("FILE_ACCESS_DENIED", "The file would no longer satisfy your permission's row filter.");
     }
     return record;
   }, { actorUserId: dataPrincipal.actorUserId });
+}
+
+/** An upload's `visibility` field (Administration.md §10.4): one of the three, or none for `files.default_visibility_public`. */
+function uploadVisibility(value: string | undefined): "PRIVATE" | "LINKED" | "PUBLIC" | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (value === "PRIVATE" || value === "LINKED" || value === "PUBLIC") return value;
+  throw new TotalBaseError("INVALID_QUERY", "visibility must be PRIVATE, LINKED or PUBLIC.");
 }
 
 /** Shared by every Files route's `config.openapi`. */
@@ -83,7 +101,7 @@ const TRANSFORM_PARAMETERS: ParameterObject[] = [
 
 
 interface UpdateFileBody {
-  visibility?: "PRIVATE" | "PUBLIC";
+  visibility?: "PRIVATE" | "LINKED" | "PUBLIC";
   description?: string | null;
   tags?: string[];
   name?: string;
@@ -109,6 +127,26 @@ function parseTagsField(raw: string | undefined): string[] | undefined {
  * that file's comment for why totalbase.files
  * doesn't need a bespoke permission model.
  */
+
+/**
+ * The upload's `file` part, read up to `files.max_file_size_bytes` and no further (Administration.md §10.4): past it
+ * the transfer is dropped as it arrives and the request answers FILE_TOO_LARGE - never a whole oversized body held in
+ * memory before anything checks it. A replaced content (`PUT .../content`) is held to the same limit.
+ */
+async function readUploadedFile(context: AppContext, request: FastifyRequest): Promise<{ file: MultipartFile; content: Buffer }> {
+  const maxBytes = await context.settings.get("files.max_file_size_bytes");
+  const file = await request.file({ limits: { fileSize: maxBytes } });
+  if (!file) throw new TotalBaseError("FILE_UPLOAD_REQUIRED", "A multipart 'file' field is required.");
+  try {
+    return { file, content: await file.toBuffer() };
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "FST_REQ_FILE_TOO_LARGE") {
+      throw new TotalBaseError("FILE_TOO_LARGE", `Uploaded file exceeds the configured maximum of ${maxBytes} bytes.`);
+    }
+    throw error;
+  }
+}
+
 export function registerFilesRoutes(app: FastifyInstance, context: AppContext): void {
   app.register(async (scoped) => {
     await scoped.register(multipart, { limits: { fileSize: 1024 * 1024 * 1024 } }); // service enforces the real limit
@@ -126,7 +164,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
               properties: {
                 file: { type: "string", format: "binary" },
                 folder: { type: "string", description: "Folder id." },
-                visibility: { type: "string", enum: ["PRIVATE", "PUBLIC"], default: "PRIVATE" },
+                visibility: { type: "string", enum: ["PRIVATE", "LINKED", "PUBLIC"], default: "PRIVATE" },
                 description: { type: "string" },
                 tags: { type: "string", description: "Comma-separated." },
               },
@@ -138,35 +176,49 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
       },
     }, async (request, reply) => {
       const dataPrincipal = await resolveDataPrincipal(context, extractBearerToken(request), undefined, request);
-      await assertFileCreateAllowed(context, dataPrincipal);
+      await resolveTableGrant(context, dataPrincipal, "files", "CREATE", "FILE_ACCESS_DENIED");
 
-      const file = await request.file();
-      if (!file) throw new TotalBaseError("FILE_UPLOAD_REQUIRED", "A multipart 'file' field is required.");
-      const content = await file.toBuffer();
+      const { file, content } = await readUploadedFile(context, request);
       const fields = file.fields as Record<string, { value?: string } | undefined>;
       const folderValue = fields.folder?.value;
+      // The columns the caller sets need their field grants, as on any other table (Security.md §6.4).
+      const columns = ["visibility", "folder", "description", "tags"].filter((column) => (fields[column]?.value ?? "") !== "");
+      // A visibility the uploader chooses is theirs to set - Public only while uploaders may publish (§10.6).
+      const visibility = uploadVisibility(fields.visibility?.value);
+      if (visibility !== undefined) await assertVisibilityAllowed(context, dataPrincipal, visibility, dataPrincipal.actorUserId ?? null);
 
-      const record = await context.filesAdmin.upload({
+      const record = await createFileAuthorized(context, dataPrincipal, columns, () => context.filesAdmin.upload({
         folder: folderValue ? folderValue : null,
         content,
         filename: file.filename,
         declaredContentType: file.mimetype,
-        visibility: fields.visibility?.value === "PUBLIC" ? "PUBLIC" : "PRIVATE",
+        visibility,
         description: fields.description?.value,
         tags: parseTagsField(fields.tags?.value),
         actorUserId: dataPrincipal.actorUserId ?? undefined,
-      });
+      }), (id) => context.filesAdmin.remove(id));
       reply.code(201);
       return { data: publicFile(record) };
     });
 
     // Content and info share the same authorization rule, except that a
-    // public file bypasses it entirely.
-    async function authorizeRead(request: FastifyRequest<{ Params: { id: string } }>) {
+    // public file bypasses it entirely. A read of any other file is audited
+    // as a Data API read of files when its resource has audit_read on
+    // (Security.md §11.5): who opened which file, its content or its details -
+    // the EXECUTED row before anything is sent, so nothing leaves unrecorded.
+    async function authorizeRead(request: FastifyRequest<{ Params: { id: string } }>, content: boolean) {
       const file = await context.filesAdmin.get(request.params.id);
       if (file.visibility === "PUBLIC") return file;
       const dataPrincipal = await resolveDataPrincipal(context, extractBearerToken(request), undefined, request);
-      await assertFileReadAllowed(context, dataPrincipal, file);
+      const readAudit = new ReadAudit(context, readOrigin(request), await resolveTableResource(context, "totalbase", "files", "GET"), dataPrincipal);
+      const detail = { pk: file.id, content };
+      try {
+        await assertFileReadAllowed(context, dataPrincipal, file);
+      } catch (error) {
+        await readAudit.failed("DENIED", detail, error);
+        throw error;
+      }
+      await readAudit.executed(context.database, detail, 1);
       return file;
     }
 
@@ -186,7 +238,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
         },
       },
       async (request, reply) => {
-        const file = await authorizeRead(request);
+        const file = await authorizeRead(request, true);
         // The URL stays the same when the content is replaced: the browser revalidates (no-cache) against the
         // checksum, a 304 while it's unchanged - a cached original or rendition never outlives its content.
         const etag = file.checksum ? `"${file.checksum}"` : undefined;
@@ -207,15 +259,10 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
             })
           : undefined;
 
-        if (transformed) {
-          reply.header("content-type", transformed.contentType);
-          return reply.send(transformed.buffer);
-        }
+        if (transformed) return sendFileRendition(reply, transformed.contentType, transformed.buffer);
 
         const { content } = await context.filesAdmin.readContent(file.id);
-        reply.header("content-type", file.mime_type);
-        reply.header("content-disposition", `inline; filename="${encodeURIComponent(file.name)}"`);
-        return reply.send(content);
+        return sendFileContent(reply, { mimeType: file.mime_type, name: file.name }, content);
       },
     );
 
@@ -230,7 +277,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
         },
       },
     }, async (request) => ({
-      data: publicFile(await authorizeRead(request)),
+      data: publicFile(await authorizeRead(request, false)),
     }));
 
     scoped.patch<{ Params: { id: string }; Body: { data?: UpdateFileBody } | null }>("/api/totalbase/table/files/:id", {
@@ -251,7 +298,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
                 data: {
                   type: "object",
                   properties: {
-                    visibility: { type: "string", enum: ["PRIVATE", "PUBLIC"] },
+                    visibility: { type: "string", enum: ["PRIVATE", "LINKED", "PUBLIC"] },
                     description: { type: ["string", "null"] },
                     tags: { type: "array", items: { type: "string" } },
                     name: { type: "string", maxLength: 255 },
@@ -277,7 +324,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
         tags: body.tags,
         name: body.name,
         folder: body.folder,
-      }));
+      }), body.visibility);
       return { data: publicFile(record) };
     });
 
@@ -306,9 +353,7 @@ export function registerFilesRoutes(app: FastifyInstance, context: AppContext): 
       const dataPrincipal = await resolveDataPrincipal(context, extractBearerToken(request), undefined, request);
       let content: Buffer;
       if (request.isMultipart()) {
-        const file = await request.file();
-        if (!file) throw new TotalBaseError("FILE_UPLOAD_REQUIRED", "A multipart 'file' field is required.");
-        content = await file.toBuffer();
+        content = (await readUploadedFile(context, request)).content;
       } else {
         const text = optionalData<{ content: unknown }>(request.body).content;
         if (typeof text !== "string") throw new TotalBaseError("INVALID_QUERY", "content must be a string.");

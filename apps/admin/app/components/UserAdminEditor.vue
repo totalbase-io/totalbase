@@ -11,7 +11,7 @@
  * the body as its own nested PageShell, so a section's table scrolls on its
  * own and its pager sits at the page's foot.
  */
-import { USER_STATUS_META, isSystemUser, isWorkflowsRole, userStatus, type AdminUserListItem } from '~/types/security'
+import { USER_STATUS_META, isSystemUser, isWorkflowsRole, userStatus, type AdminUserDetail } from '~/types/security'
 import type { Role } from '~/types/permission'
 import { useApiErrorMessage } from '~/utils/api-error-message'
 // Absolute dates/times in the user's zone and format (My account > Preferences).
@@ -29,7 +29,7 @@ const { copyLink, reportSendFailure } = useUserLinks()
 
 const { data: user, error, refresh } = await useAsyncData(
   `user-${userId}`,
-  () => api.get<AdminUserListItem>(`/users/${userId}`).then(r => r.data)
+  () => api.get<AdminUserDetail>(`/users/${userId}`).then(r => r.data)
 )
 const { data: roles } = await useRoles()
 
@@ -338,7 +338,7 @@ async function requirePasswordChange() {
 async function unlock() {
   actionLoading.value = true
   try {
-    await dataApi.patch(dataApi.resourcePath('totalbase', 'users', 'table', userId), { data: { locked_until: null, failed_login_count: 0 } })
+    await dataApi.patch(dataApi.resourcePath('totalbase', 'users', 'table', userId), { data: { locked_until: null, failed_login_count: 0, sign_in_failures: 0, sign_in_delayed_until: null } })
     toast.add({ title: t('users.userEditor.unlocked'), color: 'success' })
     await Promise.all([refresh(), refreshUsersData()])
   } catch (err) {
@@ -396,7 +396,7 @@ const menuItems = computed(() => {
           ]),
       { label: t('users.userEditor.menu.revokeSessions'), icon: 'i-lucide-log-out', onSelect: () => runAction('revoke-sessions', t('users.userEditor.menu.sessionsRevoked'), t('users.userEditor.menu.sessionsError')) },
       ...(u.hasPassword && u.canLogin && !u.passwordChangeRequired ? [{ label: t('users.userEditor.menu.requirePasswordChange'), icon: 'i-lucide-key-round', onSelect: requirePasswordChange }] : []),
-      ...(u.lockedUntil ? [{ label: t('users.userEditor.menu.unlock'), icon: 'i-lucide-lock-open', onSelect: unlock }] : []),
+      ...(u.lockedUntil || u.signInHeld ? [{ label: t('users.userEditor.menu.unlock'), icon: 'i-lucide-lock-open', onSelect: unlock }] : []),
       ...(u.mfaEnabled ? [{ label: t('users.userEditor.mfa.reset'), icon: 'i-lucide-shield-off', onSelect: () => { mfaResetOpen.value = true } }] : [])
     ]
     // Deactivate / Delete live in Profile's Danger zone only - one place
@@ -706,7 +706,14 @@ function formatDate(value: string | null) {
                 {{ t('users.userEditor.mfa.label') }}
               </dt>
               <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>{{ user.mfaEnabled ? t('users.userEditor.mfa.on') : t('users.userEditor.mfa.off') }}</span>
+                <span :class="user.mfaRequired && !user.mfaEnabled ? 'text-warning' : undefined">{{ user.mfaEnabled ? t('users.userEditor.mfa.on') : t('users.userEditor.mfa.off') }}</span>
+                <UBadge
+                  v-if="user.mfaRequired"
+                  :label="t('users.userEditor.mfa.required')"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                />
                 <UButton
                   v-if="user.mfaEnabled"
                   :label="t('users.userEditor.mfa.reset')"
@@ -721,14 +728,16 @@ function formatDate(value: string | null) {
                 {{ t('users.userEditor.signIn.lastSignIn') }}
               </dt>
               <dd>{{ user.lastLoginAt ? formatDate(user.lastLoginAt) : t('users.common.never') }}</dd>
-              <template v-if="user.lockedUntil || user.failedLoginCount > 0">
+              <template v-if="user.lockedUntil || user.failedLoginCount > 0 || user.signInHeld">
                 <dt class="text-muted">
                   {{ t('users.userEditor.signIn.failed') }}
                 </dt>
                 <dd :class="user.lockedUntil ? 'text-error' : 'text-warning'">
                   {{ user.lockedUntil
                     ? t('users.userEditor.signIn.lockedUntil', { date: formatDate(user.lockedUntil) })
-                    : t('users.userEditor.signIn.failedCount', { n: user.failedLoginCount }) }}
+                    : user.signInHeld
+                      ? t('users.userEditor.signIn.held')
+                      : t('users.userEditor.signIn.failedCount', { n: user.failedLoginCount }) }}
                 </dd>
               </template>
             </template>

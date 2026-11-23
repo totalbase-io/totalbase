@@ -9,12 +9,52 @@ export interface OAuthEndpoints {
   jwks?: { issuer: string; jwksUri: string };
 }
 
-async function fetchJson(url: string): Promise<Record<string, unknown>> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `Could not fetch ${url} (${response.status}).`);
+/** How long a provider has to answer one call, and how much of an answer is read (Security.md §2.11). */
+const PROVIDER_TIMEOUT_MS = 10_000;
+const PROVIDER_MAX_RESPONSE_BYTES = 1024 * 1024;
+
+/**
+ * One call to an identity provider - its discovery document, token endpoint, profile: answered within
+ * PROVIDER_TIMEOUT_MS and read up to PROVIDER_MAX_RESPONSE_BYTES, else OAUTH_UPSTREAM_ERROR - so a slow or endless
+ * answer never holds a sign-in, or the process's memory. JSON, or null when the status isn't 2xx.
+ */
+export async function providerJson(url: string, init: RequestInit = {}): Promise<{ status: number; json: unknown } | { status: number; json: null }> {
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS) });
+  } catch (error) {
+    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `The identity provider didn't answer (${new URL(url).host}): ${error instanceof Error ? error.message : String(error)}`);
   }
-  return response.json() as Promise<Record<string, unknown>>;
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined);
+    return { status: response.status, json: null };
+  }
+  const reader = response.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const next = reader ? await reader.read() : { done: true as const, value: undefined };
+    if (next.done) break;
+    size += next.value.byteLength;
+    if (size > PROVIDER_MAX_RESPONSE_BYTES) {
+      await reader?.cancel().catch(() => undefined);
+      throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `The identity provider's answer is larger than ${PROVIDER_MAX_RESPONSE_BYTES} bytes.`);
+    }
+    chunks.push(next.value);
+  }
+  try {
+    return { status: response.status, json: JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown };
+  } catch {
+    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", "The identity provider's answer isn't JSON.");
+  }
+}
+
+async function fetchJson(url: string): Promise<Record<string, unknown>> {
+  const { status, json } = await providerJson(url);
+  if (json === null || typeof json !== "object") {
+    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `Could not fetch ${url} (${status}).`);
+  }
+  return json as Record<string, unknown>;
 }
 
 const GOOGLE_ENDPOINTS: OAuthEndpoints = {

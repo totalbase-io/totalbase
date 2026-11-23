@@ -1,3 +1,4 @@
+import { clientIp } from "../client-ip.js";
 import type { FastifyInstance } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import { managedRoleIds, portalAccessOf } from "@totalbase/permissions";
@@ -14,12 +15,16 @@ import { effectiveDisplayPreferences } from "../display-preferences.js";
 import { TOTALBASE_VERSION } from "../version.js";
 import { PASSWORD_RENEW_DESCRIPTION, auditMfaChallenge, auditRenewedThenEnroll, recordSecondStep, recordSignInFailure } from "./api-auth.js";
 import type { SignInAdmission, User } from "@totalbase/auth";
+import { assertLockdownAdmits } from "../lockdown.js";
 
 /** The portal's admission: admin or app access, checked before a session or an MFA challenge exists. */
 function portalAdmission(context: AppContext): SignInAdmission {
   return async (userId) => {
     const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
-    return portalAccessOf(await context.roles.effectiveAccess(roleIds)) ? null : "no_portal_access";
+    if (!portalAccessOf(await context.roles.effectiveAccess(roleIds))) return "no_portal_access";
+    // During a lockdown only an administrator gets in (Security.md §2.21): told so, the password having matched.
+    await assertLockdownAdmits(context, roleIds);
+    return null;
   };
 }
 
@@ -62,7 +67,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
       const { token, user } = await context.auth.login({
         email: request.body?.email,
         password: request.body?.password,
-        ip: request.ip,
+        // A validated address (Security.md §2.4): never text a forwarded header made up.
+        ip: clientIp(request),
         userAgent: request.headers["user-agent"],
         surface: "PORTAL",
         admit: portalAdmission(context),
@@ -213,6 +219,9 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
               shell: { type: "string", enum: ["SHARED", "STANDALONE"], description: "The `app.shell` setting - how the App is framed for a non-administrator (Admin_UI.md §3.1.1); an administrator always keeps the rail." },
               menuHeader: { type: "string", enum: ["LOGO_AND_NAME", "LOGO", "NAME", "NONE"], description: "The `app.menu_header` setting - what heads the standalone App's menu." },
             }),
+            files: object({
+              uploaderCanPublish: { type: "boolean", description: "The `files.uploader_can_publish` setting - whether the Files screen offers Public to a file's uploader (Administration.md §10.6)." },
+            }),
             moduleActions: {
               type: "object",
               description: "Per delegated module, the actions the user may take on its table.",
@@ -250,6 +259,8 @@ export function registerAdminAuthRoutes(app: FastifyInstance, context: AppContex
         // app: how the App is framed (app.shell, app.menu_header) - the layout decides rail or no rail before
         // anything else loads, so it rides with the session rather than with the menu.
         app: { shell: await appShell(context), menuHeader: await menuHeader(context) },
+        // files: what the Files screen offers a file's uploader - the server decides either way (§10.6).
+        files: { uploaderCanPublish: await context.settings.get("files.uploader_can_publish") },
         // The delegated modules this user's rail shows, and what they may do in each (Security.md §9.2).
         // assignableRoles: for a non-administrator who may assign roles, the
         // ones the guardrails let them (Security.md §9.4) - so a screen offers only those.

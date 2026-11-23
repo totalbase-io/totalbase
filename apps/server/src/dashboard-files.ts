@@ -5,6 +5,7 @@ import { dashboardValueKind } from "@totalbase/tb-catalog";
 import type { DashboardQueryResult } from "@totalbase/dashboards";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "./context.js";
+import { sendFileContent, sendFileRendition } from "./file-response.js";
 
 /**
  * A dashboard widget's files (Dashboards.md §5.16, D14): each file its query returned - a photo of a
@@ -101,8 +102,8 @@ export async function withFileLinks<T extends DashboardQueryResult>(
 }
 
 /**
- * Serves a widget's file by its signed link - an image in line (a thumbnail with `w`/`h`, the files' transforms),
- * anything else as a download. `allowed` decides, for an embed, a file that isn't PUBLIC.
+ * Serves a widget's file by its signed link - a picture or a PDF in line (a thumbnail with `w`/`h`, the files'
+ * transforms), anything else as a download (sendFileContent). `allowed` decides, for an embed, a file that isn't PUBLIC.
  */
 export async function serveDashboardFile(
   context: AppContext,
@@ -118,12 +119,7 @@ export async function serveDashboardFile(
     ? await context.filesTransform.resolve({ fileId: file.id, sourceHash: file.checksum, mimeType: file.mime_type, query: transform, readOriginal: async () => (await context.filesAdmin.readContent(file.id)).content })
     : undefined;
   reply.header("cache-control", "private, max-age=600");
-  if (transformed) {
-    reply.header("content-type", transformed.contentType);
-    return reply.send(transformed.buffer);
-  }
+  if (transformed) return sendFileRendition(reply, transformed.contentType, transformed.buffer);
   const { content } = await context.filesAdmin.readContent(file.id);
-  reply.header("content-type", file.mime_type);
-  reply.header("content-disposition", `${file.mime_type.startsWith("image/") ? "inline" : "attachment"}; filename="${encodeURIComponent(file.name)}"`);
-  return reply.send(content);
+  return sendFileContent(reply, { mimeType: file.mime_type, name: file.name }, content);
 }

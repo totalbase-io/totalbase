@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { Database } from "@totalbase/database";
 import { WORKFLOWS_SYSTEM_USER_EMAIL } from "@totalbase/shared";
@@ -72,6 +72,7 @@ describe("Workflow webhooks", () => {
 
   async function cleanup(): Promise<void> {
     await database.query(`DELETE FROM totalbase.workflows WHERE slug LIKE '${PREFIX}%'`);
+    await database.query(`DELETE FROM totalbase.secrets WHERE key LIKE '${PREFIX}%'`);
     await database.query(`DELETE FROM totalbase.users WHERE email LIKE '${PREFIX}%'`);
     await database.query(`DELETE FROM totalbase.roles WHERE name LIKE '${PREFIX}%'`);
   }
@@ -189,6 +190,18 @@ describe("Workflow webhooks", () => {
     expect((await hit("POST", `${PREFIX}-auth`, { payload: {}, token: caller.plainKey })).statusCode).toBe(403);
   });
 
+  // Security regression (Workflows.md §6.5): an AUTHENTICATED webhook also took the session cookie, which a browser
+  // sends by itself - a link or an image on another site invoked a GET webhook as whoever opened it (CSRF).
+  it("authenticates an AUTHENTICATED webhook by its Authorization header only, never a cookie", async () => {
+    const getId = await publishedWorkflow(`${PREFIX}-auth-get`, { method: "GET", access: "AUTHENTICATED", response_mode: "ASYNC" });
+    await context.workflowPermissions.grant(roleId, getId);
+    for (const cookie of [`tb_session=${caller.plainKey}`, `__Host-tb_session=${caller.plainKey}`]) {
+      const res = await hit("GET", `${PREFIX}-auth-get`, { headers: { cookie } });
+      expect([res.statusCode, res.json().errors?.[0]?.code], cookie).toEqual([401, "AUTHENTICATION_REQUIRED"]);
+    }
+    expect((await hit("GET", `${PREFIX}-auth-get`, { token: caller.plainKey })).statusCode).toBe(202);
+  });
+
   it("limits PUBLIC admissions to 60 per IP per minute", async () => {
     const ip = "10.99.0.1";
     const statuses: number[] = [];
@@ -240,6 +253,79 @@ describe("Workflow webhooks", () => {
     await expect(publishedWorkflow(`${PREFIX}-ips-bad`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, allowed_ips: ["10.0.0.0/8", "not-an-address"] })).rejects.toThrow(/allowed addresses are invalid/);
     await expect(publishedWorkflow(`${PREFIX}-ips-bad-2`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, allowed_ips: "10.0.0.1" })).rejects.toThrow(/list of IP addresses/);
   });
+
+  it("asks a PUBLIC webhook with a secret for it - as a token, or as an HMAC of the raw body (security regression, SEC-33)", async () => {
+    await context.secrets.set(`${PREFIX}-hook-secret`, "hook-s3cr3t", "WORKFLOWS");
+    await publishedWorkflow(`${PREFIX}-token`, { method: "POST", access: "PUBLIC", response_mode: "SYNC", execute_as: systemUserId, secret: `${PREFIX}-hook-secret` });
+    const runs = async () => Number((await database.query<{ n: string }>(
+      `SELECT count(*) AS n FROM totalbase.workflows_runs r JOIN totalbase.workflows w ON w.id = r.workflow WHERE w.slug LIKE '${PREFIX}-token%' OR w.slug LIKE '${PREFIX}-hmac%'`,
+    )).rows[0]!.n);
+    for (const headers of [{}, { "x-webhook-token": "wrong" }, { "x-webhook-token": "hook-s3cr3" }]) {
+      const refused = await hit("POST", `${PREFIX}-token`, { payload: { name: "Ada" }, headers });
+      expect([refused.statusCode, refused.json().errors[0].code], JSON.stringify(headers)).toEqual([401, "AUTHENTICATION_REQUIRED"]);
+    }
+    expect(await runs()).toBe(0);
+    const ok = await hit("POST", `${PREFIX}-token`, { payload: { name: "Ada" }, headers: { "x-webhook-token": "hook-s3cr3t" } });
+    expect(ok.statusCode, ok.body).toBe(200);
+
+    await publishedWorkflow(`${PREFIX}-hmac`, { method: "POST", access: "PUBLIC", response_mode: "SYNC", execute_as: systemUserId, secret: `${PREFIX}-hook-secret`, secret_mode: "HMAC_SHA256", secret_header: "X-Hub-Signature-256" });
+    const payload = { name: "Grace" };
+    const signature = createHmac("sha256", "hook-s3cr3t").update(JSON.stringify(payload)).digest("hex");
+    const forged = await hit("POST", `${PREFIX}-hmac`, { payload: { name: "Mallory" }, headers: { "x-hub-signature-256": `sha256=${signature}` } });
+    expect(forged.statusCode).toBe(401);
+    const signed = await hit("POST", `${PREFIX}-hmac`, { payload, headers: { "x-hub-signature-256": `sha256=${signature}` } });
+    expect([signed.statusCode, signed.json().data?.result?.data?.name], signed.body).toEqual([200, "Grace"]);
+    expect(await runs()).toBe(2);
+  });
+
+  // Security regression (round 7): the proof header reached the run's input, and with a header name history redaction
+  // doesn't know (X-Shared-Key), the plaintext secret was stored in every DETAILED run's history.
+  it("keeps a webhook's proof out of the run - its input and its history - whatever the header is called", async () => {
+    await context.secrets.set(`${PREFIX}-shared`, "shared-s3cr3t-value", "WORKFLOWS");
+    const id = await publishedWorkflow(`${PREFIX}-shared`, { method: "POST", access: "PUBLIC", response_mode: "SYNC", execute_as: systemUserId, secret: `${PREFIX}-shared`, secret_header: "X-Shared-Key" });
+    await database.query(`UPDATE totalbase.workflows SET history_level = 'DETAILED' WHERE id = $1`, [id]);
+    const res = await hit("POST", `${PREFIX}-shared`, { payload: { name: "Ada" }, headers: { "x-shared-key": "shared-s3cr3t-value" } });
+    expect(res.statusCode, res.body).toBe(200);
+    const stored = await database.query(`SELECT s.* FROM totalbase.workflows_steps s JOIN totalbase.workflows_runs r ON r.id = s.run WHERE r.workflow = $1`, [id]);
+    expect(stored.rows.length).toBeGreaterThan(0);
+    expect(JSON.stringify(stored.rows)).not.toContain("shared-s3cr3t-value");
+  });
+
+  it("refuses an HMAC secret on a GET webhook - with no body, its signature is one fixed value", async () => {
+    await context.secrets.set(`${PREFIX}-get-secret`, "x", "WORKFLOWS");
+    await expect(publishedWorkflow(`${PREFIX}-get-hmac`, { method: "GET", access: "PUBLIC", execute_as: systemUserId, secret: `${PREFIX}-get-secret`, secret_mode: "HMAC_SHA256" })).rejects.toThrow(/GET webhook has none/);
+  });
+
+  it("refuses to publish a webhook secret that isn't a workflow's, or on an authenticated webhook", async () => {
+    await context.secrets.set(`${PREFIX}-smtp-secret`, "smtp", "SMTP");
+    await expect(publishedWorkflow(`${PREFIX}-secret-bad`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, secret: `${PREFIX}-smtp-secret` })).rejects.toThrow(/no workflow secret/);
+    await context.secrets.set(`${PREFIX}-hook-secret-2`, "x", "WORKFLOWS");
+    await expect(publishedWorkflow(`${PREFIX}-secret-bad-2`, { method: "POST", access: "AUTHENTICATED", secret: `${PREFIX}-hook-secret-2` })).rejects.toThrow(/secret is for a public webhook/);
+    await expect(publishedWorkflow(`${PREFIX}-secret-bad-3`, { method: "POST", access: "PUBLIC", execute_as: systemUserId, secret: `${PREFIX}-hook-secret-2`, secret_mode: "MD5" })).rejects.toThrow(/TOKEN or HMAC_SHA256/);
+  });
+
+  it("caps the runs one webhook has going at once (security regression, SEC-33)", async () => {
+    await context.settings.set("workflows.webhook_max_concurrent_runs", 1);
+    try {
+      await publishedWorkflow(
+        `${PREFIX}-busy`,
+        { method: "POST", access: "PUBLIC", response_mode: "ASYNC", execute_as: systemUserId },
+        { type: "totalbase.execute-sql", configuration: { statement: "SELECT pg_sleep(1.5)", executeAs: systemUserId } },
+      );
+      expect((await hit("POST", `${PREFIX}-busy`, { payload: {} })).statusCode).toBe(202);
+      const refused = await hit("POST", `${PREFIX}-busy`, { payload: {} });
+      expect([refused.statusCode, refused.json().errors[0].code]).toEqual([429, "WORKFLOW_CONCURRENCY_LIMIT"]);
+      // Another workflow has its own count.
+      expect((await hit("POST", `${PREFIX}-public`, { payload: { name: "Ada" } })).statusCode).toBe(200);
+      // Once the run ends, the webhook takes calls again.
+      await expect.poll(async () => (await hit("POST", `${PREFIX}-busy`, { payload: {} })).statusCode, { timeout: 10_000, interval: 500 }).toBe(202);
+      await expect.poll(async () => Number((await database.query<{ n: string }>(
+        `SELECT count(*) AS n FROM totalbase.workflows_runs r JOIN totalbase.workflows w ON w.id = r.workflow WHERE w.slug = '${PREFIX}-busy' AND r.status = 'RUNNING'`,
+      )).rows[0]!.n), { timeout: 10_000 }).toBe(0);
+    } finally {
+      await context.settings.reset("workflows.webhook_max_concurrent_runs");
+    }
+  }, 30_000);
 
   // A token's allowed addresses (Security.md §3.5) on the routes that resolve their caller without the request's headers.
   it("refuses a token with allowed addresses from anywhere else - webhook, run result and Data API alike", async () => {

@@ -21,6 +21,16 @@ const CATEGORY_SQL = `CASE
   WHEN action IN ('IMPORT', 'EXPORT', 'PRINT') THEN 'bulk'
   ELSE 'other' END`;
 
+/** The actions of the Data API - a row read, written or run, and a grid's Import / Export / Print; every other action is administration. */
+const DATA_ACTIONS = `('CREATE', 'UPDATE', 'DELETE', 'READ', 'EXECUTE', 'IMPORT', 'EXPORT', 'PRINT')`;
+/** An administration entry's area - `config`: the access events that change how the instance is set up, not who may do what. */
+const ADMIN_AREA_SQL = `CASE
+  WHEN action = 'DDL' THEN 'schema'
+  WHEN action LIKE 'SQL\\_%' THEN 'sql'
+  WHEN action = 'AUTH' AND (event LIKE 'settings.%' OR event LIKE 'secret.%' OR event LIKE 'auth\\_provider.%' OR event LIKE 'system\\_email.%') THEN 'config'
+  WHEN action = 'AUTH' THEN 'access'
+  ELSE 'other' END`;
+
 export interface InsightsWindow {
   /** The last N days, today included (1 to MAX_INSIGHTS_DAYS). */
   days: number;
@@ -84,13 +94,15 @@ export interface ActivityInsights {
 /** The admin dashboard's slice of the log (GET /admin/api/dashboard). */
 export interface DashboardInsights {
   timeZone: string;
-  /** One entry per day of the window, oldest first - the Logs page's categories. */
-  perDay: ActivityInsights["perDay"];
-  /** Denied and failed entries per day - same days as perDay. */
-  problemsPerDay: Array<{ day: string; denied: number; failed: number }>;
-  /** The rolling last 24 hours. */
+  /** The Data API's entries per day of the window, oldest first, by what was done; `bulk`: Import, Export and Print. A read counts only where it is audited (`resources.audit_read`). */
+  dataPerDay: Array<{ day: string; create: number; update: number; delete: number; read: number; execute: number; bulk: number }>;
+  /** Every other entry per day - the same days - by area: access (sign-ins, users, roles, permissions, tokens), config (settings, secrets, providers, system emails), schema (DDL), sql (the SQL Console), other. */
+  adminPerDay: Array<{ day: string; access: number; config: number; schema: number; sql: number; other: number }>;
+  /** Denied and failed entries over the window, on each side. */
+  problems: { data: number; admin: number };
+  /** The rolling last 24 hours; `previousActions`: the 24 hours before them - what `actions` compares with. */
   /** `refusedTokens`: personal access tokens refused (`auth.token_refused`, Security.md §11.6) - one entry a minute per token and reason. */
-  last24h: { actions: number; denied: number; failed: number; signIns: number; failedSignIns: number; refusedTokens: number };
+  last24h: { actions: number; previousActions: number; denied: number; failed: number; signIns: number; failedSignIns: number; refusedTokens: number };
   /** The application's most used resources over the last 7 days - TotalBase's own tables left out. */
   topResources: Array<{ id: string; schema: string; name: string; type: string; count: number }>;
 }
@@ -195,8 +207,8 @@ export class AuditInsightsService {
    * its principal). Omitted: everyone's.
    */
   /**
-   * What the dashboard shows of the log: activity per day and category in
-   * the viewer's zone, denied and failed entries per day, the last 24 hours at a glance, the application's
+   * What the dashboard shows of the log: per day in the viewer's zone, the Data API's
+   * entries by what was done and the administration's by area, what was denied or failed on each side, the last 24 hours at a glance, the application's
    * busiest resources. Every query is bounded by created_at, so each
    * stays on logs_created_at_idx however long the log grows.
    */
@@ -204,44 +216,60 @@ export class AuditInsightsService {
     const zone = await this.resolveWindow(window, 2);
     const params: unknown[] = [window.days, zone.value];
     const signIns = `metadata->>'event' = ANY($1::text[])`;
-    const [perDay, problemsPerDay, last24h, topResources] = await Promise.all([
-      this.database.query<DashboardInsights["perDay"][number]>(
-        `WITH days AS (
-           SELECT generate_series((now() AT TIME ZONE ${zone.sql})::date - ($1::int - 1), (now() AT TIME ZONE ${zone.sql})::date, interval '1 day')::date AS day
-         ), counted AS (
-           SELECT (created_at AT TIME ZONE ${zone.sql})::date AS day, ${CATEGORY_SQL} AS category, count(*)::int AS count
-           FROM totalbase.logs
-           WHERE created_at >= date_trunc('day', now() AT TIME ZONE ${zone.sql}) AT TIME ZONE ${zone.sql} - make_interval(days => $1::int - 1)
-           GROUP BY 1, 2
-         )
-         SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
-                coalesce(sum(c.count) FILTER (WHERE c.category = 'data'), 0)::int AS data,
-                coalesce(sum(c.count) FILTER (WHERE c.category = 'access'), 0)::int AS access,
-                coalesce(sum(c.count) FILTER (WHERE c.category = 'sql'), 0)::int AS sql,
-                coalesce(sum(c.count) FILTER (WHERE c.category = 'bulk'), 0)::int AS bulk,
-                coalesce(sum(c.count) FILTER (WHERE c.category = 'other'), 0)::int AS other
-         FROM days d LEFT JOIN counted c USING (day)
-         GROUP BY d.day ORDER BY d.day`,
-        params,
-      ),
-      this.database.query<DashboardInsights["problemsPerDay"][number]>(
+    const [dataPerDay, adminPerDay, problems, last24h, topResources] = await Promise.all([
+      this.database.query<DashboardInsights["dataPerDay"][number]>(
         `WITH days AS (
            SELECT generate_series((now() AT TIME ZONE ${zone.sql})::date - ($1::int - 1), (now() AT TIME ZONE ${zone.sql})::date, interval '1 day')::date AS day
          ), counted AS (
            SELECT (created_at AT TIME ZONE ${zone.sql})::date AS day,
-                  count(*) FILTER (WHERE status = 'DENIED')::int AS denied,
-                  count(*) FILTER (WHERE status = 'FAILED')::int AS failed
+                  count(*) FILTER (WHERE action = 'CREATE')::int AS "create",
+                  count(*) FILTER (WHERE action = 'UPDATE')::int AS "update",
+                  count(*) FILTER (WHERE action = 'DELETE')::int AS "delete",
+                  count(*) FILTER (WHERE action = 'READ')::int AS "read",
+                  count(*) FILTER (WHERE action = 'EXECUTE')::int AS "execute",
+                  count(*) FILTER (WHERE action IN ('IMPORT', 'EXPORT', 'PRINT'))::int AS bulk
            FROM totalbase.logs
            WHERE created_at >= date_trunc('day', now() AT TIME ZONE ${zone.sql}) AT TIME ZONE ${zone.sql} - make_interval(days => $1::int - 1)
-             AND status IN ('DENIED', 'FAILED')
+             AND action IN ${DATA_ACTIONS}
            GROUP BY 1
          )
-         SELECT to_char(d.day, 'YYYY-MM-DD') AS day, coalesce(c.denied, 0) AS denied, coalesce(c.failed, 0) AS failed
+         SELECT to_char(d.day, 'YYYY-MM-DD') AS day, coalesce(c."create", 0) AS "create", coalesce(c."update", 0) AS "update", coalesce(c."delete", 0) AS "delete",
+                coalesce(c."read", 0) AS "read", coalesce(c."execute", 0) AS "execute", coalesce(c.bulk, 0) AS bulk
          FROM days d LEFT JOIN counted c USING (day) ORDER BY d.day`,
+        params,
+      ),
+      this.database.query<DashboardInsights["adminPerDay"][number]>(
+        `WITH days AS (
+           SELECT generate_series((now() AT TIME ZONE ${zone.sql})::date - ($1::int - 1), (now() AT TIME ZONE ${zone.sql})::date, interval '1 day')::date AS day
+         ), counted AS (
+           SELECT (created_at AT TIME ZONE ${zone.sql})::date AS day, ${ADMIN_AREA_SQL} AS area, count(*)::int AS count
+           FROM totalbase.logs
+           WHERE created_at >= date_trunc('day', now() AT TIME ZONE ${zone.sql}) AT TIME ZONE ${zone.sql} - make_interval(days => $1::int - 1)
+             AND action NOT IN ${DATA_ACTIONS}
+           GROUP BY 1, 2
+         )
+         SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
+                coalesce(sum(c.count) FILTER (WHERE c.area = 'access'), 0)::int AS access,
+                coalesce(sum(c.count) FILTER (WHERE c.area = 'config'), 0)::int AS config,
+                coalesce(sum(c.count) FILTER (WHERE c.area = 'schema'), 0)::int AS schema,
+                coalesce(sum(c.count) FILTER (WHERE c.area = 'sql'), 0)::int AS sql,
+                coalesce(sum(c.count) FILTER (WHERE c.area = 'other'), 0)::int AS other
+         FROM days d LEFT JOIN counted c USING (day)
+         GROUP BY d.day ORDER BY d.day`,
+        params,
+      ),
+      this.database.query<DashboardInsights["problems"]>(
+        `SELECT count(*) FILTER (WHERE action IN ${DATA_ACTIONS})::int AS data,
+                count(*) FILTER (WHERE action NOT IN ${DATA_ACTIONS})::int AS admin
+         FROM totalbase.logs
+         WHERE created_at >= date_trunc('day', now() AT TIME ZONE ${zone.sql}) AT TIME ZONE ${zone.sql} - make_interval(days => $1::int - 1)
+           AND status IN ('DENIED', 'FAILED')`,
         params,
       ),
       this.database.query<DashboardInsights["last24h"]>(
         `SELECT count(*)::int AS actions,
+                (SELECT count(*)::int FROM totalbase.logs
+                 WHERE created_at >= now() - interval '48 hours' AND created_at < now() - interval '24 hours') AS "previousActions",
                 count(*) FILTER (WHERE status = 'DENIED')::int AS denied,
                 count(*) FILTER (WHERE status = 'FAILED')::int AS failed,
                 count(*) FILTER (WHERE ${signIns} AND status = 'EXECUTED')::int AS "signIns",
@@ -261,7 +289,7 @@ export class AuditInsightsService {
          LIMIT 5`,
       ),
     ]);
-    return { timeZone: zone.label, perDay: perDay.rows, problemsPerDay: problemsPerDay.rows, last24h: last24h.rows[0]!, topResources: topResources.rows };
+    return { timeZone: zone.label, dataPerDay: dataPerDay.rows, adminPerDay: adminPerDay.rows, problems: problems.rows[0]!, last24h: last24h.rows[0]!, topResources: topResources.rows };
   }
 
   async activity(window: InsightsWindow & { principalIds?: string[] | undefined }): Promise<ActivityInsights> {

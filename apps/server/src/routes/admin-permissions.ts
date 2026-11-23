@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { ResourceAction, SetPermissionInput } from "@totalbase/permissions";
+import { grantAdvisories, type ResourceAction, type SetPermissionInput } from "@totalbase/permissions";
 import { UUID_PATTERN } from "@totalbase/shared";
 import { TotalBaseError } from "@totalbase/errors";
-import { parseFilter } from "@totalbase/query-engine";
+import { assertFilterPathsResolve, filterFieldPaths, parseFilter } from "@totalbase/query-engine";
 import type { AppContext } from "../context.js";
 import { requireAdmin } from "../auth-guards.js";
 import { applyTotalbaseDefaultGrants } from "../totalbase-default-grants.js";
@@ -19,6 +19,17 @@ export function requireValidAction(action: string): ResourceAction {
   }
   return action as ResourceAction;
 }
+
+/**
+ * A written grant's answer, with `meta.warnings` when it lets its role reach rows the role's own row filters
+ * elsewhere keep from it (grantAdvisories, Security.md §6.5, §6.10) - advice, never a refusal.
+ */
+export function withAdvice<T>(body: { data: T }, warnings: string[]): { data: T; meta?: { warnings: string[] } } {
+  return warnings.length > 0 ? { ...body, meta: { warnings } } : body;
+}
+
+/** A grant body's keys (PermissionBody) - parseGrant refuses any other. */
+const GRANT_KEYS = ["effect", "where", "fields", "payloadChecks"] as const;
 
 export interface PermissionBody {
   effect: "ALLOW" | "DENY";
@@ -37,19 +48,24 @@ export const GRANT_PROPERTIES: Record<string, JsonSchema> = {
 };
 
 /**
- * A grant's body as PermissionsService takes it, its filters checked first.
- * Structural-only validation - same grammar and the same parser the
- * Data API uses for its own where[...] params (parseFilter only
- * checks shape/operators/depth, not field existence - that's the
- * compiler's job, and doesn't apply here since this is stored, not
- * run against a resource yet). Without this, a malformed where
- * silently saves and only fails later, at request time, for
- * whoever's role holds this grant - see the chat that added this.
- * Payload checks share the exact same grammar and get the exact
- * same treatment - each check is its own filter, checked the same way.
+ * A grant's body as PermissionsService takes it, its filters checked first:
+ * the same grammar and the same parser the Data API uses for its own
+ * where[...] params (shape, operators, depth), then every path they name
+ * against the resource as PostgreSQL defines it now - a column, or a
+ * dotted path over real foreign keys (assertFilterPathsResolve). Without
+ * this, a typo or a missing foreign key saves and only fails later, at
+ * request time, for whoever's role holds this grant. Payload checks share
+ * the exact same grammar and get the exact same treatment.
  */
-export async function parseGrant(context: AppContext, body: unknown): Promise<SetPermissionInput> {
-  if (!body || typeof body !== "object") throw new TotalBaseError("INVALID_QUERY", "The grant goes in data.");
+export async function parseGrant(context: AppContext, resourceId: string, body: unknown, options: { checkPaths?: boolean; extraKeys?: readonly string[] } = {}): Promise<SetPermissionInput> {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new TotalBaseError("INVALID_QUERY", "The grant goes in data.");
+  // Only the keys a grant has (and the route's own - a bulk entry's resource and action, a shared grant's roleIds):
+  // an unknown one refused by name, never dropped - a `deny_fields` that went unread left those columns allowed.
+  const allowed = new Set<string>([...GRANT_KEYS, ...(options.extraKeys ?? [])]);
+  const unknown = Object.keys(body).filter((key) => !allowed.has(key));
+  if (unknown.length > 0) {
+    throw new TotalBaseError("INVALID_QUERY", `Unknown key${unknown.length > 1 ? "s" : ""} in the grant: ${unknown.join(", ")} - a grant takes ${[...allowed].join(", ")} (a field's DENY goes in fields: [{ "field": "<column>", "effect": "DENY" }]).`);
+  }
   const grant = body as PermissionBody;
   if (grant.effect !== "ALLOW" && grant.effect !== "DENY") throw new TotalBaseError("INVALID_QUERY", "effect must be ALLOW or DENY.");
   // The shape, before anything is stored: a list of column names (["id", "name"]) reads as a list but is not
@@ -69,12 +85,30 @@ export async function parseGrant(context: AppContext, body: unknown): Promise<Se
     if (grant.where !== undefined && grant.where !== null) parseFilter(grant.where, { maxFilterDepth, maxRelationDepth }, 0);
     for (const check of grant.payloadChecks ?? []) parseFilter(check.rule, { maxFilterDepth, maxRelationDepth }, 0);
   }
-  return {
+  const parsed: SetPermissionInput = {
     effect: grant.effect,
     where: grant.where,
     fields: grant.fields,
     payloadChecks: grant.payloadChecks?.map((v) => ({ rule: v.rule, label: v.label ?? null })),
   };
+  if (options.checkPaths !== false) await assertGrantPathsResolve(context, resourceId, parsed);
+  return parsed;
+}
+
+/**
+ * The paths a grant's row filter and payload checks name, each a column of the resource or a dotted path over real
+ * foreign keys (assertFilterPathsResolve). A delegated grant checks them after its ceiling (app-roles.ts): a path the
+ * parent can't read is refused as beyond the ceiling, never answered with whether it exists.
+ */
+export async function assertGrantPathsResolve(context: AppContext, resourceId: string, grant: SetPermissionInput): Promise<void> {
+  const filters = [grant.where, ...(grant.payloadChecks ?? []).map((check) => check.rule)].filter((filter) => filter !== undefined && filter !== null);
+  if (filters.length === 0) return;
+  if (!UUID_PATTERN.test(resourceId)) throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${resourceId}`);
+  const resource = await context.resourcesAdmin.get(resourceId);
+  if (resource.type === "FUNCTION" || resource.status !== "ACTIVE") return;
+  const [maxFilterDepth, maxRelationDepth] = await Promise.all([context.settings.get("api.max_filter_depth"), context.settings.get("api.max_relation_depth")]);
+  const paths = filters.flatMap((filter) => filterFieldPaths(parseFilter(filter, { maxFilterDepth, maxRelationDepth }, 0)));
+  await assertFilterPathsResolve(context.database, resource.postgresOid, resource.name, [...new Set(paths)]);
 }
 
 function isFieldGrant(value: unknown): value is { field: string; effect: "ALLOW" | "DENY" } {
@@ -116,7 +150,7 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
         description:
           "Upserts the role's grant for (resource, action). DENY > ALLOW > undefined across roles; ALLOW row filters " +
           "OR-combine; payload checks AND-combine. `fields` replaces the field grants when present; a dotted field " +
-          "(`position.title`) grants a relation traversal.",
+          "(`position.title`) grants a relation traversal. `meta.warnings` advises (never refuses) when the grant reaches rows the role's row filter on another table keeps from it (Security.md §6.10).",
         pathParameters: { role: UUID_PARAM, resource: UUID_PARAM, action: { schema: { type: "string", enum: ["CREATE", "READ", "UPDATE", "DELETE", "EXECUTE"] } } },
         requestBody: { schema: dataEnvelope(object({ ...GRANT_PROPERTIES }, ["effect"])) },
         response: ok(ref("Permission")),
@@ -125,8 +159,8 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
     },
     async (request) => {
       const action = requireValidAction(request.params.action);
-      const permission = await context.permissions.set(request.params.role, request.params.resource, action, await parseGrant(context, request.body?.data), { actorUserId: request.admin!.id });
-      return { data: permission };
+      const permission = await context.permissions.set(request.params.role, request.params.resource, action, await parseGrant(context, request.params.resource, request.body?.data), { actorUserId: request.admin!.id });
+      return withAdvice({ data: permission }, await grantAdvisories(context.database, request.params.role, request.params.resource, action));
     },
   );
 
@@ -162,9 +196,11 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
       for (const entry of entries) {
         if (typeof entry?.resource !== "string" || !UUID_PATTERN.test(entry.resource)) throw new TotalBaseError("INVALID_QUERY", "Each grant names its resource (a resource id).");
         const action = requireValidAction(String(entry.action));
-        grants.push({ resourceId: entry.resource, action, input: await parseGrant(context, entry) });
+        grants.push({ resourceId: entry.resource, action, input: await parseGrant(context, entry.resource, entry, { extraKeys: ["resource", "action"] }) });
       }
-      return { data: await context.permissions.setMany(request.params.role, grants, { actorUserId: request.admin!.id }) };
+      const written = await context.permissions.setMany(request.params.role, grants, { actorUserId: request.admin!.id });
+      const advice = (await Promise.all(grants.map((grant) => grantAdvisories(context.database, request.params.role, grant.resourceId, grant.action)))).flat();
+      return withAdvice({ data: written }, advice);
     },
   );
 
@@ -187,8 +223,10 @@ export function registerAdminPermissionsRoutes(app: FastifyInstance, context: Ap
     async (request) => {
       const action = requireValidAction(request.params.action);
       const roleIds = parseRoleIdList(optionalData(request.body).roleIds);
-      const grant = await parseGrant(context, request.body?.data);
-      return { data: await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: request.admin!.id }) };
+      const grant = await parseGrant(context, request.params.resource, request.body?.data, { extraKeys: ["roleIds"] });
+      const written = await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: request.admin!.id });
+      const advice = [...new Set((await Promise.all(roleIds.map((roleId) => grantAdvisories(context.database, roleId, request.params.resource, action)))).flat())];
+      return withAdvice({ data: written }, advice);
     },
   );
 

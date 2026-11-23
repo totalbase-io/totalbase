@@ -170,14 +170,14 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
       ...adminDoc("users", {
         summary: "Get a user",
         pathParameters: ID_PARAM,
-        response: ok(ref("UsersListItem")),
+        response: ok(ref("UserDetail")),
         schemas: USERS_SCHEMAS,
       }),
     },
     async (request) => {
       const user = await context.auth.users.findForAdmin(request.params.id);
       if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
-      return { data: user };
+      return { data: { ...user, mfaRequired: await context.auth.mfa.required(user.id) } };
     },
   );
 
@@ -207,8 +207,12 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
     },
     async (request, reply) => {
       const body = optionalData(request.body);
-      const self = request.admin!.id === request.params.id;
-      if (self && typeof body?.currentPassword !== "string") {
+      // A UUID in any letter case is the same account.
+      const self = request.admin!.id.toLowerCase() === request.params.id.toLowerCase();
+      // One's own password is proven by the current one - or, for an account that has none yet (it signs in through
+      // a provider), by a recent sign-in or re-authentication: a stolen session never gives itself a password.
+      const ownHasPassword = self && !!(await context.auth.users.findByIdWithPasswordHash(request.admin!.id))?.passwordHash;
+      if (ownHasPassword && typeof body?.currentPassword !== "string") {
         throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "Enter your current password to change it.");
       }
       if (body?.signOut !== undefined && typeof body.signOut !== "boolean") {
@@ -218,12 +222,12 @@ export function registerAdminUsersRoutes(app: FastifyInstance, context: AppConte
         throw new TotalBaseError("INVALID_QUERY", "mustChange must be true or false.");
       }
       // Another account's password (Security.md §2.19); one's own asks for the current password instead.
-      if (!self) await assertRecentAuthentication(context, request);
+      if (!ownHasPassword) await assertRecentAuthentication(context, request);
       await context.auth.adminSetPassword({
         userId: request.params.id,
         password: body?.password as string,
         signOut: body?.signOut ?? true,
-        currentPassword: self ? body!.currentPassword : undefined,
+        currentPassword: ownHasPassword ? body!.currentPassword : undefined,
         keepSessionId: self ? request.adminSession : undefined,
         mustChange: body?.mustChange,
       });

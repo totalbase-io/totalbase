@@ -25,8 +25,8 @@ describe("access audit and account lockout", () => {
       ? app.inject({ method, url, headers: { authorization: `Bearer ${adminToken}` } })
       : app.inject({ method, url, headers: { authorization: `Bearer ${adminToken}` }, payload });
 
-  const portalLogin = (email: string, password: string) =>
-    app.inject({ method: "POST", url: "/admin/api/auth/login", payload: { email, password } });
+  const portalLogin = (email: string, password: string, remoteAddress?: string) =>
+    app.inject({ method: "POST", url: "/admin/api/auth/login", payload: { email, password }, ...(remoteAddress && { remoteAddress }) });
 
   /** The hook writes after the response is sent - wait for the row instead of assuming it's there. */
   const waitForAudit = (sql: string, params: unknown[]): Promise<Record<string, any>> =>
@@ -143,42 +143,44 @@ describe("access audit and account lockout", () => {
     }
   });
 
-  it("locks an account after the configured failed attempts, even for the right password", async () => {
+  it("locks an address out of an account after the configured failed attempts, even for the right password - never the account", async () => {
     await context.settings.set("auth.lockout_max_attempts", 3);
     const email = `${PREFIX}-lock@example.com`;
     const userId = await createUser(email, [roleId]);
+    // The owner's usual address (Security.md §2.4).
+    expect((await portalLogin(email, PASSWORD, "198.51.100.30")).statusCode).toBe(200);
 
     for (let i = 0; i < 3; i += 1) expect((await portalLogin(email, "nope-nope-nope")).statusCode).toBe(401);
     const lockedAttempt = await portalLogin(email, PASSWORD);
     expect(lockedAttempt.statusCode).toBe(401);
     expect(lockedAttempt.json().errors[0].message).toBe("Invalid email or password.");
-
-    const listed = (await admin("GET", `/admin/api/users/${userId}`)).json().data;
-    expect(listed.lockedUntil).not.toBeNull();
     await waitForAudit(
       `SELECT 1 FROM totalbase.logs WHERE metadata @> $1::jsonb`,
-      [JSON.stringify({ user_id: userId, reason: "locked" })],
+      [JSON.stringify({ user_id: userId, reason: "address_locked" })],
     );
 
-    // Unlocking is a Data API row update (Security.md §10).
+    // The account itself isn't locked: its owner signs in from their address.
+    expect((await admin("GET", `/admin/api/users/${userId}`)).json().data.lockedUntil).toBeNull();
+    expect((await portalLogin(email, PASSWORD, "198.51.100.30")).statusCode).toBe(200);
+    // Unlocking an account is a Data API row update (Security.md §10).
     const unlocked = await admin("PATCH", `/api/totalbase/table/users/${userId}`, { data: { locked_until: null, failed_login_count: 0 } });
     expect(unlocked.statusCode, unlocked.body).toBe(200);
-    expect((await admin("GET", `/admin/api/users/${userId}`)).json().data.lockedUntil).toBeNull();
-    expect((await portalLogin(email, PASSWORD)).statusCode).toBe(200);
   });
 
   it("a successful sign-in resets the count; 0 turns lockout off", async () => {
     await context.settings.set("auth.lockout_max_attempts", 3);
     const email = `${PREFIX}-reset@example.com`;
     await createUser(email, [roleId]);
-    for (let i = 0; i < 2; i += 1) await portalLogin(email, "nope-nope-nope");
-    expect((await portalLogin(email, PASSWORD)).statusCode).toBe(200);
-    for (let i = 0; i < 2; i += 1) await portalLogin(email, "nope-nope-nope");
-    expect((await portalLogin(email, PASSWORD)).statusCode).toBe(200);
+    // An address of its own: the suite's other refused sign-ins count against 127.0.0.1 (security.rate_limit_sign_in_per_minute).
+    const ip = "203.0.113.42";
+    for (let i = 0; i < 2; i += 1) await portalLogin(email, "nope-nope-nope", ip);
+    expect((await portalLogin(email, PASSWORD, ip)).statusCode).toBe(200);
+    for (let i = 0; i < 2; i += 1) await portalLogin(email, "nope-nope-nope", ip);
+    expect((await portalLogin(email, PASSWORD, ip)).statusCode).toBe(200);
 
     await context.settings.set("auth.lockout_max_attempts", 0);
-    for (let i = 0; i < 5; i += 1) await portalLogin(email, "nope-nope-nope");
-    expect((await portalLogin(email, PASSWORD)).statusCode).toBe(200);
+    for (let i = 0; i < 5; i += 1) await portalLogin(email, "nope-nope-nope", ip);
+    expect((await portalLogin(email, PASSWORD, ip)).statusCode).toBe(200);
   });
 
   it("rejects out-of-range lockout settings", async () => {

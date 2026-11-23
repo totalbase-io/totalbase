@@ -28,12 +28,12 @@ export interface WorkflowEngineContext extends MutationsContext {
   workflowRuns: WorkflowRunsService;
   workflowPermissions: Pick<WorkflowPermissionService, "resolveInvoke">;
   roleAssignments: Pick<RoleAssignmentsService, "listEffectiveRolesForUser">;
-  filesAdmin: Pick<FilesAdminService, "get" | "readContent" | "upload">;
+  filesAdmin: Pick<FilesAdminService, "get" | "readContent" | "upload" | "remove">;
   templatesAdmin: Pick<TemplatesAdminService, "get">;
   sqlConsole: Pick<SqlConsoleService, "execute">;
   emailSender: Pick<EmailSender, "send">;
-  /** An HTTP request's secret headers (Workflows.md §5.15) - read at run time, never stored. */
-  secrets: { decrypt(key: string): Promise<string> };
+  /** An HTTP request's secret headers (Workflows.md §5.15) - read at run time, never stored; a workflow's own only (Security.md §12.3). */
+  secrets: { decrypt(key: string, scope: "WORKFLOWS"): Promise<string> };
   /** `totalbase.execute-workflow`'s recursive call - indirected through the context (not imported by handlers.ts) to avoid a circular import: engine.ts already imports OPERATION_HANDLERS from handlers.ts. See execute-workflow.ts. */
   invokeSubWorkflow: (params: { callerPrincipal: DataPrincipal; callerWorkflowId: string; ancestry: string[]; targetWorkflowId: string; input: unknown }) => Promise<WorkflowRunOutcome>;
 }

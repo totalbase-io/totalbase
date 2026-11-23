@@ -1,5 +1,5 @@
 import { quoteIdentifier } from "./pg-dialect.js";
-import type { ResolvedResource, SchemaContext } from "./schema-context.js";
+import { assertReachableThroughRelation, type ResolvedResource, type SchemaContext } from "./schema-context.js";
 
 export interface JoinSpec {
   alias: string;
@@ -107,6 +107,7 @@ export async function resolvePath(
 
   const columnName = path[path.length - 1]!;
   const column = schemaContext.findColumn(currentResource, columnName);
+  if (path.length > 1) assertReachableThroughRelation(currentResource, columnName, path.join("."));
 
   return {
     tableAlias: currentAlias,

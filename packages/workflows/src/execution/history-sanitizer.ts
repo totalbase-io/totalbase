@@ -7,7 +7,16 @@
  * DETAILED history never accidentally leaks a credential into
  * long-retention storage.
  */
-const SENSITIVE_KEY_PATTERN = /password|secret|token|authorization|cookie|api[_-]?key/i;
+
+import { FilterLiteral } from "@totalbase/query-engine";
+
+/**
+ * Keys whose value is a credential, at any depth - a webhook's inbound headers among them, whatever a caller named
+ * its own (`X-Custom-Auth`, `X-Session`, `X-Signature`). `auth` but not `author`.
+ */
+const SENSITIVE_KEY_PATTERN = /password|passwd|secret|token|authori[sz]ation|auth(?!or)|cookie|session|api[_-]?key|access[_-]?key|private[_-]?key|credential|signature|jwt|bearer/i;
+/** A value that is a credential whatever its key: an HTTP authorization scheme and its credentials. */
+const CREDENTIAL_VALUE_PATTERN = /^\s*(bearer|basic|digest|token)\s+\S{8,}/i;
 
 function redact(value: unknown): unknown {
   // A Date's own fields aren't enumerable properties - Object.entries(date)
@@ -17,6 +26,9 @@ function redact(value: unknown): unknown {
   // pre-stringified - JSON.stringify() (redactAndCap's own next step)
   // already calls its .toJSON() correctly on its own.
   if (value instanceof Date) return value;
+  // A filter's carried value (templates.ts): the value it holds, as JSON shows it.
+  if (value instanceof FilterLiteral) return redact(value.value);
+  if (typeof value === "string" && CREDENTIAL_VALUE_PATTERN.test(value)) return "[REDACTED]";
   if (Array.isArray(value)) return value.map(redact);
   if (value && typeof value === "object") {
     const result: Record<string, unknown> = {};

@@ -3,7 +3,7 @@ export * from "./workflow-runs-service.js";
 export { resolveDataPrincipalForConfiguredUser, type WorkflowEngineContext, type WorkflowEngineLogger } from "./execution/context.js";
 export { requestRunCancellation, runWorkflow, runWorkflowManual, runWorkflowTest, toRunResult, type WorkflowRunOutcome, type WorkflowRunResult } from "./execution/engine.js";
 export { OPERATION_HANDLERS } from "./execution/handlers.js";
-export { validateExecutionReadiness } from "./execution/readiness.js";
+export { publishAdvisories, validateExecutionReadiness } from "./execution/readiness.js";
 export { manualInputFields, validateManualInput, type ManualInputField } from "./execution/manual-start.js";
 export { validateWorkflowGraph } from "./execution/graph-validation.js";
 export { validateDefinitionLimits, WORKFLOW_DEFINITION_LIMITS } from "./execution/definition-limits.js";

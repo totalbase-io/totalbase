@@ -7,3 +7,7 @@ onlyBuiltDependencies:
 
 patchedDependencies:
   reka-ui@2.11.0: patches/reka-ui@2.11.0.patch
+
+# monaco-editor pins a DOMPurify with known sanitizer bypasses, shipped in the admin bundle.
+overrides:
+  dompurify: ">=3.4.17"

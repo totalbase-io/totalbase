@@ -110,8 +110,6 @@
         "visibilityError": "No se pudo actualizar la visibilidad",
         "fileUpdated": "Archivo actualizado",
         "updateError": "No se pudo actualizar el archivo",
-        "renamed": "Archivo renombrado",
-        "renameError": "No se pudo renombrar el archivo",
         "moved": "Movido a {where} | {n} archivos movidos a {where}",
         "partialMoved": "{done} de {total} movidos",
         "failedRetry": "{n} fallaron: la selección se mantiene para que puedas reintentar.",
@@ -138,7 +136,6 @@
         "uploadFile": "Subir archivo",
         "selectAll": "Seleccionar todos los archivos",
         "selectOne": "Seleccionar {name}",
-        "private": "Privado",
         "properties": "Propiedades del archivo",
         "renameHelp": "Hasta 255 caracteres. La extensión va después del nombre.",
         "folder": "Carpeta",
@@ -165,7 +162,14 @@
         "deleteOne": "¿Eliminar el archivo?",
         "deleteN": "¿Eliminar {n} archivos?",
         "deleteHelp": "Esto elimina de forma permanente los archivos seleccionados y sus metadatos. Esta acción no se puede deshacer.",
-        "downloadError": "No se pudo descargar el archivo"
+        "downloadError": "No se pudo descargar el archivo",
+        "madeLinked": "{n} archivos ahora están vinculados | {n} archivo ahora está vinculado | {n} archivos ahora están vinculados",
+        "makeLinked": "Vincular a sus registros",
+        "rowActions": "Acciones de {name}",
+        "openFullSize": "Abrir en tamaño completo",
+        "copyId": "Copiar ID",
+        "copyFailed": "No se pudo copiar",
+        "visibilityOwnerOnly": "Solo quien subió el archivo, o un administrador, puede cambiarla."
       },
       "textEditor": {
         "undo": "Deshacer",
@@ -185,6 +189,14 @@
       "pager": {
         "noun": "archivo",
         "plural": "archivos"
+      },
+      "visibility": {
+        "PRIVATE": "Privado",
+        "PRIVATEHelp": "Solo quien lo subió.",
+        "LINKED": "Vinculado",
+        "LINKEDHelp": "Quien lo subió, y quien puede leer un registro que lo usa.",
+        "PUBLIC": "Público",
+        "PUBLICHelp": "Cualquiera con su enlace, sin iniciar sesión."
       }
     },
     "logs": {
@@ -318,8 +330,8 @@
           "description": "Un aviso de seguridad enviado a la dirección anterior cuando un administrador cambia el correo electrónico de un usuario."
         },
         "mfa_disabled": {
-          "label": "Verificación en dos pasos desactivada",
-          "description": "Un aviso de seguridad que se envía cuando se desactiva la verificación en dos pasos de una cuenta, o un administrador la restablece."
+          "label": "MFA desactivada",
+          "description": "Un aviso de seguridad que se envía cuando se desactiva la MFA de una cuenta, o un administrador la restablece."
         },
         "token_created": {
           "label": "Nuevo token de API",

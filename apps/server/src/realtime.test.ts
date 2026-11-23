@@ -226,6 +226,21 @@ describe("realtime subscriptions (integration)", () => {
         await context.settings.set("realtime.max_subscriptions", 50);
       }
     });
+
+    // Security regression (Data_API.md §16.8): the cap was per connection only - one user opened many connections of
+    // 50 subscriptions each, and every write was re-read for each of them, stalling delivery for everyone.
+    it("holds at most realtime.max_subscriptions_per_user across one user's connections", async () => {
+      // The connections the tests above left open hold this user's subscriptions already.
+      await context.settings.set("realtime.max_subscriptions_per_user", 1);
+      try {
+        const fresh = await connect();
+        expect((await fresh.subscribe("u1", { resource: RESOURCE })).errors?.[0]?.code).toBe("TOO_MANY_SUBSCRIPTIONS");
+        await context.settings.set("realtime.max_subscriptions_per_user", 200);
+        expect((await fresh.subscribe("u2", { resource: RESOURCE })).event).toBe("init");
+      } finally {
+        await context.settings.reset("realtime.max_subscriptions_per_user");
+      }
+    }, 20_000);
   });
 
   describe("events", () => {

@@ -33,32 +33,40 @@ export const INVITE_BODY: JsonSchema = object({
   message: { type: "string", maxLength: 500, description: "Your own line for the invitation email, plain text - sent where the instance's Invitation template includes {{message}}." },
 });
 
+/** UsersService's UserListItem. */
+const USERS_LIST_ITEM: JsonSchema = object({
+  id: UUID,
+  email: { type: "string", format: "email" },
+  name: NULLABLE_STRING,
+  avatarUrl: NULLABLE_STRING,
+  active: { type: "boolean" },
+  owner: { type: "boolean", description: "The instance owner: can't be deleted, deactivated or lose the Administrators role." },
+  canLogin: { type: "boolean", description: "False for system accounts (e.g. the Workflows user) that never sign in." },
+  emailVerifiedAt: NULLABLE_DATE_TIME,
+  createdAt: DATE_TIME,
+  roles: arrayOf(UUID),
+  hasPassword: { type: "boolean", description: "False for an invited account that hasn't set a password yet." },
+  lastLoginAt: NULLABLE_DATE_TIME,
+  lockedUntil: { ...NULLABLE_DATE_TIME, description: "Sign-in refused until then (too many failed attempts); null when not locked." },
+  signInHeld: { type: "boolean", description: "An address is locked out of the account, or its account-wide sign-in delay is on (Security.md §2.4) - Unlock account ends both." },
+  failedLoginCount: { type: "integer", description: "Consecutive failed sign-ins since the last success, unlock or lockout." },
+  providerAvatar: {
+    type: ["object", "null"],
+    description: "The picture of the user's most recently used sign-in provider identity, if any.",
+    properties: { url: STRING, provider: { type: "string", description: "The provider's name." } },
+  },
+  mfaEnabled: { type: "boolean", description: "MFA is on (an authenticator app confirmed)." },
+  passwordChangedAt: { ...NULLABLE_DATE_TIME, description: "When the current password was set; null without one. auth.password_max_age_days counts from it." },
+  passwordChangeRequired: { type: "boolean", description: "The password must be changed at the user's next password sign-in - set by `mustChange` on the password route, or by writing `password_change_required` on the users row; cleared when the password changes." },
+  removedAt: { ...NULLABLE_DATE_TIME, description: "When the account was removed - inactive, with no way in left, the row kept for the audit log; null otherwise. An invitation brings it back." },
+});
+
 export const USERS_SCHEMAS: Record<string, JsonSchema> = {
-  /** UsersService's UserListItem. */
-  UsersListItem: object({
-    id: UUID,
-    email: { type: "string", format: "email" },
-    name: NULLABLE_STRING,
-    avatarUrl: NULLABLE_STRING,
-    active: { type: "boolean" },
-    owner: { type: "boolean", description: "The instance owner: can't be deleted, deactivated or lose the Administrators role." },
-    canLogin: { type: "boolean", description: "False for system accounts (e.g. the Workflows user) that never sign in." },
-    emailVerifiedAt: NULLABLE_DATE_TIME,
-    createdAt: DATE_TIME,
-    roles: arrayOf(UUID),
-    hasPassword: { type: "boolean", description: "False for an invited account that hasn't set a password yet." },
-    lastLoginAt: NULLABLE_DATE_TIME,
-    lockedUntil: { ...NULLABLE_DATE_TIME, description: "Sign-in refused until then (too many failed attempts); null when not locked." },
-    failedLoginCount: { type: "integer", description: "Consecutive failed sign-ins since the last success, unlock or lockout." },
-    providerAvatar: {
-      type: ["object", "null"],
-      description: "The picture of the user's most recently used sign-in provider identity, if any.",
-      properties: { url: STRING, provider: { type: "string", description: "The provider's name." } },
-    },
-    mfaEnabled: { type: "boolean", description: "Two-factor authentication is on (an authenticator app confirmed)." },
-    passwordChangedAt: { ...NULLABLE_DATE_TIME, description: "When the current password was set; null without one. auth.password_max_age_days counts from it." },
-    passwordChangeRequired: { type: "boolean", description: "The password must be changed at the user's next password sign-in - set by `mustChange` on the password route, or by writing `password_change_required` on the users row; cleared when the password changes." },
-    removedAt: { ...NULLABLE_DATE_TIME, description: "When the account was removed - inactive, with no way in left, the row kept for the audit log; null otherwise. An invitation brings it back." },
+  UsersListItem: USERS_LIST_ITEM,
+  /** One user (`GET /admin/api/users/:id`): a list item, and whether MFA is required of them. */
+  UserDetail: object({
+    ...(USERS_LIST_ITEM.properties as Record<string, JsonSchema>),
+    mfaRequired: { type: "boolean", description: "`mfa.required` covers the user (Security.md §2.17): they can't turn MFA off, and set it up at their next sign-in when it's off." },
   }),
   UsersSummary: object({
     total: { type: "integer" },
@@ -116,6 +124,7 @@ export const TOKENS_SCHEMAS: Record<string, JsonSchema> = {
 export const SECRETS_SCHEMAS: Record<string, JsonSchema> = {
   SecretsMetadata: object({
     key: { type: "string", description: "Lowercase alphanumeric with `.`, `_` or `-` separators, at most 200 characters." },
+    scope: { type: "string", enum: ["SMTP", "S3", "DASHBOARD_EMBEDS", "AUTH_PROVIDERS", "WORKFLOWS"], description: "The one feature that decrypts it." },
     createdAt: DATE_TIME,
     updatedAt: DATE_TIME,
   }),

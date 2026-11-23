@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { AdminClient } from "./admin-client.js";
-import { ADDITIVE, IDEMPOTENT, READ_ONLY, result } from "./tool-helpers.js";
+import { whereParams, type AdminClient } from "./admin-client.js";
+import { FULL_POLICY, refuseRemovedRoles, type McpPolicy } from "./policy.js";
+import { ADDITIVE, IDEMPOTENT, jsonObject, listOf, passthrough, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
  * Users' accounts (Security.md §1, §2.9, §10.4): what isn't a
@@ -25,14 +26,29 @@ const summary = (u: User) => ({
   ...(u.lockedUntil && { lockedUntil: u.lockedUntil }),
 });
 
+/** A user as summary answers it; `extra` holds the project's own columns. */
+const userOutput = {
+  id: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  active: z.boolean(),
+  roles: z.array(z.unknown()),
+  status: z.enum(["ACTIVE", "INVITED", "INACTIVE"]),
+  lastLoginAt: z.string().optional(),
+  lockedUntil: z.string().optional(),
+  extra: jsonObject().optional(),
+};
+/** An invitation or reset link: sent, or handed back as `actionUrl` to deliver by hand. */
+const linkOutput = passthrough("The link's delivery", { delivered: z.boolean().optional(), actionUrl: z.string().optional() });
+
 const delivery = () =>
   z
     .enum(["email", "link"])
     .describe("'email' sends it through the instance's mail settings (SMTP_NOT_CONFIGURED when there are none); 'link' answers the single-use link for you to hand over");
 
-/** `extra` as the user list's query: &extra[<column>]=<value>. */
-function extraQuery(extra: Record<string, string> | undefined): string {
-  return Object.entries(extra ?? {}).map(([column, value]) => `&extra%5B${encodeURIComponent(column)}%5D=${encodeURIComponent(value)}`).join("");
+/** `extra` as the user list's query: extra[<column>]=<value>. */
+function extraQuery(extra: Record<string, string> | undefined): Record<string, string> {
+  return Object.fromEntries(Object.entries(extra ?? {}).map(([column, value]) => [`extra[${column}]`, value]));
 }
 
 /** Each user with the columns the project added to users (read through the Data API) - none added, as they were. */
@@ -47,7 +63,13 @@ async function withProjectColumns<T extends { id: string }>(client: AdminClient,
   return users.map((user) => ({ ...user, extra: Object.fromEntries(columns.map((c) => [c, byId.get(user.id)?.[c] ?? null])) }));
 }
 
-export function registerUserTools(server: McpServer, client: AdminClient): void {
+/** The roles a table of `role` rows grants an object (`users_roles` by user, `dataviews_roles` by DataView...) - read through the Data API. */
+export async function heldRoles(client: AdminClient, table: string, column: string, id: string): Promise<string[]> {
+  const rows = await client.data<{ role: string }[]>("GET", `/totalbase/table/${table}`, { query: { fields: "role", limit: "500", ...whereParams({ [column]: { _eq: id } }) } });
+  return rows.map((row) => row.role);
+}
+
+export function registerUserTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
   server.registerTool(
     "list_users",
     {
@@ -61,11 +83,12 @@ export function registerUserTools(server: McpServer, client: AdminClient): void 
         limit: z.number().int().min(1).max(200).default(50),
         offset: z.number().int().min(0).default(0),
       },
+      outputSchema: listOf(z.object(userOutput)),
       annotations: READ_ONLY,
     },
     async ({ q, status, role_id, extra, limit, offset }) => {
-      const query = new URLSearchParams({ limit: String(limit), offset: String(offset), ...(q && { q }), ...(status && { status }), ...(role_id && { role: role_id }) });
-      const users = (await client.get<User[]>(`/users?${query}${extraQuery(extra)}`)).map(summary);
+      const query = { limit: String(limit), offset: String(offset), ...(q && { q }), ...(status && { status }), ...(role_id && { role: role_id }), ...extraQuery(extra) };
+      const users = (await client.get<User[]>("/users", query)).map(summary);
       return result(await withProjectColumns(client, users));
     },
   );
@@ -84,6 +107,7 @@ export function registerUserTools(server: McpServer, client: AdminClient): void 
         extra: z.record(z.string(), z.unknown()).optional().describe("Columns the project added to users (e.g. {sucursal: '<id>'}) - written through the Data API, so PostgreSQL's CHECKs and foreign keys decide"),
         invite: delivery().optional().describe("Without a password: send the invitation at once - 'email' or 'link'"),
       },
+      outputSchema: { ...userOutput, invitation: linkOutput.optional() },
       annotations: ADDITIVE,
     },
     async ({ email, name, password, role_ids, extra, invite }) => {
@@ -102,9 +126,11 @@ export function registerUserTools(server: McpServer, client: AdminClient): void 
       description:
         "Replace a user's whole role set (roles left out are removed), audited as one change. The instance owner always keeps Administrators. To add or remove one role only, write_records on users_roles ({user, role}) works too.",
       inputSchema: { user_id: z.string().describe("The user's id (list_users)"), role_ids: z.array(z.string()).describe("Every role the user should hold") },
+      outputSchema: { user: z.string(), roles: z.array(z.string()) },
       annotations: IDEMPOTENT,
     },
     async ({ user_id, role_ids }) => {
+      await refuseRemovedRoles(policy, "Replacing the user's roles", role_ids, () => heldRoles(client, "users_roles", "user", user_id));
       await client.put(`/users/${user_id}/roles`, { data: { roleIds: role_ids } });
       return result({ user: user_id, roles: role_ids });
     },
@@ -121,6 +147,7 @@ export function registerUserTools(server: McpServer, client: AdminClient): void 
         kind: z.enum(["invitation", "reset"]),
         delivery: delivery().default("email"),
       },
+      outputSchema: linkOutput,
       annotations: ADDITIVE,
     },
     async ({ user_id, kind, delivery: how }) =>

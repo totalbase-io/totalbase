@@ -29,6 +29,7 @@ import { CapabilityPermissionService } from "@totalbase/mutations";
 import type { DataPrincipal } from "./data-principal.js";
 import { OpenApiDocumentCache } from "./openapi-cache.js";
 import { createDataEventQueue } from "./data-event-queue.js";
+import { lockdownPausesWorkflows } from "./lockdown.js";
 import { runMaintenanceExecution } from "./maintenance-executor.js";
 import { registerAsyncCallExecutors } from "./async-calls.js";
 
@@ -122,7 +123,7 @@ export interface AppContext {
  * derived from a request's Host header (env.ts's comment on the same).
  */
 export function buildContext(database: Database, logger: pino.Logger, masterKey: string, publicUrl: string, nodeEnv: string, masterKeyOrigin: MasterKeyOrigin = { source: "ENV", path: null }, setup: SetupState = { code: null, source: null, file: "" }, dataDir = "/var/lib/totalbase"): AppContext {
-  const settings = new SettingsService(database);
+  const settings = new SettingsService(database, { dataDir });
   const secrets = new SecretsService(database, masterKey);
   const emailSender = new SmtpEmailSender(settings, secrets);
   const executions = new ExecutionsService(database);
@@ -131,7 +132,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   const maintenanceExecutors: Record<string, Executor> = {};
 
   const templatesAdmin = new TemplatesAdminService(database);
-  const s3 = new S3Connection(settings, (key) => secrets.decrypt(key));
+  const s3 = new S3Connection(settings, (key) => secrets.decrypt(key, "S3"));
   const filesStorage = new FilesStorage(settings, s3);
   const filesTransform = new FilesTransformService(settings, () => filesStorage.current());
   // A stored image's list thumbnail is made in the background (Administration.md §10.8).
@@ -172,7 +173,7 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
     publicUrl,
     onBackgroundError: (err, what) => logger.warn({ err }, `Could not send ${what}`),
     masterKey,
-    isAdministrator: async (userId) => roles.holdsAdministratorsRole(await roleAssignments.listEffectiveRolesForUser(userId)),
+    effectiveRoles: (userId) => roleAssignments.listEffectiveRolesForUser(userId),
   });
   const oauth = new OAuthService(database, authProviders, secrets, settings, roleAssignments, masterKey, () => auth.mailer.publicUrl(), auth.mfa);
   const resourcesAdmin = new ResourcesAdminService(database);
@@ -184,8 +185,11 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
   // At most two dispatches at a time (data-event-queue.ts) - a bulk write's
   // events must not take every pooled connection from the API.
   const dataEvents = createDataEventQueue(
-    (outboxEventId) =>
-      dispatchDataEvent(context, outboxEventId).catch((error) => logger.error({ error, outboxEventId }, "data-event dispatch failed")),
+    async (outboxEventId) => {
+      // Workflows paused by a lockdown (Security.md §2.21): the event stays PENDING for the poll after its end.
+      if (await lockdownPausesWorkflows(context)) return;
+      await dispatchDataEvent(context, outboxEventId).catch((error) => logger.error({ error, outboxEventId }, "data-event dispatch failed"));
+    },
     2,
   );
   const context: AppContext = {
@@ -214,10 +218,10 @@ export function buildContext(database: Database, logger: pino.Logger, masterKey:
     resourcesAdmin,
     dataviewsAdmin: new DataViewsAdminService(database, () => auth.mailer.publicUrl()),
     dataviewsStates: new DataViewsStatesService(database),
-    dashboardsAdmin: new DashboardsAdminService(database),
+    dashboardsAdmin: new DashboardsAdminService(database, { queryRole: () => settings.get("dashboards.query_role") }),
     dashboardEmbeds: new DashboardEmbedsService(database, {
-      encrypt: (plaintext) => encryptSecret(masterKey, plaintext),
-      decrypt: (ciphertext) => decryptSecret(masterKey, ciphertext),
+      encrypt: (plaintext) => encryptSecret(masterKey, plaintext, "embed-link"),
+      decrypt: (ciphertext) => decryptSecret(masterKey, ciphertext, "embed-link"),
     }),
     embedPreviewKey: embedPreviewKey(masterKey),
     appMenu: new AppMenuService(database),

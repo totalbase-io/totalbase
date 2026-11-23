@@ -8,6 +8,9 @@
 export interface DeviceDescription {
   label: string
   icon: string
+  /** The label's two parts, for a caller that shows them apart; a script or library has neither. */
+  browser?: string
+  system?: string
 }
 
 const BROWSERS: Array<[RegExp, string]> = [
@@ -56,5 +59,5 @@ export function describeUserAgent(userAgent: string | null | undefined, t?: (key
   const label = browser && system
     ? (t ? t('shell.userAgent.browserOnSystem', { browser, system }) : `${browser} on ${system}`)
     : browser ?? system ?? ua.split(/[\s/]/)[0] ?? unknown
-  return { label, icon: mobile ? 'i-lucide-smartphone' : 'i-lucide-monitor' }
+  return { label, icon: mobile ? 'i-lucide-smartphone' : 'i-lucide-monitor', browser, system }
 }

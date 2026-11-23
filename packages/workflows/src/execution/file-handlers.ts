@@ -1,5 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
-import { assertFileCreateAllowed, assertFileReadAllowed, type DataPrincipal } from "@totalbase/mutations";
+import { assertFileReadAllowed, assertVisibilityAllowed, createFileAuthorized, type DataPrincipal } from "@totalbase/mutations";
 import { parseCsv, stringifyCsv } from "./csv.js";
 import type { WorkflowEngineContext } from "./context.js";
 import type { OperationHandler } from "./types.js";
@@ -42,6 +42,9 @@ const createFile: OperationHandler = async ({ context, dataPrincipal, configurat
   const content = configuration.content ?? "";
   const encoding = configuration.encoding ?? "text";
   const folder = configuration.folder || null;
+  // LINKED unless the design says otherwise: a file a run makes is usually a record's (Workflows.md §5.18).
+  const visibility = configuration.visibility ?? "LINKED";
+  if (visibility !== "PRIVATE" && visibility !== "LINKED" && visibility !== "PUBLIC") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's visibility must be PRIVATE, LINKED or PUBLIC.");
   if (typeof content !== "string") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's content must resolve to a string.");
   if (!name) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no file name configured.");
   if (encoding !== "text" && encoding !== "base64") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's encoding must be text or base64.");
@@ -49,15 +52,21 @@ const createFile: OperationHandler = async ({ context, dataPrincipal, configurat
     throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's content is not valid base64.");
   }
   if (folder !== null && typeof folder !== "string") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's folder must resolve to a folder id.");
-  await assertFileCreateAllowed(context, dataPrincipal);
-  const file = await context.filesAdmin.upload({
+  // As an upload by the executor (Administration.md §10.4): the folder it sets needs its field grant, the file the
+  // CREATE row filter.
+  // The columns the design sets need their field grants, as an upload's do; the default visibility needs none.
+  const columns = [...(folder ? ["folder"] : []), ...(configuration.visibility !== undefined ? ["visibility"] : [])];
+  // The executor uploads it, so Public is theirs to choose only while uploaders may publish (Administration.md §10.6).
+  if (visibility === "PUBLIC") await assertVisibilityAllowed(context, dataPrincipal, visibility, dataPrincipal.actorUserId ?? null);
+  const file = await createFileAuthorized(context, dataPrincipal, columns, () => context.filesAdmin.upload({
     folder,
     content: Buffer.from(content, encoding === "base64" ? "base64" : "utf8"),
     filename: name,
     declaredContentType: contentType,
+    visibility,
     // The executor's user (a token's owner, not the token) - §5.18.
     actorUserId: dataPrincipal.actorUserId ?? undefined,
-  });
+  }), (id) => context.filesAdmin.remove(id));
   return { output: "next", result: { asset: file.id, name: file.name, mimeType: file.mime_type, size: file.size_bytes } };
 };
 

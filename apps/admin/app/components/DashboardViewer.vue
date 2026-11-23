@@ -111,6 +111,7 @@ const autoRefreshTooltip = computed(() => {
       icon="i-lucide-lock"
       :title="t('dashboards.view.notAvailable')"
       :description="t('dashboards.view.notAvailableHelp')"
+      class="page-empty"
     />
     <DashboardView
       v-else

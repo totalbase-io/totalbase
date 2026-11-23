@@ -160,11 +160,14 @@ export interface BoundVariable {
 
 /**
  * Replaces every reference with `($n::cast)` (the same reference reusing the
- * same `$n`) and returns the values in parameter order.
+ * same `$n`) and returns the values in parameter order. `placeholder` writes
+ * it otherwise - an element of one array parameter, under a widget query
+ * role (query-role.ts) - always cast.
  */
 export async function bindSqlVariables(
   sql: string,
   resolve: (ref: SqlVariableRef) => Promise<BoundVariable>,
+  placeholder: (index: number, cast: string) => string = (index, cast) => `($${index}::${cast})`,
 ): Promise<{ sql: string; params: unknown[] }> {
   const params: unknown[] = [];
   const indexByKey = new Map<string, string>();
@@ -175,15 +178,15 @@ export async function bindSqlVariables(
       continue;
     }
     const key = referenceKey(segment.ref);
-    let placeholder = indexByKey.get(key);
-    if (!placeholder) {
+    let written = indexByKey.get(key);
+    if (!written) {
       const bound = await resolve(segment.ref);
       params.push(bound.value);
       // Parenthesized so the cast binds to the parameter alone, whatever operator surrounds it.
-      placeholder = `($${params.length}::${bound.cast})`;
-      indexByKey.set(key, placeholder);
+      written = placeholder(params.length, bound.cast);
+      indexByKey.set(key, written);
     }
-    out += placeholder;
+    out += written;
   }
   return { sql: out, params };
 }

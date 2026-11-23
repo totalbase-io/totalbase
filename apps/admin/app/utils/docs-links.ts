@@ -43,6 +43,7 @@ const DOCS_PAGES: [RegExp, string][] = [
   [/^\/settings\/smtp$/, '/settings/general#smtp'],
   [/^\/settings\/s3$/, '/settings/general#s3-storage'],
   [/^\/settings\/auth$/, '/settings/access#authentication'],
+  [/^\/settings\/mfa$/, '/settings/access#mfa'],
   [/^\/settings\/auth-providers$/, '/settings/access#providers'],
   [/^\/settings\/api-tokens$/, '/settings/access#tokens'],
   [/^\/settings\/network$/, '/settings/security#network'],

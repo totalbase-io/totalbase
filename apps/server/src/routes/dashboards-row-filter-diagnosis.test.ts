@@ -26,11 +26,11 @@ describe("Dashboard diagnosis - widgets that ignore a role's row filter", () => 
   const resourceIds: string[] = [];
   const widgets: Record<string, string> = {};
 
-  type Issue = { code: string; role: { id: string } | null; resource: { name: string } | null; widget: { id: string; name: string } | null };
-  const diagnosis = async (): Promise<Issue[]> => {
+  type Issue = { code: string; severity: string; role: { id: string } | null; resource: { name: string } | null; widget: { id: string; name: string } | null; columns: string[] | null };
+  const diagnosis = async (code = "WIDGET_IGNORES_ROW_FILTER"): Promise<Issue[]> => {
     const res = await app.inject({ method: "GET", url: `/admin/api/dashboards/${dashboardId}/diagnosis`, headers: { authorization: `Bearer ${adminToken}` } });
     expect(res.statusCode, res.body).toBe(200);
-    return (res.json().data as Issue[]).filter((issue) => issue.code === "WIDGET_IGNORES_ROW_FILTER");
+    return (res.json().data as Issue[]).filter((issue) => issue.code === code);
   };
 
   beforeAll(async () => {
@@ -68,6 +68,8 @@ describe("Dashboard diagnosis - widgets that ignore a role's row filter", () => 
     await add("view", `SELECT count(*) AS n FROM public.${VIEW}`, 3);
     await add("scoped", `SELECT count(*) AS n FROM public.${ACCESSES} WHERE owner = $USER.id`, 6);
     await add("open", `SELECT count(*) AS n FROM public.${OPEN}`, 9);
+    await add("names", `SELECT id, name FROM public.${OPEN} WHERE $USER.id IS NOT NULL`, 12);
+    await add("hashes", `SELECT email, password_hash FROM totalbase.users WHERE id = $USER.id`, 15);
   });
 
   afterAll(async () => {
@@ -88,6 +90,20 @@ describe("Dashboard diagnosis - widgets that ignore a role's row filter", () => 
     const issues = await diagnosis();
     expect(issues.every((issue) => issue.role?.id === filteredRole && issue.resource?.name === `public.${ACCESSES}`)).toBe(true);
     expect(issues.map((issue) => issue.widget?.id).sort()).toEqual([widgets["table"], widgets["view"]].sort());
+  });
+
+  // A widget runs with the dashboard's authority: a role that may not read a table, or a field of it, sees it through
+  // one all the same (an external tester's report against beta.14).
+  it("tells a role that may not read a table it reads, and warns of a field shown that the role may not read", async () => {
+    const unreadable = await diagnosis("WIDGET_READS_UNREADABLE_TABLE");
+    // openRole has no READ on OPEN; "names" names $USER, so only "open" counts.
+    expect(unreadable.map((issue) => [issue.severity, issue.role?.id, issue.resource?.name, issue.widget?.id])).toEqual([["info", openRole, `public.${OPEN}`, widgets["open"]]]);
+    const hidden = await diagnosis("WIDGET_SHOWS_HIDDEN_FIELD");
+    // filteredRole reads OPEN's id only - $USER scopes rows, not columns; nobody's but an administrator's is password_hash.
+    expect(hidden.filter((issue) => issue.widget?.id === widgets["names"]).map((issue) => [issue.role?.id, issue.columns])).toEqual([[filteredRole, ["name"]]]);
+    const hashes = hidden.filter((issue) => issue.widget?.id === widgets["hashes"]);
+    expect(hashes.map((issue) => issue.role?.id).sort()).toEqual([filteredRole, openRole].sort());
+    expect(hashes.every((issue) => issue.severity === "warning" && issue.columns?.includes("password_hash"))).toBe(true);
   });
 
   it("stops warning once a grant without a filter gives the role every row", async () => {

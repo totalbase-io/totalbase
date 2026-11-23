@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { isUiLanguage, COLOR_MODES, DEFAULT_UI_LANGUAGE, LOGIN_CARD_POSITIONS, LOGIN_LAYOUTS, UI_LANGUAGES } from "@totalbase/shared";
+import { isUiLanguage, COLOR_MODES, LOCKDOWN_MODES, DEFAULT_UI_LANGUAGE, LOGIN_CARD_POSITIONS, LOGIN_LAYOUTS, UI_LANGUAGES } from "@totalbase/shared";
 import { dataEnvelope, type RouteDoc } from "@totalbase/openapi";
 import type { AppContext } from "../context.js";
+import { currentLockdown } from "../lockdown.js";
 
 const doc = (openapi: RouteDoc) => ({ config: { openapi } });
 
@@ -58,13 +59,27 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
               },
               required: ["layout", "cardPosition", "backgroundUrl", "headline", "intro", "providers"],
             },
+            lockdown: {
+              type: "object",
+              description: "Lockdown (`lockdown.*`): while `active`, the instance answers administrators only - everyone else gets `503 LOCKDOWN`, for anything (`mode` FULL) or for writes (READ_ONLY).",
+              properties: {
+                active: { type: "boolean" },
+                mode: { type: "string", enum: [...LOCKDOWN_MODES], description: "`FULL`: administrators only. `READ_ONLY`: everyone reads, only administrators write." },
+                from: { type: ["string", "null"], format: "date-time", description: "The start of the scheduled window running now, else of the next one - scheduled once or repeating; null when it is on until turned off, or there is none." },
+                until: { type: ["string", "null"], format: "date-time", description: "That window's end." },
+                message: { type: "string", description: "The operator's message for whoever is refused." },
+                noticeMinutes: { type: "integer", description: "How long before `from` the people using the instance are told of it; 0 = they are not." },
+              },
+              required: ["active", "mode", "from", "until", "message", "noticeMinutes"],
+            },
           },
-          required: ["language", "name", "logoUrl", "colorMode", "login"],
+          required: ["language", "name", "logoUrl", "colorMode", "login", "lockdown"],
         }),
       },
     }),
     async () => {
-      const [language, name, logo, colorMode, layout, background, headline, intro, cardPosition, providers] = await Promise.all([
+      const [lockdown, language, name, logo, colorMode, layout, background, headline, intro, cardPosition, providers] = await Promise.all([
+        currentLockdown(context),
         context.settings.get("system.language"),
         context.settings.get("system.instance_name"),
         context.settings.get("system.logo"),
@@ -92,6 +107,14 @@ export function registerInstanceRoutes(app: FastifyInstance, context: AppContext
             providers: providers
               .filter((p) => p.enabled && p.showOnSignIn)
               .map((p) => ({ slug: p.slug, name: p.name, type: p.type, signInUrl: `/api/auth/oauth/${p.slug}?redirect_to=${portalCallback}` })),
+          },
+          lockdown: {
+            active: lockdown.active,
+            mode: lockdown.readOnly ? "READ_ONLY" : "FULL",
+            from: lockdown.window ? new Date(lockdown.window.from).toISOString() : null,
+            until: lockdown.window ? new Date(lockdown.window.until).toISOString() : null,
+            message: lockdown.message,
+            noticeMinutes: lockdown.noticeMinutes,
           },
         },
       };

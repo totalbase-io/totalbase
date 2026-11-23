@@ -490,6 +490,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       (header / toolbar / scrolling body / footer - AGENTS.md section 25),
       which owns its own edges. overflow-y-auto stays as the fallback for
       the few frameless pages (empty states). -->
+      <LockdownBanner />
       <ViewAsBanner />
       <main
         id="main"

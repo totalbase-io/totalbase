@@ -513,7 +513,7 @@ async function copySecret() {
       </div>
     </template>
 
-    <div class="flex flex-col gap-4">
+    <div class="flex min-h-full flex-col gap-4">
       <UAlert
         v-if="error"
         color="error"
@@ -635,6 +635,7 @@ async function copySecret() {
           v-if="!pending && groups.length === 0"
           icon="i-lucide-key-round"
           v-bind="emptyState"
+          class="page-empty"
         />
       </template>
     </div>

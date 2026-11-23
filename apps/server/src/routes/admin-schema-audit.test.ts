@@ -13,7 +13,7 @@ interface DdlEntry {
   resource: string | null;
   status: string;
   principal_type: string;
-  metadata: { operation: string; schema?: string; table?: string; name?: string; statements?: string[]; concurrent?: boolean };
+  metadata: { event?: string; operation: string; schema?: string; table?: string; name?: string; statements?: string[]; concurrent?: boolean };
   error_code: string | null;
 }
 
@@ -25,7 +25,7 @@ describe("schema management DDL audit (integration)", () => {
   let adminToken: string;
   const seen = new Set<string>();
 
-  const call = (method: "POST" | "PATCH" | "DELETE", url: string, payload?: unknown) =>
+  const call = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, payload?: unknown) =>
     app.inject({ method, url, ...(payload === undefined ? {} : { payload: payload as Record<string, unknown> }), headers: { authorization: `Bearer ${adminToken}` } });
 
   /** DDL entries for the test table/view written since the last call. */
@@ -70,7 +70,10 @@ describe("schema management DDL audit (integration)", () => {
     expect(res.statusCode).toBe(201);
     const entries = await newEntries();
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ status: "EXECUTED", principal_type: "ADMIN", metadata: { operation: "create_table", schema: "public", table: TABLE } });
+    expect(entries[0]).toMatchObject({ status: "EXECUTED", principal_type: "ADMIN", metadata: { event: "schema.apply", operation: "create_table", schema: "public", table: TABLE } });
+    // Found by its event, like a configuration change (the `event` column is generated from the metadata).
+    const byEvent = await call("GET", `/admin/api/audit/logs?event=${encodeURIComponent("schema.*")}&limit=5`);
+    expect(byEvent.json().data.some((e: { id: string }) => e.id === entries[0]!.id)).toBe(true);
     expect(entries[0]!.metadata.statements![0]).toMatch(/^create table "public"\."ddl_audit_test_items"/i);
   });
 
@@ -107,7 +110,7 @@ describe("schema management DDL audit (integration)", () => {
     expect(res.statusCode).toBe(422);
     const entries = await newEntries();
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ status: "FAILED", error_code: "CHECK_VIOLATION", metadata: { operation: "add_check", table: TABLE } });
+    expect(entries[0]).toMatchObject({ status: "FAILED", error_code: "CHECK_VIOLATION", metadata: { event: "schema.apply", operation: "add_check", table: TABLE } });
   });
 
   it("an edit batch: the transactional half in one entry, each CONCURRENTLY statement in its own after it ran", async () => {

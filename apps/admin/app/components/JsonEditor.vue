@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import { adminThemeName, defineAdminThemes } from '~/utils/monaco-theme'
 
 // Small editable JSON editor - a trimmed-down sibling of SqlEditor.vue/
@@ -46,6 +47,7 @@ onMounted(async () => {
   // the admin already pays this cost elsewhere, so reusing it here is
   // marginal, not a new heavy dependency.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
 

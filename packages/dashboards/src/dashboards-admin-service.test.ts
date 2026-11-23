@@ -199,6 +199,24 @@ describe("DashboardsAdminService (integration)", () => {
       await dashboards.deleteWidget(dashboardId, made.id);
     });
 
+    // Security regression (Dashboards.md §2.5): a published widget's failing query answered its viewers - an embed's
+    // anonymous visitors included - with PostgreSQL's message, which names tables and columns and can echo values.
+    it("tells a published widget's viewers only that its query failed; the editor still says why", async () => {
+      const { rows: [own] } = await database.query<{ id: string }>(`INSERT INTO totalbase.dashboards (name, slug) VALUES ('dashboards pkg test gone', 'dashboards-pkg-test-gone') RETURNING id`);
+      await database.query(`CREATE TABLE public.dashboards_pkg_test_gone (n integer)`);
+      try {
+        const widget = await dashboards.addWidget(own!.id, { type: "KPI", gridX: 0, gridY: 0, gridW: 3, gridH: 2, query: "SELECT n FROM public.dashboards_pkg_test_gone", config: { roles: { value: "n" } } });
+        await dashboards.publish(own!.id, null);
+        await database.query(`DROP TABLE public.dashboards_pkg_test_gone`);
+        const viewer = dashboards.executePublishedWidget(own!.id, widget.id, LIMITS, { userId: null }, {});
+        await expect(viewer).rejects.toMatchObject({ code: "DASHBOARD_WIDGET_QUERY_FAILED", message: "This widget's query failed - its dashboard's editor shows why." });
+        await expect(dashboards.executeDraftWidget(own!.id, widget.id, LIMITS, { userId: null }, {})).rejects.toMatchObject({ message: expect.stringContaining("dashboards_pkg_test_gone") });
+      } finally {
+        await database.query(`DROP TABLE IF EXISTS public.dashboards_pkg_test_gone`);
+        await database.query(`DELETE FROM totalbase.dashboards WHERE id = $1`, [own!.id]);
+      }
+    });
+
     it("refuses to publish a widget that fails, naming it; its run fails with the dashboard's own error (DB10)", async () => {
       const { rows: [own] } = await database.query<{ id: string }>(`INSERT INTO totalbase.dashboards (name, slug) VALUES ('dashboards pkg test broken', 'dashboards-pkg-test-broken') RETURNING id`);
       try {

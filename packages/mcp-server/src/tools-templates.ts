@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { slugify } from "@totalbase/shared";
 import type { AdminClient } from "./admin-client.js";
-import { ADDITIVE, defined, IDEMPOTENT, NAME_RULE, READ_ONLY, result } from "./tool-helpers.js";
+import { ADDITIVE, defined, IDEMPOTENT, listOf, NAME_RULE, passthrough, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
  * Templates (Administration.md §9): rows of
@@ -41,6 +41,16 @@ const summary = (t: Template) => ({
   ...(t.kind === "MAILING" && { placeholders: templatePlaceholders(t.content["subject"], t.content["message"]) }),
 });
 
+/** A template as summary answers it. */
+const templateOutput = {
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  kind: z.enum(["MAILING", "PDF"]),
+  description: z.string().nullable(),
+  placeholders: z.array(z.string()).optional().describe("A MAILING template's {{placeholders}}"),
+};
+
 export function registerTemplateTools(server: McpServer, client: AdminClient): void {
   server.registerTool(
     "list_templates",
@@ -48,6 +58,7 @@ export function registerTemplateTools(server: McpServer, client: AdminClient): v
       title: "List templates",
       description: "Email (MAILING) and PDF templates: id, name, slug, kind, description and, for an email, the {{placeholders}} its subject and message use - the data a workflow's Send email step must give it.",
       inputSchema: { kind: z.enum(["MAILING", "PDF"]).optional() },
+      outputSchema: listOf(z.object(templateOutput)),
       annotations: READ_ONLY,
     },
     async ({ kind }) => {
@@ -75,6 +86,7 @@ export function registerTemplateTools(server: McpServer, client: AdminClient): v
         default_bcc: z.string().nullable().optional(),
         default_reply_to: z.string().nullable().optional(),
       },
+      outputSchema: templateOutput,
       annotations: ADDITIVE,
     },
     async ({ id, name, slug, description, kind, subject, message, content, default_cc, default_bcc, default_reply_to }) => {
@@ -104,6 +116,7 @@ export function registerTemplateTools(server: McpServer, client: AdminClient): v
         id: z.string().describe("The template's id (list_templates)"),
         data: z.record(z.string(), z.unknown()).default({}).describe("Sample values, e.g. {\"name\":\"Ana\",\"order\":{\"total\":120}}"),
       },
+      outputSchema: passthrough("A MAILING template's placeholders against the data; a PDF template rendered", { id: z.string(), kind: z.enum(["MAILING", "PDF"]), placeholders: z.array(z.string()).optional(), missing: z.array(z.string()).optional().describe("Placeholders the data has no value for"), complete: z.boolean().optional() }),
       annotations: READ_ONLY,
     },
     async ({ id, data }) => {

@@ -1,3 +1,4 @@
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { TotalBaseError } from "@totalbase/errors";
 import { describe, expect, it, vi } from "vitest";
 import { signOAuthState, verifyOAuthState } from "./oauth-state.js";
@@ -11,6 +12,7 @@ function payload(overrides: Partial<Parameters<typeof signOAuthState>[1]> = {}) 
     nonce: "nonce-456",
     redirectTo: "https://app.example.com/callback",
     issuedAt: Date.now(),
+    browser: "browser-hash",
     ...overrides,
   };
 }
@@ -43,5 +45,16 @@ describe("OAuth state (sign/verify round trip)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // Security regression (Security.md §2.11, Foundations.md §15): a state in the ciphertext format before the current
+  // one still verified - its key is the verifier old settings and backups held, so whoever had one forged a state
+  // with any redirectTo and no browser binding.
+  it("rejects a state in the format before the current one, even one the old key would open", () => {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", createHash("sha256").update(MASTER_KEY, "utf8").digest(), iv);
+    const body = Buffer.concat([cipher.update(JSON.stringify(payload({ redirectTo: "https://attacker.example" })), "utf8"), cipher.final()]);
+    const forged = Buffer.concat([iv, cipher.getAuthTag(), body]).toString("base64");
+    expect(() => verifyOAuthState(MASTER_KEY, forged)).toThrow(expect.objectContaining({ code: "INVALID_OAUTH_STATE" }));
   });
 });

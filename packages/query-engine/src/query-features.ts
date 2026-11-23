@@ -42,4 +42,6 @@ export function assertQueryFeatures(ast: QueryAST, features: QueryFeatures): voi
   if (ast.having && !features.having) throw disabled("having", "query.allow_having");
   assertFilterFeatures(ast.where, features);
   assertFilterFeatures(ast.having, features);
+  // A flag is a filter evaluated on every row read, as costly as `where`'s (SEC-81).
+  for (const flag of ast.flags ?? []) assertFilterFeatures(flag.filter, features);
 }

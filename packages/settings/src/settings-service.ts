@@ -1,8 +1,8 @@
 import { isIP } from "node:net";
-import { isAbsolute } from "node:path";
+import { isAbsolute, join, resolve as resolvePath, sep } from "node:path";
 import type { Database, Queryable } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
-import { COLOR_MODES, HEX_COLOR, isProjectUserColumn, isRegionalFormat, isUiLanguage, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
+import { COLOR_MODES, HEX_COLOR, isProjectUserColumn, isRegionalFormat, isUiLanguage, LOCKDOWN_MODES, LOCKDOWN_WHEN, LOGIN_CARD_POSITIONS, LOGIN_HEADLINE_MAX, LOGIN_INTRO_MAX, LOGIN_LAYOUTS, MCP_INSTRUCTIONS_MAX, MCP_MODES, NEUTRAL_COLORS, parseCronExpression, REGIONAL_FORMATS, UI_LANGUAGES, UUID_PATTERN, validateCustomCss } from "@totalbase/shared";
 import { SETTINGS_DEFAULTS, settingBounds, type SettingKey, type SettingsRegistry } from "./registry.js";
 import {
   SYSTEM_EMAIL_SLOTS,
@@ -11,6 +11,7 @@ import {
   validateMailTemplate,
   validatePublicUrl,
 } from "./mail-templates.js";
+import { lockdownWindowProblem, validateLockdownInstant } from "./lockdown.js";
 
 
 const HOSTNAME = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
@@ -31,10 +32,56 @@ function validateAllowedHosts(value: unknown): string | null {
  * has structure beyond its type (URLs, templates). Returns a problem
  * message, or null when the value is fine.
  */
+/**
+ * `security.cors_origins`: each entry an origin a browser sends - `https://app.example.com`, a port at most - nothing
+ * a credentialed CORS answer must never reflect: `null` (any sandboxed page or file sends it), `*`, a path.
+ */
+function validateCorsOrigins(value: unknown): string | null {
+  for (const entry of value as string[]) {
+    let origin: string | undefined;
+    try {
+      const url = new URL(entry);
+      origin = (url.protocol === "https:" || url.protocol === "http:") ? url.origin : undefined;
+    } catch {
+      origin = undefined;
+    }
+    if (origin !== entry) return `"${entry}" is not an origin - expected the scheme, the host and a port at most, e.g. https://app.example.com.`;
+  }
+  return null;
+}
+
+/** `security.trusted_proxies`: each entry an IP address or a CIDR range - what Fastify takes, never a name or `*`. */
+function validateTrustedProxies(value: unknown): string | null {
+  for (const entry of value as string[]) {
+    const [address, prefix, extra] = entry.trim().split("/");
+    const family = isIP(address ?? "");
+    if (family !== 0 && extra === undefined && (prefix === undefined || (/^\d{1,3}$/.test(prefix) && Number(prefix) <= (family === 4 ? 32 : 128)))) continue;
+    return `"${entry}" is not an IP address or a CIDR range.`;
+  }
+  return null;
+}
+
 const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string | null>> = {
   "system.public_url": validatePublicUrl,
+  "security.cors_origins": validateCorsOrigins,
+  "security.trusted_proxies": validateTrustedProxies,
   "system.instance_name": (value) =>
     typeof value === "string" && value.trim() && value.length <= 64 ? null : "Expected a name of 1-64 characters.",
+  "lockdown.from": validateLockdownInstant,
+  "lockdown.until": validateLockdownInstant,
+  "lockdown.message": (value) => ((value as string).length <= 500 ? null : "At most 500 characters."),
+  "lockdown.when": (value) => (LOCKDOWN_WHEN.includes(value as never) ? null : `Expected one of ${LOCKDOWN_WHEN.join(", ")}.`),
+  "lockdown.mode": (value) => (LOCKDOWN_MODES.includes(value as never) ? null : `Expected one of ${LOCKDOWN_MODES.join(", ")}.`),
+  "lockdown.recurring_schedule": (value) => {
+    try {
+      parseCronExpression(value as string);
+      return null;
+    } catch (error) {
+      return (error as Error).message;
+    }
+  },
+  "lockdown.allowed_roles": (value) =>
+    (value as string[]).every((id) => UUID_PATTERN.test(id)) && new Set(value as string[]).size === (value as string[]).length ? null : "Expected a list of distinct role ids.",
   "workflows.http_allowed_hosts": validateAllowedHosts,
   // Admin_UI.md §4.1.1 - every one of these is public.
   "system.logo": (value) => (value === "" || UUID_PATTERN.test(value as string) ? null : "Expected a file id, or empty."),
@@ -63,6 +110,12 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
       : "Expected latitude, longitude, zoom - e.g. -24.79, -65.41, 12.";
   },
   "maps.mapbox_style": (value) => (/^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(value as string) ? null : "Expected username/style_id, e.g. mapbox/streets-v12."),
+  // A PostgreSQL role's name, as it is (quoted where used): at most NAMEDATALEN - 1 bytes. Whether it exists and
+  // TotalBase can hand it the query function is PostgreSQL's to say, when a widget runs and on Status.
+  "dashboards.query_role": (value) =>
+    value === "" || (value === (value as string).trim() && Buffer.byteLength(value as string) <= 63)
+      ? null
+      : "Expected a PostgreSQL role's name (at most 63 bytes, no surrounding spaces), or empty.",
   // An origin, exactly - what a browser sends and frame-ancestors matches: scheme, host, port; no path.
   "dashboards.embed_allowed_origins": (value) => {
     for (const entry of value as string[]) {
@@ -98,7 +151,9 @@ const SETTINGS_VALIDATORS: Partial<Record<SettingKey, (value: unknown) => string
   "system.regional_format": (value) => (value === "" || isRegionalFormat(value) ? null : `Expected empty or one of ${REGIONAL_FORMATS.join(", ")}.`),
   "app.menu_groups_open": (value) => (value === "CURRENT" || value === "OPEN" || value === "CLOSED" ? null : 'Expected "CURRENT", "OPEN" or "CLOSED".'),
   "app.menu_search": (value) => (value === "AUTO" || value === "ALWAYS" || value === "NEVER" ? null : 'Expected "AUTO", "ALWAYS" or "NEVER".'),
-  "auth.mfa_required": (value) => (value === "NONE" || value === "ADMINISTRATORS" || value === "EVERYONE" ? null : 'Expected "NONE", "ADMINISTRATORS" or "EVERYONE".'),
+  "mfa.required": (value) => (value === "NONE" || value === "EVERYONE" || value === "ROLES" ? null : 'Expected "NONE", "EVERYONE" or "ROLES".'),
+  "mfa.required_roles": (value) =>
+    (value as string[]).every((id) => UUID_PATTERN.test(id)) && new Set(value as string[]).size === (value as string[]).length ? null : "Expected a list of distinct role ids.",
   "app.menu_mode": (value) => (value === "TREE" || value === "SIDEBAR" ? null : 'Expected "TREE" or "SIDEBAR".'),
   "app.shell": (value) => (value === "SHARED" || value === "STANDALONE" ? null : 'Expected "SHARED" or "STANDALONE".'),
   "app.menu_header": (value) => (["LOGO_AND_NAME", "LOGO", "NAME", "NONE"].includes(value as string) ? null : 'Expected "LOGO_AND_NAME", "LOGO", "NAME" or "NONE".'),
@@ -182,7 +237,7 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
   "files.storage_provider": async (client, value) => {
     if (value !== "s3") return null;
     const { rows } = await client.query(`SELECT 1 FROM totalbase.settings WHERE key = 's3.enabled' AND value = 'true'::jsonb`);
-    return rows[0] ? null : "Enable S3 storage (Settings › S3 storage) before storing files in it.";
+    return rows[0] ? null : "Enable S3 storage (Settings › S3) before storing files in it.";
   },
   "s3.enabled": async (client, value) => {
     if (value !== false) return null;
@@ -200,7 +255,7 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
   "backups.destination": async (client, value) => {
     if (value !== "s3") return null;
     const { rows } = await client.query(`SELECT 1 FROM totalbase.settings WHERE key = 's3.enabled' AND value = 'true'::jsonb`);
-    return rows[0] ? null : "Enable S3 storage (Settings › S3 storage) before writing backups to it.";
+    return rows[0] ? null : "Enable S3 storage (Settings › S3) before writing backups to it.";
   },
   // Security.md §2.7: the columns a stranger's registration form may write - the project's own columns of
   // users, never TotalBase's (the account's identity and security state) nor a Password column (its hashing is
@@ -211,7 +266,7 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
     const { rows } = await client.query<{ name: string; password: boolean }>(
       `SELECT a.attname AS name,
               EXISTS (SELECT 1 FROM totalbase.resources_columns rc JOIN totalbase.resources r ON r.id = rc.resource
-                       WHERE r."schema" = 'totalbase' AND r.name = 'users' AND rc.name = a.attname AND rc.config ->> 'input' = 'password') AS password
+                       WHERE r."schema" = 'totalbase' AND r.name = 'users' AND rc.attnum = a.attnum AND rc.config ->> 'input' = 'password') AS password
          FROM pg_attribute a
         WHERE a.attrelid = 'totalbase.users'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND a.attname = ANY($1::text[])`,
       [columns],
@@ -223,6 +278,23 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
       if (row.password) return `${column} is a Password column - never set on registration.`;
     }
     return null;
+  },
+  // Security.md §2.21: roles that exist, and none of the reserved ones - Administrators always gets in, and
+  // Public is everyone, which would be no lockdown.
+  "lockdown.allowed_roles": async (client, value) => {
+    const ids = value as string[];
+    if (ids.length === 0) return null;
+    const { rows } = await client.query<{ id: string; reserved: boolean }>(`SELECT id, reserved FROM totalbase.roles WHERE id = ANY($1::uuid[])`, [ids]);
+    if (rows.length !== ids.length) return "No role with one of those ids.";
+    return rows.some((role) => role.reserved) ? "A reserved role can't be listed here." : null;
+  },
+  // Security.md §2.17: roles that exist - Administrators among them; never Workflows, whose one account never signs in.
+  "mfa.required_roles": async (client, value) => {
+    const ids = value as string[];
+    if (ids.length === 0) return null;
+    const { rows } = await client.query<{ id: string; name: string; reserved: boolean }>(`SELECT id, name, reserved FROM totalbase.roles WHERE id = ANY($1::uuid[])`, [ids]);
+    if (rows.length !== ids.length) return "No role with one of those ids.";
+    return rows.some((role) => role.reserved && role.name !== "Administrators") ? "Of the reserved roles, only Administrators can be listed here." : null;
   },
   // Security.md §2.7: a role a self-registered account may
   // be given - never one that grants administration.
@@ -239,6 +311,24 @@ const SETTINGS_DATABASE_VALIDATORS: Partial<Record<SettingKey, (client: Queryabl
     return null;
   },
 };
+
+/** A UUID - a role's id - as PostgreSQL writes it: lower case. */
+const lowerUuid = (value: unknown): unknown => (typeof value === "string" && UUID_PATTERN.test(value) ? value.toLowerCase() : value);
+
+/**
+ * What a value is stored as, before it is validated: role ids in lower case, as PostgreSQL returns them - code
+ * compares them as strings (`includes`), so an id written in upper case would match no role and cover no one
+ * (SEC-115).
+ */
+const SETTINGS_NORMALIZERS: Partial<Record<SettingKey, (value: unknown) => unknown>> = {
+  "mfa.required_roles": (value) => (Array.isArray(value) ? value.map(lowerUuid) : value),
+  "lockdown.allowed_roles": (value) => (Array.isArray(value) ? value.map(lowerUuid) : value),
+  "auth.registration_default_role": lowerUuid,
+};
+
+function normalize(key: SettingKey, value: unknown): unknown {
+  return SETTINGS_NORMALIZERS[key]?.(value) ?? value;
+}
 
 async function validateInDatabase(client: Queryable, key: SettingKey, value: unknown): Promise<void> {
   const problem = await SETTINGS_DATABASE_VALIDATORS[key]?.(client, value);
@@ -263,8 +353,8 @@ function validate(key: SettingKey, value: unknown): void {
  * actually differ, so "Modified" in the admin and a future change of a
  * default both mean what they say.
  */
-async function write(client: Queryable, key: SettingKey, value: unknown): Promise<void> {
-  if (JSON.stringify(value) === JSON.stringify(SETTINGS_DEFAULTS[key])) {
+async function write(client: Queryable, key: SettingKey, value: unknown, fallback: unknown): Promise<void> {
+  if (JSON.stringify(value) === JSON.stringify(fallback)) {
     await client.query(`DELETE FROM totalbase.settings WHERE key = $1`, [key]);
     return;
   }
@@ -322,7 +412,24 @@ export class SettingsService {
   /** Keys a write invalidated while a load was in flight - the load's rows may predate the write, so they stay out. */
   private droppedDuringLoad: Set<SettingKey> | null = null;
 
-  constructor(private readonly database: Database) {}
+  /**
+   * `dataDir`: the instance's data directory (TOTALBASE_DATA_DIR). Where it is known, the storage paths
+   * (`files.storage_local_path`, `backups.local_path`) are confined to a directory strictly inside it, apart from each
+   * other (assertStoragePath) - never the directory itself, which holds the master key.
+   */
+  constructor(private readonly database: Database, private readonly options: { dataDir?: string } = {}) {}
+
+  /**
+   * A key's default on this instance: the registry's, except the storage paths, which follow the data directory where
+   * it is known - `<data dir>/files` and `<data dir>/backups` - so an instance started with its own TOTALBASE_DATA_DIR
+   * keeps its files and backups there, inside it as assertStoragePath requires (`/var/lib/totalbase/...` otherwise).
+   */
+  defaultOf<K extends SettingKey>(key: K): SettingsRegistry[K] {
+    if (this.options.dataDir && (key === "files.storage_local_path" || key === "backups.local_path")) {
+      return join(resolvePath(this.options.dataDir), key === "backups.local_path" ? "backups" : "files") as SettingsRegistry[K];
+    }
+    return SETTINGS_DEFAULTS[key];
+  }
 
   async get<K extends SettingKey>(key: K): Promise<SettingsRegistry[K]> {
     // A load leaves out a key written while it ran; the second load, after that write, has it.
@@ -346,7 +453,7 @@ export class SettingsService {
       .then(({ rows }) => {
         const overrides = new Map(rows.map((row) => [row.key, row.value]));
         for (const key of Object.keys(SETTINGS_DEFAULTS) as SettingKey[]) {
-          if (!dropped.has(key)) this.cache.set(key, overrides.has(key) ? overrides.get(key) : SETTINGS_DEFAULTS[key]);
+          if (!dropped.has(key)) this.cache.set(key, overrides.has(key) ? overrides.get(key) : this.defaultOf(key));
         }
       })
       .finally(() => {
@@ -379,19 +486,50 @@ export class SettingsService {
     value: SettingsRegistry[K],
     client: Queryable = this.database,
   ): Promise<void> {
+    value = normalize(key, value) as SettingsRegistry[K];
     validate(key, value);
+    if (key === "files.storage_local_path" || key === "backups.local_path") await this.assertStoragePath(key, value as string);
     await validateInDatabase(client, key, value);
-    await write(client, key, value);
+    await write(client, key, value, this.defaultOf(key));
     // Invalidated rather than written optimistically: `client` may be a
     // transaction that hasn't committed yet, so the next `get()` re-reads
     // from the database instead of caching a value that could still roll back.
     this.invalidate(key);
   }
 
+  /**
+   * A storage path is somewhere TotalBase writes and backs up: a directory strictly inside the data directory, and
+   * neither inside the other storage path nor holding it. Without it, a path set to the data directory (or `/`, `/etc`)
+   * put the master key and any server file into a backup's `files.tar`, readable by whoever downloads it.
+   */
+  private async assertStoragePath(key: "files.storage_local_path" | "backups.local_path", value: string): Promise<void> {
+    if (!this.options.dataDir) return;
+    const root = resolvePath(this.options.dataDir);
+    const path = resolvePath(value);
+    const inside = (child: string, parent: string) => child.startsWith(parent.endsWith(sep) ? parent : parent + sep);
+    if (!inside(path, root)) {
+      throw new TotalBaseError("INVALID_SETTING", `${key}: Expected a directory inside the data directory (${root}), e.g. ${join(root, key === "backups.local_path" ? "backups" : "files")}.`);
+    }
+    const other = resolvePath(await this.get(key === "backups.local_path" ? "files.storage_local_path" : "backups.local_path"));
+    if (path === other || inside(path, other) || inside(other, path)) {
+      throw new TotalBaseError("INVALID_SETTING", `${key}: The files and the backups need directories of their own, neither inside the other.`);
+    }
+  }
+
+  /**
+   * A storage path as stored, checked again as a write checks it: an override written before the check existed, or
+   * straight into totalbase.settings, never makes a backup take the data directory (or `/etc`) with it.
+   */
+  async confinedStoragePath(key: "files.storage_local_path" | "backups.local_path"): Promise<string> {
+    const value = await this.get(key);
+    await this.assertStoragePath(key, value);
+    return value;
+  }
+
   /** Drops a stored override, so the key reads its registry default again. */
   async reset(key: SettingKey, client: Queryable = this.database): Promise<void> {
     // The default goes through the same database checks: resetting s3.enabled turns it off.
-    await validateInDatabase(client, key, SETTINGS_DEFAULTS[key]);
+    await validateInDatabase(client, key, this.defaultOf(key));
     await client.query(`DELETE FROM totalbase.settings WHERE key = $1`, [key]);
     this.invalidate(key);
   }
@@ -440,13 +578,35 @@ export class SettingsService {
       if (!fullKey.startsWith(`${group}.`) || !validKeys.has(fullKey)) {
         throw new TotalBaseError("INVALID_SETTING", `Unknown setting key for group "${group}": ${rawKey}`);
       }
-      validate(fullKey as SettingKey, value);
-      return [fullKey as SettingKey, value] as const;
+      const normalized = normalize(fullKey as SettingKey, value);
+      validate(fullKey as SettingKey, normalized);
+      return [fullKey as SettingKey, normalized] as const;
     });
+    // A lockdown scheduled once is its two ends together (Security.md §2.21): checked as it will be once this
+    // patch is in, and only when the patch changes it - a window that has passed stays as it is, saved again
+    // with its page. Turned on as "scheduled once", it has them.
+    const patched = new Map<SettingKey, unknown>(entries);
+    // The same confinement as set(): the settings page writes these keys here.
+    for (const [key, value] of entries) {
+      if (key === "files.storage_local_path" || key === "backups.local_path") await this.assertStoragePath(key, value as string);
+    }
+    if (["lockdown.enabled", "lockdown.when", "lockdown.from", "lockdown.until"].some((key) => patched.has(key as SettingKey))) {
+      const [enabled, when, from, until] = await Promise.all([this.get("lockdown.enabled"), this.get("lockdown.when"), this.get("lockdown.from"), this.get("lockdown.until")]);
+      const nextFrom = (patched.get("lockdown.from") as string | undefined) ?? from;
+      const nextUntil = (patched.get("lockdown.until") as string | undefined) ?? until;
+      const once = ((patched.get("lockdown.enabled") as boolean | undefined) ?? enabled) && ((patched.get("lockdown.when") as string | undefined) ?? when) === "ONCE";
+      const problem =
+        once && (nextFrom === "" || nextUntil === "")
+          ? "A lockdown scheduled once needs both its start and its end."
+          : nextFrom === from && nextUntil === until
+            ? null
+            : lockdownWindowProblem(nextFrom, nextUntil, Date.now());
+      if (problem) throw new TotalBaseError("INVALID_SETTING", `lockdown.until: ${problem}`);
+    }
     try {
       await this.database.transaction(async (client) => {
         for (const [key, value] of entries) await validateInDatabase(client, key, value);
-        for (const [key, value] of entries) await write(client, key, value);
+        for (const [key, value] of entries) await write(client, key, value, this.defaultOf(key));
       });
     } finally {
       // After commit (or rollback): a get() racing the transaction can't

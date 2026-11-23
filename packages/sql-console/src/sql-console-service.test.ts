@@ -86,6 +86,27 @@ describe("SqlConsoleService (integration)", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("readOnly commits nothing: a write inside a called function fails, a stacked statement is refused (security regression, SEC-88)", async () => {
+    await database.query(`DELETE FROM public.${TABLE}`);
+    const fn = "sql_console_pkg_test_purge";
+    await database.query(`CREATE OR REPLACE FUNCTION public.${fn}() RETURNS integer LANGUAGE sql AS $$ INSERT INTO public.${TABLE} VALUES (7) RETURNING 1 $$`);
+    try {
+      const read = await consoleService.execute(adminId, { sql: "SELECT 2 AS n", readOnly: true });
+      expect([read.rows, read.statements.map((statement) => statement.command)]).toEqual([[{ n: 2 }], ["SELECT"]]);
+      await expect(consoleService.execute(adminId, { sql: `SELECT public.${fn}()`, readOnly: true })).rejects.toMatchObject({ sqlstate: "25006" });
+      await expect(consoleService.execute(adminId, { sql: `COMMIT; INSERT INTO public.${TABLE} VALUES (8)`, readOnly: true })).rejects.toBeTruthy();
+      // A first statement that would make the transaction writable runs alone: nothing follows it.
+      await consoleService.execute(adminId, { sql: "SET TRANSACTION READ WRITE", readOnly: true }).catch(() => undefined);
+      await expect(consoleService.execute(adminId, { sql: `CREATE TABLE public.${TABLE}_ro (x int)`, readOnly: true })).rejects.toBeTruthy();
+      const { rows } = await database.query(`SELECT * FROM public.${TABLE}`);
+      expect(rows).toEqual([]);
+      const created = await database.query(`SELECT to_regclass('public.${TABLE}_ro') AS t`);
+      expect(created.rows[0]).toEqual({ t: null });
+    } finally {
+      await database.query(`DROP FUNCTION IF EXISTS public.${fn}()`);
+    }
+  });
+
   it("records EXECUTED and FAILED attempts in history", async () => {
     await consoleService.execute(adminId, { sql: "SELECT 1" });
     await expect(consoleService.execute(adminId, { sql: "SELECT * FROM nonexistent_table_xyz" })).rejects.toBeTruthy();

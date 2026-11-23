@@ -24,19 +24,25 @@ export interface OAuthStatePayload {
   portal?: boolean;
   /** Epoch ms the flow started - bounds how long a state value is redeemable. */
   issuedAt: number;
+  /**
+   * SHA-256 of the value the starting browser holds in its cookie (Security.md §2.11): the callback is completed only
+   * by that browser, so someone else's callback link can't sign it in to their account (login CSRF). Every flow carries
+   * it; a callback refuses a state without it.
+   */
+  browser: string;
 }
 
 /** Long enough to get through a provider's own login/consent screen, short enough to bound replay risk if a state value ever leaked (e.g. via a referrer header). */
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 export function signOAuthState(masterKey: string, payload: OAuthStatePayload): string {
-  return encryptSecret(masterKey, JSON.stringify(payload));
+  return encryptSecret(masterKey, JSON.stringify(payload), "oauth-state");
 }
 
 export function verifyOAuthState(masterKey: string, state: string): OAuthStatePayload {
   let payload: OAuthStatePayload;
   try {
-    payload = JSON.parse(decryptSecret(masterKey, state)) as OAuthStatePayload;
+    payload = JSON.parse(decryptSecret(masterKey, state, "oauth-state")) as OAuthStatePayload;
   } catch {
     throw new TotalBaseError("INVALID_OAUTH_STATE", "OAuth state is invalid or was tampered with.");
   }

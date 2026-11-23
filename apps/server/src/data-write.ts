@@ -1,7 +1,7 @@
 import type { FastifyRequest } from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import { assertFilterComplexity, assertFilterFeatures, parseFilter, SchemaContext, type FilterNode, type OnConflictSpec } from "@totalbase/query-engine";
-import type { ResolvedApiResource } from "@totalbase/resources";
+import { resolveTableResourceById, type ResolvedApiResource } from "@totalbase/resources";
 import {
   executeCreate,
   executeDelete,
@@ -54,6 +54,12 @@ export async function createRows(
   input: CreateRowsInput,
   audit: AuditRequestContext,
 ): Promise<unknown> {
+  // An upsert's DO UPDATE updates rows: only on a table that exposes PATCH too (Data_API.md §5.7).
+  if (input.onConflict?.action === "UPDATE") {
+    await resolveTableResourceById(context, resource.id, "PATCH").catch(() => {
+      throw new TotalBaseError("ACTION_DENIED", "on_conflict action UPDATE updates rows - this table doesn't expose PATCH.");
+    });
+  }
   const deps = await mutationDeps(context, dataPrincipal, resource, audit);
   const { data, bulk } = input;
 

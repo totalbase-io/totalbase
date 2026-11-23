@@ -4,9 +4,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
 import { TotalBaseError } from "@totalbase/errors";
 import { subscribeGraphQL, type GraphQLChange, type GraphQLDataExecutor } from "@totalbase/graphql";
+import { lockdownRefusal } from "../lockdown.js";
 import type { AppContext } from "../context.js";
 import type { ReadOrigin } from "../read-audit.js";
-import { openSubscription, realtimeRequirements, upgradeToken, type RealtimeDelivery, type RealtimeHub, type RealtimeSubscriber, credentialFromMessage, resolveSubscriberPrincipal, type RealtimeCredential } from "../realtime.js";
+import { openSubscription, realtimeRequirements, realtimeUnavailable, upgradeToken, type RealtimeDelivery, type RealtimeHub, type RealtimeSubscriber, credentialFromMessage, resolveSubscriberPrincipal, type RealtimeCredential } from "../realtime.js";
 import { executorFor, graphqlSchemaFor } from "./graphql.js";
 
 /** The protocol of the graphql-ws library, what GraphQL clients speak over a WebSocket. */
@@ -148,8 +149,10 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
           close(CLOSE_TRY_LATER, "No pong since the last ping.");
           return;
         }
-        void context.settings.get("graphql.enabled").then((enabled) => {
+        void Promise.all([context.settings.get("graphql.enabled"), credential === null ? null : lockdownRefusal(context, credential)]).then(([enabled, lockdown]) => {
           if (!enabled) close(CLOSE_TRY_LATER, "GraphQL was turned off.");
+          // A lockdown that began since (Security.md §2.21): everyone but administrators is disconnected within one heartbeat.
+          else if (lockdown) close(CLOSE_TRY_LATER, lockdown.message);
           else {
             awaitingPong = true;
             send({ type: "ping" });
@@ -248,6 +251,14 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
         close(CLOSE_FORBIDDEN, error instanceof Error ? error.message : "Forbidden");
         return;
       }
+      // Each operation is a request of its credential's, as over HTTP (Data_API.md §17.7).
+      try {
+        await app.operationRateLimit?.(request.ip, credential);
+      } catch (error) {
+        if (!(error instanceof TotalBaseError)) throw error;
+        send({ type: "error", id, payload: [{ message: error.message, extensions: { ...error.toPublicJSON(), status: error.httpStatus } }] });
+        return;
+      }
       let stopped = false;
       const stoppers: (() => void)[] = [];
       operations.set(id, () => {
@@ -255,13 +266,19 @@ export function registerGraphQLWebSocket(app: FastifyInstance, context: AppConte
         for (const stop of stoppers) stop();
       });
 
-      const executor: GraphQLDataExecutor = { ...executorFor(context, principal, origin, { idempotencyKey: false }), subscribe: (ref, intent) => subscribeTo(ref, intent) };
+      const executor: GraphQLDataExecutor = { ...executorFor(context, principal, origin, {
+          idempotencyKey: false,
+          // A read-only lockdown (Security.md §2.21): a subscription is a read, anything that writes is refused.
+          beforeWrite: async () => {
+            const refusal = await lockdownRefusal(context, credential, true);
+            if (refusal) throw refusal;
+          },
+        }), subscribe: (ref, intent) => subscribeTo(ref, intent) };
       const subscribeTo: NonNullable<GraphQLDataExecutor["subscribe"]> = async (ref, intent) => {
         if (ref.type !== "TABLE") throw new TotalBaseError("RESOURCE_NOT_FOUND", `Resource not found: ${ref.schema}.${ref.name}`);
         if (!(await context.settings.get("realtime.enabled"))) throw new TotalBaseError("REALTIME_DISABLED", "Realtime is turned off (Settings > Realtime).");
-        if (!(await realtimeRequirements(context)).ready) {
-          throw new TotalBaseError("REALTIME_UNAVAILABLE", "Realtime needs PostgreSQL's logical replication (Settings > Realtime shows its requirements).");
-        }
+        const unavailable = realtimeUnavailable(await realtimeRequirements(context));
+        if (unavailable) throw unavailable;
         const active = [...operations.keys()].length;
         if (active > (await context.settings.get("realtime.max_subscriptions"))) {
           throw new TotalBaseError("TOO_MANY_SUBSCRIPTIONS", "This connection holds as many subscriptions as realtime.max_subscriptions allows.");

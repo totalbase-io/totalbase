@@ -22,6 +22,11 @@ export interface TableViewSpecInput {
   includeExamples?: boolean | undefined;
   /** The resource requires an Idempotency-Key on CREATE (Data_API.md §9.1). */
   requireIdempotencyKey?: boolean | undefined;
+  /**
+   * The tables a relation may reach (`schema.name`, GET exposed - SchemaContext.resolveRelated's ceiling). A relation
+   * is documented only to one of them, from a column the row shows: never an unexposed table, nor a denied column.
+   */
+  relationTargets?: ReadonlySet<string> | undefined;
 }
 
 export interface TableViewSpecOutput {
@@ -116,10 +121,9 @@ export function buildTableOrViewSpec(input: TableViewSpecInput): TableViewSpecOu
       type: "object",
       properties,
       [FIELDS_EXTENSION]: rowColumns.map((c) => c.name),
-      [RELATIONS_EXTENSION]: input.resource.relations.map((r) => ({
-        field: r.sourceColumn,
-        target: `${r.targetSchema}.${r.targetTable}`,
-      })),
+      [RELATIONS_EXTENSION]: input.resource.relations
+        .filter((r) => rowColumns.some((c) => c.name === r.sourceColumn) && (input.relationTargets?.has(`${r.targetSchema}.${r.targetTable}`) ?? false))
+        .map((r) => ({ field: r.sourceColumn, target: `${r.targetSchema}.${r.targetTable}` })),
     },
   };
   const ref = (name: string): JsonSchema => ({ $ref: `#/components/schemas/${name}` });

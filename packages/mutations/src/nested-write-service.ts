@@ -4,7 +4,7 @@ import { compileInsert, preloadRelations, quoteIdentifier, relatedResolver, Sche
 import { writeTransactionContext, type DataPrincipal, type MutationsContext } from "./context.js";
 import { assertGuardedColumnsWriteAllowed, assertUserRoleAssignmentAllowed, protectedFieldDecision, resolveWriteCaller } from "./totalbase-guardrails.js";
 import { hashPasswordFields, loadPasswordColumns, stripPasswordFields } from "./password-fields.js";
-import { mutationResponseProjection } from "./response-projection.js";
+import { mutationResponseProjection, type RowProjection } from "./response-projection.js";
 import {
   assertAuthorizedRow,
   assertValidRow,
@@ -47,7 +47,7 @@ interface NestedChildGroup {
 interface PreparedNode {
   mutationContext: Parameters<typeof compileInsert>[0];
   passwordColumns: Set<string>;
-  project: (row: Record<string, unknown>) => Record<string, unknown>;
+  project: RowProjection;
   caller: Awaited<ReturnType<typeof resolveWriteCaller>>;
 }
 
@@ -153,7 +153,7 @@ async function prepareNode(deps: NestedWriteDeps, node: NestedPlanNode, caller: 
     },
     passwordColumns,
     // The caller sees only what READ would show; the full row still feeds audit and the child FK values.
-    project: await mutationResponseProjection(deps.context, deps.dataPrincipal, node.resource, node.resourceId, passwordColumns),
+    project: await mutationResponseProjection(deps.context, deps.dataPrincipal, node.resource, node.resourceId, passwordColumns, deps.limits),
     caller,
   };
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
@@ -198,7 +198,7 @@ async function executeNode(
   };
   await auditAndEnqueue(nodeDeps, client, "CREATE", startedAt, undefined, clean);
 
-  if (node.children.length === 0) return project(clean);
+  if (node.children.length === 0) return project(clean, client);
   const childResults: Record<string, unknown> = {};
   for (const group of node.children) {
     const parentValue = clean[group.parentColumn];
@@ -211,7 +211,7 @@ async function executeNode(
   // A child's trigger may have changed its parent (an order's totals recalculated from its lines): the answer
   // is the parent as it stands once its children are in, not the INSERT's RETURNING from before them.
   const current = await rereadRow(client, node.resource, node.resource.primaryKey.length > 0 ? node.resource.primaryKey : [node.children[0]!.parentColumn], clean);
-  return { ...project(stripPasswordFields(current ?? clean, passwordColumns)), ...childResults };
+  return { ...(await project(stripPasswordFields(current ?? clean, passwordColumns), client)), ...childResults };
 }
 
 /** The row as it is now on this transaction, found by `keyColumns` (the primary key, or a referenced unique column). */

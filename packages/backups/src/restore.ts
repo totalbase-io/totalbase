@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import type { Database } from "@totalbase/database";
 import { loadMigrationFiles } from "@totalbase/migrations";
 import { DATABASE_FILE, FILES_FILE, MANIFEST_FILE, parseManifest, type BackupManifest } from "./manifest.js";
@@ -13,8 +13,13 @@ export interface RestoreOptions {
   /** The libpq environment pg_restore connects with (@totalbase/database's postgresClientEnv). */
   clientEnv: Record<string, string>;
   pgBinDir?: string | undefined;
-  /** The fingerprint of the master key the restored instance will start with - it must be the backup's. */
-  masterKeyVerifier: string;
+  /**
+   * The verifiers of the master key the restored instance will start with - the current one and the one of the
+   * format before (a backup made by an installation that kept it) - one must be the backup's.
+   */
+  masterKeyVerifiers: readonly string[];
+  /** The instance's data directory (TOTALBASE_DATA_DIR): the archive's files are restored only inside it. */
+  dataDir: string;
   /** The image's migrations - a backup that applied one it doesn't have can't be restored by it. */
   migrationsDir: string;
   /** Where the archive is unpacked while restoring. */
@@ -44,8 +49,14 @@ export async function restoreBackup(options: RestoreOptions): Promise<BackupMani
     }));
     log(`Backup of ${manifest.database}, ${manifest.createdAt} - TotalBase ${manifest.totalbaseVersion}, PostgreSQL ${manifest.postgresVersion}`);
 
-    if (manifest.masterKeyVerifier && manifest.masterKeyVerifier !== options.masterKeyVerifier) {
+    if (manifest.masterKeyVerifier && !options.masterKeyVerifiers.includes(manifest.masterKeyVerifier)) {
       throw new Error("The master key given (TOTALBASE_MASTER_KEY, or TOTALBASE_DATA_DIR/master.key) is not the one this backup was taken with - the restored secrets couldn't be read. Set the backup's key and run it again.");
+    }
+    // The archive names where its files go: only somewhere inside this instance's data directory, never wherever an
+    // archive someone else made says (Administration.md §12.5) - checked before anything is restored.
+    const dataRoot = resolve(options.dataDir);
+    if (manifest.files && !resolve(manifest.filesPath).startsWith(dataRoot + sep)) {
+      throw new Error(`The backup's files were kept in ${manifest.filesPath}, outside the data directory (${dataRoot}): restore them by hand, from files.tar in the archive.`);
     }
     const latest = (await loadMigrationFiles(options.migrationsDir)).at(-1)?.version ?? 0n;
     if (BigInt(manifest.migration) > latest) {

@@ -146,7 +146,7 @@ const soapRequest: OperationHandler = async ({ context, configuration, workflowC
   // A credential in a definition would be readable by every administrator: secret headers name a secret instead.
   for (const entry of Array.isArray(configuration.secretHeaders) ? configuration.secretHeaders as Array<{ name?: unknown; secret?: unknown }> : []) {
     if (typeof entry?.name !== "string" || !entry.name.trim() || typeof entry.secret !== "string" || !entry.secret) throw invalid("Every secret header needs a name and a secret.");
-    headers[entry.name.trim().toLowerCase()] = await context.secrets.decrypt(entry.secret);
+    headers[entry.name.trim().toLowerCase()] = await context.secrets.decrypt(entry.secret, "WORKFLOWS");
   }
 
   const payload = buildEnvelope(version, namespace, operation, body, soapHeaders);

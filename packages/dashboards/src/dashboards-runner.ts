@@ -13,6 +13,7 @@ import { VariableResolver } from "./dashboards-variable-resolver.js";
 import { getDashboard } from "./dashboards-crud.js";
 import { assertRolesDraw, clickTargetProblems, getWidget } from "./dashboards-widgets.js";
 import { getLiveSnapshot, latestVersionNumber, versionSnapshot } from "./dashboards-versions.js";
+import { queryRole, runWidgetStatement, variablePlaceholder } from "./query-role.js";
 
 /** What a query names that PostgreSQL can lose under it - a dropped or renamed column, table, view or function. */
 export const BROKEN_QUERY_CODES = new Set(["UNDEFINED_COLUMN", "UNDEFINED_TABLE", "UNDEFINED_FUNCTION"]);
@@ -66,7 +67,9 @@ export function pivotSortBy(raw: unknown): { value: string; direction: "ASC" | "
  *   detects truncation. The newline before `)` keeps a trailing `--`
  *   comment in the query from swallowing the closing parenthesis;
  * - `$USER.*` / `$VAR.*` become cast positional parameters
- *   (sql-variables.ts), never interpolated text.
+ *   (sql-variables.ts), never interpolated text;
+ * - with `dashboards.query_role` set, every statement of it runs as that
+ *   role, which it can't leave (query-role.ts, Dashboards.md §2.10).
  */
 export async function executeQuery(ctx: DashboardsContext, rawSql: string, limits: DashboardQueryLimits, context: DashboardQueryContext): Promise<DashboardQueryResult> {
   const { variableValues: _values, ...result } = await runQuery(ctx, rawSql, limits, context);
@@ -84,23 +87,25 @@ export async function runQuery(
   const sql = normalizeQuery(rawSql);
   const maxRows = Math.max(1, Math.floor(limits.maxRows));
   const started = performance.now();
+  const role = await queryRole(ctx);
   const { result, totals, variableValues } = await ctx.database.readOnlyTransaction(async (client) => {
     await client.query("SELECT set_config('statement_timeout', $1, true)", [String(Math.max(1, Math.floor(limits.timeoutMs)))]);
     if (context.timezone) await client.query("SELECT set_config('TimeZone', $1, true)", [context.timezone]);
+    // TotalBase's own reads (the viewer's row, a date range's bounds) on its own role; the author's SQL as `role`.
     const resolver = new VariableResolver(client, context);
-    const bound = await bindSqlVariables(sql, (ref) => resolver.resolve(ref));
+    const bound = await bindSqlVariables(sql, (ref) => resolver.resolve(ref), variablePlaceholder(role));
+    const run = (text: string) => runWidgetStatement(client, role, text, bound.params, ctx);
     // A pivot (D17): its detail aggregated by PostgreSQL - at most PIVOT_MAX_COLUMNS values across its Columns.
     if (extras.pivot?.columns.length) {
-      const { rows } = await client.query<{ n: number }>(pivotDistinctColumnsSql(bound.sql, extras.pivot.columns), bound.params);
-      const n = rows[0]?.n ?? 0;
+      const { rows } = await run(pivotDistinctColumnsSql(bound.sql, extras.pivot.columns));
+      const n = Number(rows[0]?.n ?? 0);
       if (n > PIVOT_MAX_COLUMNS) throw new TotalBaseError("DASHBOARD_PIVOT_TOO_MANY_COLUMNS", `Pivot table's Columns have ${n} values - at most ${PIVOT_MAX_COLUMNS}: filter the query, or move a level to Rows.`);
     }
-    const result = await client.query(
+    const result = await run(
       extras.pivot
         ? pivotSql(bound.sql, extras.pivot, maxRows + 1)
         // An order the widget draws (a funnel's largest first) is PostgreSQL's, before the cap (DB36).
         : `SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query${extras.orderBy ? ` ORDER BY ${quoteIdentifier(extras.orderBy.column)} ${extras.orderBy.direction} NULLS LAST` : ""} LIMIT ${maxRows + 1}`,
-      bound.params,
     );
     // Totals by PostgreSQL over the whole result, not the rows sent (D28): the query wrapped once more, its own
     // columns only - quoted, from what it returned.
@@ -109,7 +114,7 @@ export async function runQuery(
       .filter(([column]) => returned.has(column))
       .map(([column, kind]) => `${kind === "avg" ? "avg" : kind}(${quoteIdentifier(column)}) AS ${quoteIdentifier(column)}`);
     const totals = parts.length
-      ? (await client.query(`SELECT ${parts.join(", ")} FROM (\n${bound.sql}\n) AS dashboard_widget_query`, bound.params)).rows[0] as Record<string, unknown>
+      ? (await run(`SELECT ${parts.join(", ")} FROM (\n${bound.sql}\n) AS dashboard_widget_query`)).rows[0] as Record<string, unknown>
       : undefined;
     const variableValues: Record<string, unknown> = {};
     for (const name of extras.variables ?? []) {
@@ -202,11 +207,12 @@ export async function brokenWidgets(ctx: DashboardsContext, timeoutMs: number): 
  */
 export async function planQuery(ctx: DashboardsContext, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<{ columns: TypedResultColumn[]; error?: undefined } | { columns?: undefined; error: string }> {
   try {
+    const role = await queryRole(ctx);
     const result = await ctx.database.readOnlyTransaction(async (client) => {
       await client.query("SELECT set_config('statement_timeout', $1, true)", [String(Math.max(1, Math.floor(timeoutMs)))]);
       const resolver = new VariableResolver(client, { userId: null, variables, values: {} }, true);
-      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref));
-      return client.query(`SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query LIMIT 0`, bound.params);
+      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref), variablePlaceholder(role));
+      return runWidgetStatement(client, role, `SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query LIMIT 0`, bound.params, ctx);
     });
     return { columns: (await typeResult(ctx.database, result.fields, [])).columns };
   } catch (error) {
@@ -221,11 +227,12 @@ export async function planQuery(ctx: DashboardsContext, rawSql: string, variable
  */
 export async function queryTables(ctx: DashboardsContext, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<{ schema: string; name: string }[] | null> {
   try {
+    const role = await queryRole(ctx);
     const plan = await ctx.database.readOnlyTransaction(async (client) => {
       await client.query("SELECT set_config('statement_timeout', $1, true)", [String(Math.max(1, Math.floor(timeoutMs)))]);
       const resolver = new VariableResolver(client, { userId: null, variables, values: {} }, true);
-      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref));
-      const { rows } = await client.query<{ "QUERY PLAN": unknown }>(`EXPLAIN (VERBOSE, FORMAT JSON) SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query`, bound.params);
+      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref), variablePlaceholder(role));
+      const { rows } = await runWidgetStatement(client, role, `EXPLAIN (VERBOSE, FORMAT JSON) SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query`, bound.params, ctx, true);
       return rows[0]?.["QUERY PLAN"];
     });
     const tables = new Map<string, { schema: string; name: string }>();
@@ -257,19 +264,34 @@ export async function queryTables(ctx: DashboardsContext, rawSql: string, variab
 }
 
 /**
- * The live version's widgets whose query never names `$USER.*`, each with the tables it reads (`queryTables`) - what
- * the diagnosis checks against its viewers' row filters (DataViews.md §18). A widget PostgreSQL refuses is left out:
- * the broken-references check reports it.
+ * What each of the live version's widgets reads, for the diagnosis against its viewers' grants (DataViews.md §18):
+ * `scoped` when its query names `$USER.*`; for one that doesn't, the tables PostgreSQL plans it to read
+ * (`queryTables`); for every one, the table columns its result shows as they are (`planQuery`'s origins - a column
+ * computed from them has none). A widget PostgreSQL refuses is left out: the broken-references check reports it.
  */
-export async function unscopedWidgetTables(ctx: DashboardsContext, dashboardId: string, timeoutMs: number): Promise<{ widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[]> {
+export async function liveWidgetReads(ctx: DashboardsContext, dashboardId: string, timeoutMs: number): Promise<WidgetReads[]> {
   const snapshot = await getLiveSnapshot(ctx, dashboardId);
-  const found: { widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[] = [];
+  const found: WidgetReads[] = [];
   for (const widget of snapshot?.widgets ?? []) {
-    if (!widget.query || listSqlVariableRefs(widget.query).some((ref) => ref.kind === "USER")) continue;
-    const tables = await queryTables(ctx, widget.query, snapshot!.variables, timeoutMs);
-    if (tables?.length) found.push({ widget: { id: widget.id, name: widget.label || dashboardWidgetDefinition(widget.type).label }, tables });
+    if (!widget.query) continue;
+    const scoped = listSqlVariableRefs(widget.query).some((ref) => ref.kind === "USER");
+    const planned = await planQuery(ctx, widget.query, snapshot!.variables, timeoutMs);
+    if (!planned.columns) continue;
+    const tables = scoped ? [] : ((await queryTables(ctx, widget.query, snapshot!.variables, timeoutMs)) ?? []);
+    const shown = planned.columns.flatMap((column) => (column.origin ? [{ schema: column.origin.schema, table: column.origin.table, column: column.origin.column }] : []));
+    if (tables.length > 0 || shown.length > 0) found.push({ widget: { id: widget.id, name: widget.label || dashboardWidgetDefinition(widget.type).label }, scoped, tables, shown });
   }
   return found;
+}
+
+export interface WidgetReads {
+  widget: { id: string; name: string };
+  /** Its query names `$USER.*` - taken as scoping its rows (a heuristic, not a proof). */
+  scoped: boolean;
+  /** An unscoped widget's tables, as PostgreSQL plans them; empty for a scoped one. */
+  tables: { schema: string; name: string }[];
+  /** The table columns its result shows as they are. */
+  shown: { schema: string; table: string; column: string }[];
 }
 
 /** `planQuery`'s columns - null when PostgreSQL refuses the query (saving it is allowed: running it says why). */
@@ -301,35 +323,6 @@ export function plannedColumns(ctx: DashboardsContext, key: string, plan: () => 
 /** Drops every memoized plan - after a catalog refresh (apps/server's reconcileCatalog), when columns may have changed under a query. */
 export function forgetPlans(ctx: DashboardsContext): void {
   ctx.plans.clear();
-  ctx.rowSecured.clear();
-}
-
-/**
- * Whether a published widget's query reads a table under Row Level Security (`pg_class.relrowsecurity`), as
- * PostgreSQL plans it (`queryTables`: a view's tables included, a table read inside a function not). Such a result
- * is the viewer's even when the query never names `$USER` - the policy keys on the transaction's actor
- * (Security.md §10.3) - so the cache keeps it per viewer. Kept per version and widget like the plan; a refused
- * plan reads as not secured and isn't kept (the run reports the refusal). Dropped with the plans: enabling row
- * security is DDL, which the catalog refresh sees.
- */
-export function readsRowSecuredTable(ctx: DashboardsContext, key: string, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<boolean> {
-  const memoized = ctx.rowSecured.get(key);
-  if (memoized) return memoized;
-  const loading = (async () => {
-    const tables = await queryTables(ctx, rawSql, variables, timeoutMs);
-    if (!tables || tables.length === 0) return false;
-    const { rows } = await ctx.database.query<{ secured: boolean }>(
-      `SELECT bool_or(c.relrowsecurity) AS secured
-         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-         JOIN unnest($1::text[], $2::text[]) AS t(schema, name) ON t.schema = n.nspname AND t.name = c.relname`,
-      [tables.map((t) => t.schema), tables.map((t) => t.name)],
-    );
-    return rows[0]?.secured === true;
-  })();
-  loading.catch(() => ctx.rowSecured.delete(key));
-  ctx.rowSecured.set(key, loading);
-  while (ctx.rowSecured.size > MAX_MEMOIZED) ctx.rowSecured.delete(ctx.rowSecured.keys().next().value!);
-  return loading;
 }
 
 /**
@@ -354,17 +347,20 @@ export async function executeWidget(
   if (scope.withRoles) return run();
   const ttlSeconds = scope.published && (limits.cacheSeconds ?? 0) > 0 ? scope.published.refreshIntervalSeconds ?? limits.cacheSeconds! : 0;
   const viewerRun = async () => {
-    const { roles: _roles, ...result } = await run();
-    return result;
+    try {
+      const { roles: _roles, ...result } = await run();
+      return result;
+    } catch (error) {
+      throw scope.published ? viewerError(error) : error;
+    }
   };
   if (!scope.published || ttlSeconds <= 0) return viewerRun();
-  // Keyed by what changes the result: the version, the values, the viewer's zone - and who they are, when it reads
-  // them: `$USER.*`, a variable defaulting from the user row, or a table under Row Level Security (the policy
-  // reads the viewer as the transaction's actor, whether or not the query names them).
-  const readsUser = /\$USER\./.test(widget.query)
-    || context.variables.some((v) => v.default?.source === "user" && referencedVariableNames(widget.query).includes(v.name))
-    || await readsRowSecuredTable(ctx, `${scope.dashboardId}/${scope.published.version}/${widget.id}`, widget.query, context.variables, limits.timeoutMs);
-  const key = cacheKey({ d: scope.dashboardId, v: scope.published.version, w: widget.id, values: context.values, tz: context.timezone ?? null, user: readsUser ? context.userId : null });
+  // Keyed by what changes the result: the version, the values, the viewer's zone - and who views it, always. The run
+  // reads its viewer as the transaction's actor (Dashboards.md §2.3): `$USER.*`, a variable defaulting from the user
+  // row, a Row Level Security policy, a view or a function keyed on `totalbase.actor_user_id`, a mark's variable -
+  // what a query's text can't tell. One viewer's result is never another's; an embed's visitors, who have none,
+  // share theirs.
+  const key = cacheKey({ d: scope.dashboardId, v: scope.published.version, w: widget.id, values: context.values, tz: context.timezone ?? null, user: context.userId ?? null });
   if (!limits.fresh) {
     const hit = ctx.results.get(key);
     if (hit) return { ...hit, cached: true };
@@ -374,6 +370,19 @@ export async function executeWidget(
     ctx.results.set(key, result, ttlSeconds * 1000);
     return result;
   });
+}
+
+/**
+ * What a viewer of a published dashboard - an App user, an embed's anonymous visitor - gets of a query PostgreSQL
+ * refused (Dashboards.md §2.5): its code, never PostgreSQL's message, detail or hint, which name tables and columns
+ * and may echo values. The editor, an administrator's, shows them.
+ */
+function viewerError(error: unknown): unknown {
+  if (!(error instanceof TotalBaseError)) return error;
+  // The widget query role's trouble names a PostgreSQL role - the instance's setup, Status says it.
+  if (error.code === "DASHBOARD_QUERY_ROLE_UNAVAILABLE") return new TotalBaseError(error.code, "Widget queries can't run right now - an administrator's Status page says why.", { cause: error });
+  if (error.code !== "DASHBOARD_WIDGET_QUERY_FAILED") return error;
+  return new TotalBaseError("DASHBOARD_WIDGET_QUERY_FAILED", "This widget's query failed - its dashboard's editor shows why.", { cause: error });
 }
 
 export async function runWidget(
@@ -449,11 +458,12 @@ export async function runWidget(
 
 export async function probeQuery(ctx: DashboardsContext, rawSql: string, variables: DashboardVariable[], timeoutMs: number): Promise<{ code: BrokenDashboardWidget["code"]; message: string } | null> {
   try {
+    const role = await queryRole(ctx);
     await ctx.database.readOnlyTransaction(async (client) => {
       await client.query("SELECT set_config('statement_timeout', $1, true)", [String(Math.max(1, Math.floor(timeoutMs)))]);
       const resolver = new VariableResolver(client, { userId: null, variables, values: {} }, true);
-      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref));
-      await client.query(`SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query LIMIT 0`, bound.params);
+      const bound = await bindSqlVariables(normalizeQuery(rawSql), (ref) => resolver.resolve(ref), variablePlaceholder(role));
+      await runWidgetStatement(client, role, `SELECT * FROM (\n${bound.sql}\n) AS dashboard_widget_query LIMIT 0`, bound.params, ctx);
     });
     return null;
   } catch (error) {

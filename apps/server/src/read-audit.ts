@@ -31,6 +31,8 @@ export interface ReadAuditDetail {
   where?: unknown;
   search?: string | undefined;
   pk?: string | undefined;
+  /** A file read through its own routes: true for its content (a download, a rendition), false for its details. */
+  content?: boolean | undefined;
 }
 
 /** Where a read comes from, for its audit row - an HTTP request's, or whatever reads without one. */
@@ -81,6 +83,7 @@ export class ReadAudit {
         ...(count !== undefined && { count }),
         ...(detail.search !== undefined && { search: detail.search }),
         ...(detail.pk !== undefined && { pk: detail.pk }),
+        ...(detail.content !== undefined && { content: detail.content }),
       },
       finishedAt: new Date(),
     });
@@ -93,7 +96,7 @@ export class ReadAudit {
       await this.context.audit.record(this.context.database, {
         ...this.base(detail),
         status,
-        metadata: detail.pk !== undefined ? { pk: detail.pk } : undefined,
+        metadata: detail.pk !== undefined ? { pk: detail.pk, ...(detail.content !== undefined && { content: detail.content }) } : undefined,
         error:
           error instanceof TotalBaseError
             ? { code: error.code, sqlstate: error.sqlstate, message: error.message, detail: error.detail, hint: error.hint }

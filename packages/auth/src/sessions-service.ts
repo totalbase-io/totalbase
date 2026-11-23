@@ -74,11 +74,24 @@ function statusCondition(status: Exclude<SessionStatusFilter, "ALL">, idle: stri
   return `s.revoked_at IS NULL AND ${sessionEnd(idle)} ${status === "ACTIVE" ? ">" : "<="} now()`;
 }
 
+/** What a validated session credential is: the bearer token a request presents, or the session's id a WebSocket opened with a ticket holds. */
+export type CredentialKind = "TOKEN" | "SESSION_ID";
+
 export class SessionsService {
+  private readonly validatedListeners: Array<(credential: string, userId: string, kind: CredentialKind) => void> = [];
+
   constructor(
     private readonly database: Database,
     private readonly settings: Pick<SettingsService, "get">,
   ) {}
+
+  /**
+   * Told the user of every credential that validates - the server's rate limiter keys a credential's requests on
+   * its user from then on, so every session and token of one person shares one limit (Administration.md §7.8).
+   */
+  onValidated(listener: (credential: string, userId: string, kind: CredentialKind) => void): void {
+    this.validatedListeners.push(listener);
+  }
 
   private idleMinutes(): Promise<number> {
     return this.settings.get("auth.session_idle_minutes");
@@ -193,12 +206,21 @@ export class SessionsService {
    * query, so the Data API needn't read it again after validating.
    */
   async validate(token: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
-    return this.validateBy("s.token_hash", hashToken(token));
+    return this.told(token, "TOKEN", await this.validateBy("s.token_hash", hashToken(token)));
   }
 
   /** The same validation by the session's id - how a connection opened with a Realtime ticket resolves its session before every delivery (Security.md §2.10). */
   async validateById(sessionId: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {
-    return this.validateBy("s.id", sessionId);
+    return this.told(sessionId, "SESSION_ID", await this.validateBy("s.id", sessionId));
+  }
+
+  /**
+   * A validated credential - the session's token, or its id over a WebSocket - reported to the listeners, with which
+   * it is: an id isn't a secret, so the rate limiter keeps it apart from what a request can present (SEC-113).
+   */
+  private told<T extends { user: User } | null>(credential: string, kind: CredentialKind, result: T): T {
+    if (result) for (const listener of this.validatedListeners) listener(credential, result.user.id, kind);
+    return result;
   }
 
   private async validateBy(column: "s.token_hash" | "s.id", value: string): Promise<{ user: User; session: Session; userRow: Record<string, unknown> } | null> {

@@ -240,11 +240,14 @@ async function tableResourceId(client: Queryable, schema: string, table: string)
  * Runs one schema-management operation with its audit entry
  * (Administration.md §3.14): action `DDL`, written by the
  * service on the DDL's own transaction (`DdlAuditor`) - the operation and
- * its statements in `metadata`, the affected resource when it already
- * exists. A CONCURRENTLY statement is recorded right after it ran. An
+ * its statements in `metadata` under the event `schema.apply`, the affected
+ * resource when it already exists. A CONCURRENTLY statement is recorded right after it ran. An
  * operation that fails is recorded FAILED, best-effort on a fresh
  * connection, never masking the error.
  */
+/** Every schema-management entry's event name: what the log's `event` filter finds them by, beside the configuration events. */
+const SCHEMA_EVENT = "schema.apply";
+
 async function auditedDdl<T>(
   context: AppContext,
   request: FastifyRequest,
@@ -265,7 +268,7 @@ async function auditedDdl<T>(
       action: "DDL",
       resourceId,
       status: "EXECUTED",
-      metadata: { operation: record.operation, ...names, statements: record.statements, ...(record.concurrent ? { concurrent: true } : {}) },
+      metadata: { event: SCHEMA_EVENT, operation: record.operation, ...names, statements: record.statements, ...(record.concurrent ? { concurrent: true } : {}) },
       startedAt,
     }));
   };
@@ -277,7 +280,7 @@ async function auditedDdl<T>(
         action: "DDL",
         resourceId: target.resourceId,
         status: "FAILED",
-        metadata: { operation, ...names },
+        metadata: { event: SCHEMA_EVENT, operation, ...names },
         error: error instanceof TotalBaseError
           ? { code: error.code, sqlstate: error.sqlstate, message: error.message, detail: error.detail, hint: error.hint }
           : { message: error instanceof Error ? error.message : String(error) },

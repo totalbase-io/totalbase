@@ -158,9 +158,9 @@ export function registerAppDataViewsRoutes(app: FastifyInstance, context: AppCon
     const view = await openableDataView(context, request, request.params.slug);
     if (view.viewType !== "SETTINGS") throw new TotalBaseError("INVALID_QUERY", "Only a SETTINGS DataView has settings rows.");
     const principal = await resolveDataPrincipal(context, extractBearerToken(request), request.headers["x-totalbase-timezone"], request);
-    const { writable, read } = await settingsWritable(context, principal, view);
     // A read of the table's keys under the viewer's grants: its READ audit row, like any Data API read's (audit_read).
-    if (read) await new ReadAudit(context, readOrigin(request), read.resource, principal).executed(context.database, { fields: [{ path: [read.keyColumn] }] }, read.rowCount);
+    const { writable } = await settingsWritable(context, principal, view, (client, read) =>
+      new ReadAudit(context, readOrigin(request), read.resource, principal).executed(client, { fields: [{ path: [read.keyColumn] }] }, read.rowCount));
     return { data: writable };
   });
 

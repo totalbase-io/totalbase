@@ -35,6 +35,9 @@ export function selectedPaths(
 ): string[] {
   const paths = new Set<string>();
   const included = includedIn(info);
+  // A fragment adds the same paths wherever it is spread at the same place: walked once there (assertLimits'
+  // reason - a fragment chain spread twice at each step would otherwise cost 2^n).
+  const walked = new Set<string>();
 
   const walk = (selectionSet: SelectionSetNode, type: string, prefix: string[]) => {
     const shape = shapeOf(shapes, type);
@@ -59,7 +62,11 @@ export function selectedPaths(
         walk(selection.selectionSet, type, prefix);
       } else {
         const fragment = info.fragments[selection.name.value];
-        if (fragment) walk(fragment.selectionSet, type, prefix);
+        const key = `${selection.name.value}\u0000${type}\u0000${prefix.join(".")}`;
+        if (fragment && !walked.has(key)) {
+          walked.add(key);
+          walk(fragment.selectionSet, type, prefix);
+        }
       }
     }
   };
@@ -77,6 +84,8 @@ function includedIn(info: Pick<GraphQLResolveInfo, "variableValues">) {
 export function subFieldNodes(info: Pick<GraphQLResolveInfo, "fieldNodes" | "fragments" | "variableValues">, name: string): FieldNode[] {
   const included = includedIn(info);
   const found: FieldNode[] = [];
+  // Each fragment once, as graphql-js collects fields (its visitedFragmentNames).
+  const walked = new Set<string>();
   const walk = (selectionSet: SelectionSetNode) => {
     for (const selection of selectionSet.selections) {
       if (!included(selection)) continue;
@@ -86,7 +95,10 @@ export function subFieldNodes(info: Pick<GraphQLResolveInfo, "fieldNodes" | "fra
         walk(selection.selectionSet);
       } else {
         const fragment = info.fragments[selection.name.value];
-        if (fragment) walk(fragment.selectionSet);
+        if (fragment && !walked.has(selection.name.value)) {
+          walked.add(selection.name.value);
+          walk(fragment.selectionSet);
+        }
       }
     }
   };

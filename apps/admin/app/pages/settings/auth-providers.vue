@@ -41,7 +41,7 @@ async function refreshProviders() {
 // same as proxies.vue's secretKeys.
 const { data: secretKeys, refresh: refreshSecretKeys } = await useAsyncData(
   'auth-providers-secret-keys',
-  () => api.get<SecretMetadata[]>('/secrets').then(r => r.data.map(s => s.key)),
+  () => api.get<SecretMetadata[]>('/secrets', { scope: 'AUTH_PROVIDERS' }).then(r => r.data.map(s => s.key)),
   { default: () => [] }
 )
 // The roles a first sign-in can be given - assignable ones, the Workflows role left out.
@@ -345,7 +345,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
       </PageHeader>
     </template>
 
-    <div class="flex flex-col gap-4">
+    <div class="flex min-h-full flex-col gap-4">
       <UAlert
         v-if="error"
         color="error"
@@ -440,6 +440,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
         v-else-if="!pending"
         icon="i-lucide-fingerprint"
         v-bind="emptyState"
+        class="page-empty"
       />
     </div>
 

@@ -1,5 +1,8 @@
+import { randomBytes } from "node:crypto";
+import { clientIp } from "../client-ip.js";
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
+import { assertLockdownAdmits, lockdownKeepsOut } from "../lockdown.js";
 import { readOrigin } from "../read-audit.js";
 import { userExtra } from "../user-extra.js";
 import { TotalBaseError } from "@totalbase/errors";
@@ -8,7 +11,7 @@ import type { LoginFailureReason, SignInAdmission } from "@totalbase/auth";
 import type { FastifyRequest } from "fastify";
 import { dataEnvelope, type JsonSchema, type RouteDoc } from "@totalbase/openapi";
 import { extractBearerToken, requireUser } from "../auth-guards.js";
-import { SESSION_MODE, clearSessionCookie, deliverSession, readSessionCookie, requestedSessionMode, setSessionCookie } from "../session-cookie.js";
+import { SESSION_MODE, clearOAuthBindingCookie, clearSessionCookie, deliverSession, readOAuthBindingCookie, readSessionCookie, requestedSessionMode, setOAuthBindingCookie, setSessionCookie } from "../session-cookie.js";
 import { SESSION_REF, SESSION_SCHEMAS, USER_REF, USER_SCHEMA } from "../openapi-docs.js";
 
 const TAG = ["auth"];
@@ -36,7 +39,13 @@ export async function hasPortalAccess(context: AppContext, userId: string): Prom
 
 /** The data-plane sign-in's admission: checked before a session or an MFA challenge exists. */
 export function apiAdmission(context: AppContext): SignInAdmission {
-  return async (userId) => ((await hasApiAccess(context, userId)) ? null : "no_api_access");
+  return async (userId) => {
+    const roleIds = await context.roleAssignments.listEffectiveRolesForUser(userId);
+    if (!(await context.roles.effectiveAccess(roleIds)).apiAccess) return "no_api_access";
+    // During a lockdown only an administrator gets in (Security.md §2.21): told so, the password having matched.
+    await assertLockdownAdmits(context, roleIds);
+    return null;
+  };
 }
 
 /** Only the audit log learns why a sign-in was refused - the caller gets the same 401. */
@@ -149,7 +158,8 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       const result = await context.auth.login({
         email: request.body?.email,
         password: request.body?.password,
-        ip: request.ip,
+        // A validated address (Security.md §2.4): never text a forwarded header made up.
+        ip: clientIp(request),
         userAgent: request.headers["user-agent"],
         surface: "API",
         admit: apiAdmission(context),
@@ -347,10 +357,13 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       }),
     },
     async (request, reply) => {
+      // The caller's own session stays; every other one of the account's ends.
+      const session = await context.auth.sessions.validate(extractBearerToken(request));
       await context.auth.changePassword(
         request.userId!,
         request.body?.currentPassword,
         request.body?.newPassword,
+        session?.session.id,
       );
       return reply.code(204).send();
     },
@@ -423,9 +436,9 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
       request.auditPrincipal = { type: "USER", id: result.user.id };
       // The account is ready either way; only a user with API access also
       // gets a session back (an app-only user signs in through the portal) - and
-      // not one the instance requires a second factor for: they set it up at
-      // their first sign-in (Security.md §2.17).
-      if (!(await hasApiAccess(context, result.user.id)) || (await context.auth.mfa.required(result.user.id))) {
+      // not one the instance requires a second factor for, nor one that has a factor: they sign in with it
+      // (Security.md §2.17) - an invitation is never a way past an account's second factor.
+      if (!(await hasApiAccess(context, result.user.id)) || (await context.auth.mfa.required(result.user.id)) || (await context.auth.mfa.hasFactor(result.user.id))) {
         await context.auth.sessions.revokeByToken(result.token);
         return { data: { user: await withExtra(request, result.user) } };
       }
@@ -464,7 +477,10 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
           errors: [{ source: "TOTALBASE", code: "OAUTH_REDIRECT_NOT_ALLOWED", message: "redirect_to is required." }],
         };
       }
-      const authorizationUrl = await context.oauth.start(request.params.provider, redirectTo);
+      // The browser that starts it is the one that finishes it (Security.md §2.11): its cookie, the state's hash of it.
+      const binding = randomBytes(32).toString("base64url");
+      const authorizationUrl = await context.oauth.start(request.params.provider, redirectTo, { browserBinding: binding });
+      setOAuthBindingCookie(reply, await context.auth.mailer.publicUrl(), binding);
       return reply.redirect(authorizationUrl, 302);
     },
   );
@@ -493,14 +509,18 @@ export function registerApiAuthRoutes(app: FastifyInstance, context: AppContext)
           }],
         };
       }
+      const publicUrl = await context.auth.mailer.publicUrl();
       // The portal's own sign-in page needs portal access (admin or app), as a password sign-in there does;
       // an application's redirect needs API access - checked before any session or MFA challenge exists.
       const result = await context.oauth.callback(
         request.params.provider,
         request.query.code,
         request.query.state,
-        (userId, portal) => (portal ? hasPortalAccess(context, userId) : hasApiAccess(context, userId)),
+        // During a lockdown only an administrator gets in (Security.md §2.21) - the redirect's `access_denied`.
+        async (userId, portal) => (await (portal ? hasPortalAccess(context, userId) : hasApiAccess(context, userId))) && !(await lockdownKeepsOut(context, userId)),
+        readOAuthBindingCookie(request, publicUrl),
       );
+      clearOAuthBindingCookie(reply, publicUrl);
       const separatorFor = (url: string) => (url.includes("#") ? "&" : "#");
       if (result.error) {
         // No session: the provider shared no email for a new account

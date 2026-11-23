@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RunState } from "./bindings.js";
+import { FilterLiteral } from "@totalbase/query-engine";
 import { resolveTemplates } from "./templates.js";
 
 describe("{{...}} templates", () => {
@@ -54,5 +55,46 @@ describe("{{...}} templates", () => {
     expect(resolveHtml("{{build.data.html}}")).toBe("<table><tr><td>1</td></tr></table>");
     // Without the option nothing changes.
     expect(resolveTemplates("<p>{{start.data.name}}</p>", { ...state, resultsByKey: html } as RunState)).toBe("<p><script>alert(1)</script></p>");
+  });
+});
+
+describe("{{...}} templates in a filter field", () => {
+  const triggerData = { id: "$ROW.id", ids: ["1", "2"] };
+  const state = { triggerData, results: new Map(), resultsByKey: new Map([["start", { data: triggerData }]]) } as RunState;
+  const resolveFilter = (value: unknown) => resolveTemplates(value, state, { filter: true });
+
+  // A webhook's body choosing an Update/Delete records' rows (security regression, WF-01): a {{...}} outside an
+  // operator's value is never the filter's grammar.
+  it("refuses a {{...}} that would become the filter's grammar - the whole filter, a field, a logical list", () => {
+    const attacker = { where: { reservado: { _eq: false } }, ors: [{ id: { _neq: "x" } }], field: { _neq: "x" }, id: "abc" };
+    const hostile = { triggerData: attacker, results: new Map(), resultsByKey: new Map([["start", { data: attacker }]]) } as RunState;
+    const resolve = (value: unknown) => resolveTemplates(value, hostile, { filter: true });
+    expect(() => resolve("{{start.data.where}}")).toThrow(/resolves to an object/);
+    expect(() => resolve({ _or: "{{start.data.ors}}" })).toThrow(/resolves to a list/);
+    expect(() => resolve({ id: "{{start.data.field}}" })).toThrow(/resolves to an object/);
+    expect(() => resolve({ where: "{{start.data.where}}", limit: 10 })).toThrow(/WORKFLOW_INVALID_DESIGN|resolves to an object/);
+    // A value stays a value: an operator's, or a scalar anywhere else (a Read records query's limit).
+    expect(resolve({ id: { _eq: "{{start.data.where}}" } })).toEqual({ id: { _eq: expect.any(FilterLiteral) } });
+    expect(resolve({ limit: "{{start.data.id}}" })).toEqual({ limit: "abc" });
+  });
+
+  it("resolves an operator's templated value to a FilterLiteral, and leaves the author's text as it is", () => {
+    const resolved = resolveFilter({ _and: [{ id: { _eq: "{{start.data.id}}" } }, { owner: { _eq: "$USER.id" } }, { tag: { _in: ["{{start.data.id}}", "x"] } }] }) as {
+      _and: [{ id: { _eq: FilterLiteral } }, { owner: { _eq: string } }, { tag: { _in: [FilterLiteral, string] } }];
+    };
+    expect(resolved._and[0].id._eq).toBeInstanceOf(FilterLiteral);
+    expect(resolved._and[0].id._eq.value).toBe("$ROW.id");
+    expect(resolved._and[1].owner._eq).toBe("$USER.id");
+    expect(resolved._and[2].tag._in[0]).toBeInstanceOf(FilterLiteral);
+    expect(resolved._and[2].tag._in[1]).toBe("x");
+    // Stored as the value it holds.
+    expect(JSON.parse(JSON.stringify(resolved))).toEqual({ _and: [{ id: { _eq: "$ROW.id" } }, { owner: { _eq: "$USER.id" } }, { tag: { _in: ["$ROW.id", "x"] } }] });
+  });
+
+  it("resolves the rest of the field as anywhere else - a query's clauses, a rule's message", () => {
+    expect(resolveFilter({ limit: "{{start.data.ids.length}}", where: { id: { _in: "{{start.data.ids}}" } } })).toEqual({
+      limit: 2, where: { id: { _in: new FilterLiteral(["1", "2"]) } },
+    });
+    expect(resolveFilter([{ message: "Bad {{start.data.id}}", filter: {} }])).toEqual([{ message: "Bad $ROW.id", filter: {} }]);
   });
 });

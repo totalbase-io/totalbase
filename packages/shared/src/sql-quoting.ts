@@ -7,6 +7,8 @@
 
 /** A name as one SQL identifier: double-quoted, embedded quotes doubled - an upper-case name or a reserved word means itself. */
 export function quoteIdentifier(name: string): string {
+  // PostgreSQL ends a statement's text at a NUL byte: inside an open quoted identifier it would cut the statement.
+  if (name.includes("\u0000")) throw new Error("An SQL identifier never holds a NUL character.");
   return `"${name.replace(/"/g, '""')}"`;
 }
 
@@ -16,5 +18,6 @@ export function quoteIdentifier(name: string): string {
  * no bind parameter: COMMENT ON, a CHECK or DEFAULT expression, replication options, a migration ledger row.
  */
 export function quoteLiteral(text: string): string {
+  if (text.includes("\u0000")) throw new Error("An SQL string constant never holds a NUL character.");
   return `'${text.replace(/'/g, "''")}'`;
 }

@@ -100,7 +100,7 @@ export class SmtpEmailSender implements EmailSender {
         "SMTP is not configured (smtp.host/smtp.from) - set it under Settings › SMTP before sending email.",
       );
     }
-    const password = passwordSecretKey ? await this.secrets.decrypt(passwordSecretKey) : undefined;
+    const password = passwordSecretKey ? await this.secrets.decrypt(passwordSecretKey, "SMTP") : undefined;
     return {
       from,
       transport: nodemailer.createTransport({

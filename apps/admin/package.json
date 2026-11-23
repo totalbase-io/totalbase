@@ -43,7 +43,7 @@
     "tailwindcss": "^4.3.5",
     "vue": "^3.5.45",
     "vue-echarts": "^8.3.2",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zxing-wasm": "^3.1.6"
   },
   "devDependencies": {

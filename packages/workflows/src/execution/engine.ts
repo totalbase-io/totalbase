@@ -1,4 +1,4 @@
-import { TotalBaseError } from "@totalbase/errors";
+import { TotalBaseError, TOTALBASE_ERROR_CODES } from "@totalbase/errors";
 import { OPERATION_CATALOG, operationDefinition } from "@totalbase/tb-catalog";
 import { manualInputFields, validateManualInput } from "./manual-start.js";
 import type { WorkflowRecord } from "../workflows-admin-service.js";
@@ -59,8 +59,25 @@ export interface WorkflowRunResult {
   error: unknown;
 }
 
+/**
+ * A run's outcome as its caller gets it (Workflows.md §13.1-§13.3) - an invoker, a webhook's sender, anyone: the author
+ * decides what they get. A Finish with error's code and message are the author's (any code TotalBase doesn't have),
+ * Validate data's are the rules' messages, kept with their detail; any other failure - an HTTP step's upstream answer,
+ * PostgreSQL's diagnostics, a script's exception - is its code and a generic message, the detail left to the run's
+ * history, which an administrator reads.
+ */
 export function toRunResult(run: Pick<WorkflowRunRecord, "id" | "status" | "result" | "error">): WorkflowRunResult {
-  return { id: run.id, status: run.status, result: run.result ?? null, error: run.error ?? null };
+  return { id: run.id, status: run.status, result: run.result ?? null, error: callerError(run.error ?? null) };
+}
+
+const TOTALBASE_CODES: ReadonlySet<string> = new Set(TOTALBASE_ERROR_CODES);
+const CALLER_FACING_CODES = new Set(["WORKFLOW_VALIDATION_FAILED", "WORKFLOW_FINISHED_WITH_ERROR"]);
+
+function callerError(error: unknown): unknown {
+  if (!error || typeof error !== "object") return error;
+  const { code } = error as { code?: unknown };
+  if (typeof code !== "string" || !TOTALBASE_CODES.has(code) || CALLER_FACING_CODES.has(code)) return error;
+  return { code, message: "The workflow failed. Its run history has the details." };
 }
 
 /** A step's error: `{ code, message }`, plus `detail` when the error carries one (Validate data's failed rules) - parsed when it is JSON. */
@@ -631,6 +648,10 @@ export async function runWorkflow(
           // An HTML field (the catalog's htmlTemplates, §5.16) takes the values spliced into it escaped.
           for (const field of operationDefinition(node.type)?.htmlTemplates ?? []) {
             if (node.configuration?.[field] !== undefined) resolvedConfiguration[field] = resolveTemplates(node.configuration[field], state, { html: true });
+          }
+          // A filter field (the catalog's filterTemplates, §4.3) takes what it carries as values, never as the grammar.
+          for (const field of operationDefinition(node.type)?.filterTemplates ?? []) {
+            if (node.configuration?.[field] !== undefined) resolvedConfiguration[field] = resolveTemplates(node.configuration[field], state, { filter: true });
           }
         } catch (templateResolutionError) {
           templateError = toStepError(templateResolutionError);

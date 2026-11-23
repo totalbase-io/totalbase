@@ -109,6 +109,19 @@ export class ExecutionsService {
     );
   }
 
+  /** The queue at a glance, every type: waiting, running, and failed since `since` - the admin dashboard's System card. */
+  async stats(since: Date): Promise<{ pending: number; running: number; failed: number }> {
+    const { rows } = await this.database.query<{ pending: number; running: number; failed: number }>(
+      `SELECT count(*) FILTER (WHERE status = 'PENDING')::int AS pending,
+              count(*) FILTER (WHERE status = 'RUNNING')::int AS running,
+              count(*) FILTER (WHERE status = 'FAILED' AND completed_at >= $1)::int AS failed
+       FROM totalbase.executions
+       WHERE status IN ('PENDING', 'RUNNING') OR completed_at >= $1`,
+      [since],
+    );
+    return rows[0]!;
+  }
+
   /**
    * The latest executions of one type, newest first - for an admin-only
    * surface that owns that type (e.g. MAINTENANCE, Settings > Maintenance).

@@ -175,15 +175,19 @@ describe("POST /api/workflows/{slug}/run", () => {
     }
   });
 
-  it("Parse CSV / JSON refuses a PRIVATE file without READ and parses it with READ", async () => {
-    const denied = await run(`${PREFIX}-parse`, { asset: otherFileId });
+  it("Parse CSV / JSON refuses a PRIVATE file without READ and parses it with READ - its own, never another's", async () => {
+    const denied = await run(`${PREFIX}-parse`, { asset: ownFileId });
     expect(denied.json().data).toMatchObject({ status: "FAILED", error: { code: "FILE_ACCESS_DENIED" } });
-    expect(denied.body).not.toContain(`${PREFIX}-other-content`);
+    expect(denied.body).not.toContain(`${PREFIX}-own-content`);
 
     await context.permissions.set(roleId, filesResourceId, "READ", { effect: "ALLOW" });
     try {
-      const allowed = await run(`${PREFIX}-parse`, { asset: otherFileId });
-      expect(allowed.json().data, allowed.body).toMatchObject({ status: "SUCCEEDED", result: { data: { secret: `${PREFIX}-other-content` } } });
+      const allowed = await run(`${PREFIX}-parse`, { asset: ownFileId });
+      expect(allowed.json().data, allowed.body).toMatchObject({ status: "SUCCEEDED", result: { data: { secret: `${PREFIX}-own-content` } } });
+      // READ with no row filter still reaches no one else's PRIVATE file (Administration.md §10.6).
+      const other = await run(`${PREFIX}-parse`, { asset: otherFileId });
+      expect(other.json().data).toMatchObject({ status: "FAILED", error: { code: "FILE_ACCESS_DENIED" } });
+      expect(other.body).not.toContain(`${PREFIX}-other-content`);
     } finally {
       await context.permissions.delete(roleId, filesResourceId, "READ");
     }
@@ -204,8 +208,10 @@ describe("POST /api/workflows/{slug}/run", () => {
       expect(allowed.json().data.status, allowed.body).toBe("SUCCEEDED");
       const assetId = allowed.json().data.result.data.asset as string;
       createdFileIds.push(assetId);
-      const { rows } = await database.query<{ created_by: string | null }>(`SELECT created_by FROM totalbase.files WHERE id = $1`, [assetId]);
+      const { rows } = await database.query<{ created_by: string | null; visibility: string }>(`SELECT created_by, visibility FROM totalbase.files WHERE id = $1`, [assetId]);
       expect(rows[0]!.created_by).toBe(caller.userId);
+      // A file a run makes is usually a record's: LINKED unless the step says otherwise (Workflows.md §5.18).
+      expect(rows[0]!.visibility).toBe("LINKED");
     } finally {
       await context.permissions.delete(roleId, filesResourceId, "CREATE");
     }

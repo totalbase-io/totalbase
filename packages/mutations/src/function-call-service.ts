@@ -30,7 +30,8 @@ export interface FunctionCallAudit {
   /**
    * What the EXECUTED row records as the call's arguments. The Data API
    * passes them sanitized (credentials redacted, long strings truncated);
-   * absent, the arguments as given.
+   * absent (a workflow's call, GraphQL), the arguments with every credential
+   * key redacted - never a password as given.
    */
   payload?: unknown;
   /** Extra correlation on every row (a workflow's run and step). */
@@ -164,7 +165,7 @@ export async function executeFunctionCall(
         source: audit.source,
         ip: audit.ip,
         userAgent: audit.userAgent,
-        payload: audit.payload !== undefined ? audit.payload : args,
+        payload: audit.payload !== undefined ? audit.payload : redactSecretKeys(args),
         metadata: audit.metadata,
         startedAt,
         finishedAt: new Date(),

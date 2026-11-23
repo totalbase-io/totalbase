@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AdminClient } from "./admin-client.js";
-import { READ_ONLY, result } from "./tool-helpers.js";
+import { jsonObject, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
  * The generated OpenAPI documents (Data_API.md §14,
@@ -59,6 +59,7 @@ export function registerOpenApiTools(server: McpServer, client: AdminClient): vo
         tag: z.string().optional().describe("Only operations with this tag (the index lists them)"),
         method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).optional(),
       },
+      outputSchema: { title: z.string().optional(), version: z.string().optional(), operations: z.number().describe("How many operations match"), note: z.string().optional(), tags: z.array(z.string()).optional(), index: z.array(z.string()).optional().describe("One line per operation, when unfiltered or too many match"), paths: z.array(jsonObject()).optional().describe("The matching operations in full"), schemas: jsonObject().optional().describe("The component schemas they reference") },
       annotations: READ_ONLY,
     },
     async ({ api, role_id, as, path, tag, method }) => {

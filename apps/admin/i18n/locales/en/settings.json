@@ -172,6 +172,10 @@
       "showOnSignIn": "Show on the sign-in page",
       "showOnSignInDescription": "A button on the portal's sign-in page; people sign in to the admin or the App with this provider. Its own callback needs no allowed redirect URL."
     },
+    "mfa": {
+      "appsTitle": "Authenticator apps",
+      "appsDescription": "Any app that makes TOTP codes works. These are the ones people are shown when they set MFA up - under the QR code, in My account and at sign-in."
+    },
     "instanceAbout": {
       "title": "About this instance",
       "description": "What this instance runs - for the upgrade notes, and when reporting a problem.",
@@ -371,7 +375,16 @@
           "UUID": "UUID v4"
         }
       },
-      "deleteBody": "If any Auth Provider or other reference still points at one of these secrets, its deletion will be rejected - remove or repoint that reference first. This cannot be undone."
+      "deleteBody": "If any Auth Provider or other reference still points at one of these secrets, its deletion will be rejected - remove or repoint that reference first. This cannot be undone.",
+      "scope": "Used by",
+      "scopeDescription": "The one feature that reads it. Changing it needs a new value.",
+      "scopes": {
+        "SMTP": "Email (SMTP)",
+        "S3": "S3 storage",
+        "DASHBOARD_EMBEDS": "Dashboard embeds",
+        "AUTH_PROVIDERS": "Sign-in providers",
+        "WORKFLOWS": "Workflows"
+      }
     },
     "smtp": {
       "needsHostAndFrom": "Set the SMTP host and the sender address, and save, first.",
@@ -425,12 +438,16 @@
           "label": "Authentication",
           "description": "Account registration, session lifetime, and password policy for TotalBase users."
         },
+        "mfa": {
+          "label": "MFA",
+          "description": "Multi-factor authentication: after the password, a code from an authenticator app. Who must use it, and the notice when it's turned off."
+        },
         "smtp": {
           "label": "SMTP",
           "description": "The mail relay for system emails and Workflow \"Send email\" steps."
         },
         "s3": {
-          "label": "S3 storage",
+          "label": "S3",
           "description": "A connection to an S3-compatible bucket - Amazon S3, Cloudflare R2, MinIO and others - where Files can store uploads."
         },
         "security": {
@@ -489,6 +506,10 @@
           "label": "Data events",
           "description": "The outbox of committed data changes that starts DATA_EVENT workflows: retries and retention."
         },
+        "lockdown": {
+          "label": "Lockdown",
+          "description": "The instance to yourself - for an import, a restore, a change of schema: while a lockdown is on, by its switch or inside its scheduled window, only administrators are answered."
+        },
         "appearance": {
           "label": "Appearance",
           "description": "How this instance looks to everyone - its color, its sign-in page and any CSS of your own. Public: all of it reaches the browser before sign-in."
@@ -525,8 +546,12 @@
         "imageTransformations": "Image transformations",
         "accountsSessions": "Accounts & sessions",
         "signInProtection": "Sign-in protection",
+        "requirement": "Requirement",
         "emailLinks": "Email links",
         "notices": "Notices",
+        "when": "When",
+        "whileItIsOn": "While it is on",
+        "notice": "Notice",
         "instance": "Instance",
         "dateTime": "Date & time",
         "language": "Language",
@@ -577,7 +602,9 @@
         "levels": "levels",
         "nodes": "nodes",
         "writes": "writes",
-        "queries": "queries"
+        "queries": "queries",
+        "fields": "fields",
+        "runs": "runs"
       },
       "keys": {
         "api__default_limit": {
@@ -683,6 +710,10 @@
         "files__default_visibility_public": {
           "label": "Public by default",
           "description": "Whether a newly uploaded file starts as public when the upload form does not choose otherwise."
+        },
+        "files__uploader_can_publish": {
+          "label": "Uploaders can make files public",
+          "description": "Whether whoever uploaded a file may make it Public. Off, only an administrator can."
         },
         "files__storage_provider": {
           "label": "Storage provider",
@@ -802,7 +833,7 @@
         },
         "auth__lockout_max_attempts": {
           "label": "Lock after failed sign-ins",
-          "description": "Consecutive wrong passwords that lock the account for a while. The person sees the usual \"invalid email or password\" either way; an admin can unlock them early. 0 turns lockout off."
+          "description": "Consecutive wrong passwords from one address that lock that address out of the account for a while - never the account for everyone; past it, addresses the account never signed in from are slowed down. The person sees the usual \"invalid email or password\" either way. 0 turns lockout off."
         },
         "auth__dormant_account_days": {
           "label": "Deactivate unused accounts",
@@ -810,20 +841,11 @@
         },
         "auth__reauthentication_minutes": {
           "label": "Confirm identity for sensitive actions",
-          "description": "How long after signing in, or confirming their password again, an administrator can issue an administrator token, assign Administrators, or change another account's email, password or two-factor authentication. Past it, they're asked for their password (or a code) first."
+          "description": "How long after signing in, or confirming their password again, an administrator can issue an administrator token, assign Administrators, or change another account's email, password or MFA. Past it, they're asked for their password (or a code) first."
         },
         "auth__lockout_duration_minutes": {
           "label": "Lockout duration",
-          "description": "How long a locked account stays locked. A password reset or an admin's unlock ends it sooner."
-        },
-        "auth__mfa_required": {
-          "label": "Require two-factor authentication",
-          "description": "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in; sessions already open stay.",
-          "options": {
-            "NONE": "No one",
-            "ADMINISTRATORS": "Administrators",
-            "EVERYONE": "Everyone"
-          }
+          "description": "How long a locked-out address (or an account locked by wrong proofs on a session) waits. A password reset or an admin's unlock ends it sooner."
         },
         "auth__links__invitation": {
           "label": "Invitation link",
@@ -845,9 +867,27 @@
           "label": "Email changed notice",
           "description": "Email the previous address whenever an admin changes a user's email - a security notice."
         },
-        "auth__mfa_disabled_email_enabled": {
-          "label": "Two-factor turned off notice",
-          "description": "Email the account owner whenever their two-factor authentication is turned off, or reset by an admin - a security notice."
+        "mfa__required": {
+          "label": "Require MFA",
+          "description": "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in, and can't turn it off; sessions already open stay.",
+          "options": {
+            "NONE": "No one",
+            "EVERYONE": "Everyone",
+            "ROLES": "Selected roles"
+          },
+          "optionDescriptions": {
+            "NONE": "Each person decides whether to turn it on.",
+            "EVERYONE": "Every account that signs in.",
+            "ROLES": "Whoever holds one of the roles below."
+          }
+        },
+        "mfa__required_roles": {
+          "label": "Roles",
+          "description": "Whoever holds one of these roles must use MFA. Administrators is a good place to start."
+        },
+        "mfa__disabled_email_enabled": {
+          "label": "MFA turned off notice",
+          "description": "Email the account owner whenever their MFA is turned off, or reset by an admin - a security notice."
         },
         "auth__token_created_email_enabled": {
           "label": "New API token notice",
@@ -876,6 +916,68 @@
         "system__timezone_user_choice": {
           "label": "Users can choose their own timezone",
           "description": "Off: everyone works in the Timezone above - a user's own choice is kept, not used, until this is on again. Needs a Timezone set: with none, each viewer's browser decides."
+        },
+        "lockdown__enabled": {
+          "label": "Lockdown",
+          "description": "On: the instance answers administrators only - their sessions and their ADMIN tokens - when the settings below say so. Everyone else, every other token, webhooks and public pages included, gets 503 LOCKDOWN. Off: no lockdown, whatever is set below."
+        },
+        "lockdown__when": {
+          "label": "When",
+          "description": "When the lockdown is on.",
+          "options": {
+            "NOW": "Now",
+            "ONCE": "Scheduled once",
+            "RECURRING": "Repeating"
+          },
+          "optionDescriptions": {
+            "NOW": "From the moment you save, until you turn Lockdown off.",
+            "ONCE": "Between From and Until: it starts and ends by itself, once.",
+            "RECURRING": "At every occurrence of a schedule, for a length of time - a maintenance window every night, or every week."
+          }
+        },
+        "lockdown__from": {
+          "label": "From",
+          "description": "Scheduled once: when the lockdown starts by itself."
+        },
+        "lockdown__until": {
+          "label": "Until",
+          "description": "Scheduled once: when it ends by itself - after From, and in the future. Callers are told how long to wait (Retry-After)."
+        },
+        "lockdown__recurring_schedule": {
+          "label": "Starts",
+          "description": "Repeating: when each lockdown starts, as a cron expression in the instance's timezone (Settings › General). 0 3 * * 0: every Sunday at 03:00."
+        },
+        "lockdown__recurring_minutes": {
+          "label": "Lasts",
+          "description": "Repeating: how long each one lasts, from its start. Up to a day (1440)."
+        },
+        "lockdown__mode": {
+          "label": "Mode",
+          "description": "What everyone else may do during a lockdown.",
+          "options": {
+            "FULL": "Closed",
+            "READ_ONLY": "Read-only"
+          },
+          "optionDescriptions": {
+            "FULL": "Only administrators are answered. Everyone else waits: they can't sign in, read or write.",
+            "READ_ONLY": "Everyone signs in and reads as usual; only administrators change anything. Writes, function calls, webhooks and registration get 503 LOCKDOWN."
+          }
+        },
+        "lockdown__allowed_roles": {
+          "label": "Exceptions",
+          "description": "Roles the lockdown makes an exception for: their users can also sign in and keep working while it is on - their sessions and their tokens, with the permissions they already have (in Read-only, they can also write). For whoever checks the result before everyone returns, or the integration that does the work."
+        },
+        "lockdown__pause_workflows": {
+          "label": "Pause workflows",
+          "description": "On: during a lockdown no workflow starts by itself. A scheduled occurrence is skipped; a database event waits and starts its workflows when the lockdown ends. Off: they keep running. A workflow an administrator runs by hand always runs."
+        },
+        "lockdown__notice_minutes": {
+          "label": "Tell users beforehand",
+          "description": "How long before a scheduled or repeating lockdown the people using the instance see a notice of it, above every page. 0: they are not told - only administrators see it coming."
+        },
+        "lockdown__message": {
+          "label": "Message",
+          "description": "Shown to whoever is refused during a lockdown, after \"This instance is in lockdown.\", and in the notice beforehand - why, or whom to ask. Up to 500 characters."
         },
         "system__language": {
           "label": "Default language",
@@ -945,8 +1047,8 @@
           "description": "The key of a Settings → Secrets entry holding the secret access key - never stored here in plaintext."
         },
         "security__rate_limit_enabled": {
-          "label": "Enable rate limiting",
-          "description": "Limits the requests and the failed sign-ins of each IP address. Behind a proxy, turn on Trust reverse proxy headers with it - otherwise every caller has the proxy's address and shares one limit."
+          "label": "Limit per address",
+          "description": "Limits the requests without a credential and the failed sign-ins of each IP address. Behind a proxy, turn on Trust reverse proxy headers with it - otherwise every caller has the proxy's address and shares one limit."
         },
         "security__rate_limit_per_minute": {
           "label": "Requests per minute",
@@ -954,7 +1056,7 @@
         },
         "security__rate_limit_per_user_per_minute": {
           "label": "Requests per minute per user",
-          "description": "The most requests one signed-in session or personal token can make in a minute, counted on the credential rather than the address - so people behind one office connection, or an application whose server sends every request from one address, each get their own limit. A request with no credential, or a credential that is refused, counts against its address."
+          "description": "The most requests one user can make in a minute, all their sessions and personal tokens together - counted on the user rather than the address, so it holds behind any proxy, and people behind one office connection each get their own limit. Always on, whatever Limit per address says; 0 turns it off."
         },
         "security__rate_limit_sign_in_per_minute": {
           "label": "Failed sign-ins per minute",
@@ -1200,6 +1302,10 @@
           "label": "Longest embed token",
           "description": "A token whose expiry (exp) is further away than this is refused - keep embed tokens short-lived and sign a new one per page view."
         },
+        "dashboards__query_role": {
+          "label": "Widget query role",
+          "description": "A PostgreSQL role every widget query runs as - only what it may read reaches a dashboard, and the query can't leave it. You create it (NOLOGIN, SELECT on what dashboards read, nothing on the totalbase schema) and grant it to TotalBase's own role. Empty: TotalBase's own role."
+        },
         "dashboards__embed_allowed_origins": {
           "label": "Sites that may embed",
           "description": "Origins allowed to frame an embedded dashboard (https://app.example.com) - sent as Content-Security-Policy frame-ancestors. Empty: no site can frame one."
@@ -1207,6 +1313,10 @@
         "workflows__max_sync_wait_ms": {
           "label": "Maximum synchronous wait",
           "description": "The longest a WEBHOOK trigger's synchronous response mode will hold the connection open waiting for the run to finish, regardless of what an individual workflow's own wait time is configured to."
+        },
+        "workflows__webhook_max_concurrent_runs": {
+          "label": "Concurrent webhook runs",
+          "description": "How many runs one webhook workflow may have going at once; a request past it is refused (429) until one ends, so a flood of calls can't hold every connection and worker."
         },
         "workflows__max_run_duration_ms": {
           "label": "Maximum run duration",
@@ -1553,6 +1663,10 @@
           "label": "Subscriptions per connection",
           "description": "The most subscriptions one WebSocket holds at once."
         },
+        "realtime__max_subscriptions_per_user": {
+          "label": "Subscriptions per user",
+          "description": "The most subscriptions one user holds at once, across all their connections - each one is re-read on every change to its table."
+        },
         "realtime__heartbeat_seconds": {
           "label": "Heartbeat",
           "description": "How often the server pings each connection; one that doesn't answer before the next ping is closed."
@@ -1572,6 +1686,10 @@
         "graphql__max_depth": {
           "label": "Selection depth",
           "description": "How deep a request's selection may nest, introspection included. How far relations go is api.max_relation_depth."
+        },
+        "graphql__max_fields": {
+          "label": "Fields per request",
+          "description": "The most fields one request selects, introspection included - a fragment's fields count again wherever it is spread."
         },
         "mail__footer": {
           "label": "Footer",

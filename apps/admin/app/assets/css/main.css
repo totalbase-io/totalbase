@@ -253,6 +253,51 @@ html {
 }
 
 /*
+ * A page's empty state (Admin_UI.md §5.6): a UEmpty that is the whole body
+ * of a page takes the body's height, its content two fifths down - 40% of
+ * the free space above it, 60% below - so it reads as placed, not as sunk
+ * in the middle. Two growing pseudo-elements share the free space (UEmpty's
+ * root is a centered flex column); their margins take back its gap-4. With
+ * no height to fill (an embedded PageShell) it is a plain UEmpty.
+ * The wrapper between the body and the UEmpty, if any, is
+ * `flex min-h-full flex-col`.
+ *
+ * A table that is the whole body of a page does the same from its `#empty`
+ * with `table-empty`, its header staying in place: a table's row can't be
+ * told to take what's left, so the UEmpty takes the height of the page's
+ * body (a size container while it shows one) less what stands around it -
+ * the table's header, the cell's padding, a toolbar or a pager inside the
+ * body. Naked, its edge isn't seen: the allowance only has to be enough for
+ * the body never to scroll.
+ */
+.page-empty {
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+[data-fill-height-frame]:has(.table-empty) {
+  container-type: size;
+}
+.table-empty {
+  min-height: calc(100cqh - 14rem);
+}
+.page-empty::before,
+.page-empty::after,
+.table-empty::before,
+.table-empty::after {
+  content: "";
+}
+.page-empty::before,
+.table-empty::before {
+  flex: 2;
+  margin-bottom: calc(var(--spacing) * -4);
+}
+.page-empty::after,
+.table-empty::after {
+  flex: 3;
+  margin-top: calc(var(--spacing) * -4);
+}
+
+/*
  * The rail's hover is a tint of its icon's own color, not Nuxt UI's
  * bg-elevated: a rail the operator's CSS paints dark (Settings >
  * Appearance - a theme, the Examples' rail, a hand-written one) keeps light

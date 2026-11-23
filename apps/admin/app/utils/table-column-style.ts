@@ -25,11 +25,19 @@ export function columnStyleClass(style: CellStyle, numeric: boolean, defaultSize
   ].filter(Boolean).join(' ')
 }
 
-/** A `value` link's href from the cell's own text. */
+/**
+ * A `value` link's href from the cell's own text - written by whoever wrote the record, so a URL link is only ever
+ * http(s): a `javascript:` (or any other scheme) the text names becomes the address of a web page, never a script run
+ * on a click (DataViews.md §15.2).
+ */
 export function valueLinkHref(kind: 'url' | 'email' | 'tel', text: string): string {
   if (kind === 'email') return `mailto:${text}`
   if (kind === 'tel') return `tel:${text}`
-  return /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`
+  // The scheme as a browser reads it: leading spaces and control characters dropped, tabs and line breaks removed.
+  // eslint-disable-next-line no-control-regex -- the C0 controls a browser drops before reading a URL's scheme
+  const probe = text.replace(/[\u0000-\u0020\u007F]+/g, '')
+  if (/^https?:\/\//i.test(probe)) return probe
+  return `https://${probe.replace(/^[a-z][a-z0-9+.-]*:\/*/i, '')}`
 }
 
 /** A CHECK value's badge, by its theme color - literal classes, so Tailwind sees each one. */

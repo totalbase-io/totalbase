@@ -68,6 +68,8 @@ export interface UserListItem extends User {
   lastLoginAt: Date | null;
   /** Sign-in refused until then (account lockout); null when not locked. */
   lockedUntil: Date | null;
+  /** An address locked out of the account, or the account-wide sign-in delay on, right now (Security.md §2.4). */
+  signInHeld: boolean;
   /** Consecutive failed sign-ins since the last success/unlock/lockout (auth.lockout_max_attempts). */
   failedLoginCount: number;
   /** The picture of the user's most recently used OAuth identity, if any - offered as "Use picture from <provider>". */
@@ -268,6 +270,7 @@ export class UsersService {
         has_password: boolean;
         last_login_at: Date | null;
         locked_until: Date | null;
+        sign_in_held: boolean;
         failed_login_count: number;
         provider_avatar: { url: string; provider: string } | null;
         mfa_enabled: boolean;
@@ -284,6 +287,7 @@ export class UsersService {
                 ORDER BY i.last_login_at DESC NULLS LAST
                 LIMIT 1) AS provider_avatar,
               CASE WHEN locked_until > now() THEN locked_until END AS locked_until,
+              (u.sign_in_delayed_until > now() OR EXISTS (SELECT 1 FROM totalbase.users_addresses ua WHERE ua."user" = u.id AND ua.locked_until > now())) AS sign_in_held,
               EXISTS (SELECT 1 FROM totalbase.factors f WHERE f."user" = u.id AND f.confirmed_at IS NOT NULL) AS mfa_enabled,
               COALESCE(
                 (SELECT array_agg(a.role ORDER BY a.role) FROM totalbase.users_roles a WHERE a."user" = u.id),
@@ -300,6 +304,7 @@ export class UsersService {
       hasPassword: row.has_password,
       lastLoginAt: row.last_login_at,
       lockedUntil: row.locked_until,
+      signInHeld: row.sign_in_held,
       failedLoginCount: row.failed_login_count,
       providerAvatar: row.provider_avatar,
       mfaEnabled: row.mfa_enabled,
@@ -337,22 +342,151 @@ export class UsersService {
     return row ? { ...toUser(row), passwordHash: row.password_hash, locked: row.locked } : null;
   }
 
+
   /**
-   * Counts one failed sign-in - atomically, in PostgreSQL: the attempt
-   * that reaches `maxAttempts` locks the account for `lockMinutes` and
-   * resets the counter. `maxAttempts` 0 = lockout off (nothing counted).
+   * Takes one of the account's attempts before a proof (a password, a code) is checked (Security.md §2.4) - false,
+   * nothing taken, when it is locked or every attempt is already out. One statement, so guesses sent together can't
+   * all pass a lock check made before any of them failed: at most `maxAttempts` are ever being checked at once.
+   * A wrong proof then spends it (spendAttempt), a right one gives it back (returnAttempt).
    */
-  async recordFailedLogin(userId: string, maxAttempts: number, lockMinutes: number): Promise<{ locked: boolean }> {
+  async takeAttempt(userId: string, maxAttempts: number): Promise<boolean> {
+    if (maxAttempts <= 0) return true;
+    const { rows } = await this.database.query(
+      `UPDATE totalbase.users SET failed_login_count = failed_login_count + 1
+       WHERE id = $1 AND NOT coalesce(locked_until > now(), false) AND failed_login_count < $2
+       RETURNING 1`,
+      [userId, maxAttempts],
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * One sign-in attempt from `ip`, taken before the password is checked (Security.md §2.4) - null, nothing taken,
+   * when it is refused: the account locked (by a session's proofs, or an administrator), this address locked out
+   * of it or every attempt from it already out, or - from an address the account never signed in from - the
+   * account-wide delay not yet over. One transaction holding the account's row, so guesses sent together are
+   * counted one after another: none skips the delay, and at most `maxAttempts` per address are ever being checked.
+   * `delayed` says the refusal was the delay's, for the audit.
+   */
+  // An address as sign-in counts it (Security.md §2.4): an IPv6 one by its /64 - one network's, which privacy
+  // addresses rotate within and an attacker holds 2^64 of; an IPv4 one as it is.
+  private static readonly ADDRESS = `(CASE WHEN family($2::inet) = 6 THEN network(set_masklen($2::inet, 64))::inet ELSE host($2::inet)::inet END)`;
+
+  async takeSignInAttempt(userId: string, ip: string, maxAttempts: number, lockMinutes: number): Promise<{ taken: true; known: boolean } | { taken: false; reason: "locked" | "address_locked" | "sign_in_delayed" }> {
+    if (maxAttempts <= 0) return { taken: true, known: true };
+    return this.database.transaction(async (client) => {
+      const { rows } = await client.query<{ locked: boolean; failures: number; waiting: boolean; quiet: boolean }>(
+        `SELECT coalesce(locked_until > now(), false) AS locked, sign_in_failures AS failures,
+                coalesce(sign_in_delayed_until > now(), false) AS waiting,
+                coalesce(sign_in_delayed_until < now() - make_interval(mins => $2::int), true) AS quiet
+           FROM totalbase.users WHERE id = $1 FOR UPDATE`,
+        [userId, lockMinutes],
+      );
+      const account = rows[0];
+      if (!account || account.locked) return { taken: false, reason: "locked" } as const;
+      const address = (await client.query<{ locked: boolean; out: boolean; known: boolean }>(
+        `SELECT coalesce(locked_until > now(), false) AS locked, failed_count >= $3::int AS out,
+                coalesce(signed_in_at > now() - interval '90 days', false) AS known
+           FROM totalbase.users_addresses WHERE "user" = $1 AND ip = ${UsersService.ADDRESS}`,
+        [userId, ip, maxAttempts],
+      )).rows[0];
+      if (address?.locked || address?.out) return { taken: false, reason: "address_locked" } as const;
+      const known = address?.known ?? false;
+      if (!known) {
+        // A quiet account (no attempt for a lockout's length) halves its count - an attacker pausing gets no fresh
+        // burst; past the limit each attempt waits its turn - 1 s, 2 s, 4 s ... up to five minutes - and reserves the next.
+        const failures = account.quiet ? Math.floor(account.failures / 2) : account.failures;
+        if (failures >= maxAttempts && account.waiting) return { taken: false, reason: "sign_in_delayed" } as const;
+        await client.query(
+          `UPDATE totalbase.users
+              SET sign_in_failures = $2::int,
+                  sign_in_delayed_until = CASE WHEN $2::int >= $3::int THEN now() + make_interval(secs => least(power(2, least($2::int - $3::int, 9)), 300)) ELSE now() END
+            WHERE id = $1`,
+          [userId, failures + 1, maxAttempts],
+        );
+      }
+      await client.query(
+        `INSERT INTO totalbase.users_addresses ("user", ip, failed_count) VALUES ($1, ${UsersService.ADDRESS}, 1)
+         ON CONFLICT ("user", ip) DO UPDATE SET failed_count = users_addresses.failed_count + 1, updated_at = now()`,
+        [userId, ip],
+      );
+      return { taken: true, known } as const;
+    });
+  }
+
+  /** Forgets, unless locked, an address it never signed in from after a day, and one it did after 90 days - the retention job's. */
+  async purgeStaleAddresses(): Promise<number> {
+    const { rowCount } = await this.database.query(
+      `DELETE FROM totalbase.users_addresses
+        WHERE NOT coalesce(locked_until > now(), false)
+          AND CASE WHEN signed_in_at IS NULL THEN updated_at < now() - interval '1 day'
+                   ELSE signed_in_at < now() - interval '90 days' AND updated_at < now() - interval '90 days' END`,
+    );
+    return rowCount;
+  }
+
+  /** A wrong password after takeSignInAttempt: its attempt stays spent, and an address's last one locks it out of the account. */
+  async spendSignInAttempt(userId: string, ip: string, maxAttempts: number, lockMinutes: number): Promise<{ locked: boolean }> {
+    if (maxAttempts <= 0) return { locked: false };
+    const { rows } = await this.database.query<{ locked: boolean }>(
+      `UPDATE totalbase.users_addresses
+          SET locked_until = CASE WHEN failed_count >= $3::int THEN now() + make_interval(mins => $4::int) ELSE locked_until END,
+              failed_count = CASE WHEN failed_count >= $3::int THEN 0 ELSE failed_count END,
+              updated_at = now()
+        WHERE "user" = $1 AND ip = ${UsersService.ADDRESS}
+        RETURNING coalesce(locked_until > now(), false) AS locked`,
+      [userId, ip, maxAttempts, lockMinutes],
+    );
+    return { locked: rows[0]?.locked ?? false };
+  }
+
+  /**
+   * The right password after takeSignInAttempt: the address starts over and is one the account signs in from, and
+   * the account-wide delay ends - whoever sent it holds the password, so nothing is gained by guessing from there.
+   */
+  async returnSignInAttempt(userId: string, ip: string, known: boolean): Promise<void> {
+    await this.database.query(
+      `UPDATE totalbase.users_addresses SET failed_count = 0, signed_in_at = now(), updated_at = now()
+        WHERE "user" = $1 AND ip = ${UsersService.ADDRESS}`,
+      [userId, ip],
+    );
+    // From an address it never signed in from, the right password ends the account-wide delay; from a known one it
+    // doesn't - the delay is for the other addresses, and the owner signing in as usual must not reopen it to them.
+    // now(), never NULL: NULL with no failures is an administrator's unlock (users_unlock_addresses).
+    if (!known) await this.database.query(`UPDATE totalbase.users SET sign_in_failures = 0, sign_in_delayed_until = now() WHERE id = $1`, [userId]);
+  }
+
+  /**
+   * Neither a wrong nor a right password after takeSignInAttempt - the check itself failed (Security.md §2.4): the
+   * attempt goes back, the address's count and, from an address it never signed in from, the account's. Never
+   * locks and never marks the address as one the account signs in from.
+   */
+  async releaseSignInAttempt(userId: string, ip: string, known: boolean): Promise<void> {
+    await this.database.query(
+      `UPDATE totalbase.users_addresses SET failed_count = greatest(failed_count - 1, 0), updated_at = now()
+        WHERE "user" = $1 AND ip = ${UsersService.ADDRESS}`,
+      [userId, ip],
+    );
+    if (!known) await this.database.query(`UPDATE totalbase.users SET sign_in_failures = greatest(sign_in_failures - 1, 0) WHERE id = $1`, [userId]);
+  }
+
+  /** A wrong proof after takeAttempt: its attempt stays spent, and the last one locks the account. */
+  async spendAttempt(userId: string, maxAttempts: number, lockMinutes: number): Promise<{ locked: boolean }> {
     if (maxAttempts <= 0) return { locked: false };
     const { rows } = await this.database.query<{ locked: boolean }>(
       `UPDATE totalbase.users
-       SET locked_until = CASE WHEN failed_login_count + 1 >= $2 THEN now() + ($3 * interval '1 minute') ELSE locked_until END,
-           failed_login_count = CASE WHEN failed_login_count + 1 >= $2 THEN 0 ELSE failed_login_count + 1 END
+       SET locked_until = CASE WHEN failed_login_count >= $2 THEN now() + ($3 * interval '1 minute') ELSE locked_until END,
+           failed_login_count = CASE WHEN failed_login_count >= $2 THEN 0 ELSE failed_login_count END
        WHERE id = $1
        RETURNING coalesce(locked_until > now(), false) AS locked`,
       [userId, maxAttempts, lockMinutes],
     );
     return { locked: rows[0]?.locked ?? false };
+  }
+
+  /** A right proof after takeAttempt: the attempt it took is given back. */
+  async returnAttempt(userId: string): Promise<void> {
+    await this.database.query(`UPDATE totalbase.users SET failed_login_count = greatest(failed_login_count - 1, 0) WHERE id = $1`, [userId]);
   }
 
   /** Whether sign-in is refused right now by a lockout - PostgreSQL's clock decides. */
@@ -388,9 +522,11 @@ export class UsersService {
   /** Ends a lockout and forgets past failures (an admin's unlock, a password reset). */
   async unlock(userId: string, client: Queryable = this.database): Promise<void> {
     await client.query(
-      `UPDATE totalbase.users SET failed_login_count = 0, locked_until = NULL WHERE id = $1`,
+      `UPDATE totalbase.users SET failed_login_count = 0, locked_until = NULL, sign_in_failures = 0, sign_in_delayed_until = NULL WHERE id = $1`,
       [userId],
     );
+    // Every address's lock too; the addresses it signed in from stay known.
+    await client.query(`UPDATE totalbase.users_addresses SET failed_count = 0, locked_until = NULL, updated_at = now() WHERE "user" = $1`, [userId]);
   }
 
   /** Returns the password_hash too; only for authentication checks. */
@@ -454,7 +590,7 @@ export class UsersService {
   async update(id: string, input: { name?: string | null; active?: boolean }, actorId?: string): Promise<User> {
     const user = await this.findById(id);
     if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
-    if (input.active === false && actorId === id) {
+    if (input.active === false && sameAccount(actorId, id)) {
       throw new TotalBaseError("PERMISSION_DENIED", "You can't deactivate your own account.");
     }
     if (input.active !== undefined && typeof input.active !== "boolean") {
@@ -591,7 +727,7 @@ export class UsersService {
    * False when there is no such user; removing a removed account changes nothing.
    */
   async remove(id: string, actorId: string | undefined, client: Queryable): Promise<boolean> {
-    if (actorId === id) throw new TotalBaseError("PERMISSION_DENIED", "You can't remove your own account.");
+    if (sameAccount(actorId, id)) throw new TotalBaseError("PERMISSION_DENIED", "You can't remove your own account.");
     const user = await this.findById(id);
     if (!user) return false;
     if (user.owner) throw new TotalBaseError("PERMISSION_DENIED", "The instance owner cannot be removed.");
@@ -625,7 +761,7 @@ export class UsersService {
   }
 
   async delete(id: string, actorId?: string, client: Queryable = this.database): Promise<boolean> {
-    if (actorId === id) throw new TotalBaseError("PERMISSION_DENIED", "You can't delete your own account.");
+    if (sameAccount(actorId, id)) throw new TotalBaseError("PERMISSION_DENIED", "You can't delete your own account.");
     const user = await this.findById(id);
     if (user?.owner) {
       throw new TotalBaseError("PERMISSION_DENIED", "The instance owner cannot be deleted.");
@@ -730,4 +866,9 @@ export class UsersService {
       [userId],
     );
   }
+}
+
+/** Whether two account ids are the same account - a UUID in any letter case is one. */
+function sameAccount(actorId: string | undefined, id: string): boolean {
+  return actorId !== undefined && actorId.toLowerCase() === id.toLowerCase();
 }

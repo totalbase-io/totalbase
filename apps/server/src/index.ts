@@ -8,6 +8,7 @@ import { getCatalogFingerprint } from "@totalbase/pg-catalog";
 import { requeueFailedOutbox, runRetention } from "./retention.js";
 import { runCronTick } from "@totalbase/workflows";
 import { listenForInvalidations } from "./invalidations.js";
+import { lockdownPausesWorkflows } from "./lockdown.js";
 
 async function main() {
   const env = loadServerEnv();
@@ -183,6 +184,8 @@ async function main() {
   const scheduleNextOutboxPoll = () => {
     outboxPollTimer = setTimeout(async () => {
       try {
+        // Workflows paused by a lockdown (Security.md §2.21): events wait in the outbox, as they are.
+        if (await lockdownPausesWorkflows(context)) return scheduleNextOutboxPoll();
         // FAILED events whose retry is due go back to PENDING first
         // (outbox.max_attempts / outbox.retry_delay_seconds), then are
         // dispatched like any other pending event.
@@ -212,6 +215,8 @@ async function main() {
   const scheduleNextCronTick = () => {
     cronPollTimer = setTimeout(async () => {
       try {
+        // Workflows paused by a lockdown (Security.md §2.21): this minute's occurrences are skipped, not run later.
+        if (await lockdownPausesWorkflows(context)) return scheduleNextCronTick();
         void (await runCronTick(context)); // the runs it admitted keep running on their own (its doc comment)
       } catch (error) {
         logger.error({ error }, "cron tick failed");

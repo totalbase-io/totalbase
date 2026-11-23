@@ -36,16 +36,20 @@ export interface SettingMetadata {
    * from Settings > Secrets, `timezone` an IANA zone, `json` a code
    * textarea, `textarea` plain text on several lines, `role` a role (by id) a user can be given - neither reserved
    * nor with admin access, `cron` a cron expression with its next
-   * occurrences (in the instance's timezone). Omitted = inferred from the value (switch,
+   * occurrences (in the instance's timezone), `roles` a list of roles (by id) - any but the reserved ones, `datetime` an instant (stored as ISO 8601, picked in the browser's zone). Omitted = inferred from the value (switch,
    * number, tags, text).
    */
-  input?: "secret" | "timezone" | "regional" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea" | "cron";
+  input?: "secret" | "timezone" | "regional" | "json" | "role" | "image" | "color" | "css" | "cards" | "textarea" | "cron" | "datetime" | "roles";
+  /** `secret`: the feature it serves - the picker lists only that feature's secrets, and only that feature decrypts one (Security.md §12.3). */
+  secretScope?: "SMTP" | "S3" | "DASHBOARD_EMBEDS";
   /** Fixed choices for a text setting - rendered as a select, or as option cards (`input: "cards"`) when each has a description. */
   options?: Array<{ label: string; value: string; description?: string }>;
   /** Option cards one under the other - for choices whose descriptions need the width. Unset: side by side. */
   orientation?: "vertical";
-  /** A boolean setting that switches this one off - the admin locks it while that one is off (Admin_UI.md §11). */
+  /** A boolean setting that switches this one off - the admin locks it while that one, or one that one depends on, is off (Admin_UI.md §11). */
   dependsOn?: SettingKey;
+  /** With `dependsOn` a choice instead of a switch: the one value of it this setting belongs to - locked under any other. */
+  dependsOnValue?: string;
   /**
    * The switch that turns its page's whole feature on (MCP, Files, GraphQL...): shown on its own above
    * everything else on the page, which waits for it. One per page, only where the switch turns the feature off.
@@ -53,12 +57,18 @@ export interface SettingMetadata {
   primary?: boolean;
   /** Shown under the description as links. */
   links?: SettingLink[];
+  /** `roles`: the Administrators role is offered too - the other reserved ones never are. */
+  rolesWithAdministrators?: boolean;
 }
 
 export const SETTINGS_GROUP_METADATA: Record<string, { label: string; description: string }> = {
   api: {
     label: "Limits",
     description: "Limits and defaults applied to every request through TotalBase's generic table API.",
+  },
+  lockdown: {
+    label: "Lockdown",
+    description: "The instance to yourself - for an import, a restore, a change of schema: while a lockdown is on, by its switch or inside its scheduled window, only administrators are answered.",
   },
   appearance: {
     label: "Appearance",
@@ -83,6 +93,10 @@ export const SETTINGS_GROUP_METADATA: Record<string, { label: string; descriptio
   system: {
     label: "General",
     description: "This instance's name and logo, public address, and how it shows dates and times.",
+  },
+  mfa: {
+    label: "MFA",
+    description: "Multi-factor authentication: after the password, a code from an authenticator app. Who must use it, and the notice when it's turned off.",
   },
   auth: {
     label: "Authentication",
@@ -318,6 +332,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     section: "Uploads",
     dependsOn: "files.enabled",
   },
+  "files.uploader_can_publish": {
+    label: "Uploaders can make files public",
+    description: "Whether whoever uploaded a file may make it Public. Off, only an administrator can.",
+    section: "Uploads",
+    dependsOn: "files.enabled",
+  },
   "files.storage_provider": {
     label: "Storage provider",
     description: "Where new uploads are stored. A file already uploaded stays where it was written and is still served from there. S3 storage must be enabled first.",
@@ -327,7 +347,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "files.storage_local_path": {
     label: "Local storage path",
-    description: "Where local files are kept - including those uploaded before switching to S3 storage, still served from here.",
+    description: "Where local files are kept - including those uploaded before switching to S3 storage, still served from here. A directory inside the data directory, apart from the backups'.",
     section: "Storage",
   },
   "files.transforms.enabled": {
@@ -490,7 +510,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "auth.lockout_max_attempts": {
     label: "Lock after failed sign-ins",
-    description: "Consecutive wrong passwords that lock the account for a while. The person sees the usual \"invalid email or password\" either way; an admin can unlock them early. 0 turns lockout off.",
+    description: "Consecutive wrong passwords from one address that lock that address out of the account for a while - never the account for everyone; past it, addresses the account never signed in from are slowed down. The person sees the usual \"invalid email or password\" either way. 0 turns lockout off.",
     unit: "attempts",
     section: "Sign-in protection",
   },
@@ -508,19 +528,9 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "auth.lockout_duration_minutes": {
     label: "Lockout duration",
-    description: "How long a locked account stays locked. A password reset or an admin's unlock ends it sooner.",
+    description: "How long a locked-out address (or an account locked by wrong proofs on a session) waits. A password reset or an admin's unlock ends it sooner.",
     unit: "minutes",
     section: "Sign-in protection",
-  },
-  "auth.mfa_required": {
-    label: "Require two-factor authentication",
-    description: "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in; sessions already open stay.",
-    section: "Sign-in protection",
-    options: [
-      { label: "No one", value: "NONE" },
-      { label: "Administrators", value: "ADMINISTRATORS" },
-      { label: "Everyone", value: "EVERYONE" },
-    ],
   },
   "auth.links.invitation": {
     label: "Invitation link",
@@ -549,9 +559,29 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     section: "Notices",
     links: [{ setting: "smtp.host" }, { page: "templates" }],
   },
-  "auth.mfa_disabled_email_enabled": {
-    label: "Two-factor turned off notice",
-    description: "Email the account owner whenever their two-factor authentication is turned off, or reset by an admin - a security notice.",
+  "mfa.required": {
+    label: "Require MFA",
+    description: "Who must sign in with a code from an authenticator app. Someone required who hasn't set it up is asked to at their next sign-in, and can't turn it off; sessions already open stay.",
+    section: "Requirement",
+    input: "cards",
+    options: [
+      { label: "No one", value: "NONE", description: "Each person decides whether to turn it on." },
+      { label: "Everyone", value: "EVERYONE", description: "Every account that signs in." },
+      { label: "Selected roles", value: "ROLES", description: "Whoever holds one of the roles below." },
+    ],
+  },
+  "mfa.required_roles": {
+    label: "Roles",
+    description: "Whoever holds one of these roles must use MFA. Administrators is a good place to start.",
+    section: "Requirement",
+    input: "roles",
+    rolesWithAdministrators: true,
+    dependsOn: "mfa.required",
+    dependsOnValue: "ROLES",
+  },
+  "mfa.disabled_email_enabled": {
+    label: "MFA turned off notice",
+    description: "Email the account owner whenever their MFA is turned off, or reset by an admin - a security notice.",
     section: "Notices",
     links: [{ setting: "smtp.host" }, { page: "templates" }],
   },
@@ -610,6 +640,96 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     section: "Date & time",
     links: [{ setting: "system.timezone" }],
   },
+  // --- lockdown.* --- (Security.md §2.21)
+  "lockdown.enabled": {
+    label: "Lockdown",
+    description: "On: the instance answers administrators only - their sessions and their ADMIN tokens - when the settings below say so. Everyone else, every other token, webhooks and public pages included, gets 503 LOCKDOWN. Off: no lockdown, whatever is set below.",
+    primary: true,
+  },
+  "lockdown.when": {
+    label: "When",
+    description: "When the lockdown is on.",
+    section: "When",
+    input: "cards",
+    orientation: "vertical",
+    options: [
+      { label: "Now", value: "NOW", description: "From the moment you save, until you turn Lockdown off." },
+      { label: "Scheduled once", value: "ONCE", description: "Between From and Until: it starts and ends by itself, once." },
+      { label: "Repeating", value: "RECURRING", description: "At every occurrence of a schedule, for a length of time - a maintenance window every night, or every week." },
+    ],
+    dependsOn: "lockdown.enabled",
+  },
+  "lockdown.from": {
+    label: "From",
+    description: "Scheduled once: when the lockdown starts by itself.",
+    section: "When",
+    input: "datetime",
+    dependsOn: "lockdown.when",
+    dependsOnValue: "ONCE",
+  },
+  "lockdown.until": {
+    label: "Until",
+    description: "Scheduled once: when it ends by itself - after From, and in the future. Callers are told how long to wait (Retry-After).",
+    section: "When",
+    input: "datetime",
+    dependsOn: "lockdown.when",
+    dependsOnValue: "ONCE",
+  },
+  "lockdown.recurring_schedule": {
+    label: "Starts",
+    description: "Repeating: when each lockdown starts, as a cron expression in the instance's timezone (Settings › General). 0 3 * * 0: every Sunday at 03:00.",
+    section: "When",
+    input: "cron",
+    dependsOn: "lockdown.when",
+    dependsOnValue: "RECURRING",
+  },
+  "lockdown.recurring_minutes": {
+    label: "Lasts",
+    description: "Repeating: how long each one lasts, from its start. Up to a day (1440).",
+    section: "When",
+    unit: "minutes",
+    dependsOn: "lockdown.when",
+    dependsOnValue: "RECURRING",
+  },
+  "lockdown.mode": {
+    label: "Mode",
+    description: "What everyone else may do during a lockdown.",
+    section: "While it is on",
+    input: "cards",
+    orientation: "vertical",
+    options: [
+      { label: "Closed", value: "FULL", description: "Only administrators are answered. Everyone else waits: they can't sign in, read or write." },
+      { label: "Read-only", value: "READ_ONLY", description: "Everyone signs in and reads as usual; only administrators change anything. Writes, function calls, webhooks and registration get 503 LOCKDOWN." },
+    ],
+    dependsOn: "lockdown.enabled",
+  },
+  "lockdown.allowed_roles": {
+    label: "Exceptions",
+    description: "Roles the lockdown makes an exception for: their users can also sign in and keep working while it is on - their sessions and their tokens, with the permissions they already have (in Read-only, they can also write). For whoever checks the result before everyone returns, or the integration that does the work.",
+    section: "While it is on",
+    input: "roles",
+    dependsOn: "lockdown.enabled",
+  },
+  "lockdown.pause_workflows": {
+    label: "Pause workflows",
+    description: "On: during a lockdown no workflow starts by itself. A scheduled occurrence is skipped; a database event waits and starts its workflows when the lockdown ends. Off: they keep running. A workflow an administrator runs by hand always runs.",
+    section: "While it is on",
+    dependsOn: "lockdown.enabled",
+  },
+  "lockdown.notice_minutes": {
+    label: "Tell users beforehand",
+    description: "How long before a scheduled or repeating lockdown the people using the instance see a notice of it, above every page. 0: they are not told - only administrators see it coming.",
+    section: "Notice",
+    unit: "minutes",
+    dependsOn: "lockdown.enabled",
+  },
+  "lockdown.message": {
+    label: "Message",
+    description: "Shown to whoever is refused during a lockdown, after \"This instance is in lockdown.\", and in the notice beforehand - why, or whom to ask. Up to 500 characters.",
+    section: "Notice",
+    input: "textarea",
+    dependsOn: "lockdown.enabled",
+  },
 
   // --- smtp.* --- (system emails and the workflow Send email operation)
   "smtp.host": {
@@ -632,6 +752,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     label: "SMTP password (secret key)",
     description: "The key of a Settings → Secrets entry holding the SMTP password - never stored here in plaintext. Leave empty for a relay that doesn't require auth.",
     input: "secret",
+    secretScope: "SMTP",
   },
   "smtp.from": {
     label: "From address",
@@ -682,6 +803,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     label: "Secret access key (secret key)",
     description: "The key of a Settings → Secrets entry holding the secret access key - never stored here in plaintext.",
     input: "secret",
+    secretScope: "S3",
     dependsOn: "s3.enabled",
   },
 
@@ -714,7 +836,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "backups.local_path": {
     label: "Local backups path",
-    description: "The directory local backups are written to - mount a volume there, on another disk than the database's.",
+    description: "The directory local backups are written to, inside the data directory and apart from the files - mount a volume there, on another disk than the database's.",
     section: "Destination",
     dependsOn: "backups.enabled",
   },
@@ -727,8 +849,8 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
 
   // --- security.* ---
   "security.rate_limit_enabled": {
-    label: "Enable rate limiting",
-    description: "Limits the requests and the failed sign-ins of each IP address. Behind a proxy, turn on Trust reverse proxy headers with it - otherwise every caller has the proxy's address and shares one limit.",
+    label: "Limit per address",
+    description: "Limits the requests without a credential of each IP address. Behind a proxy, turn on Trust reverse proxy headers with it - otherwise every caller has the proxy's address and shares one limit.",
     section: "Rate limiting",
   },
   "security.rate_limit_per_minute": {
@@ -739,15 +861,13 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "security.rate_limit_per_user_per_minute": {
     label: "Requests per minute per user",
-    description: "The most requests one signed-in session or personal token can make in a minute, counted on the credential rather than the address - so people behind one office connection, or an application whose server sends every request from one address, each get their own limit. A request with no credential, or a credential that is refused, counts against its address.",
+    description: "The most requests one user can make in a minute, all their sessions and personal tokens together - counted on the user rather than the address, so it holds behind any proxy, and people behind one office connection each get their own limit. Always on, whatever Limit per address says; 0 turns it off.",
     section: "Rate limiting",
-    dependsOn: "security.rate_limit_enabled",
   },
   "security.rate_limit_sign_in_per_minute": {
     label: "Failed sign-ins per minute",
-    description: "The most failed sign-in attempts from one IP address in a minute - a correct sign-in doesn't count. Each account also locks after its own failed attempts, in Access.",
+    description: "The most failed sign-in attempts from one IP address in a minute - a correct sign-in doesn't count. Always on, whatever Limit per address says, except for requests through a proxy TotalBase doesn't trust (turn on Trust reverse proxy headers); 0 turns it off. Each account also locks after its own failed attempts, in Access.",
     section: "Rate limiting",
-    dependsOn: "security.rate_limit_enabled",
   },
   "security.cors_enabled": {
     label: "Enable CORS",
@@ -762,7 +882,7 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
   },
   "security.trust_proxy": {
     label: "Trust reverse proxy headers",
-    description: "Reads the caller's real IP from X-Forwarded-For - only enable this behind a proxy you control. Applies after a restart.",
+    description: "Reads the caller's real IP from X-Forwarded-For, as the one proxy in front added it - only behind a proxy you control; behind several, list them in Trusted proxies. Applies after a restart.",
     section: "Reverse proxy",
   },
   "security.trusted_proxies": {
@@ -1039,6 +1159,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     unit: "subscriptions",
     dependsOn: "realtime.enabled",
   },
+  "realtime.max_subscriptions_per_user": {
+    label: "Subscriptions per user",
+    description: "The most subscriptions one user holds at once, across all their connections - each one is re-read on every change to its table.",
+    unit: "subscriptions",
+    dependsOn: "realtime.enabled",
+  },
   "realtime.heartbeat_seconds": {
     label: "Heartbeat",
     description: "How often the server pings each connection; one that doesn't answer before the next ping is closed.",
@@ -1067,6 +1193,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     label: "Selection depth",
     description: "How deep a request's selection may nest, introspection included. How far relations go is api.max_relation_depth.",
     unit: "levels",
+    dependsOn: "graphql.enabled",
+  },
+  "graphql.max_fields": {
+    label: "Fields per request",
+    description: "The most fields one request selects, introspection included - a fragment's fields count again wherever it is spread.",
+    unit: "fields",
     dependsOn: "graphql.enabled",
   },
 
@@ -1378,10 +1510,15 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     description: "How long a published widget's result is reused for the same variables, viewer and time zone - unless its dashboard refreshes more often. Refresh skips it. 0 turns it off.",
     unit: "seconds",
   },
+  "dashboards.query_role": {
+    label: "Widget query role",
+    description: "A PostgreSQL role every widget query runs as - only what it may read reaches a dashboard, and the query can't leave it. You create it (NOLOGIN, SELECT on what dashboards read, nothing on the totalbase schema) and grant it to TotalBase's own role. Empty: TotalBase's own role.",
+  },
   "dashboards.embed_secret_key": {
     label: "Embedding secret",
     description: "The Settings → Secrets entry your site's backend signs embed tokens with (HS256) - it never reaches a browser. Empty: no dashboard can be embedded. Rotate it by creating a new secret and choosing it here; tokens signed with the old one stop working.",
     input: "secret",
+    secretScope: "DASHBOARD_EMBEDS",
     section: "Embedding",
   },
   "dashboards.embed_max_ttl_minutes": {
@@ -1401,6 +1538,12 @@ export const SETTINGS_METADATA: Partial<Record<SettingKey, SettingMetadata>> = {
     label: "Maximum synchronous wait",
     description: "The longest a WEBHOOK trigger's synchronous response mode will hold the connection open waiting for the run to finish, regardless of what an individual workflow's own wait time is configured to.",
     unit: "ms",
+    section: "Runs",
+  },
+  "workflows.webhook_max_concurrent_runs": {
+    label: "Concurrent webhook runs",
+    description: "How many runs one webhook workflow may have going at once; a request past it is refused (429) until one ends, so a flood of calls can't hold every connection and worker.",
+    unit: "runs",
     section: "Runs",
   },
   "workflows.max_run_duration_ms": {

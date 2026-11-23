@@ -135,7 +135,7 @@ function applyColumnDefinition(t: Knex.TableBuilder, table: string, column: Colu
   if (column.nullable === false) col.notNullable();
   if (column.default !== undefined) {
     validateSqlExpression(column.default, "DEFAULT");
-    col.defaultTo(knex.raw(column.default));
+    col.defaultTo(knex.raw(`(${knexLiteral(column.default)})`));
   }
   if (column.unique) {
     t.unique([column.name], { indexName: `${table}_${column.name}_key` });
@@ -149,7 +149,7 @@ function applyColumnDefinition(t: Knex.TableBuilder, table: string, column: Colu
     // qualified table reference) - verified empirically. createTable's
     // own path doesn't hit this bug, but using one explicit convention
     // everywhere avoids depending on that path-dependent difference.
-    t.check(knexLiteral(column.check), {}, `${table}_${column.name}_check`);
+    t.check(`(${knexLiteral(column.check)})`, {}, `${table}_${column.name}_check`);
   }
   if (column.foreignKey) {
     const fk = column.foreignKey;
@@ -340,7 +340,7 @@ export function buildAlterColumnSql(schema: string, table: string, column: strin
     statements.push(
       patch.default === null
         ? `ALTER TABLE ${target} ALTER COLUMN ${quotedColumn} DROP DEFAULT`
-        : (validateSqlExpression(patch.default, "DEFAULT"), `ALTER TABLE ${target} ALTER COLUMN ${quotedColumn} SET DEFAULT ${patch.default}`),
+        : (validateSqlExpression(patch.default, "DEFAULT"), `ALTER TABLE ${target} ALTER COLUMN ${quotedColumn} SET DEFAULT (${patch.default})`),
     );
   }
   if (patch.rename !== undefined) {
@@ -459,7 +459,7 @@ export function buildAddCheckConstraintSql(schema: string, table: string, name: 
   return knex.schema
     .withSchema(schema)
     .alterTable(table, (t) => {
-      t.check(knexLiteral(expression), {}, name);
+      t.check(`(${knexLiteral(expression)})`, {}, name);
     })
     .toString();
 }

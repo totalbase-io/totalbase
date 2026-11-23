@@ -367,6 +367,6 @@ export function updateReturningOldCte(
 }
 
 /** DELETE has no authorization flags to append (Security.md §6.6: OLD-only), so no CTE wrapping is needed - a bare RETURNING suffices. */
-export function deleteWithReturning(table: string, tableAlias: string, whereSql: string): string {
-  return `DELETE FROM ${table} AS ${tableAlias}${whereSql} RETURNING *`;
+export function deleteWithReturning(table: string, tableAlias: string, whereSql: string, extraReturning = ""): string {
+  return `DELETE FROM ${table} AS ${tableAlias}${whereSql} RETURNING *${extraReturning}`;
 }

@@ -4,8 +4,8 @@ import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
 import { compileSelect, parseFilter, parseQuery, SchemaContext, type FilterNode } from "@totalbase/query-engine";
 import type { WorkflowEngineContext } from "./context.js";
 import type { DataPrincipal } from "@totalbase/mutations";
-import { buildRowFilter, executeCreate, executeDelete, executeUpdate, loadPasswordColumns, protectedFieldDecision, rowFilterLimits as loadLimits, userVariableResolver, withPasswordColumnsDenied, type MutationDeps, dataApiTransactionContext } from "@totalbase/mutations";
-import { evaluateFilter } from "./filter-evaluator.js";
+import { buildRowFilter, executeCreate, executeDelete, executeUpdate, loadPasswordColumns, protectedFieldDecision, readCeiling, rowFilterLimits as loadLimits, userVariableResolver, withPasswordColumnsDenied, type MutationDeps, dataApiTransactionContext } from "@totalbase/mutations";
+import { evaluateFilter, matchPatterns } from "./filter-evaluator.js";
 import { resolveWorkflowResource } from "./resource-resolution.js";
 import { CODE_HANDLERS } from "./code-handlers.js";
 import { SIGN_HANDLERS } from "./sign-handlers.js";
@@ -68,6 +68,7 @@ const readRecords: OperationHandler = async ({ context, dataPrincipal, configura
     schemaContext,
     fieldDecision: withPasswordColumnsDenied(protectedFieldDecision(root, permission.fieldDecision), passwordColumns),
     rowFilter,
+    rowCeiling: await readCeiling(context, dataPrincipal, resource, limits),
     resolveUserVariable: userVariableResolver(dataPrincipal),
     defaultLimit,
     maxLimit,
@@ -150,12 +151,12 @@ const deleteRecords: OperationHandler = async ({ context, dataPrincipal, configu
 };
 
 /** `input` may contain `{{operation.data...}}` expressions - already resolved by the time it reaches here (engine.ts's own `TEMPLATED_OPERATION_TYPES`), so this just reads it directly (a plain literal, not a `Binding`, since `ConditionModal.vue` reverted from that picker). */
-const condition: OperationHandler = async ({ configuration }) => {
+const condition: OperationHandler = async ({ context, configuration }) => {
   const input = configuration.input ?? null;
   const filterRaw = configuration.filter as Record<string, unknown> | undefined;
   if (!filterRaw || Object.keys(filterRaw).length === 0) return { output: "true", result: input };
   const node = parseFilter(filterRaw, { maxFilterDepth: 10, maxRelationDepth: 3 }, 0);
-  return { output: evaluateFilter(node, input) ? "true" : "false", result: input };
+  return { output: evaluateFilter(node, input, await matchPatterns(context.database, node, input)) ? "true" : "false", result: input };
 };
 
 /**
@@ -169,20 +170,20 @@ const condition: OperationHandler = async ({ configuration }) => {
  * The configuration arrives template-resolved (the engine's
  * TEMPLATED_OPERATION_TYPES lists this type).
  */
-const validateData: OperationHandler = async ({ configuration }) => {
+const validateData: OperationHandler = async ({ context, configuration }) => {
   const input = configuration.input ?? null;
   const rules = configuration.rules ?? [];
   if (!Array.isArray(rules)) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's rules must be a list of { filter, message }.");
   const failures: { rule: number; message: string }[] = [];
-  rules.forEach((rule: unknown, index) => {
+  for (const [index, rule] of (rules as unknown[]).entries()) {
     if (typeof rule !== "object" || rule === null || Array.isArray(rule)) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Rule ${index + 1} must be { filter, message }.`);
     const { filter, message } = rule as { filter?: unknown; message?: unknown };
-    if (filter === undefined || filter === null || (typeof filter === "object" && Object.keys(filter).length === 0)) return;
+    if (filter === undefined || filter === null || (typeof filter === "object" && Object.keys(filter).length === 0)) continue;
     const node = parseFilter(filter, { maxFilterDepth: 10, maxRelationDepth: 3 }, 0);
-    if (!evaluateFilter(node, input)) {
+    if (!evaluateFilter(node, input, await matchPatterns(context.database, node, input))) {
       failures.push({ rule: index + 1, message: typeof message === "string" && message.trim() ? message.trim() : `Rule ${index + 1} failed.` });
     }
-  });
+  }
   if (failures.length) {
     throw new TotalBaseError("WORKFLOW_VALIDATION_FAILED", `Validation failed: ${failures.map((failure) => failure.message).join("; ")}`, { detail: JSON.stringify(failures) });
   }
@@ -198,12 +199,12 @@ const validateData: OperationHandler = async ({ configuration }) => {
  * operation's multi-branch counterpart, not a second filter engine.
  * `input` already resolved - see `condition`'s own doc comment.
  */
-const selectCase: OperationHandler = async ({ configuration }) => {
+const selectCase: OperationHandler = async ({ context, configuration }) => {
   const input = configuration.input ?? null;
   const cases = (configuration.cases as { output: string; filter: Record<string, unknown> }[] | undefined) ?? [];
   for (const c of cases) {
     const node = parseFilter(c.filter, { maxFilterDepth: 10, maxRelationDepth: 3 }, 0);
-    if (evaluateFilter(node, input)) return { output: c.output, result: input };
+    if (evaluateFilter(node, input, await matchPatterns(context.database, node, input))) return { output: c.output, result: input };
   }
   if (configuration.hasDefault) return { output: "default", result: input };
   throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "No case matched this input and no default branch is configured.");

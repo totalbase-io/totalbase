@@ -39,7 +39,7 @@ const PREVIEW_VARIABLES: Partial<Record<SystemEmailSlot, Record<string, string>>
 const ENABLED_SETTINGS: Partial<Record<SystemEmailSlot, SettingKey>> = {
   password_changed: "auth.password_changed_email_enabled",
   email_changed: "auth.email_changed_email_enabled",
-  mfa_disabled: "auth.mfa_disabled_email_enabled",
+  mfa_disabled: "mfa.disabled_email_enabled",
   token_created: "auth.token_created_email_enabled",
   user_welcome: "auth.welcome_email_enabled",
 };

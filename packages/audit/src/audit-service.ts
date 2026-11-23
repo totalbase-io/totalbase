@@ -103,7 +103,7 @@ export class AuditService {
       errorCode: entry.error?.code ?? null,
       sqlstate: entry.error?.sqlstate ?? null,
       errorMessage: entry.error?.message ?? null,
-      errorDetail: entry.error?.detail ?? null,
+      errorDetail: auditableDetail(entry.error?.detail, entry.error?.sqlstate),
       errorHint: entry.error?.hint ?? null,
       startedAt: entry.startedAt.toISOString(),
       finishedAt: entry.finishedAt.toISOString(),
@@ -139,4 +139,14 @@ export class AuditService {
     );
     return rows.map((row) => row.id);
   }
+}
+
+/**
+ * PostgreSQL's DETAIL as an entry keeps it - never a NOT NULL (23502) or CHECK (23514) failure's, "Failing row
+ * contains (...)" in whatever language the server speaks: that is every value of the row, a password's hash and any
+ * column the writer may not read included, and a log entry is read by whoever reads the logs.
+ */
+function auditableDetail(detail: string | undefined | null, sqlstate: string | undefined | null): string | null {
+  if (!detail) return null;
+  return sqlstate === "23502" || sqlstate === "23514" ? null : detail;
 }

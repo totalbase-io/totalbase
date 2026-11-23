@@ -68,6 +68,24 @@ describe("AuditService / AuditExclusionsService (integration)", () => {
     expect(rows[0]?.["action"]).toBe("CREATE");
   });
 
+  // Security regression (Security.md §11.2): a failed NOT NULL or CHECK kept PostgreSQL's "Failing row contains (...)"
+  // in logs.error_detail - every value of the row, a password's hash included - for whoever reads the logs.
+  it("never keeps a NOT NULL or CHECK failure's row in the entry's detail", async () => {
+    const entry = (requestId: string, sqlstate: string, detail: string) =>
+      audit.record(database, {
+        requestId, principal: { type: "USER", id: null }, resourceId, action: "CREATE", status: "FAILED", source: "api",
+        error: { code: "CHECK_VIOLATION", sqlstate, message: "violates", detail }, startedAt: new Date(), finishedAt: new Date(),
+      });
+    await entry("22222222-2222-2222-2222-222222222201", "23514", "Failing row contains (1, $argon2id$secret-hash).");
+    await entry("22222222-2222-2222-2222-222222222202", "23502", "La fila que falla contiene (1, $argon2id$secret-hash).");
+    await entry("22222222-2222-2222-2222-222222222203", "23505", "Key (email)=(a@example.com) already exists.");
+    const { rows } = await database.query<{ request_id: string; error_detail: string | null }>(
+      `SELECT request_id::text, error_detail FROM totalbase.logs WHERE request_id::text LIKE '22222222-2222-2222-2222-2222222222%' ORDER BY request_id`,
+    );
+    await database.query(`DELETE FROM totalbase.logs WHERE request_id::text LIKE '22222222-2222-2222-2222-2222222222%'`);
+    expect(rows.map((row) => row.error_detail)).toEqual([null, null, "Key (email)=(a@example.com) already exists."]);
+  });
+
   it("skips writing when audit.enabled is false", async () => {
     await settings.set("audit.enabled", false);
     try {

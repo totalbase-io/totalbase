@@ -30,11 +30,12 @@ import * as runner from "./dashboards-runner.js";
 import * as options from "./dashboards-variable-options.js";
 import * as spec from "./dashboards-spec-apply.js";
 import * as versions from "./dashboards-versions.js";
+import { queryRoleProblems, type QueryRoleProblem } from "./query-role.js";
 
 // The public shapes stay importable from here (and from the package index) - routes, MCP tools and tests
 // never learned the module split.
 export * from "./dashboards-types.js";
-export { roleDecisions } from "./dashboards-runner.js";
+export { roleDecisions, type WidgetReads } from "./dashboards-runner.js";
 
 /**
  * Admin management of dashboards/dashboards_widgets plus the
@@ -56,17 +57,23 @@ export { roleDecisions } from "./dashboards-runner.js";
 export class DashboardsAdminService {
   private readonly ctx: DashboardsContext;
 
-  constructor(database: Database) {
+  /** `queryRole`: the setting naming the role widget SQL runs as (Dashboards.md §2.10) - none, TotalBase's own. */
+  constructor(database: Database, options: { queryRole?: () => Promise<string> } = {}) {
     this.ctx = {
       database,
+      ...(options.queryRole && { queryRole: options.queryRole }),
       results: new MemoryWidgetResultCache<DashboardQueryResult>(),
       inFlight: new SingleFlight<DashboardQueryResult>(),
       gates: new KeyedSemaphore(),
       snapshots: new Map(),
       plans: new Map(),
-      rowSecured: new Map(),
     };
   }
+  /** What Status says of the widget query role (Dashboards.md §2.10) - none when unset or usable as it is. */
+  queryRoleProblems(): Promise<QueryRoleProblem[]> {
+    return queryRoleProblems(this.ctx);
+  }
+
   /** Which of these dashboards an administrator marked delegable - ones a manager may share (Security.md §9.7). */
   async delegableAmong(ids: string[]): Promise<Set<string>> {
     if (ids.length === 0) return new Set();
@@ -166,9 +173,9 @@ export class DashboardsAdminService {
     return runner.brokenWidgets(this.ctx, timeoutMs);
   }
 
-  /** The live version's widgets that never name `$USER.*`, with the tables each reads - for the diagnosis (DataViews.md §18). */
-  unscopedWidgetTables(dashboardId: string, timeoutMs: number): Promise<{ widget: { id: string; name: string }; tables: { schema: string; name: string }[] }[]> {
-    return runner.unscopedWidgetTables(this.ctx, dashboardId, timeoutMs);
+  /** What the live version's widgets read - tables, shown columns - for the diagnosis (DataViews.md §18). */
+  liveWidgetReads(dashboardId: string, timeoutMs: number): Promise<runner.WidgetReads[]> {
+    return runner.liveWidgetReads(this.ctx, dashboardId, timeoutMs);
   }
 
   /** Drops every memoized plan - after a catalog refresh (apps/server's reconcileCatalog), when columns may have changed under a query. */

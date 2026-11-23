@@ -4,6 +4,20 @@ import type { QueryVariable } from "./variables.js";
 /** A raw (unresolved) leaf value: literal text from the query string, or a $variable. */
 export type RawValue = string | QueryVariable;
 
+/**
+ * An operator's value a program put into a filter - a workflow's `{{...}}` resolved from what a trigger or a step
+ * carried - rather than an author's text: always that value, never a `$` variable, and a string never split on
+ * commas into a list (`parseFilter`). A scalar, or for `_in`/`_nin`/`_between` a list of scalars. Serialized as
+ * the value itself, so a step's stored input shows what it used.
+ */
+export class FilterLiteral {
+  constructor(readonly value: unknown) {}
+
+  toJSON(): unknown {
+    return this.value;
+  }
+}
+
 export interface FieldNode {
   /** Dotted path split into segments, e.g. ["brand", "name"]. */
   path: string[];

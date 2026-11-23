@@ -146,7 +146,9 @@ function mountAccountRoutes(app: FastifyInstance, context: AppContext, mount: Ac
       try {
         await context.auth.sendEmailVerification(user.id, user.email);
       } catch (err) {
-        verificationError = err instanceof TotalBaseError ? err.message : "The verification email could not be sent.";
+        // The person learns it wasn't sent, never the mail server's own words (its host, its answer) - those go to the log.
+        request.log.warn({ err }, "verification email after an email change failed");
+        verificationError = "The verification email could not be sent - ask an administrator to check the mail settings.";
       }
     }
     return {

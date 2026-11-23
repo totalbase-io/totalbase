@@ -415,4 +415,70 @@ describe("GraphQL API", () => {
       expect(response.json().errors[0].extensions.code).toBe("QUERY_COMPLEXITY_LIMIT_EXCEEDED");
     }
   });
+
+  // Security regression (Data_API.md §17.8): the limit check walked every fragment again at every spread - a chain of
+  // fragments each spreading the one before twice (valid: no cycle) cost 2^40 steps, blocking the process.
+  it("checks a chain of fragments spread twice at every step in no time, and counts its calls", async () => {
+    const chain = (leaf: string) =>
+      [`fragment F0 on Query { ${leaf} }`, ...Array.from({ length: 40 }, (_, i) => `fragment F${i + 1} on Query { ...F${i} ...F${i} }`)].join("\n");
+    const started = Date.now();
+    // Its 2^40 __typename fields are over graphql.max_fields too (SEC-91) - answered at once either way.
+    const harmless = await gql(`query { ...F40 }\n${chain("__typename")}`);
+    expect([harmless.statusCode, harmless.json().errors?.[0]?.extensions?.code]).toEqual([400, "QUERY_COMPLEXITY_LIMIT_EXCEEDED"]);
+    const calling = await gql(`query { ...F40 }\n${chain(`${P}(limit: 1) { id }`)}`);
+    expect([calling.statusCode, calling.json().errors?.[0]?.extensions?.code]).toEqual([400, "QUERY_COMPLEXITY_LIMIT_EXCEEDED"]);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  }, 20_000);
+
+  // Security regression (Data_API.md §17.8): the limits counted calls and depth only - a relation aliased a thousand
+  // times, each spreading a fragment of a thousand aliases, was 10^6 values per row for graphql-js to resolve, from a
+  // read of one small row. (400 x 400 here: within the 10,000-token cap, still 160,000 fields.)
+  it("counts every field an operation selects, a fragment's wherever it is spread", async () => {
+    const aliases = (n: number, body: (i: number) => string) => Array.from({ length: n }, (_, i) => body(i)).join(" ");
+    const document = [
+      `query { ${P}(limit: 5) { ...A } }`,
+      `fragment B on ${P}__brand_row { ${aliases(400, (i) => `a${i}: name`)} }`,
+      `fragment A on ${P} { ${aliases(400, (i) => `c${i}: brand_row { ...B }`)} }`,
+    ].join("\n");
+    const started = Date.now();
+    const response = await gql(document);
+    expect([response.statusCode, response.json().errors?.[0]?.extensions?.code]).toEqual([400, "QUERY_COMPLEXITY_LIMIT_EXCEEDED"]);
+    expect(Date.now() - started).toBeLessThan(5_000);
+    // SEC-97: past 10,000 tokens a document doesn't parse - validation, quadratic in its size, never runs on it.
+    const huge = await gql(`{ ${aliases(5000, (i) => `t${i}: __typename`)} }`);
+    expect([huge.statusCode, huge.json().errors?.[0]?.extensions?.code]).toEqual([400, "INVALID_QUERY"]);
+  }, 30_000);
+
+  // Security regression (Data_API.md §17.8): a one-to-many field serialized its arguments again for every parent row,
+  // and a variable's _in list had no length cap - a 5 MB `where` under 500 parents and 9 aliases blocked the process.
+  it("caps a variable's list values, and batches a one-to-many field by its place in the response", async () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+    const query = `query ($w: ${P}_where) { ${P}(where: $w) { id } }`;
+    expect((await gql(query, { w: { id: { _in: ids(10_001) } } })).json().errors?.[0]?.extensions?.code).toBe("QUERY_COMPLEXITY_LIMIT_EXCEEDED");
+    expect((await gql(query, { w: { id: { _in: ids(10_000) } } })).json().errors).toBeUndefined();
+    // Two aliases of one one-to-many field with different arguments still read apart.
+    const lines = (await gql(`{ ${P}(where: { name: { _eq: "anvil" } }) { small: ${LINES}_by_product(where: { qty: { _lt: 2 } }) { qty } all: ${LINES}_by_product { qty } } }`)).json();
+    expect(lines.errors).toBeUndefined();
+    expect(lines.data[P][0].small.map((l: { qty: number }) => l.qty)).toEqual([1]);
+    expect(lines.data[P][0].all.map((l: { qty: number }) => l.qty).sort()).toEqual([1, 2]);
+  });
+
+  it("a read-only lockdown answers a query and refuses a mutation where it would write (Security.md §2.21)", async () => {
+    await context.settings.set("lockdown.mode", "READ_ONLY");
+    await context.settings.set("lockdown.enabled", true);
+    try {
+      const read = await gql(`{ ${P}(limit: 1) { name } }`);
+      expect(read.json().errors).toBeUndefined();
+      const before = await database.query(`SELECT count(*)::int AS n FROM public.${PRODUCTS}`);
+      // A function too, whatever its class says - on Query as on Mutation: only PostgreSQL knows what it does.
+      for (const operation of [`mutation { ${P}_delete(where: { name: { _eq: "anvil" } }) { name } }`, `mutation { ${P}_insert_one(data: { name: "locked", price: 1 }) { name } }`, `{ ${DOUBLE}(n: 2) }`]) {
+        const refused = (await gql(operation)).json();
+        expect(refused.errors[0].extensions, operation).toMatchObject({ code: "LOCKDOWN", status: 503 });
+      }
+      expect((await database.query(`SELECT count(*)::int AS n FROM public.${PRODUCTS}`)).rows).toEqual(before.rows);
+    } finally {
+      await context.settings.reset("lockdown.enabled");
+      await context.settings.reset("lockdown.mode");
+    }
+  });
 });

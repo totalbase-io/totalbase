@@ -4,7 +4,8 @@ import { whereParams, type AdminClient } from "./admin-client.js";
 
 /** What the tools share: the column shape, the resource lookup, annotations, described parameters, the result envelope. */
 
-export const columnSchema = z.object({
+/** Strict, like a tool's own arguments (DM5): a misspelled key (`references` for `foreign_key`) is refused, never dropped. */
+export const columnSchema = z.strictObject({
   name: z.string().describe("Column name - a PostgreSQL identifier, snake_case"),
   data_type: z
     .string()
@@ -19,7 +20,7 @@ export const columnSchema = z.object({
   identity: z.enum(["ALWAYS", "BY DEFAULT"]).optional().describe("An identity column (integer/bigint): PostgreSQL numbers each row - an order number. ALWAYS refuses a written value. Not with default or generated"),
   generated: z.string().optional().describe("A stored generated column: PostgreSQL computes it from the row - \"quantity * price\", \"total - paid\"; never written. Not with default or identity"),
   foreign_key: z
-    .object({
+    .strictObject({
       references_schema: z.string(),
       references_table: z.string(),
       references_column: z.string().default("id"),
@@ -142,10 +143,48 @@ export async function findResource(client: AdminClient, schema: string, name: st
 /** A resource as the tools answer it. */
 export const resourceSummary = (r: ResourceRow) => ({ id: r.id, schema: r.schema, name: r.name, type: r.type, status: r.status, exposedMethods: r.exposed_methods });
 
-/** A tool's result: compact JSON - what the agent acts on next, not whole objects (Administration.md §11.3). */
-export function result(value: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(value ?? { ok: true }, null, 2) }] };
+/**
+ * A tool's result: compact JSON - what the agent acts on next, not whole objects (Administration.md §11.3) - as
+ * text and, the same value, as `structuredContent` under the tool's `outputSchema`. Structured content is always
+ * an object: a list answers as `{ items }`, any other value as `{ value }`. `structured` replaces that form where
+ * the answer's keys are the caller's own (a row's columns, a function's result), so they never meet the schema's.
+ */
+export function result(value: unknown, structured?: Record<string, unknown>) {
+  const text = JSON.stringify(value ?? { ok: true }, null, 2);
+  // Through JSON, as a client receives it: no undefined keys, dates as text.
+  const parsed: unknown = structured ? JSON.parse(JSON.stringify(structured)) : JSON.parse(text);
+  const structuredContent = (Array.isArray(parsed) ? { items: parsed } : parsed !== null && typeof parsed === "object" ? parsed : { value: parsed }) as Record<string, unknown>;
+  return { content: [{ type: "text" as const, text }], structuredContent };
 }
+
+/**
+ * Output schemas (Administration.md §11.3): what a tool's `structuredContent` holds, for a client that writes code
+ * against the tools. Exact where the tool builds its answer; loose (`passthrough`) where it hands on the API's own.
+ */
+/** A list's answer: `{ items }`. */
+export const listOf = <T extends z.ZodType>(item: T) => ({ items: z.array(item) });
+/** An answer handed on from the Admin or Data API as is: the keys named, and whatever else it carries. */
+export const passthrough = <T extends z.ZodRawShape>(what: string, shape: T = {} as T) => z.looseObject(shape).describe(what);
+/** Any JSON object - a stored document, a row. */
+export const jsonObject = () => z.record(z.string(), z.unknown());
+/** A resource, as resourceSummary answers it. */
+export const resourceOutput = () =>
+  z.object({
+    id: z.string(),
+    schema: z.string(),
+    name: z.string(),
+    type: z.enum(["TABLE", "VIEW", "FUNCTION"]),
+    status: z.enum(["ACTIVE", "MISSING"]),
+    exposedMethods: z.array(z.string()),
+  });
+/** publishOutcome's keys. */
+export const publishOutput = () => ({
+  version: z.number().describe("The live version"),
+  published: z.boolean().describe("false: the draft already equalled the live version"),
+  note: z.string().optional(),
+});
+/** deleteEach's answer: the id, or the ids when `ids` was given. */
+export const deletedOutput = () => ({ deleted: z.union([z.string(), z.array(z.string())]) });
 
 /** Keeps only the keys whose value isn't undefined - a PATCH body sends only what changes. */
 export function defined<T extends Record<string, unknown>>(value: T): Partial<T> {

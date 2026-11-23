@@ -11,6 +11,7 @@ import { adminAuditEntry } from "../admin-audit-entry.js";
 interface ExecuteBody {
   sql: string;
   transactional?: boolean;
+  readOnly?: boolean;
 }
 
 /** A request body's documented shape: `{ data: <schema> }` (Data_API.md §2.5). */
@@ -108,12 +109,13 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
       requestBody: dataBody(object({
         sql: { type: "string" },
         transactional: { type: "boolean", default: false, description: "Wrap the script in one transaction - rolled back as a whole on error." },
+        readOnly: { type: "boolean", default: false, description: "Run one statement in a READ ONLY transaction that is always rolled back: nothing it runs commits (the MCP server's STANDARD mode). A second statement is refused." },
       }, ["sql"])),
       response: ok(ref("SqlConsoleResult")),
     }),
   }, async (request, reply) => {
     await assertEnabled(request);
-    const { sql, transactional } = sqlOf(request.body);
+    const { sql, transactional, readOnly } = sqlOf(request.body);
     const admin = request.admin!;
     const startedAt = new Date();
 
@@ -121,6 +123,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
       const result = await context.sqlConsole.execute(admin.id, {
         sql,
         transactional,
+        readOnly: readOnly === true,
         maxRows: await context.settings.get("sql_console.max_rows"),
       });
 
@@ -131,7 +134,7 @@ export function registerAdminSqlConsoleRoutes(app: FastifyInstance, context: App
         // keywords out of arbitrary SQL text (Administration.md §5.5: "catalog
         // refresh after DDL"), unless catalog.auto_refresh_after_ddl is
         // off. Cheap enough for an admin-only, low-frequency tool.
-        if (await context.settings.get("catalog.auto_refresh_after_ddl")) await reconcileCatalog(context);
+        if (readOnly !== true && (await context.settings.get("catalog.auto_refresh_after_ddl"))) await reconcileCatalog(context);
       } catch {
         // best-effort; never mask a successful execution
       }

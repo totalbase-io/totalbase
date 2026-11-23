@@ -16,3 +16,13 @@ describe('column style', () => {
     expect(columnStyleClass({}, true)).toBe('text-sm tabular-nums')
   })
 })
+
+// Security regression (DataViews.md §15.2): a URL link kept any `scheme://` text - `javascript://...` ran on a click.
+describe('a URL link is only ever http(s)', () => {
+  it('turns any other scheme, hidden by spaces or control characters or not, into an https address', () => {
+    for (const text of ['javascript://x%0Afetch(1)', 'JaVaScRiPt://x', ' javascript://x', '\tjava\nscript://x', 'data://text/html,x', 'vbscript://x']) {
+      expect(valueLinkHref('url', text).startsWith('https://'), text).toBe(true)
+    }
+    expect(valueLinkHref('url', 'https://example.com/a?b=1')).toBe('https://example.com/a?b=1')
+  })
+})

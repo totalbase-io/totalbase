@@ -107,11 +107,13 @@ export async function variableOptions(
   }
   const dependsOn = variable.dependsOn ?? [];
   const query = variable.options.source === "QUERY" ? variable.options.query : await tableOptionsQuery(ctx, variable.options, variables);
-  const result = await executeQuery(ctx, query, { timeoutMs: limits.timeoutMs, maxRows: Math.min(limits.maxRows, 500) }, {
+  // In the dashboard's own queue, as its widgets (Dashboards.md §2.9): an options query is SQL like theirs, and an
+  // embed's anonymous visitors ask for it too.
+  const result = await ctx.gates.run(dashboardId, Math.max(1, limits.maxConcurrent ?? 4), () => executeQuery(ctx, query, { timeoutMs: limits.timeoutMs, maxRows: Math.min(limits.maxRows, 500) }, {
     ...viewer,
     variables: variables.filter((v) => dependsOn.includes(v.name)),
     values: Object.fromEntries(Object.entries(values).filter(([name]) => dependsOn.includes(name))),
-  });
+  }));
   const [valueColumn, labelColumn] = result.columns.map((c) => c.name);
   if (!valueColumn) return [];
   return result.rows

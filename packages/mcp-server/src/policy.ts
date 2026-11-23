@@ -143,11 +143,147 @@ export function offersTool(policy: McpPolicy, name: string, annotations: ToolAnn
 
 /**
  * The tools a tool body still runs in STANDARD mode but whose destructive
- * branch it refuses: write_records' delete, alter_table's drops,
- * apply_dashboard's deleted widgets, execute_sql's destructive statements.
+ * branch it refuses: write_records' delete and revoked_at, alter_table's drops,
+ * apply_dashboard's deleted widgets, update_dataview's remove_columns,
+ * set_capability OFF, a role set that drops a role (refuseRemovedRoles),
+ * execute_sql's destructive statements.
  */
 export function refuseDestructive(policy: McpPolicy, what: string): void {
   if (policy.mode !== "FULL") throw new Error(`${what} - not allowed: this instance runs MCP in ${policy.mode} mode (Settings > MCP). Ask an administrator.`);
+}
+
+/** Workflow steps that delete, or run SQL no guard reads (Workflows.md §5) - out of STANDARD runs and drafts. */
+const DESTRUCTIVE_OPERATIONS = new Set(["totalbase.delete-records", "totalbase.execute-sql"]);
+
+type WorkflowStep = { type: string; configuration?: Record<string, unknown> | undefined };
+
+/** What refuseDestructiveWorkflow reads: a called workflow's live steps, and a step's resource by id. */
+export interface WorkflowLookups {
+  publishedOf(workflowId: string): Promise<readonly WorkflowStep[]>;
+  resourceOf(resourceId: string): Promise<{ schema: string; name: string }>;
+}
+
+/**
+ * A workflow an agent saves, runs, publishes or turns on under STANDARD mode: refused when a step of it deletes or
+ * runs raw SQL, when a Create or Update records step writes what write_records refuses (a revoke - refuseRevokingCreate,
+ * refuseRevokingUpdate), or when a workflow it calls (Execute workflow, its published version, through every level)
+ * does. Otherwise save_workflow then run_workflow would do what write_records and execute_sql refuse. What can't be
+ * read - a called workflow, a step's resource - refuses too, since nothing then shows it takes nothing away; so do
+ * a step's records or values given as one binding, which can't be checked before the run.
+ */
+export async function refuseDestructiveWorkflow(policy: McpPolicy, what: string, operations: readonly WorkflowStep[], lookups: WorkflowLookups, seen: Set<string> = new Set()): Promise<void> {
+  if (policy.mode === "FULL") return;
+  for (const op of operations) {
+    if (DESTRUCTIVE_OPERATIONS.has(op.type)) refuseDestructive(policy, `${what}: a ${op.type} step deletes data or runs raw SQL`);
+    const configuration = op.configuration ?? {};
+    if (op.type === "totalbase.create-records" || op.type === "totalbase.update-records") {
+      const resourceId = configuration["resource"];
+      let resource: { schema: string; name: string };
+      try {
+        if (typeof resourceId !== "string") throw new Error("no resource");
+        resource = await lookups.resourceOf(resourceId);
+      } catch {
+        return refuseDestructive(policy, `${what}: a ${op.type} step's resource couldn't be read to check it revokes nothing`);
+      }
+      const objects = (value: unknown): Record<string, unknown>[] | null =>
+        Array.isArray(value) ? (value.every((row) => typeof row === "object" && row !== null && !Array.isArray(row)) ? (value as Record<string, unknown>[]) : null)
+          : typeof value === "object" && value !== null ? [value as Record<string, unknown>] : null;
+      const step = `${what}: a ${op.type} step on ${resource.schema}.${resource.name}`;
+      // A value that is a binding ({{...}}) is known only at run time - a DENY, a role, a revoke can come in it.
+      if (resource.schema === "totalbase" && JSON.stringify(configuration[op.type === "totalbase.create-records" ? "records" : "set"] ?? null).includes("{{")) {
+        refuseDestructive(policy, `${step} takes a value from a binding - it can't be checked before the run`);
+      }
+      if (op.type === "totalbase.create-records") {
+        const rows = objects(configuration["records"] ?? []);
+        if (!rows) {
+          if (resource.schema === "totalbase") refuseDestructive(policy, `${step} writes records given as one binding - they can't be checked before the run`);
+        } else refuseRevokingCreate(policy, resource.schema, resource.name, rows);
+      } else {
+        const set = objects(configuration["set"] ?? {});
+        if (!set) {
+          if (resource.schema === "totalbase") refuseDestructive(policy, `${step} sets values given as one binding - they can't be checked before the run`);
+        } else refuseRevokingUpdate(policy, resource.schema, resource.name, set[0]!);
+      }
+    }
+    const called = op.type === "totalbase.execute-workflow" ? configuration["workflow"] : undefined;
+    if (op.type === "totalbase.execute-workflow" && typeof called !== "string") refuseDestructive(policy, `${what}: an Execute workflow step whose workflow is a binding can't be checked before the run`);
+    if (typeof called !== "string" || seen.has(called)) continue;
+    seen.add(called);
+    let steps: readonly WorkflowStep[];
+    try {
+      steps = await lookups.publishedOf(called);
+    } catch {
+      return refuseDestructive(policy, `${what}: the workflow it calls (${called}) couldn't be read to check it deletes nothing`);
+    }
+    await refuseDestructiveWorkflow(policy, what, steps, lookups, seen);
+  }
+}
+
+/**
+ * A role set about to be replaced (who may open a screen, run a workflow, the roles a user holds) under STANDARD
+ * mode: refused when it would take away a role that has it now - a removal like any other. `current` reads the
+ * roles that have it; one that can't be read refuses too, since nothing then shows the new set keeps them.
+ */
+export async function refuseRemovedRoles(policy: McpPolicy, what: string, next: readonly string[], current: () => Promise<readonly string[]>): Promise<void> {
+  if (policy.mode === "FULL") return;
+  let held: readonly string[];
+  try {
+    held = await current();
+  } catch {
+    return refuseDestructive(policy, `${what} (the current set couldn't be read to check none is removed)`);
+  }
+  const removed = held.filter((role) => !next.includes(role));
+  if (removed.length > 0) refuseDestructive(policy, `${what} removes ${removed.length === 1 ? "a role" : `${removed.length} roles`} (${removed.join(", ")})`);
+}
+
+/** The columns of TotalBase's tables whose change revokes - a credential ended, an assignment or a grant moved. */
+const REVOKING_COLUMNS: Record<string, readonly string[]> = {
+  users: ["active", "can_login", "locked_until"],
+  tokens: ["active", "expires_at", "revoked_at"],
+  sessions: ["expires_at", "revoked_at"],
+  roles: ["active", "parent", "admin_access", "app_access", "api_access"],
+  // A grant changed in place may narrow or deny what it gave: any change of one is out of STANDARD (grant_permission
+  // writes an ALLOW grant whole, and refuses a DENY).
+  permissions: ["role", "resource", "action", "effect", "where_clause", "field_overrides", "payload_checks"],
+  users_roles: ["user", "role", "expires_at"],
+  dataviews_roles: ["dataview", "role"],
+  dashboards_roles: ["dashboard", "role"],
+  workflows_roles: ["workflow", "role"],
+  roles_managers: ["role", "manager"],
+  roles_capabilities: ["role", "capability", "effect"],
+};
+
+/**
+ * A Data API create under STANDARD mode: refused when the row it adds takes something away - a DENY (a grant's, a
+ * capability's), whatever ALLOW another role has.
+ */
+export function refuseRevokingCreate(policy: McpPolicy, schema: string, table: string, rows: Record<string, unknown>[]): void {
+  if (policy.mode === "FULL" || schema !== "totalbase") return;
+  const denies = (row: Record<string, unknown>) =>
+    row["effect"] === "DENY" || (Array.isArray(row["field_overrides"]) && row["field_overrides"].some((field) => (field as { effect?: unknown } | null)?.effect === "DENY"));
+  if ((table === "roles_capabilities" || table === "permissions") && rows.some(denies)) refuseDestructive(policy, "A DENY (it revokes)");
+  // A nested create's child rows (`$<child_table>`, Data_API.md §6) are rows of that table too.
+  for (const row of rows) {
+    for (const [key, value] of Object.entries(row)) {
+      if (key.startsWith("$") && Array.isArray(value)) refuseRevokingCreate(policy, schema, key.slice(1), value as Record<string, unknown>[]);
+    }
+  }
+}
+
+/**
+ * A Data API update (a PATCH's data, an upsert's DO UPDATE) under STANDARD mode: refused when it would revoke - a
+ * `revoked_at` anywhere, or a column of TotalBase's own whose change ends a credential or moves an assignment.
+ */
+/** TotalBase's tables whose every change touches who gets in or what is reached - out of STANDARD for any update. */
+const ACCESS_TABLES = new Set(["providers", "identities", "resources", "menus"]);
+
+export function refuseRevokingUpdate(policy: McpPolicy, schema: string, table: string, data: Record<string, unknown>): void {
+  if (policy.mode === "FULL") return;
+  if (data["revoked_at"] != null) refuseDestructive(policy, "Revoking (revoked_at)");
+  if (schema === "totalbase" && ACCESS_TABLES.has(table)) refuseDestructive(policy, `Changing ${table} (it decides who gets in or what is reached)`);
+  const columns = schema === "totalbase" ? REVOKING_COLUMNS[table] : undefined;
+  const touched = columns?.filter((column) => column in data) ?? [];
+  if (touched.length > 0) refuseDestructive(policy, `Changing ${touched.join(", ")} of ${table} (it ends or moves access)`);
 }
 
 /** `server`, registering only the tools `policy` offers. */
@@ -168,7 +304,7 @@ export function gatedServer(server: McpServer, policy: McpPolicy): McpServer {
 export function policyInstructions(policy: McpPolicy): string {
   const parts: string[] = [];
   if (policy.mode === "READ_ONLY") parts.push("This instance runs MCP in READ_ONLY mode: only tools that read are offered - say so to the user when a task needs a change.");
-  if (policy.mode === "STANDARD") parts.push("This instance runs MCP in STANDARD mode: nothing can be deleted or revoked through these tools (no delete_* or revoke_permission; write_records delete, alter_table drops, an apply_dashboard spec that leaves widgets out and destructive SQL are refused) - an administrator does that.");
+  if (policy.mode === "STANDARD") parts.push("This instance runs MCP in STANDARD mode: nothing can be deleted or revoked through these tools (no delete_* or revoke_permission; write_records delete or a revoked_at, alter_table drops, an apply_dashboard spec that leaves widgets out, update_dataview remove_columns, set_capability OFF, a role set that drops a role, a DENY, a change that ends a token or moves an assignment, destructive SQL, and saving, running, publishing or turning on a workflow with a Delete records or Execute SQL step, or a Create/Update records step that revokes - its own or one it calls - are refused) - an administrator does that. execute_sql runs one statement read-only and rolls it back: query freely, but views, functions and triggers need FULL mode.");
   const off = MCP_TOOL_GROUPS.filter((group) => !policy.groups.has(group));
   if (off.length > 0) parts.push(`Tool groups switched off by its administrators: ${off.join(", ")} - their tools aren't offered.`);
   if (policy.instructions) parts.push(`This project's own instructions, from its administrators - follow them:\n${policy.instructions}`);

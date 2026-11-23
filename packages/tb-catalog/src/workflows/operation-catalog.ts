@@ -73,6 +73,12 @@ export interface OperationDefinition {
    * `{{...}}` is that value as it is: the HTML another step built.
    */
   htmlTemplates?: readonly string[];
+  /**
+   * Fields that hold a filter (a `where`, a Read records `query`, Condition's `filter`, the rules of Validate data,
+   * the cases of Select case - §4.3): a `{{...}}` in an operator's value resolves to a value, never to the filter
+   * grammar - a carried `"$ROW.id"` is that text, not a column, and a carried `"a,b"` one value, not a list.
+   */
+  filterTemplates?: readonly string[];
   /** The resource a step names, resolved by id at publish and at run time (§5.1). */
   resource?: { field: string; types: readonly OperationResourceType[]; noun: string };
   /** What it can't be published without (§3.5). */
@@ -149,6 +155,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
+    filterTemplates: ["query"],
     resource: { field: "resource", types: ["TABLE", "VIEW"], noun: "table" },
     required: [{ field: "resource", missing: "no table or view" }],
     configuration: { type: "object", fields: { resource: TEXT, query: bound(QUERY) } },
@@ -175,6 +182,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
+    filterTemplates: ["where"],
     resource: RECORD_RESOURCE,
     required: [{ field: "resource", missing: "no table" }, { field: "set", missing: "no values to set" }],
     configuration: { type: "object", fields: { resource: TEXT, where: bound(FILTER), set: bound(OBJECT), emitEvents: bound(BOOLEAN) } },
@@ -188,6 +196,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
+    filterTemplates: ["where"],
     resource: RECORD_RESOURCE,
     required: [{ field: "resource", missing: "no table" }],
     configuration: { type: "object", fields: { resource: TEXT, where: bound(FILTER), emitEvents: bound(BOOLEAN) } },
@@ -202,6 +211,7 @@ const CATALOG = [
     runs: "handler",
     outputs: ["true", "false", "error"],
     templates: "configuration",
+    filterTemplates: ["filter"],
     required: [],
     configuration: { type: "object", fields: { input: ANY, filter: bound(FILTER) } },
   },
@@ -227,6 +237,7 @@ const CATALOG = [
     runs: "handler",
     outputs: ["error"],
     templates: "configuration",
+    filterTemplates: ["cases"],
     required: [],
     configuration: {
       type: "object",
@@ -270,6 +281,7 @@ const CATALOG = [
     runs: "handler",
     outputs: NEXT_ERROR,
     templates: "configuration",
+    filterTemplates: ["rules"],
     required: [{ field: "rules", missing: "no rules" }],
     configuration: { type: "object", fields: { input: ANY, rules: { type: "list", of: { type: "object", fields: { filter: bound(FILTER), message: TEXT } } } } },
   },
@@ -441,7 +453,7 @@ const CATALOG = [
     outputs: NEXT_ERROR,
     templates: "configuration",
     required: [{ field: "name", missing: "no file name" }, { field: "content", missing: "no content", allowEmpty: true }],
-    configuration: { type: "object", fields: { name: TEXT, contentType: TEXT, content: TEXT, encoding: bound({ type: "enum", options: ["text", "base64"] }), folder: TEXT } },
+    configuration: { type: "object", fields: { name: TEXT, contentType: TEXT, content: TEXT, encoding: bound({ type: "enum", options: ["text", "base64"] }), folder: TEXT, visibility: bound({ type: "enum", options: ["PRIVATE", "LINKED", "PUBLIC"] }) } },
   },
   {
     type: "totalbase.parse-file",

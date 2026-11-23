@@ -3,7 +3,7 @@ import { TotalBaseError } from "@totalbase/errors";
 import type { UserApiPlane } from "@totalbase/users-apis";
 import type { AppContext } from "../context.js";
 import { isUuid, parseUserFilter } from "./user-filter.js";
-import { assertRecentAuthentication, requireAdmin } from "../auth-guards.js";
+import { assertSessionForAdminToken, requireAdmin } from "../auth-guards.js";
 import { dataEnvelope } from "@totalbase/openapi";
 import { adminDoc, created, object, ok, ref, UUID, UUID_PARAM } from "../openapi-admin-docs.js";
 import { TOKENS_SCHEMAS } from "../openapi-admin-docs-users.js";
@@ -51,8 +51,8 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
     },
     async (request, reply) => {
       const body = requestData(request.body);
-      // An administrator's token is the instance's keys (Security.md §2.19).
-      if (body.plane === "ADMIN") await assertRecentAuthentication(context, request);
+      // An administrator's token is the instance's keys (Security.md §2.19): from a session, never another token.
+      if (body.plane === "ADMIN") await assertSessionForAdminToken(context, request);
       const { plainKey, userApi } = await context.usersApis.create({
         userId: body.userId,
         name: body.name,
@@ -86,7 +86,7 @@ export function registerAdminTokensRoutes(app: FastifyInstance, context: AppCont
       }),
     },
     async (request) => {
-      if ((await context.usersApis.findById(request.params.id))?.plane === "ADMIN") await assertRecentAuthentication(context, request);
+      if ((await context.usersApis.findById(request.params.id))?.plane === "ADMIN") await assertSessionForAdminToken(context, request);
       const { plainKey, userApi } = await context.usersApis.rotate(request.params.id, optionalData(request.body).ttlDays, optionalData(request.body).graceHours);
       await context.auth.notifyTokenCreated(userApi.user, userApi);
       return { data: { ...userApi, key: plainKey } };

@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { generateKeyPairSync, randomUUID, sign, type KeyObject } from "node:crypto";
+import { hashPassword } from "@totalbase/auth";
 import type { AddressInfo } from "node:net";
 import type { FastifyInstance } from "fastify";
 import type { Database } from "@totalbase/database";
@@ -88,14 +89,16 @@ describe("OAuth/OIDC callback", () => {
   /** The cookie the last callback set, as the browser sends it back - a portal sign-in's session (Security.md §2.18). */
   let lastCookie = "";
   async function signIn(claims: Record<string, unknown>, redirect = REDIRECT): Promise<URL> {
-    const authorizeUrl = new URL(await context.oauth.start(SLUG, redirect));
+    const authorizeUrl = new URL(await context.oauth.start(SLUG, redirect, { browserBinding: "test-browser" }));
     provider.nextClaims = { nonce: authorizeUrl.searchParams.get("nonce"), ...claims };
     const res = await app.inject({
       method: "GET",
       url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${encodeURIComponent(authorizeUrl.searchParams.get("state")!)}`,
+      headers: { cookie: "tb_oauth=test-browser" },
     });
     expect(res.statusCode, res.body).toBe(302);
-    lastCookie = String(res.headers["set-cookie"] ?? "").split(";")[0]!;
+    const cookies = ([] as string[]).concat(res.headers["set-cookie"] ?? []);
+    lastCookie = (cookies.find((c) => c.startsWith("tb_session=") || c.startsWith("__Host-tb_session=")) ?? "").split(";")[0]!;
     return new URL(res.headers.location as string);
   }
   const fragment = (url: URL) => new URLSearchParams(url.hash.slice(1));
@@ -116,7 +119,7 @@ describe("OAuth/OIDC callback", () => {
     await provider.start();
     await cleanup();
     roleId = (await context.roles.create(`${PREFIX}-api`, { apiAccess: true })).id;
-    await context.secrets.set(`${PREFIX}-client-secret`, "shh");
+    await context.secrets.set(`${PREFIX}-client-secret`, "shh", "AUTH_PROVIDERS");
     await context.authProviders.create({
       type: "OIDC",
       name: PROVIDER_NAME,
@@ -144,6 +147,39 @@ describe("OAuth/OIDC callback", () => {
     const me = await app.inject({ method: "GET", url: "/api/auth/me", headers: { authorization: `Bearer ${token}` } });
     expect(me.statusCode, me.body).toBe(200);
     expect(me.json().data).toMatchObject({ email: `${PREFIX}-new@example.com`, name: "New Person" });
+  });
+
+  // Security regression (Security.md §2.11): someone registered the address first, with a password of theirs, and
+  // left it unverified; the owner's first provider sign-in linked to that account, and the password kept working.
+  // And (SEC-58) the provider identities the squatter had linked stayed - one signed them straight back in.
+  it("takes over an unverified account with the provider's address: its password, sessions, tokens, factor and identities go", async () => {
+    const email = `${PREFIX}-squatted@example.com`;
+    const squatter = await context.auth.users.create({ email, name: "Squatter", passwordHash: await hashPassword("squatters-own-password"), emailVerified: false });
+    await context.roleAssignments.assignRoleToUser(squatter.id, roleId);
+    await database.query(`INSERT INTO totalbase.sessions ("user", token_hash, expires_at) VALUES ($1, $2, now() + interval '1 day')`, [squatter.id, `squat-${randomUUID()}`]);
+    await database.query(`INSERT INTO totalbase.tokens ("user", name, key_prefix, key_hash) VALUES ($1, 'squat', 'tb_sq', $2)`, [squatter.id, `squat-${randomUUID()}`]);
+    await database.query(`INSERT INTO totalbase.factors ("user", secret, confirmed_at) VALUES ($1, 'v2:not-a-real-secret', now())`, [squatter.id]);
+    const squatterSubject = `squatter-${randomUUID()}`;
+    await database.query(`INSERT INTO totalbase.identities ("user", provider, provider_subject) SELECT $1, id, $2 FROM totalbase.providers WHERE name = $3`, [squatter.id, squatterSubject, PROVIDER_NAME]);
+
+    const landing = await signIn({ sub: randomUUID(), email, email_verified: true, name: "Owner" });
+    expect(fragment(landing).get("token")).toBeTruthy();
+
+    const { rows: [account] } = await database.query<{ password_hash: string | null; email_verified_at: Date | null }>(`SELECT password_hash, email_verified_at FROM totalbase.users WHERE id = $1`, [squatter.id]);
+    expect(account).toMatchObject({ password_hash: null });
+    expect(account!.email_verified_at).not.toBeNull();
+    const live = async (sql: string) => (await database.query<{ count: number }>(sql, [squatter.id])).rows[0]!.count;
+    // Only the session this sign-in just made is left.
+    expect(await live(`SELECT count(*)::int AS count FROM totalbase.sessions WHERE "user" = $1 AND revoked_at IS NULL`)).toBe(1);
+    expect(await live(`SELECT count(*)::int AS count FROM totalbase.tokens WHERE "user" = $1 AND revoked_at IS NULL`)).toBe(0);
+    expect(await live(`SELECT count(*)::int AS count FROM totalbase.factors WHERE "user" = $1`)).toBe(0);
+    // The owner's identity alone: the squatter's own provider account no longer signs in to it.
+    expect(await identitiesOf(squatter.id)).toBe(1);
+    const back = await signIn({ sub: squatterSubject, email: `${PREFIX}-squatter-elsewhere@example.com`, email_verified: true, name: "Squatter" });
+    expect(fragment(back).get("token")).toBeTruthy();
+    expect((await database.query(`SELECT 1 FROM totalbase.identities WHERE provider_subject = $1 AND "user" = $2`, [squatterSubject, squatter.id])).rowCount).toBe(0);
+    const login = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password: "squatters-own-password" } });
+    expect(login.statusCode).toBe(401);
   });
 
   it("refuses the Workflows system account - no session, no link (regression)", async () => {
@@ -259,13 +295,14 @@ describe("OAuth/OIDC callback", () => {
     ];
     for (const forgery of forgeries) {
       const email = `${PREFIX}-forged-${randomUUID()}@example.test`;
-      const authorizeUrl = new URL(await context.oauth.start(SLUG, REDIRECT));
+      const authorizeUrl = new URL(await context.oauth.start(SLUG, REDIRECT, { browserBinding: "test-browser" }));
       provider.nextClaims = { nonce: authorizeUrl.searchParams.get("nonce"), sub: randomUUID(), email, email_verified: true, ...forgery.claims };
       provider.signWithForeignKey = forgery.foreignKey ?? false;
       try {
         const res = await app.inject({
           method: "GET",
           url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${encodeURIComponent(authorizeUrl.searchParams.get("state")!)}`,
+          headers: { cookie: "tb_oauth=test-browser" },
         });
         expect(res.statusCode, forgery.name).toBe(401);
         expect(res.json().errors[0].code, forgery.name).toBe("INVALID_OAUTH_STATE");
@@ -281,6 +318,33 @@ describe("OAuth/OIDC callback", () => {
     const res = await app.inject({ method: "GET", url: `/api/auth/oauth/${SLUG}/callback?code=x&state=forged.state` });
     expect(res.statusCode).toBe(401);
     expect(res.json().errors[0].code).toBe("INVALID_OAUTH_STATE");
+  });
+
+  // Security regression (Security.md §2.11): the state was self-contained, so an attacker who started a sign-in and
+  // stopped at the provider's redirect could hand that callback link to someone - whose browser then got a session
+  // for the attacker's account (login CSRF). A callback now needs the cookie its start set.
+  it("completes a sign-in only in the browser that started it", async () => {
+    const started = await app.inject({ method: "GET", url: `/api/auth/oauth/${SLUG}?redirect_to=${encodeURIComponent(REDIRECT)}` });
+    expect(started.statusCode, started.body).toBe(302);
+    const binding = String(started.headers["set-cookie"] ?? "").split(";")[0]!;
+    expect(binding).toMatch(/^tb_oauth=.+/);
+    expect(String(started.headers["set-cookie"])).toMatch(/HttpOnly/);
+    const authorize = new URL(started.headers.location as string);
+    const state = encodeURIComponent(authorize.searchParams.get("state")!);
+    const claims = { sub: randomUUID(), email: `${PREFIX}-bound@example.com`, email_verified: true, nonce: authorize.searchParams.get("nonce") };
+
+    provider.nextClaims = claims;
+    const elsewhere = await app.inject({ method: "GET", url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${state}` });
+    expect([elsewhere.statusCode, elsewhere.json().errors?.[0]?.code]).toEqual([401, "INVALID_OAUTH_STATE"]);
+    const forged = await app.inject({ method: "GET", url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${state}`, headers: { cookie: "tb_oauth=another-browser" } });
+    expect(forged.statusCode).toBe(401);
+
+    provider.nextClaims = claims;
+    const here = await app.inject({ method: "GET", url: `/api/auth/oauth/${SLUG}/callback?code=test-code&state=${state}`, headers: { cookie: binding } });
+    expect(here.statusCode, here.body).toBe(302);
+    expect(fragment(new URL(here.headers.location as string)).get("token")).toBeTruthy();
+    // Spent: the cookie goes with it.
+    expect(String(here.headers["set-cookie"] ?? "")).toMatch(/tb_oauth=;.*Max-Age=0/);
   });
 
   describe("the portal's sign-in page", () => {

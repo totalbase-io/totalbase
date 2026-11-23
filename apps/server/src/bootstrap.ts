@@ -65,7 +65,7 @@ export async function bootstrap(env: ServerEnv, logger: pino.Logger): Promise<Bo
   // 5b. Rebuild the pool from the pool.* settings, now that the settings
   //     table exists (AGENTS.md section 19B: pool configuration is a
   //     TotalBase setting). Before this point it ran on the defaults.
-  const settings = new SettingsService(database);
+  const settings = new SettingsService(database, { dataDir: env.dataDir });
   const [poolMax, poolIdleTimeoutMs, poolConnectionTimeoutMs, poolMaxLifetimeMs] = await Promise.all([
     settings.get("pool.max"),
     settings.get("pool.idle_timeout_ms"),

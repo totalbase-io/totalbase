@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 
 const props = withDefaults(defineProps<{
   code: string
@@ -18,6 +19,7 @@ onMounted(async () => {
   // Same lazy-load rationale as SqlEditor.vue - Monaco is only fetched when
   // a panel that actually needs it is opened.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
 
   editor = monaco.editor.create(containerRef.value, {

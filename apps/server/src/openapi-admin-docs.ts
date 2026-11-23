@@ -132,7 +132,10 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     input: { type: "string", enum: ["secret", "timezone", "regional", "json", "role", "image", "color", "css", "cards", "textarea", "cron"], description: "Widget when the value's type isn't enough: a public image in Files, a hex color, a CSS editor, option cards, plain text on several lines." },
     options: arrayOf(object({ label: { type: "string" }, value: { type: "string" }, description: { type: "string" } })),
     orientation: { type: "string", enum: ["vertical"], description: "Option cards one under the other - unset: side by side." },
+    secretScope: { type: "string", enum: ["SMTP", "S3", "DASHBOARD_EMBEDS"], description: "A `secret` setting's feature: it names only that feature's secrets (Security.md §12.3)." },
     dependsOn: { type: "string", description: "A boolean key that switches this one off." },
+    dependsOnValue: { type: "string", description: "With `dependsOn` a choice: the one value of it this setting belongs to." },
+    rolesWithAdministrators: { type: "boolean", description: "A `roles` input that offers the Administrators role too." },
     primary: { type: "boolean", description: "The switch that turns the page's whole feature on: shown above everything else, which waits for it." },
     links: {
       ...arrayOf({
@@ -248,7 +251,7 @@ export const ADMIN_SCHEMAS: Record<string, JsonSchema> = {
     tables: arrayOf(ref("MaintenanceTable")),
   }),
   SystemInfo: object({
-    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.14)." },
+    version: { type: "string", description: "This build of TotalBase (e.g. 0.1.0-beta.15)." },
     environment: { type: "string", description: "NODE_ENV: development, staging or production." },
     postgres: object({
       version: { type: "string", description: "The server's version, e.g. 17.2." },

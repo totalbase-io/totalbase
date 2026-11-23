@@ -36,6 +36,8 @@ export async function readableCatalog(context: AppContext, roleIds: string[] | n
     relations: detail.relations.filter((relation) => readable(relation.sourceColumn)),
     uniqueConstraints: detail.uniqueConstraints.filter((set) => set.every(readable)),
     uniqueConstraintNames: detail.uniqueConstraintNames.filter((_name, index) => detail.uniqueConstraints[index]!.every(readable)),
+    // Same index as the sets kept: a constraint's message names its columns, so it goes with a set the viewer can't read.
+    uniqueConstraintMessages: detail.uniqueConstraintMessages.filter((_message, index) => detail.uniqueConstraints[index]!.every(readable)),
     checkConstraints: [],
   };
 }

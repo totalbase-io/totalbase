@@ -3,6 +3,7 @@ import { TotalBaseError, type TotalBaseErrorCode } from "@totalbase/errors";
 import type { EffectivePermission, ResourceAction } from "@totalbase/permissions";
 import { SchemaContext, compileFilter, mutationFilterContext, quoteIdentifier, relatedResolver } from "@totalbase/query-engine";
 import type { DataPrincipal, MutationsContext } from "./context.js";
+import { filesVisibility } from "./files-visibility.js";
 import { buildRowFilter, userVariableResolver, type Limits } from "./mutation-service.js";
 
 /**
@@ -44,7 +45,8 @@ export async function resolveTableGrant(
 /**
  * Whether row `rowId` satisfies the grant's row filter (an unscoped grant passes every row). Pass a transaction client
  * to check a row mid-write. A relation path in the filter (`user.tenant` on users_roles) compiles as the Data API's
- * writes compile it - a scalar subquery following the foreign keys (Security.md §6.5).
+ * writes compile it - a scalar subquery following the foreign keys (Security.md §6.5). A file is held to its
+ * visibility besides, whatever the action (Administration.md §10.6).
  */
 export async function rowPassesGrant(
   queryable: Queryable,
@@ -55,13 +57,25 @@ export async function rowPassesGrant(
   limits: Limits,
 ): Promise<boolean> {
   const rowFilter = buildRowFilter(grant.permission, limits);
-  if (!rowFilter) return true;
-  const schemaContext = new SchemaContext(context.database);
-  const resource = await schemaContext.loadRoot("totalbase", grant.table, grant.postgresOid);
-  const compiled = await compileFilter(rowFilter, mutationFilterContext(resource, "t", userVariableResolver(dataPrincipal), relatedResolver(schemaContext)), 1);
+  const visibility = grant.table === "files" ? await filesVisibility(context, dataPrincipal, limits) : undefined;
+  if (!rowFilter && !visibility) return true;
+  const params: unknown[] = [rowId];
+  const conditions: string[] = [];
+  if (rowFilter) {
+    const schemaContext = new SchemaContext(context.database);
+    const resource = await schemaContext.loadRoot("totalbase", grant.table, grant.postgresOid);
+    const compiled = await compileFilter(rowFilter, mutationFilterContext(resource, "t", userVariableResolver(dataPrincipal), relatedResolver(schemaContext)), params.length);
+    conditions.push(`(${compiled.sql})`);
+    params.push(...compiled.params);
+  }
+  if (visibility) {
+    const compiled = await visibility("t", params.length);
+    conditions.push(compiled.sql);
+    params.push(...compiled.params);
+  }
   const { rows } = await queryable.query<{ id: string }>(
-    `SELECT t.id FROM totalbase.${quoteIdentifier(grant.table)} t WHERE t.id = $1 AND (${compiled.sql})`,
-    [rowId, ...compiled.params],
+    `SELECT t.id FROM totalbase.${quoteIdentifier(grant.table)} t WHERE t.id = $1 AND ${conditions.join(" AND ")}`,
+    params,
   );
   return rows.length > 0;
 }

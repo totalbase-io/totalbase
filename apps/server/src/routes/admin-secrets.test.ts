@@ -45,10 +45,10 @@ describe("Admin secrets and auth providers", () => {
   });
 
   it("stores a secret encrypted and never returns its value", async () => {
-    const put = await call("PUT", `/admin/api/secrets/${PREFIX}-key`, { value: PLAINTEXT });
+    const put = await call("PUT", `/admin/api/secrets/${PREFIX}-key`, { value: PLAINTEXT, scope: "WORKFLOWS" });
     expect(put.statusCode, put.body).toBe(200);
     expect(put.body).not.toContain(PLAINTEXT);
-    expect(put.json().data).toMatchObject({ key: `${PREFIX}-key` });
+    expect(put.json().data).toMatchObject({ key: `${PREFIX}-key`, scope: "WORKFLOWS" });
 
     const list = await call("GET", "/admin/api/secrets");
     expect(list.body).not.toContain(PLAINTEXT);
@@ -56,13 +56,13 @@ describe("Admin secrets and auth providers", () => {
 
     const { rows } = await database.query<{ ciphertext: string }>(`SELECT ciphertext FROM totalbase.secrets WHERE key = $1`, [`${PREFIX}-key`]);
     expect(rows[0]!.ciphertext).not.toContain(PLAINTEXT);
-    expect(await context.secrets.decrypt(`${PREFIX}-key`)).toBe(PLAINTEXT);
+    expect(await context.secrets.decrypt(`${PREFIX}-key`, "WORKFLOWS")).toBe(PLAINTEXT);
   });
 
   it("keeps the value out of the audit log", async () => {
     // A key of its own per run - audit rows outlive the test.
     const key = `${PREFIX}-audited-${Date.now()}`;
-    await call("PUT", `/admin/api/secrets/${key}`, { value: PLAINTEXT });
+    await call("PUT", `/admin/api/secrets/${key}`, { value: PLAINTEXT, scope: "WORKFLOWS" });
     // Written after the response.
     const rows = await waitFor(async () => {
       const found = (await database.query<{ payload: unknown; metadata: unknown }>(
@@ -73,22 +73,22 @@ describe("Admin secrets and auth providers", () => {
     });
     expect(rows).toHaveLength(1);
     expect(JSON.stringify(rows[0])).not.toContain(PLAINTEXT);
-    expect(rows[0]!.payload).toEqual({ value: "[redacted]" });
+    expect(rows[0]!.payload).toEqual({ value: "[redacted]", scope: "WORKFLOWS" });
   });
 
   it("deletes a secret", async () => {
-    await call("PUT", `/admin/api/secrets/${PREFIX}-gone`, { value: "x" });
+    await call("PUT", `/admin/api/secrets/${PREFIX}-gone`, { value: "x", scope: "WORKFLOWS" });
     expect((await call("DELETE", `/admin/api/secrets/${PREFIX}-gone`)).statusCode).toBe(204);
-    expect(await context.secrets.exists(`${PREFIX}-gone`)).toBe(false);
+    expect(await context.secrets.exists(`${PREFIX}-gone`, "WORKFLOWS")).toBe(false);
     // Already gone: 404, not a silent 204.
     const again = await call("DELETE", `/admin/api/secrets/${PREFIX}-gone`);
     expect([again.statusCode, again.json().errors[0].code]).toEqual([404, "SECRET_NOT_FOUND"]);
     // A value outside { data } is not read.
-    expect((await app.inject({ method: "PUT", url: `/admin/api/secrets/${PREFIX}-gone`, headers: { authorization: `Bearer ${adminToken}` }, payload: { value: "x" } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "PUT", url: `/admin/api/secrets/${PREFIX}-gone`, headers: { authorization: `Bearer ${adminToken}` }, payload: { value: "x", scope: "WORKFLOWS" } })).statusCode).toBe(400);
   });
 
   it("saves an auth provider with a reference to its client secret, never the secret", async () => {
-    await call("PUT", `/admin/api/secrets/${PREFIX}-client`, { value: PLAINTEXT });
+    await call("PUT", `/admin/api/secrets/${PREFIX}-client`, { value: PLAINTEXT, scope: "AUTH_PROVIDERS" });
     const created = await call("POST", "/admin/api/auth-providers", {
       type: "OIDC",
       name: "Admin secrets test OIDC",
@@ -106,6 +106,31 @@ describe("Admin secrets and auth providers", () => {
     expect([removed.statusCode, removed.body]).toEqual([204, ""]);
     const again = await call("DELETE", `/admin/api/auth-providers/${id}`);
     expect([again.statusCode, again.json().errors[0].code]).toEqual([404, "AUTH_PROVIDER_NOT_FOUND"]);
+  });
+
+  it("a secret serves one feature: another's reads it as missing, and it moves only with a new value (security regression, SEC-67)", async () => {
+    const key = `${PREFIX}-scoped`;
+    expect((await call("PUT", `/admin/api/secrets/${key}`, { value: PLAINTEXT })).json().errors[0].code).toBe("INVALID_SECRET_SCOPE");
+    expect((await call("PUT", `/admin/api/secrets/${key}`, { value: PLAINTEXT, scope: "WORKFLOWS" })).statusCode).toBe(200);
+    // SMTP aimed at a host of one's own can't name a workflow's credential: SMTP reads only SMTP secrets.
+    await expect(context.secrets.decrypt(key, "SMTP")).rejects.toMatchObject({ code: "SECRET_NOT_FOUND" });
+    expect(await context.secrets.decrypt(key, "WORKFLOWS")).toBe(PLAINTEXT);
+    const listed = (await call("GET", "/admin/api/secrets?scope=SMTP")).json().data as Array<{ key: string }>;
+    expect(listed.some((secret) => secret.key === key)).toBe(false);
+    // An auth provider names only its own feature's secrets.
+    const provider = await call("POST", "/admin/api/auth-providers", {
+      type: "OIDC",
+      name: "Admin secrets test scoped",
+      configuration: { issuer: "https://idp.example.test", client_id: "abc", client_secret_key: key, allowed_redirect_urls: ["https://app.example.test/cb"] },
+    });
+    expect([provider.statusCode, provider.json().errors[0].code]).toEqual([400, "INVALID_AUTH_PROVIDER_PAYLOAD"]);
+    // Moving it without its value is refused by PostgreSQL on every path (here, plain SQL).
+    await expect(database.query(`UPDATE totalbase.secrets SET scope = 'SMTP' WHERE key = $1`, [key])).rejects.toMatchObject({ sqlstate: "23514" });
+    await expect(context.secrets.decrypt(key, "SMTP")).rejects.toMatchObject({ code: "SECRET_NOT_FOUND" });
+    // With a new value it moves: whoever moved it knows what it holds.
+    expect((await call("PUT", `/admin/api/secrets/${key}`, { value: "smtp-pass", scope: "SMTP" })).json().data.scope).toBe("SMTP");
+    expect(await context.secrets.decrypt(key, "SMTP")).toBe("smtp-pass");
+    await expect(context.secrets.decrypt(key, "WORKFLOWS")).rejects.toMatchObject({ code: "SECRET_NOT_FOUND" });
   });
 
   it("refuses a provider that can never work: no redirect URL, no issuer, a missing secret", async () => {

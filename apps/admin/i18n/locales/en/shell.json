@@ -93,6 +93,8 @@
     "NETWORK_ERROR": "Could not reach the server.",
     "AUTHENTICATION_REQUIRED": "Your session has ended - sign in again.",
     "PERMISSION_DENIED": "You don't have permission to do this.",
+    "LOCKDOWN": "This instance is in lockdown: only administrators can use it for now.",
+    "lockdownReadOnly": "This instance is in lockdown, read-only: changes can't be saved for now.",
     "RATE_LIMIT_EXCEEDED": "Too many requests - wait a moment and try again.",
     "INVALID_RESPONSE": "The server answered with something other than the API response.",
     "INVALID_TOKEN": "This link or token is invalid, expired or already used.",
@@ -303,29 +305,29 @@
       "empty": "No activity yet"
     },
     "mfa": {
-      "label": "Two-factor authentication",
+      "label": "Multi-factor authentication (MFA)",
       "onSince": "On since {date}",
       "off": "Off",
-      "offRequired": "Off - required by this instance; you'll be asked to set it up at your next sign-in",
+      "offRequired": "Off - required for your account; you'll be asked to set it up at your next sign-in",
       "setUp": "Set up",
       "newCodes": "New recovery codes",
       "turnOff": "Turn off",
       "codesLeft": "No recovery codes left | 1 recovery code left | {n} recovery codes left",
-      "required": "Required by this instance - it can't be turned off.",
-      "setupTitle": "Set up two-factor authentication",
-      "setupDescription": "Sign-in will also ask for a code from an authenticator app - Google Authenticator, Microsoft Authenticator, 1Password, Authy or similar.",
+      "required": "Required for your account - it can't be turned off.",
+      "setupTitle": "Set up MFA",
+      "setupDescription": "Sign-in will also ask for a code from an authenticator app.",
       "passwordDescription": "To confirm it's you.",
       "codeDescription": "The 6 digits the app shows for this account, to check it's set up.",
       "turnOn": "Turn on",
-      "startError": "Could not start setting up two-factor authentication.",
-      "confirmError": "Could not turn on two-factor authentication.",
-      "disableTitle": "Turn off two-factor authentication",
+      "startError": "Could not start setting up MFA.",
+      "confirmError": "Could not turn on MFA.",
+      "disableTitle": "Turn off MFA",
       "disableDescription": "Sign-in will ask for your password only. Your recovery codes stop working.",
       "codesTitle": "New recovery codes",
       "codesDescription": "Your current recovery codes stop working and ten new ones are shown once.",
       "generate": "Generate",
-      "disabled": "Two-factor authentication is off",
-      "disableError": "Could not turn off two-factor authentication.",
+      "disabled": "MFA is off",
+      "disableError": "Could not turn off MFA.",
       "codesError": "Could not generate new recovery codes."
     }
   },
@@ -379,9 +381,10 @@
         "connector": "Connector",
         "maintenance": "Maintenance",
         "emailSmtp": "SMTP",
-        "s3Storage": "S3 storage",
+        "s3Storage": "S3",
         "access": "Access",
         "authentication": "Authentication",
+        "mfa": "MFA",
         "tokens": "Tokens",
         "authProviders": "Providers",
         "security": "Security",
@@ -397,6 +400,7 @@
         "dashboards": "Dashboards",
         "maps": "Maps",
         "appearance": "Appearance",
+        "lockdown": "Lockdown",
         "files": "Files",
         "postgresql": "PostgreSQL",
         "backups": "Backups",
@@ -440,91 +444,181 @@
         "tokensExpiring": "{n} API token expires soon | {n} API tokens expire soon",
         "failedSignIns": "{n} failed sign-in in the last 24 hours | {n} failed sign-ins in the last 24 hours",
         "tokensRefused": "{n} refused use of an API token in the last 24 hours | {n} refused uses of API tokens in the last 24 hours",
-        "backupFailed": "The last backup failed - see why in Backups | The last backup failed - see why in Backups"
+        "backupFailed": "The last backup failed - see why in Backups | The last backup failed - see why in Backups",
+        "smtpNotConfigured": "SMTP isn't configured - invitations and password resets can't be emailed | SMTP isn't configured - invitations and password resets can't be emailed",
+        "backupsOff": "Backups are off - TotalBase isn't backing this database up | Backups are off - TotalBase isn't backing this database up",
+        "connectionsHigh": "{n} connections open - close to the limit the PostgreSQL server allows | {n} connections open - close to the limit the PostgreSQL server allows",
+        "invalidIndexes": "{n} invalid index - rebuild it in Maintenance | {n} invalid indexes - rebuild them in Maintenance",
+        "tablesWithDeadRows": "{n} table holds many dead rows - vacuum it in Maintenance | {n} tables hold many dead rows - vacuum them in Maintenance",
+        "executionsFailed": "{n} asynchronous execution failed in the last 24 hours | {n} asynchronous executions failed in the last 24 hours",
+        "masterKeyFile": "The master key is a file TotalBase generated - back it up apart from the database | The master key is a file TotalBase generated - back it up apart from the database",
+        "publicUrlHttp": "The public URL is http - sign-ins and data travel unencrypted; serve it over https | The public URL is http - sign-ins and data travel unencrypted; serve it over https",
+        "rateLimitOff": "Rate limiting per address is off, though a reverse proxy is trusted - turn it on | Rate limiting per address is off, though a reverse proxy is trusted - turn it on",
+        "userRateLimitOff": "Rate limiting per user is off - one account can flood the API | Rate limiting per user is off - one account can flood the API",
+        "untrustedProxy": "A reverse proxy forwards requests TotalBase doesn't trust - every caller has its address; set Trust reverse proxy headers | A reverse proxy forwards requests TotalBase doesn't trust - every caller has its address; set Trust reverse proxy headers",
+        "certificateInvalid": "The public URL's certificate isn't valid or has expired - browsers refuse it | The public URL's certificate isn't valid or has expired - browsers refuse it",
+        "certificateExpiring": "The public URL's certificate expires in {n} day - renew it | The public URL's certificate expires in {n} days - renew it",
+        "securityHeadersMissing": "{n} security header doesn't reach the public URL - the reverse proxy removes it | {n} security headers don't reach the public URL - the reverse proxy removes them",
+        "publicUrlUnreachable": "The server can't reach its own public URL - its certificate and headers aren't checked | The server can't reach its own public URL - its certificate and headers aren't checked",
+        "lockoutOff": "Sign-in lockout is off - a password can be guessed without limit | Sign-in lockout is off - a password can be guessed without limit",
+        "mfaNotRequired": "MFA isn't required of the Administrators role | MFA isn't required of the Administrators role",
+        "registrationUnfilteredWrites": "The self-registration role can change or delete every row of {n} resource - anyone who signs up gets it | The self-registration role can change or delete every row of {n} resources - anyone who signs up gets it",
+        "definerFunctionsExposed": "{n} exposed function runs as its owner (SECURITY DEFINER) - check what it lets a caller do | {n} exposed functions run as their owner (SECURITY DEFINER) - check what they let a caller do",
+        "postgresSuperuser": "TotalBase connects to PostgreSQL as a superuser - give it an ordinary role that owns the database | TotalBase connects to PostgreSQL as a superuser - give it an ordinary role that owns the database",
+        "postgresRolePrivileges": "TotalBase's PostgreSQL role holds {n} privilege it doesn't need - revoke it | TotalBase's PostgreSQL role holds {n} privileges it doesn't need - revoke them",
+        "postgresPasswordMd5": "PostgreSQL hashes new passwords with md5 - set password_encryption to scram-sha-256 | PostgreSQL hashes new passwords with md5 - set password_encryption to scram-sha-256",
+        "postgresTlsOff": "The connection to PostgreSQL crosses a public network unencrypted - set POSTGRES_SSL | The connection to PostgreSQL crosses a public network unencrypted - set POSTGRES_SSL",
+        "dashboardsQueryRole": "The widget query role protects less than it should, or widgets can't run - check it | The widget query role protects less than it should, or widgets can't run - check it"
       },
       "kpis": {
         "denied": "{n} denied",
         "failed": "{n} failed",
         "people": "People",
-        "peopleHint": "Active accounts that can sign in",
+        "peopleHint": "Accounts that can sign in",
         "apiTokens": "API tokens",
         "apiTokensHint": "Tokens that still authenticate",
         "exposedResources": "Exposed resources",
         "exposedResourcesHint": "of {total} in your schemas",
         "actions24h": "Actions, last 24h",
-        "noProblems": "None denied or failed"
+        "noProblems": "None denied or failed",
+        "activeSessions": "Active sessions",
+        "activeSessionsHint": "Signed in right now",
+        "workflowRuns24h": "Workflow runs, last 24h",
+        "workflowRunsFailed": "{n} failed",
+        "workflowRunsNoneFailed": "None failed",
+        "deltaHint": "Compared with the 24 hours before"
       },
       "categories": {
-        "data": "Data",
         "access": "Access & security",
         "sql": "SQL Console",
         "bulk": "Import / Export / Print",
-        "other": "Other"
+        "other": "Other",
+        "config": "Configuration"
       },
       "age": {
         "noneWaiting": "none waiting",
         "underMinute": "under a minute",
         "minutes": "{n} min",
-        "hours": "{n} h"
+        "hours": "{n} h",
+        "days": "{n} d"
       },
       "title": "Status",
       "description": "What needs attention, and how this instance is doing.",
       "needsAttention": "Needs attention",
       "allClear": "All clear - nothing needs your attention.",
       "activity": {
-        "title": "Activity, last 14 days",
-        "description": "From the audit log, per day in {timeZone}. Click a day to open it in Logs.",
+        "title": "Activity",
+        "description": "Per day in {timeZone}. Reads count only where they are audited.",
         "insights": "Insights",
-        "empty": "No activity in the last 14 days."
-      },
-      "busiest": {
-        "title": "Busiest resources, last 7 days",
-        "empty": "No activity on your resources in the last 7 days."
+        "tabs": {
+          "space": "Space",
+          "workflows": "Workflows",
+          "backups": "Backups"
+        },
+        "dataApi": "Data API",
+        "adminApi": "Administration",
+        "problems": "{n} denied or failed | {n} denied or failed",
+        "noProblems": "None denied or failed",
+        "emptyData": "Nothing through the Data API in the last {n} days.",
+        "emptyAdmin": "No administration activity in the last {n} days."
       },
       "trends": {
-        "title": "Is anything going wrong?",
-        "description": "Per day over the same 14 days. Click a point to open it.",
-        "tabs": {
-          "problems": "Errors",
-          "workflows": "Workflows"
-        },
-        "failed": "Failed",
-        "denied": "Denied",
         "succeeded": "Succeeded",
         "failedRuns": "Failed",
-        "noProblems": "Nothing denied or failed in the last 14 days.",
-        "noRuns": "No workflow runs finished in the last 14 days."
+        "noRuns": "No workflow runs finished in the last {n} days.",
+        "noBackups": "No backups in the last {n} days.",
+        "backupsOff": "Backups are off - turn them on in Settings › Backups."
       },
       "space": {
-        "title": "Database space",
-        "description": "Tables and materialized views, with their indexes.",
-        "tabs": {
-          "schemas": "By schema",
-          "totalbase": "TotalBase"
-        },
         "other": "Other",
-        "maintenance": "Maintenance",
-        "empty": "No tables yet."
+        "empty": "No tables yet.",
+        "schema": "Schema"
       },
       "system": {
         "title": "System",
         "databaseSize": "Database size",
         "connections": "Connections",
-        "connectionsValue": "{n} of {max} allowed by the server",
+        "connectionsValue": "{n} of {max}",
         "pool": "TotalBase pool",
-        "poolValue": "{total} of {max} open · {idle} idle",
         "poolWaiting": "{n} waiting",
-        "activeSessions": "Active sessions",
         "eventsWaiting": "Data events waiting",
         "oldest": "oldest {age}",
         "masterKey": "Master key",
         "masterKeyEnv": "TOTALBASE_MASTER_KEY (environment variable)",
         "masterKeyFile": "Generated by TotalBase. Back this file up apart from the database: without it, stored secrets can't be read.",
-        "backups": "Backups",
         "backupsLast": "Last {when}",
-        "backupsNone": "None completed yet",
-        "backupsNext": "Next {when}"
-      }
+        "executions": "Asynchronous executions",
+        "executionsValue": "{pending} waiting · {running} running",
+        "executionsFailed": "{n} failed in the last 24 hours",
+        "maintenanceRunning": "A maintenance batch is running",
+        "maintenanceIdle": "No maintenance running",
+        "runningFor": "running for {age}",
+        "publicUrl": "Public URL",
+        "poolBusy": "{busy} of {max} in use",
+        "publicUrlHelp": "The address the links TotalBase sends are built on",
+        "connectionsHelp": "Open on the PostgreSQL server, of those it allows",
+        "poolHelp": "TotalBase's own connections",
+        "masterKeyHelp": "Decrypts the stored secrets",
+        "eventsHelp": "Data changes on their way to their workflows",
+        "executionsHelp": "Work queued to run in the background"
+      },
+      "instance": {
+        "publicUrlMismatch": "You opened this page from {origin}. The links TotalBase sends use the public URL.",
+        "lockdownScheduled": "A lockdown starts {when}.",
+        "readOnlyScheduled": "Read-only mode starts {when}."
+      },
+      "refresh": {
+        "auto": "Auto-refresh",
+        "off": "Off"
+      },
+      "services": {
+        "title": "Services",
+        "on": "On",
+        "off": "Off",
+        "notConfigured": "Not configured",
+        "descriptions": {
+          "smtp": "Invitations, password resets and workflow emails",
+          "backups": "Scheduled backups of this database",
+          "s3": "An S3 bucket for files and backups",
+          "audit": "Every write, sign-in and configuration change, recorded",
+          "openapi": "The generated API reference and its documents",
+          "graphql": "A GraphQL endpoint over the Data API",
+          "realtime": "Live changes over WebSocket",
+          "mcp": "Lets AI agents work with this instance",
+          "sql_console": "Raw SQL for administrators"
+        }
+      },
+      "changes": {
+        "title": "Latest configuration changes",
+        "description": "Schema, users, roles, permissions, tokens, secrets and settings.",
+        "all": "Logs",
+        "empty": "No configuration changes yet",
+        "today": "Today",
+        "yesterday": "Yesterday"
+      },
+      "attentionCount": "{n} item needs attention | {n} items need attention",
+      "signIns": {
+        "title": "Latest sign-ins",
+        "description": "Who signed in, who was refused and why.",
+        "all": "Insights",
+        "empty": "No sign-ins yet",
+        "onlyRefused": "Only refused",
+        "doors": {
+          "api": "API",
+          "portal": "Portal",
+          "oauth": "Provider",
+          "mfa": "Second factor",
+          "passwordRenew": "Password renewal"
+        },
+        "signedIn": "Signed in",
+        "more": "See the whole day in Logs",
+        "outcomes": {
+          "EXECUTED": "{count} signed in",
+          "DENIED": "{count} denied",
+          "FAILED": "{count} failed"
+        }
+      },
+      "feedFailed": "Couldn't be loaded"
     },
     "publishStatus": {
       "live": "Published",
@@ -672,7 +766,9 @@
         "CONSTRAINT_WITHOUT_MESSAGE": "{columns} have no message: a refused write reads a generic text instead of what to fix.",
         "SECRET_COLUMN_SHOWN": "{columns} look like secrets and show in the grid: hide them, or deny the field in the roles' permissions.",
         "STYLE_IN_CSS_CLASS": "The widget {widget} sets {columns} in its CSS classes: the Style tab has them.",
-        "WIDGET_IGNORES_ROW_FILTER": "The widget {widget} reads {resource}, which {role} may read only some rows of, but its SQL never filters by $USER: {role} sees every row through it."
+        "WIDGET_IGNORES_ROW_FILTER": "The widget {widget} reads {resource}, which {role} may read only some rows of, but its SQL never filters by $USER: {role} sees every row through it.",
+        "WIDGET_READS_UNREADABLE_TABLE": "The widget {widget} reads {resource}, which {role} may not read, and its SQL never filters by $USER: {role} sees what it shows of every row. Fine for figures of everyone.",
+        "WIDGET_SHOWS_HIDDEN_FIELD": "The widget {widget} shows {columns} of {resource}, which {role} may not read: its SQL runs with the dashboard's authority, so {role} sees it through it."
       },
       "actions": {
         "CREATE": "create",
@@ -764,6 +860,25 @@
       "hidePassword": "Hide password",
       "showPassword": "Show password"
     },
+    "lockdown": {
+      "title": "This instance is in lockdown",
+      "description": "Only administrators can use it for now.",
+      "until": "It ends {time}.",
+      "signIn": "Only administrators can sign in for now.",
+      "tryAgain": "Try again",
+      "signInOther": "Sign in with another account",
+      "bannerOn": "Lockdown is on: only administrators are answered.",
+      "bannerUntil": "Lockdown until {time}: only administrators are answered.",
+      "bannerScheduled": "A lockdown is scheduled from {from} to {until}.",
+      "bannerNotice": "This instance will be in lockdown from {from} to {until}: only administrators will be able to use it.",
+      "titleReadOnly": "This instance is read-only for now",
+      "signInReadOnly": "You can sign in and read; only administrators can change anything.",
+      "bannerReadOnlyOn": "Lockdown, read-only: only administrators can change anything.",
+      "bannerReadOnlyUntil": "Lockdown, read-only, until {time}: only administrators can change anything.",
+      "bannerReadOnlyScheduled": "A read-only lockdown is scheduled from {from} to {until}.",
+      "bannerReadOnlyNotice": "This instance will be read-only from {from} to {until}: only administrators will be able to change anything.",
+      "settings": "Settings"
+    },
     "verifyEmail": {
       "linkIncomplete": "This page needs the full link from your email.",
       "invalidToken": "This link is invalid, has expired, or was already used.",
@@ -792,11 +907,11 @@
       "submit": "Create administrator"
     },
     "mfa": {
-      "title": "Two-factor authentication",
+      "title": "Multi-factor authentication (MFA)",
       "description": "Enter the 6-digit code your authenticator app shows for this account.",
-      "recoveryDescription": "Enter one of the recovery codes you saved when you set up two-factor authentication. Each works once.",
-      "enrollTitle": "Set up two-factor authentication",
-      "enrollDescription": "This instance requires a code from an authenticator app at sign-in - Google Authenticator, Microsoft Authenticator, 1Password, Authy or similar. Add this account to yours, then enter the code it shows.",
+      "recoveryDescription": "Enter one of the recovery codes you saved when you set up MFA. Each works once.",
+      "enrollTitle": "Set up MFA",
+      "enrollDescription": "Your account requires a code from an authenticator app at sign-in. Add this account to yours, then enter the code it shows.",
       "code": "Authentication code",
       "recoveryCode": "Recovery code",
       "verify": "Verify",
@@ -809,12 +924,14 @@
       "startAgain": "Sign in again",
       "enrollError": "Could not start setting up the authenticator app.",
       "continue": "Continue",
+      "appsToggle": "Don't have an authenticator app?",
+      "appsDescription": "Any app that makes TOTP codes works. Some widely used ones:",
       "qrAlt": "QR code to add this account to an authenticator app",
       "scan": "Scan this QR code with your authenticator app.",
       "typeSecret": "Can't scan it? Enter this key in the app instead:",
       "codesTitle": "Save your recovery codes",
       "codesDescription": "If you lose your phone, each of these codes signs you in once. They won't be shown again - copy or download them and keep them somewhere safe.",
-      "codesFileTitle": "{name} - two-factor authentication recovery codes",
+      "codesFileTitle": "{name} - MFA recovery codes",
       "download": "Download"
     },
     "reauthenticate": {
@@ -919,15 +1036,16 @@
       "userRolesSet": "Changed a user's roles",
       "userSessionsRevoke": "Signed a user out everywhere",
       "userUnlock": "Unlocked a user",
-      "authMfaChallenge": "Passed the password step (two-factor code asked)",
-      "authMfaEnroll": "Started setting up two-factor authentication at sign-in",
-      "authMfaVerify": "Signed in with a two-factor code (API)",
-      "authPortalMfaVerify": "Signed in to the portal with a two-factor code",
-      "accountMfaStart": "Started setting up two-factor authentication",
-      "accountMfaEnable": "Turned on two-factor authentication",
-      "accountMfaDisable": "Turned off two-factor authentication",
+      "authMfaChallenge": "Passed the password step (MFA code asked)",
+      "authMfaEnroll": "Started setting up MFA at sign-in",
+      "authMfaVerify": "Signed in with an MFA code (API)",
+      "authPortalMfaVerify": "Signed in to the portal with an MFA code",
+      "accountMfaStart": "Started setting up MFA",
+      "accountMfaEnable": "Turned on MFA",
+      "accountMfaDisable": "Turned off MFA",
       "accountMfaRecoveryCodes": "Generated new recovery codes",
-      "userMfaReset": "Reset a user's two-factor authentication"
+      "userMfaReset": "Reset a user's MFA",
+      "schemaApply": "Changed the schema"
     },
     "entities": {
       "user": "a user",

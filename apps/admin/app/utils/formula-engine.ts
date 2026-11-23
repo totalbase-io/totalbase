@@ -354,14 +354,13 @@ function withFlag(segments: FormulaRichSegment[], patch: Partial<FormulaRichSegm
 const SAFE_LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:'])
 function validateLinkUrl(value: unknown): string | null {
   if (typeof value !== 'string' || !value.trim()) return null
-  const url = value.trim()
-  // A scheme-less/relative path (`/records/123`, `#section`, `?x=1`) has
-  // no `://` before its first `/`/`?`/`#` - `new URL` needs a base to
-  // parse those at all; same-origin navigation is never a script risk,
-  // so these are allowed without further checks.
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) return url
+  // As a browser reads it: leading spaces and C0 control characters dropped, tabs and line breaks removed anywhere -
+  // so `java\tscript:` or `\u0001javascript:` is the `javascript:` it becomes, never a "relative path" let through.
+  // eslint-disable-next-line no-control-regex -- the C0 controls a browser drops before reading a URL's scheme
+  const url = value.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[\t\n\r]/g, '')
   try {
-    const parsed = new URL(url)
+    // A relative path (`/records/123`, `#section`, `?x=1`) resolves against an https base: same-origin, never a script.
+    const parsed = new URL(url, 'https://relative.invalid/')
     return SAFE_LINK_SCHEMES.has(parsed.protocol) ? url : null
   } catch {
     return null

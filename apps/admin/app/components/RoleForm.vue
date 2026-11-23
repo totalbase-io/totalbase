@@ -10,6 +10,7 @@ import { ROLE_ACCESS_FLAGS, type RoleAccessFlag, type RoleAccessFlags } from '~/
 import { useApiErrorMessage } from '~/utils/api-error-message'
 import type { AppMenu, MenuNode, MenuObject } from '~/types/app-menu'
 import SettingsSection from '~/components/SettingsSection.vue'
+import { isWorkflowsRole } from '~/types/security'
 
 const props = defineProps<{
   mode: 'create' | 'edit'
@@ -42,6 +43,17 @@ const flags = ref<RoleAccessFlags>({ ...DEFAULT_FLAGS })
 const saving = ref(false)
 // Its access reviewed periodically (Security.md §1.8): a reminder on its Access reviews, as Administrators has.
 const reviewRequired = ref(false)
+// Whether its holders must use MFA (Security.md §2.17): shown here, read-only - decided in Settings › Access › MFA alone.
+const { data: mfaSettings } = useAsyncData(
+  `role-form-mfa-${props.role?.id ?? 'new'}`,
+  (): Promise<Record<string, unknown>> => isAdmin.value && props.mode === 'edit' ? api.get<Record<string, unknown>>('/settings/mfa').then(r => r.data) : Promise.resolve({}),
+  { default: (): Record<string, unknown> => ({}) }
+)
+const mfaRequired = computed(() => {
+  const policy = mfaSettings.value['mfa.required']
+  const listed = (mfaSettings.value['mfa.required_roles'] as string[] | undefined) ?? []
+  return policy === 'EVERYONE' || (policy === 'ROLES' && !!props.role && listed.includes(props.role.id))
+})
 // Its App home (Security.md §8.1): one of the menu's objects, `KIND:id`; undefined = the App's own page.
 const home = ref<string | undefined>(undefined)
 const homeOptions = ref<{ value: string, label: string, description: string, icon: string }[]>([])
@@ -402,6 +414,22 @@ defineExpose({ submit, seed, saving, reserved, dirty })
         :label="t('users.roleForm.reviewRequired')"
         :description="t('users.roleForm.reviewRequiredHelp')"
       />
+      <USwitch
+        v-if="isAdmin && full && mode === 'edit' && role && !isWorkflowsRole(role)"
+        :model-value="mfaRequired"
+        disabled
+        :label="t('users.roleForm.mfaRequired')"
+      >
+        <template #description>
+          {{ t('users.roleForm.mfaRequiredHelp') }}
+          <ULink
+            to="/settings/mfa"
+            class="text-primary"
+          >
+            {{ t('users.roleForm.mfaSettings') }}
+          </ULink>
+        </template>
+      </USwitch>
     </component>
     <!-- Relations with other roles: where it sits (its parent - a ceiling, never a source of permissions), what its
   members may do below it, and - from the page, through the slot - who assigns it and what it can't be held with. -->

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import { defineAdminThemes } from '~/utils/monaco-theme'
 import { sqlErrorLocation } from '~/utils/sql-error-position'
 
@@ -177,6 +178,7 @@ onMounted(async () => {
   // Loaded dynamically so Monaco (a few MB) is only fetched when the SQL
   // Console page is actually visited, not part of the main bundle.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
 

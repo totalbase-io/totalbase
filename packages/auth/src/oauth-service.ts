@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Database } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import { RoleAssignmentsService } from "@totalbase/permissions";
@@ -93,7 +94,7 @@ export class OAuthService {
   }
 
   /** GET /api/auth/oauth/:provider - returns the URL to redirect the end user's browser to. */
-  async start(slug: string, redirectTo: string): Promise<string> {
+  async start(slug: string, redirectTo: string, options: { browserBinding: string }): Promise<string> {
     const provider = await this.providers.findBySlugOrThrow(slug);
     if (!provider.enabled) {
       throw new TotalBaseError("AUTH_PROVIDER_NOT_FOUND", `Auth provider is disabled: ${slug}`);
@@ -116,6 +117,7 @@ export class OAuthService {
       redirectTo,
       ...(portal && { portal: true }),
       issuedAt: Date.now(),
+      browser: bindingHash(options.browserBinding),
     });
 
     const url = new URL(endpoints.authorizationEndpoint);
@@ -135,10 +137,15 @@ export class OAuthService {
    * `admit` is the surface's access rule (API access, or portal access for the portal's own sign-in), checked
    * before a session or an MFA challenge exists: refused, the result is `access_denied`.
    */
-  async callback(slug: string, code: string, state: string, admit?: (userId: string, portal: boolean) => Promise<boolean>): Promise<OAuthLoginResult> {
+  async callback(slug: string, code: string, state: string, admit?: (userId: string, portal: boolean) => Promise<boolean>, browserBinding?: string): Promise<OAuthLoginResult> {
     const payload = verifyOAuthState(this.masterKey, state);
     if (payload.provider !== slug) {
       throw new TotalBaseError("INVALID_OAUTH_STATE", "This login attempt was started for a different provider.");
+    }
+    // Completed only by the browser that started it: someone else's callback link signs nobody in.
+    // A state without the binding is never one this server issued (every start binds one).
+    if (typeof payload.browser !== "string" || browserBinding === undefined || !safeEqual(bindingHash(browserBinding), payload.browser)) {
+      throw new TotalBaseError("INVALID_OAUTH_STATE", "This sign-in was started in another browser - start it again here.");
     }
 
     const provider = await this.providers.findBySlugOrThrow(slug);
@@ -147,7 +154,7 @@ export class OAuthService {
     }
 
     const endpoints = await resolveOAuthEndpoints(provider);
-    const clientSecret = await this.secrets.decrypt(provider.configuration.client_secret_key);
+    const clientSecret = await this.secrets.decrypt(provider.configuration.client_secret_key, "AUTH_PROVIDERS");
     const tokens = await exchangeCodeForTokens(endpoints.tokenEndpoint, {
       clientId: provider.configuration.client_id,
       clientSecret,
@@ -252,6 +259,9 @@ export class OAuthService {
       const byEmail = await users.findByEmail(identity.email);
       if (byEmail) {
         if (!(await this.canSignIn(users, byEmail))) throw new AccountUnavailableError();
+        // An account whose address was never verified may have been made by anyone, with a password of theirs: the
+        // provider's proof of the address is the first one, so it takes the account over before linking.
+        if (!byEmail.emailVerifiedAt) await this.claimUnverifiedAccount(byEmail.id);
         await this.linkIdentity(byEmail.id, provider.id, identity);
         return { user: byEmail, isNewUser: false };
       }
@@ -274,6 +284,24 @@ export class OAuthService {
     return user.active && user.canLogin && !(await users.isLocked(user.id));
   }
 
+  /**
+   * Security.md §2.11: an account with the provider's verified address, never verified itself, is someone's claim
+   * on that address that nothing proved - an account another person may have registered first. Everything that
+   * claim left goes before the identity is linked: its password, its sessions, its personal tokens, its second
+   * factor, its pending links (verification, reset, invitation, email change) and the provider identities it linked
+   * (another provider's account would sign whoever holds it back in). One transaction.
+   */
+  private async claimUnverifiedAccount(userId: string): Promise<void> {
+    await this.database.transaction(async (client) => {
+      await client.query(`UPDATE totalbase.users SET password_hash = NULL WHERE id = $1`, [userId]);
+      await client.query(`UPDATE totalbase.sessions SET revoked_at = now() WHERE "user" = $1 AND revoked_at IS NULL`, [userId]);
+      await client.query(`UPDATE totalbase.tokens SET active = false, revoked_at = now(), updated_at = now() WHERE "user" = $1 AND revoked_at IS NULL`, [userId]);
+      await client.query(`DELETE FROM totalbase.factors WHERE "user" = $1`, [userId]);
+      await client.query(`UPDATE totalbase.emails_tokens SET used_at = now() WHERE "user" = $1 AND used_at IS NULL`, [userId]);
+      await client.query(`DELETE FROM totalbase.identities WHERE "user" = $1`, [userId]);
+    });
+  }
+
   private async linkIdentity(userId: string, providerId: string, identity: OAuthIdentity): Promise<void> {
     await this.database.query(
       `INSERT INTO totalbase.identities
@@ -291,4 +319,12 @@ export class OAuthService {
       [providerId, identity.subject, identity.email, identity.username, identity.avatarUrl],
     );
   }
+}
+
+function bindingHash(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function safeEqual(a: string, b: string): boolean {
+  return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }

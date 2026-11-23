@@ -101,6 +101,29 @@ describe("POST /admin/api/users", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  // Security regression (Security.md §2.11): a provider's allowlist took `/*` (matching //evil.example) or a
+  // non-string, and its default role could be Administrators - every account it creates an administrator.
+  it("refuses a provider whose redirect allowlist isn't absolute URLs, or whose default role is an administrator's", async () => {
+    await context.secrets.set(`admin-users-provider-${SUFFIX}`, "shh", "AUTH_PROVIDERS");
+    const create = (configuration: Record<string, unknown>) => app.inject({
+      method: "POST", url: "/admin/api/auth-providers", headers: { authorization: `Bearer ${adminToken}` },
+      payload: { data: { type: "GOOGLE", name: `Provider ${SUFFIX}`, enabled: false, configuration: { client_id: "id", client_secret_key: `admin-users-provider-${SUFFIX}`, allowed_redirect_urls: ["https://app.example.com/*"], ...configuration } } },
+    });
+    await database.query(`DELETE FROM totalbase.providers WHERE name = $1`, [`Provider ${SUFFIX}`]);
+    for (const allowed of [["/*"], [42], ["//evil.example/*"]]) {
+      const res = await create({ allowed_redirect_urls: allowed });
+      expect([res.statusCode, res.json().errors?.[0]?.code], JSON.stringify(allowed)).toEqual([400, "INVALID_AUTH_PROVIDER_PAYLOAD"]);
+    }
+    try {
+      const administrators = await context.roles.getAdministratorsRoleId();
+      const admin = await create({ default_role_id: administrators });
+      expect([admin.statusCode, admin.json().errors?.[0]?.code]).toEqual([400, "INVALID_AUTH_PROVIDER_PAYLOAD"]);
+    } finally {
+      await database.query(`DELETE FROM totalbase.providers WHERE name = $1`, [`Provider ${SUFFIX}`]);
+      await context.secrets.delete(`admin-users-provider-${SUFFIX}`);
+    }
+  });
+
   it("rejects a password shorter than auth.password_min_length", async () => {
     const minLength = await context.settings.get("auth.password_min_length");
     const res = await app.inject({

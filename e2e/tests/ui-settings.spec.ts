@@ -291,7 +291,7 @@ test('auth providers: create, edit, disable/enable, copy redirect URI, delete', 
   const renamed = `UI Settings GH2 ${SUFFIX}`
   const providers = () => api<AuthProvider[]>(page, token, 'GET', '/admin/api/auth-providers')
   const mine = async () => (await providers()).find(p => p.name === name || p.name === renamed)
-  await api(page, token, 'PUT', `/admin/api/secrets/${encodeURIComponent(secretKey)}`, { value: 'client-secret-value' })
+  await api(page, token, 'PUT', `/admin/api/secrets/${encodeURIComponent(secretKey)}`, { value: 'client-secret-value', scope: 'AUTH_PROVIDERS' })
   let providerId: string | undefined
   try {
     await page.goto('/settings/auth-providers')

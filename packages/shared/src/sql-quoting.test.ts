@@ -23,3 +23,12 @@ describe("quoteLiteral", () => {
     expect(quoteLiteral("C:\\path")).toBe("'C:\\path'");
   });
 });
+
+// Security regression: PostgreSQL ends a statement's text at a NUL byte - inside an open quoted identifier or string
+// constant, it would cut the statement.
+describe("a NUL character", () => {
+  it("is never quoted into SQL", () => {
+    expect(() => quoteIdentifier("a\u0000b")).toThrow(/NUL/);
+    expect(() => quoteLiteral("a\u0000b")).toThrow(/NUL/);
+  });
+});

@@ -87,6 +87,53 @@ describe("DATA_EVENT Start: For each row / statement, filters", () => {
     expect(await resultsOf(perRow)).toHaveLength(3);
   });
 
+  // Security regression (Workflows.md §6.3.3): the executor's READ row filter was evaluated in JavaScript on the
+  // event's flat row - a relation path read as undefined, so `_neq` passed every row (rows the executor can't read
+  // reached its run), and `$USER.*` failed the event. PostgreSQL decides it now, as in any read.
+  it("gives the run only the rows its executor may read, decided by PostgreSQL - relation paths included", async () => {
+    const teams = `${TABLE}_teams`;
+    const tasks = `${TABLE}_tasks`;
+    await database.query(`CREATE TABLE public.${teams} (id integer PRIMARY KEY, archived boolean NOT NULL)`);
+    await database.query(`CREATE TABLE public.${tasks} (id integer PRIMARY KEY, team integer NOT NULL REFERENCES public.${teams} (id))`);
+    await database.query(`INSERT INTO public.${teams} VALUES (1, false), (2, true)`);
+    const register = async (table: string) => (await database.query<{ id: string }>(
+      `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
+       VALUES (to_regclass($1)::oid, 'public', $2, 'TABLE', 'ACTIVE', ARRAY['GET']) RETURNING id`, [`public.${table}`, table],
+    )).rows[0]!.id;
+    const teamsId = await register(teams);
+    const tasksId = await register(tasks);
+    const role = (await context.roles.create(`${PREFIX}-reader-${randomUUID().slice(0, 6)}`, { apiAccess: true })).id;
+    const executor = await context.auth.users.create({ email: `${PREFIX}-${randomUUID().slice(0, 6)}@example.com`, name: "Reader" });
+    try {
+      await context.roleAssignments.assignRoleToUser(executor.id, role);
+      await context.permissions.set(role, tasksId, "READ", { effect: "ALLOW", where: { "team.archived": { _neq: true } }, fields: ["id", "team", "team.archived"].map((field) => ({ field, effect: "ALLOW" as const })) });
+      const slug = `${PREFIX}-${randomUUID().slice(0, 8)}`;
+      const id = (await context.workflowsAdmin.create({ name: slug, slug, historyLevel: "DETAILED" })).id;
+      workflowIds.push(id);
+      const startOp = { id: randomUUID(), type: "totalbase.start", key: "start", label: "start", configuration_version: 1, configuration: { trigger: "DATA_EVENT", resource: tasksId, events: ["CREATE"], execute_as: executor.id } };
+      const done = { id: randomUUID(), type: "totalbase.finish-result", key: "done", label: "done", configuration_version: 1, configuration: { result: "{{start.data}}" } };
+      await context.workflowsAdmin.saveDraft(id, (await context.workflowsAdmin.get(id)).revision, { operations: [startOp, done], connections: [{ source: startOp.id, target: done.id, output: "next" }] });
+      await context.workflowsAdmin.publish(id, (await context.workflowsAdmin.get(id)).revision, (d) => validateExecutionReadiness(d, context));
+      await context.workflowsAdmin.update(id, { revision: (await context.workflowsAdmin.get(id)).revision, enabled: true });
+
+      const requestId = randomUUID();
+      requestIds.push(requestId);
+      for (const row of [{ id: 1, team: 1 }, { id: 2, team: 2 }]) {
+        const { rows: [event] } = await database.query<{ id: string }>(
+          `INSERT INTO totalbase.outbox (request_id, resource, event, payload) VALUES ($1, $2, 'CREATE', $3::jsonb) RETURNING id`, [requestId, tasksId, JSON.stringify(row)],
+        );
+        await dispatchDataEvent(context, event!.id);
+      }
+      expect(await resultsOf(id)).toEqual([{ id: 1, team: 1 }]);
+    } finally {
+      await database.query(`DELETE FROM totalbase.users WHERE id = $1`, [executor.id]);
+      await database.query(`DELETE FROM totalbase.permissions WHERE role = $1`, [role]);
+      await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [role]);
+      await database.query(`DELETE FROM totalbase.resources WHERE id = ANY($1)`, [[teamsId, tasksId]]);
+      await database.query(`DROP TABLE IF EXISTS public.${tasks}, public.${teams}`);
+    }
+  });
+
   it("a filter keeps only the rows matching it - in either granularity; none matching, no run", async () => {
     const paidRows = await workflow("CREATE", { filter: { status: { _eq: "PAID" } } });
     const paidWrite = await workflow("CREATE", { for_each: "STATEMENT", filter: { status: { _eq: "PAID" } } });

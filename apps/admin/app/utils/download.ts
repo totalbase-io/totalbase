@@ -15,9 +15,15 @@ export function downloadText(content: string, filename: string, type: string): v
   downloadBlob(new Blob([content], { type }), filename)
 }
 
-/** One CSV cell (RFC 4180): quoted when it holds a quote, a comma or a line break; an object as its JSON. */
+/**
+ * One CSV cell (RFC 4180): quoted when it holds a quote, a comma or a line break; an object as its JSON. Text that a
+ * spreadsheet would read as a formula - starting with `=`, `+`, `-`, `@`, a tab or a carriage return - gets a leading
+ * `'`, so a record's value (`=HYPERLINK(...)`) opens as the text it is, never as a formula (DataViews.md §5.10). A number
+ * stays a number.
+ */
 function csvCell(value: unknown): string {
-  const text = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
+  let text = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

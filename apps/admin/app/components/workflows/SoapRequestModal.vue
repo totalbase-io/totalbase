@@ -43,7 +43,7 @@ const httpHeadersJson = ref('{}')
 const arraysText = ref('')
 const secretHeaders = ref<{ name: string, secret: string }[]>([])
 const api = useAdminApi()
-const { data: secretKeys } = useAsyncData('soap-request-secrets', () => api.get<{ key: string }[]>('/secrets').then(r => r.data.map(s => s.key)), { default: () => [] })
+const { data: secretKeys } = useAsyncData('soap-request-secrets', () => api.get<{ key: string }[]>('/secrets', { scope: 'WORKFLOWS' }).then(r => r.data.map(s => s.key)), { default: () => [] })
 const secretHeadersValid = computed(() => secretHeaders.value.every(h => h.name.trim() && h.secret))
 
 watch(open, (value) => {

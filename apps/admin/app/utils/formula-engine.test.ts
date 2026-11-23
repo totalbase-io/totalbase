@@ -62,3 +62,22 @@ describe('a foreign key in a formula (DataViews.md §15.5)', () => {
     expect(evaluateFormula('{{work_order}}', { values, returnType: 'string' })).toEqual({ ok: true, value: 'a1b2' })
   })
 })
+
+// Security regression (DataViews.md §10): LINK() let any text that didn't look like `scheme:` through as a relative path
+// - a tab or a control character before or inside `javascript:` hid it, and the browser ran it on a click.
+describe('LINK() never links a script', () => {
+  it('drops a javascript: URL however it is spelled, and keeps http(s), mailto, tel and relative paths', async () => {
+    await loadFormulaFunctions()
+    const href = (url: string) => {
+      const result = evaluateFormula('LINK("open", {{u}})', { values: { u: url } })
+      return result.ok ? JSON.stringify((result as { rich?: unknown }).rich ?? null) : 'error'
+    }
+    for (const url of ['javascript:alert(1)', 'java\tscript:alert(1)', '\u0001javascript:alert(1)', ' javascript:alert(1)', 'JAVASCRIPT:x', 'java\nscript:x', 'data:text/html,x']) {
+      expect(href(url), JSON.stringify(url)).not.toContain('script:')
+      expect(href(url), JSON.stringify(url)).not.toContain('data:')
+    }
+    for (const url of ['https://example.com', 'mailto:a@b.test', '/records/1', '#section']) {
+      expect(href(url), url).toContain(url)
+    }
+  })
+})

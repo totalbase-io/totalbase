@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { DENIED_FOR_CALLER, TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "./context.js";
+import { routePath } from "./admin-ui.js";
 
 /**
  * See as (Security.md §8.4): an administrator opens the App as a role or a user sees it. The admin
@@ -87,7 +88,7 @@ export function registerViewAsGuard(app: FastifyInstance): void {
   app.addHook("onRequest", async (request) => {
     if (request.headers[VIEW_AS_HEADER] === undefined) return;
     if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
-    const path = request.url.split("?")[0]!;
+    const path = routePath(request);
     if (!path.startsWith("/api/") && !path.startsWith("/app/api/")) return;
     if (ALLOWED_WRITES.some((pattern) => pattern.test(path))) return;
     throw new TotalBaseError("VIEW_AS_READ_ONLY", "Seeing the App as someone else is read-only: nothing is saved.");

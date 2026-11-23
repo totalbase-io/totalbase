@@ -24,6 +24,7 @@ import { evaluateWidgetFormula } from '~/utils/widget-formula'
 import { fieldColumn, fieldJunction } from '~/utils/widget-form'
 import { createJunctionLinks, type JunctionCatalog, type JunctionLinksHandle } from '~/utils/junction-links'
 import { currentLocation } from '~/utils/device-location'
+import { previewableType } from '~/utils/previewable-type'
 
 export interface WidgetControl {
   open?: () => void
@@ -173,9 +174,13 @@ export function useCustomPage(dataview: Ref<DataView>, fields: Ref<DataViewField
       blob = new Blob([Uint8Array.from(atob(file.content), c => c.charCodeAt(0))], { type: file.mimeType })
     }
     if (!blob) return notify(t('designer.useWidgetRuntime.notAFile'), 'warning')
+    // A PDF or a raster picture opens in the page's preview (Print, Download); anything else downloads - an SVG too,
+    // which is a document that runs its own scripts, framed on this origin. Judged on the type's essence, from an
+    // allow-list: `image/svg+xml; charset=utf-8` is still an SVG. The blob is retyped to that essence.
+    const previewable = previewableType(blob.type)
+    if (previewable) blob = new Blob([blob], { type: previewable })
     const url = URL.createObjectURL(blob)
-    // A PDF or an image opens in the page's preview (Print, Download); anything else downloads.
-    if (blob.type === 'application/pdf' || blob.type.startsWith('image/')) {
+    if (previewable) {
       if (dialogs.file) URL.revokeObjectURL(dialogs.file.url)
       dialogs.file = { blob, url, filename }
       return

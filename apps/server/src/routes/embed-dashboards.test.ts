@@ -51,7 +51,7 @@ describe("Dashboard embeds", () => {
     ({ app, context, database } = await setupTestApp());
     const env = loadServerEnv();
     adminToken = (await context.auth.login({ email: env.adminEmail!, password: env.adminPassword! })).token;
-    await context.secrets.set(SECRET_KEY, SECRET);
+    await context.secrets.set(SECRET_KEY, SECRET, "DASHBOARD_EMBEDS");
     await context.settings.set("dashboards.embed_secret_key", SECRET_KEY);
     await context.settings.set("dashboards.embed_allowed_origins", [PARTNER, OTHER]);
 
@@ -155,6 +155,21 @@ describe("Dashboard embeds", () => {
     // A token naming a link's embed, or signed with another secret, gets nowhere.
     expect((await get("/embed/api/dashboard", token({ customer: "x" }, linkId))).statusCode).toBe(404);
     expect((await get("/embed/api/dashboard", signEmbedToken({ embed: signedId, params: { customer: "x" }, exp: exp() }, "another-secret"))).statusCode).toBe(401);
+    // Security regression: locked to nothing restricts nothing - `($VAR.customer IS NULL OR ...)` shows every row.
+    for (const customer of [null, ""]) expect((await get("/embed/api/dashboard", token({ customer }))).statusCode, String(customer)).toBe(401);
+    for (const value of [null, ""]) {
+      expect((await admin("POST", "", { name: "Locked to nothing", type: "SIGNED", variables: { customer: { mode: "LOCKED", value } } })).statusCode, String(value)).toBe(422);
+    }
+  });
+
+  // Security regression (Dashboards.md §2.9): an embed's anonymous visitor could send "fresh": true and skip the
+  // result cache on every request - running the dashboard's SQL as often as they liked.
+  it("never lets an embed's visitor skip the cache", async () => {
+    const run = (fresh: boolean) => app.inject({ method: "POST", url: `/embed/api/dashboard/widgets/${varsWidget}/data`, headers: { "x-totalbase-embed-token": link }, payload: { data: { variables: {} }, fresh } });
+    await run(false);
+    const forced = await run(true);
+    expect(forced.statusCode, forced.body).toBe(200);
+    expect(forced.json().data.cached).toBe(true);
   });
 
   it("an embed of one widget serves that widget alone - any other is 404 - and fails closed once it's gone", async () => {

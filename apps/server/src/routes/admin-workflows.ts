@@ -6,7 +6,7 @@ import type { AppContext } from "../context.js";
 import { extractBearerToken, requireAdmin } from "../auth-guards.js";
 import { resolveDataPrincipal } from "../data-principal.js";
 import { signal } from "../invalidations.js";
-import { OPERATION_HANDLERS, nextOccurrences, parseCronExpression, requestRunCancellation, runWorkflowManual, runWorkflowTest, validateExecutionReadiness } from "@totalbase/workflows";
+import { OPERATION_HANDLERS, nextOccurrences, parseCronExpression, requestRunCancellation, runWorkflowManual, runWorkflowTest, publishAdvisories, validateExecutionReadiness } from "@totalbase/workflows";
 import { OPERATION_CATALOG } from "@totalbase/tb-catalog";
 import type { JsonSchema } from "@totalbase/openapi";
 import { adminDoc, arrayOf, created, NO_CONTENT, object, ok, ref, UUID, UUID_PARAM, published } from "../openapi-admin-docs.js";
@@ -47,6 +47,23 @@ const paged = (items: JsonSchema) => ({
   schema: object({ data: arrayOf(items), meta: object({ total: { type: "integer", description: "Every matching row, across pages." } }, ["total"]) }, ["data", "meta"]),
 });
 const docs = (doc: Parameters<typeof adminDoc>[1]) => adminDoc("workflows", { ...doc, schemas: WORKFLOW_SCHEMAS });
+
+
+/**
+ * An Execute SQL step is the SQL Console's power (Workflows.md §5.7): an API token - an agent - writes one into a
+ * definition only while `sql_console.token_access` is on, as it runs SQL in the console only then
+ * (Administration.md §5.1). Running a definition an administrator wrote with their session stays theirs to decide.
+ */
+async function assertSqlStepsAllowed(context: AppContext, fromToken: boolean, definition: unknown): Promise<void> {
+  if (!fromToken) return;
+  const operations = (definition as { operations?: unknown } | null)?.operations;
+  if (!Array.isArray(operations) || !operations.some((operation) => (operation as { type?: unknown } | null)?.type === "totalbase.execute-sql")) return;
+  if (await context.settings.get("sql_console.token_access")) return;
+  throw new TotalBaseError(
+    "SQL_CONSOLE_DISABLED",
+    "An Execute SQL step is written with an API token only while Settings > SQL Console > Allow API tokens is on.",
+  );
+}
 
 export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppContext): void {
   const preHandler = requireAdmin(context);
@@ -194,6 +211,7 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
     }),
   }, async (request) => {
     const body = optionalData<{ revision: string; definition: Record<string, unknown> }>(request.body);
+    await assertSqlStepsAllowed(context, request.adminToken !== undefined, body.definition);
     return { data: await context.workflowsAdmin.saveDraft(request.params.id, revisionOf(request.body), body.definition as Record<string, unknown>) };
   });
   app.delete<{ Params: { id: string } }>("/admin/api/workflows/:id", {
@@ -221,9 +239,15 @@ export function registerAdminWorkflowsRoutes(app: FastifyInstance, context: AppC
       response: published(ref("WorkflowVersion")),
     }),
   }, async (request, reply) => {
-    const { created, ...version } = await context.workflowsAdmin.publish(request.params.id, revisionOf(request.body), (definition) => validateExecutionReadiness(definition, context), request.admin?.id ?? null, publishNote(request.body));
+    let published: Record<string, unknown> | undefined;
+    const { created, ...version } = await context.workflowsAdmin.publish(request.params.id, revisionOf(request.body), (definition) => {
+      published = definition;
+      return validateExecutionReadiness(definition, context);
+    }, request.admin?.id ?? null, publishNote(request.body));
     reply.code(created ? 201 : 200);
-    return { data: version };
+    // Advice on what was published (Workflows.md §6.5): a public webhook anyone with its URL sets off.
+    const warnings = published ? await publishAdvisories(published, context) : [];
+    return { data: version, ...(warnings.length > 0 && { meta: { warnings } }) };
   });
 
   // Runs the current DRAFT synchronously, as the requesting admin - "Probar"

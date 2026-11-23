@@ -1,5 +1,14 @@
+import type { Database } from "@totalbase/database";
 import { TotalBaseError } from "@totalbase/errors";
 import type { ComparisonNode, FilterNode, QueryVariable } from "@totalbase/query-engine";
+
+/** A pattern comparison's answer, computed by PostgreSQL before the rest of the filter is evaluated here. */
+export type PatternMatches = ReadonlyMap<ComparisonNode, boolean>;
+
+const PATTERN_OPERATORS: Record<string, string> = { _like: "LIKE", _ilike: "ILIKE", _regex: "~" };
+
+/** How long PostgreSQL may take matching one filter's patterns - a pattern built to backtrack is cancelled, not waited for. */
+const PATTERN_TIMEOUT_MS = 1_000;
 
 function getPath(value: unknown, path: string[]): unknown {
   let current = value;
@@ -57,12 +66,7 @@ function compareValues(a: unknown, b: unknown): number {
   return String(a ?? "").localeCompare(String(b ?? ""));
 }
 
-function likePatternToRegExp(pattern: string, caseInsensitive: boolean): RegExp {
-  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".");
-  return new RegExp(`^${escaped}$`, caseInsensitive ? "is" : "s");
-}
-
-function evaluateComparison(node: ComparisonNode, input: unknown): boolean {
+function evaluateComparison(node: ComparisonNode, input: unknown, patterns: PatternMatches): boolean {
   const fieldValue = getPath(input, node.path);
   if (node.operator === "_null") return fieldValue === null || fieldValue === undefined;
   if (node.operator === "_nnull") return fieldValue !== null && fieldValue !== undefined;
@@ -86,10 +90,12 @@ function evaluateComparison(node: ComparisonNode, input: unknown): boolean {
     return a.some((v) => b.some((x) => compareValues(x, v) === 0));
   }
 
+  if (node.operator in PATTERN_OPERATORS) {
+    const matched = patterns.get(node);
+    if (matched === undefined) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "A pattern comparison was not matched by PostgreSQL first (matchPatterns).");
+    return matched;
+  }
   const target = coerce(resolveRawValue(node.value as string | QueryVariable, input), fieldValue);
-  if (node.operator === "_like") return likePatternToRegExp(String(target), false).test(String(fieldValue ?? ""));
-  if (node.operator === "_ilike") return likePatternToRegExp(String(target), true).test(String(fieldValue ?? ""));
-  if (node.operator === "_regex") return new RegExp(String(target)).test(String(fieldValue ?? ""));
 
   const cmp = compareValues(fieldValue, target);
   switch (node.operator) {
@@ -113,9 +119,44 @@ function evaluateComparison(node: ComparisonNode, input: unknown): boolean {
  * this is a second, JS-side evaluator for the same AST, not a competing
  * filter language (spec: "no competing filter language").
  */
-export function evaluateFilter(node: FilterNode, input: unknown): boolean {
-  if (node.type === "and") return node.children.every((child) => evaluateFilter(child, input));
-  if (node.type === "or") return node.children.some((child) => evaluateFilter(child, input));
-  if (node.type === "not") return !node.children.every((child) => evaluateFilter(child, input));
-  return evaluateComparison(node as ComparisonNode, input);
+export function evaluateFilter(node: FilterNode, input: unknown, patterns: PatternMatches = new Map()): boolean {
+  if (node.type === "and") return node.children.every((child) => evaluateFilter(child, input, patterns));
+  if (node.type === "or") return node.children.some((child) => evaluateFilter(child, input, patterns));
+  if (node.type === "not") return !node.children.every((child) => evaluateFilter(child, input, patterns));
+  return evaluateComparison(node as ComparisonNode, input, patterns);
+}
+
+function patternNodes(node: FilterNode, into: ComparisonNode[] = []): ComparisonNode[] {
+  if (node.type === "and" || node.type === "or" || node.type === "not") for (const child of node.children) patternNodes(child, into);
+  else if ((node as ComparisonNode).operator in PATTERN_OPERATORS && (node as ComparisonNode).value !== undefined) into.push(node as ComparisonNode);
+  return into;
+}
+
+/**
+ * `_like`, `_ilike` and `_regex` are PostgreSQL's (Workflows.md §5.9): every one of a filter's, against `input`, in
+ * one statement under a short statement_timeout - as the Data API matches them. A pattern can be a binding the
+ * trigger chose, and a backtracking one evaluated here would hold the server's one thread; PostgreSQL's is
+ * cancelled at the timeout (`WORKFLOW_LIMIT_EXCEEDED`). Same semantics as everywhere else: LIKE's, and POSIX
+ * regular expressions.
+ */
+export async function matchPatterns(database: Pick<Database, "transaction">, node: FilterNode, input: unknown): Promise<PatternMatches> {
+  const nodes = patternNodes(node);
+  const matches = new Map<ComparisonNode, boolean>();
+  if (nodes.length === 0) return matches;
+  const params: string[] = [];
+  const tests = nodes.map((comparison) => {
+    params.push(String(getPath(input, comparison.path) ?? ""), String(resolveRawValue(comparison.value as string | QueryVariable, input)));
+    return `$${params.length - 1}::text ${PATTERN_OPERATORS[comparison.operator]} $${params.length}::text`;
+  });
+  let rows: { r: boolean[] }[];
+  try {
+    ({ rows } = await database.transaction((client) => client.query<{ r: boolean[] }>(`SELECT ARRAY[${tests.join(", ")}] AS r`, params), { statementTimeoutMs: PATTERN_TIMEOUT_MS }));
+  } catch (error) {
+    if (error instanceof TotalBaseError && error.sqlstate === "57014") {
+      throw new TotalBaseError("WORKFLOW_LIMIT_EXCEEDED", `A pattern took longer than ${PATTERN_TIMEOUT_MS} ms to match - simplify it.`);
+    }
+    throw error;
+  }
+  nodes.forEach((comparison, index) => matches.set(comparison, rows[0]!.r[index] === true));
+  return matches;
 }

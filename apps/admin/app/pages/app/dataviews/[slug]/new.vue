@@ -36,6 +36,7 @@ const { dataview, fields, error, primaryKey, features } = usePublishedDataViewBy
       icon="i-lucide-lock"
       :title="t('dataviews.grid.notAvailable')"
       :description="t('dataviews.grid.notAvailableHelp')"
+      class="page-empty"
     />
     <UEmpty
       v-else

@@ -2,6 +2,7 @@ import { compileSelect, SchemaContext, type FilterNode } from "@totalbase/query-
 import { resolveTableResource, type ResolvedApiResource } from "@totalbase/resources";
 import {
   buildRowFilter,
+  dataApiTransactionContext,
   loadPasswordColumns,
   protectedFieldDecision,
   rowFilterLimits,
@@ -10,6 +11,7 @@ import {
   type DataPrincipal,
   type MutationsContext,
 } from "@totalbase/mutations";
+import type { Queryable } from "@totalbase/database";
 import type { AdminDataView } from "./dataviews-admin-service.js";
 
 /** At most this many rows of a settings table are told apart - a parameter table holds a handful. */
@@ -43,6 +45,8 @@ export async function settingsWritable(
   context: SettingsWritableContext,
   principal: DataPrincipal,
   view: AdminDataView,
+  /** The read's audit, written on its own client - in its transaction, as a Data API read's. */
+  audit?: (client: Queryable, read: SettingsWritableRead) => Promise<void>,
 ): Promise<{ writable: SettingsWritable; read: SettingsWritableRead | null }> {
   const layout = (view.viewConfig["settings_layout"] ?? {}) as { keyColumn?: string; valueColumn?: string };
   if (!view.sourceResourceSchema || !view.sourceResourceName || !layout.keyColumn || !layout.valueColumn) {
@@ -79,9 +83,12 @@ export async function settingsWritable(
     maxLimit: MAX_KEYS,
     maxOffset: 0,
   });
-  const { rows } = await context.database.query<Record<string, unknown>>(compiled.sql, compiled.params);
-  return {
-    writable: { valueWritable: true, keys: rows.map((row) => String(row[keyColumn])) },
-    read: { resource, keyColumn, rowCount: rows.length },
-  };
+  // As a Data API read runs (Security.md §10.3): in a transaction naming the viewer to PostgreSQL - a Row Level
+  // Security policy keyed on totalbase.actor_user_id decides here too - under the request timeout, its audit inside.
+  return context.database.transaction(async (client) => {
+    const { rows } = await client.query<Record<string, unknown>>(compiled.sql, compiled.params);
+    const read: SettingsWritableRead = { resource, keyColumn, rowCount: rows.length };
+    await audit?.(client, read);
+    return { writable: { valueWritable: true, keys: rows.map((row) => String(row[keyColumn])) }, read };
+  }, await dataApiTransactionContext(context, principal));
 }

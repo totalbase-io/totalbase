@@ -27,6 +27,8 @@ export interface GraphQLLimits {
   maxCalls: number;
   /** graphql.max_depth: how deep a selection nests, introspection included. */
   maxDepth: number;
+  /** graphql.max_fields: the fields an operation selects, each fragment's once for every place it is spread. */
+  maxFields: number;
 }
 
 export interface GraphQLResponse {
@@ -90,13 +92,20 @@ export function operationTypeOf(body: unknown): OperationTypeNode | undefined {
   const { query, operationName } = (body ?? {}) as Record<string, unknown>;
   if (typeof query !== "string") return undefined;
   try {
-    const operations = parse(query).definitions.filter((d): d is OperationDefinitionNode => d.kind === Kind.OPERATION_DEFINITION);
+    const operations = parse(query, { maxTokens: MAX_TOKENS }).definitions.filter((d): d is OperationDefinitionNode => d.kind === Kind.OPERATION_DEFINITION);
     const operation = typeof operationName === "string" ? operations.find((o) => o.name?.value === operationName) : operations.length === 1 ? operations[0] : undefined;
     return operation?.operation;
   } catch {
     return undefined;
   }
 }
+
+/**
+ * A document's most tokens: past them parsing stops - a GraphQL request is a query, never a megabyte of one (a full
+ * introspection query is well under 1,000). graphql-js' own validation (overlapping fields) grows with the square
+ * of a document's size, so this bounds it too.
+ */
+const MAX_TOKENS = 10_000;
 
 /** What a request asks, parsed, validated and within the limits - or the 400 it gets, running nothing. */
 function prepare(
@@ -116,7 +125,7 @@ function prepare(
 
   let document: DocumentNode;
   try {
-    document = parse(query);
+    document = parse(query, { maxTokens: MAX_TOKENS });
   } catch (error) {
     return { refused: { status: 400, body: { errors: [formatError(error as GraphQLError, unexpected)] } } };
   }
@@ -171,7 +180,7 @@ function formatError(error: GraphQLError, unexpected: (error: unknown) => void):
   return { message: error.message, ...located, extensions: { source: "TOTALBASE", code: "INVALID_QUERY", status: 400 } };
 }
 
-/** graphql.max_calls and graphql.max_depth, on the operation that would run, fragments followed. */
+/** graphql.max_calls, graphql.max_depth and graphql.max_fields, on the operation that would run, fragments followed. */
 function assertLimits(schema: GraphQLSchema, document: DocumentNode, operationName: string | undefined, limits: GraphQLLimits): OperationDefinitionNode | undefined {
   const operations = document.definitions.filter((d): d is OperationDefinitionNode => d.kind === Kind.OPERATION_DEFINITION);
   const operation = operationName ? operations.find((o) => o.name?.value === operationName) : operations.length === 1 ? operations[0] : undefined;
@@ -181,7 +190,10 @@ function assertLimits(schema: GraphQLSchema, document: DocumentNode, operationNa
   );
 
   // Each field the schema marks as a Data API call (DATA_API_CALL), wherever it sits; validation already made
-  // every field exist on its type.
+  // every field exist on its type. A named fragment is counted once per type and its count reused: walking it
+  // again at every spread made a chain of fragments that each spread the one before twice cost 2^n - a 2 KB
+  // document blocked the process before any limit answered (Data_API.md §17.8).
+  const fragmentCalls = new Map<string, number>();
   const calls = (set: SelectionSetNode, type: GraphQLObjectType): number =>
     set.selections.reduce((count, selection) => {
       if (selection.kind === Kind.FIELD) {
@@ -191,22 +203,62 @@ function assertLimits(schema: GraphQLSchema, document: DocumentNode, operationNa
         const inner = getNamedType(field.type);
         return count + own + (selection.selectionSet && isObjectType(inner) ? calls(selection.selectionSet, inner) : 0);
       }
-      const inner = selection.kind === Kind.INLINE_FRAGMENT ? selection.selectionSet : fragments.get(selection.name.value)?.selectionSet;
-      return count + (inner ? calls(inner, type) : 0);
+      if (selection.kind === Kind.INLINE_FRAGMENT) return count + calls(selection.selectionSet, type);
+      const fragment = fragments.get(selection.name.value);
+      if (!fragment) return count;
+      const key = `${fragment.name.value}@${type.name}`;
+      let own = fragmentCalls.get(key);
+      if (own === undefined) {
+        fragmentCalls.set(key, 0); // a cycle (validation refuses one) counts nothing more
+        own = calls(fragment.selectionSet, type);
+        fragmentCalls.set(key, own);
+      }
+      return count + own;
     }, 0);
   const root = operation.operation === "mutation" ? schema.getMutationType() : operation.operation === "subscription" ? schema.getSubscriptionType() : schema.getQueryType();
   if (root && calls(operation.selectionSet, root) > limits.maxCalls) {
     throw new TotalBaseError("QUERY_COMPLEXITY_LIMIT_EXCEEDED", `More Data API calls than graphql.max_calls (${limits.maxCalls}): each root field and each one-to-many field is one.`);
   }
 
+  const fragmentDepth = new Map<string, number>();
   const depth = (set: SelectionSetNode): number =>
     Math.max(0, ...set.selections.map((selection) => {
       if (selection.kind === Kind.FIELD) return selection.selectionSet ? 1 + depth(selection.selectionSet) : 1;
-      const inner = selection.kind === Kind.INLINE_FRAGMENT ? selection.selectionSet : fragments.get(selection.name.value)?.selectionSet;
-      return inner ? depth(inner) : 0;
+      if (selection.kind === Kind.INLINE_FRAGMENT) return depth(selection.selectionSet);
+      const fragment = fragments.get(selection.name.value);
+      if (!fragment) return 0;
+      let own = fragmentDepth.get(fragment.name.value);
+      if (own === undefined) {
+        fragmentDepth.set(fragment.name.value, 0);
+        own = depth(fragment.selectionSet);
+        fragmentDepth.set(fragment.name.value, own);
+      }
+      return own;
     }));
   if (depth(operation.selectionSet) > limits.maxDepth) {
     throw new TotalBaseError("QUERY_DEPTH_LIMIT_EXCEEDED", `The selection nests deeper than graphql.max_depth (${limits.maxDepth}).`);
+  }
+
+  // Every field the response has per row, aliases apart: a fragment's count is reused, never re-walked, but multiplied
+  // by every place it is spread - aliases of a relation each spreading a fragment of a thousand aliases is a million
+  // values per row, which graphql-js would resolve one by one even though the SQL behind it is one small read.
+  const fragmentFields = new Map<string, number>();
+  const fieldCount = (set: SelectionSetNode): number =>
+    set.selections.reduce((count, selection) => {
+      if (selection.kind === Kind.FIELD) return count + 1 + (selection.selectionSet ? fieldCount(selection.selectionSet) : 0);
+      if (selection.kind === Kind.INLINE_FRAGMENT) return count + fieldCount(selection.selectionSet);
+      const fragment = fragments.get(selection.name.value);
+      if (!fragment) return count;
+      let own = fragmentFields.get(fragment.name.value);
+      if (own === undefined) {
+        fragmentFields.set(fragment.name.value, 0);
+        own = fieldCount(fragment.selectionSet);
+        fragmentFields.set(fragment.name.value, own);
+      }
+      return count + own;
+    }, 0);
+  if (fieldCount(operation.selectionSet) > limits.maxFields) {
+    throw new TotalBaseError("QUERY_COMPLEXITY_LIMIT_EXCEEDED", `The operation selects more fields than graphql.max_fields (${limits.maxFields}), each fragment's counted wherever it is spread.`);
   }
   return operation;
 }

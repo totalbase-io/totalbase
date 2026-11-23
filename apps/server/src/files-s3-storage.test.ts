@@ -69,7 +69,7 @@ describe.skipIf(!LIVE)("S3-compatible file storage", () => {
     const unconfigured = await verify();
     expect([unconfigured.statusCode, unconfigured.json().errors?.[0]?.code]).toEqual([400, "INVALID_SETTING"]);
 
-    await context.secrets.set(secretKey, "not-the-secret");
+    await context.secrets.set(secretKey, "not-the-secret", "S3");
     await context.settings.set("s3.endpoint", LIVE!);
     await context.settings.set("s3.region", process.env["TOTALBASE_TEST_S3_REGION"] ?? "us-east-1");
     await context.settings.set("s3.bucket", process.env["TOTALBASE_TEST_S3_BUCKET"] ?? "");
@@ -81,7 +81,7 @@ describe.skipIf(!LIVE)("S3-compatible file storage", () => {
     expect([refused.statusCode, refused.json().errors?.[0]?.code]).toEqual([502, "FILE_STORAGE_ERROR"]);
 
     // Checked before turning it on; Files can't use it until it is.
-    await context.secrets.set(secretKey, process.env["TOTALBASE_TEST_S3_SECRET_ACCESS_KEY"] ?? "");
+    await context.secrets.set(secretKey, process.env["TOTALBASE_TEST_S3_SECRET_ACCESS_KEY"] ?? "", "S3");
     expect((await verify()).statusCode).toBe(204);
     await expect(context.settings.set("files.storage_provider", "s3")).rejects.toMatchObject({ code: "INVALID_SETTING" });
     await context.settings.set("s3.enabled", true);

@@ -6,7 +6,8 @@ import WorkflowStepKeyField from '~/components/workflows/WorkflowStepKeyField.vu
  * field}}` support (apps/server/src/workflow-execution/templates.ts),
  * same conversion every other catalog field went through - must resolve
  * to a string, stored as a new Asset: as text, or decoded from base64 for
- * binary content another step produced (a PDF). `folder` - where it goes.
+ * binary content another step produced (a PDF). `folder` - where it goes;
+ * `visibility` - who reaches it, LINKED unless set (Workflows.md §5.18).
  */
 export interface CreateFileConfiguration {
   name?: string
@@ -14,6 +15,7 @@ export interface CreateFileConfiguration {
   content?: string
   encoding?: 'text' | 'base64'
   folder?: string | null
+  visibility?: 'PRIVATE' | 'LINKED' | 'PUBLIC'
 }
 
 const props = defineProps<{ modelValue: CreateFileConfiguration, nodeKey: string, existingKeys: string[] }>()
@@ -27,6 +29,13 @@ const contentType = ref('text/plain')
 const content = ref('')
 const encoding = ref<'text' | 'base64'>('text')
 const folder = ref<string | null | undefined>(undefined)
+const visibility = ref<'PRIVATE' | 'LINKED' | 'PUBLIC'>('LINKED')
+const { t } = useI18n()
+const visibilityItems = computed(() => (['LINKED', 'PRIVATE', 'PUBLIC'] as const).map(value => ({
+  value,
+  label: t(`content.files.visibility.${value}`),
+  description: t(`content.files.visibility.${value}Help`)
+})))
 
 const filesApi = useFilesApi()
 const { data: folders } = useAsyncData('create-file-folders', () => filesApi.listFolders(), { default: () => [] })
@@ -49,10 +58,11 @@ watch(open, (value) => {
   content.value = props.modelValue.content ?? ''
   encoding.value = props.modelValue.encoding ?? 'text'
   folder.value = props.modelValue.folder ?? undefined
+  visibility.value = props.modelValue.visibility ?? 'LINKED'
 })
 
 function save() {
-  emit('save', { key: keyValue.value, configuration: { name: name.value, contentType: contentType.value, content: content.value, encoding: encoding.value, folder: folder.value ?? null } })
+  emit('save', { key: keyValue.value, configuration: { name: name.value, contentType: contentType.value, content: content.value, encoding: encoding.value, folder: folder.value ?? null, visibility: visibility.value } })
   open.value = false
 }
 // A phone or tablet gets this editor fullscreen (AGENTS.md section 25, modals).
@@ -125,6 +135,13 @@ const isCompact = useCompactUi()
             />
           </UFormField>
         </div>
+
+        <UFormField :label="$t('content.files.page.visibility')">
+          <URadioGroup
+            v-model="visibility"
+            :items="visibilityItems"
+          />
+        </UFormField>
 
         <UFormField
           :label="$t('workflows.createFileModal.content')"

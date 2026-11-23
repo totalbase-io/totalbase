@@ -6,6 +6,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { Database } from "@totalbase/database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerAdminUi } from "./admin-ui.js";
+import { PERMISSIONS_POLICY } from "./hardening.js";
+import { readOAuthBindingCookie, readSessionCookie, setOAuthBindingCookie } from "./session-cookie.js";
 import type { AppContext } from "./context.js";
 import { adminToken as loginAdmin, cleanupTracked, setupTestApp, track, uniqueSuffix } from "./test-support.js";
 
@@ -134,6 +136,9 @@ describe("session cookie", () => {
     const me = await app.inject({ method: "GET", url: "/admin/api/auth/me", headers: { authorization: `Bearer ${adminToken}` } });
     expect(me.headers["x-content-type-options"]).toBe("nosniff");
     expect(me.headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(me.headers["permissions-policy"]).toBe(PERMISSIONS_POLICY);
+    expect(me.headers["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(me.headers["cross-origin-resource-policy"]).toBe("same-origin");
     expect(me.headers["cache-control"]).toBe("no-store");
     const refused = await app.inject({ method: "GET", url: "/admin/api/auth/me" });
     expect(refused.headers["cache-control"]).toBe("no-store");
@@ -167,5 +172,38 @@ describe("the UI's Content-Security-Policy", () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'self'");
     await app.close();
+  });
+});
+
+// Security regression (Security.md §2.18): the first session cookie of either name won - a plain tb_session a sibling
+// subdomain or plain http planted beside the real __Host- one signed the browser in to someone else's account - and a
+// value that wasn't valid percent-encoding threw on every request.
+describe("readSessionCookie", () => {
+  const read = (cookie: string) => readSessionCookie({ headers: { cookie } } as Parameters<typeof readSessionCookie>[0]);
+
+  it("takes the __Host- cookie whenever it is there, wherever a plain one stands", () => {
+    expect(read("tb_session=planted; __Host-tb_session=real")).toBe("real");
+    expect(read("__Host-tb_session=real; tb_session=planted")).toBe("real");
+    expect(read("tb_session=plain-only")).toBe("plain-only");
+  });
+
+  it("reads a malformed value as no cookie, never a failure", () => {
+    expect(read("tb_session=%E0%A4%A")).toBeUndefined();
+    expect(read("__Host-tb_session=%zz; tb_session=fallback")).toBe("fallback");
+  });
+});
+
+// Security regression (Security.md §2.11): the OAuth binding was a plain `tb_oauth` cookie under https too - a sibling
+// subdomain planted its own binding in a browser and handed it the callback of a sign-in it started (login CSRF).
+describe("the OAuth binding cookie", () => {
+  const read = (cookie: string, publicUrl: string) => readOAuthBindingCookie({ headers: { cookie } } as Parameters<typeof readOAuthBindingCookie>[0], publicUrl);
+
+  it("is __Host- under https, and only that name is read there", () => {
+    let header = "";
+    setOAuthBindingCookie({ header: (_name: string, value: string) => (header = value) } as unknown as Parameters<typeof setOAuthBindingCookie>[0], "https://tb.example.com", "abc");
+    expect(header).toMatch(/^__Host-tb_oauth=abc; Path=\/; HttpOnly; SameSite=Lax; Max-Age=600; Secure$/);
+    expect(read("tb_oauth=planted", "https://tb.example.com")).toBeUndefined();
+    expect(read("tb_oauth=planted; __Host-tb_oauth=real", "https://tb.example.com")).toBe("real");
+    expect(read("tb_oauth=plain", "http://localhost:3030")).toBe("plain");
   });
 });

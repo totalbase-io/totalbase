@@ -1,5 +1,6 @@
 import type { Database } from "@totalbase/database";
-import { hashPassword } from "@totalbase/auth";
+import { assertPasswordStrength, hashPassword } from "@totalbase/auth";
+import { SettingsService } from "@totalbase/settings";
 import { ADMINISTRATORS_ROLE_NAME } from "@totalbase/permissions";
 
 /**
@@ -55,5 +56,8 @@ export async function createInstanceOwner(database: Database, input: { email: st
 /** At start: the owner from the variables when both are set; otherwise only the role (the setup creates the owner). */
 export async function bootstrapFirstAdmin(database: Database, email: string | undefined, password: string | undefined): Promise<void> {
   await administratorsRole(database);
-  if (email && password) await createInstanceOwner(database, { email, name: "Administrator", password });
+  if (!email || !password || (await hasAdministrator(database))) return;
+  // The owner's password is held to the rule every other one is (Security.md §2.3) - the setup's included.
+  assertPasswordStrength(password, await new SettingsService(database).get("auth.password_min_length"));
+  await createInstanceOwner(database, { email, name: "Administrator", password });
 }

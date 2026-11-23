@@ -10,6 +10,10 @@ const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", im
 // development, so whatever was stored for them is put back afterwards
 // instead of being left deleted.
 const TOUCHED_KEYS = [
+  "security.cors_origins",
+  "security.trusted_proxies",
+  "files.storage_local_path",
+  "backups.local_path",
   "auth.password_min_length",
   "audit.retention_days",
   "api.max_limit",
@@ -136,6 +140,9 @@ describe("SettingsService (integration)", () => {
     await expect(settings.set("audit.retention_days", -1)).rejects.toMatchObject({ code: "INVALID_SETTING" });
     await expect(settings.set("audit.retention_days", 1.5)).rejects.toMatchObject({ code: "INVALID_SETTING" });
     await expect(settings.set("api.max_limit", 0)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    // SEC-98: a page larger than a filter list may hold (10,000) - the keys the server lists of a page (GraphQL's
+    // one-to-many reads, realtime's changed rows) would no longer fit one.
+    await expect(settings.set("api.max_limit", 10_001)).rejects.toMatchObject({ code: "INVALID_SETTING" });
     await expect(settings.set("smtp.port", 70_000)).rejects.toMatchObject({ code: "INVALID_SETTING" });
     await expect(settings.set("auth.password_min_length", 500)).rejects.toMatchObject({
       message: "auth.password_min_length: Expected a whole number from 8 to 128.",
@@ -188,5 +195,65 @@ describe("SettingsService (integration)", () => {
     await settings.setGroup("audit", { retention_days: 365 });
     expect(await settings.isOverridden("audit.retention_days")).toBe(false);
     expect(await settings.get("audit.retention_days")).toBe(365);
+  });
+  // Security regression (Administration.md §10.2, §12.3): a storage path had no bounds - set to the data directory (or
+  // `/`, `/etc`), a backup's files.tar carried the master key and any server file to whoever downloaded it.
+  it("confines the storage paths to directories of their own inside the data directory", async () => {
+    const confined = new SettingsService(database, { dataDir: "/var/lib/totalbase" });
+    for (const path of ["/var/lib/totalbase", "/var/lib/totalbase/", "/", "/etc", "/var/lib/totalbase/../../etc", "/var/lib/totalbase-other/files"]) {
+      await expect(confined.set("files.storage_local_path", path), path).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    }
+    await expect(confined.set("backups.local_path", "/var/lib/totalbase/files/backups")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await confined.set("files.storage_local_path", "/var/lib/totalbase/uploads");
+    await confined.set("backups.local_path", "/var/lib/totalbase/archives");
+    expect(await confined.get("files.storage_local_path")).toBe("/var/lib/totalbase/uploads");
+    await confined.reset("files.storage_local_path");
+    await confined.reset("backups.local_path");
+  });
+  // An instance with its own TOTALBASE_DATA_DIR kept its files in /var/lib/totalbase/files, outside it - and its backups,
+  // whose default path the confinement then refused (Administration.md §10.2).
+  it("defaults the storage paths to the data directory's, stored as no override", async () => {
+    const own = new SettingsService(database, { dataDir: "/srv/tb/" });
+    expect(await own.get("files.storage_local_path")).toBe("/srv/tb/files");
+    expect(await own.confinedStoragePath("backups.local_path")).toBe("/srv/tb/backups");
+    await own.set("files.storage_local_path", "/srv/tb/files");
+    expect(await own.isOverridden("files.storage_local_path")).toBe(false);
+    await own.setGroup("files", { storage_local_path: "/srv/tb/uploads" });
+    expect(await own.isOverridden("files.storage_local_path")).toBe(true);
+    await own.reset("files.storage_local_path");
+    expect(await own.get("files.storage_local_path")).toBe("/srv/tb/files");
+    expect(await new SettingsService(database).get("files.storage_local_path")).toBe("/var/lib/totalbase/files");
+  });
+  // Security regression (Administration.md §7.2, §12.3): the confinement ran in set() only - the settings page's
+  // group write (setGroup) stored `/` as the files path, and an override already stored was never checked again.
+  it("confines the storage paths in a group write too, and checks a stored one again when it is used", async () => {
+    const confined = new SettingsService(database, { dataDir: "/var/lib/totalbase" });
+    await expect(confined.setGroup("files", { storage_local_path: "/" })).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    await expect(confined.setGroup("backups", { local_path: "/var/lib/totalbase" })).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    expect(await confined.isOverridden("files.storage_local_path")).toBe(false);
+    await database.query(`INSERT INTO totalbase.settings (key, value) VALUES ('files.storage_local_path', '"/etc"')`);
+    confined.forget();
+    try {
+      await expect(confined.confinedStoragePath("files.storage_local_path")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    } finally {
+      await confined.reset("files.storage_local_path");
+    }
+    await confined.setGroup("files", { storage_local_path: "/var/lib/totalbase/uploads" });
+    expect(await confined.confinedStoragePath("files.storage_local_path")).toBe("/var/lib/totalbase/uploads");
+    await confined.reset("files.storage_local_path");
+  });
+  // Security regression (Administration.md §7.8): the CORS origins and trusted proxies took any text - `null` (what a
+  // sandboxed page or a file sends) or `*` got credentialed CORS answers.
+  it("takes only real origins for CORS and only addresses or ranges as trusted proxies", async () => {
+    for (const bad of [["null"], ["*"], ["https://app.example.com/path"], ["app.example.com"], ["file://x"]]) {
+      await expect(settings.set("security.cors_origins", bad), JSON.stringify(bad)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    }
+    await settings.set("security.cors_origins", ["https://app.example.com", "http://localhost:3000"]);
+    for (const bad of [["*"], ["proxy.internal"], ["10.0.0.0/99"]]) {
+      await expect(settings.set("security.trusted_proxies", bad), JSON.stringify(bad)).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    }
+    await settings.set("security.trusted_proxies", ["10.0.0.1", "10.0.0.0/8", "::1"]);
+    await settings.reset("security.cors_origins");
+    await settings.reset("security.trusted_proxies");
   });
 });

@@ -156,6 +156,9 @@
       "actOnBehalfHelp": "Un programa con este rol indica el usuario por el que actúa (X-TotalBase-On-Behalf-Of), uno que puede leer, y el registro de auditoría guarda a los dos. No presta permisos: la solicitud es del programa.",
       "reviewRequired": "Revisar su acceso periódicamente",
       "reviewRequiredHelp": "Su pestaña Revisiones de acceso avisa cuando toca una revisión, como para Administrators.",
+      "mfaRequired": "Exige MFA",
+      "mfaRequiredHelp": "Si sus miembros deben iniciar sesión con un código de una app de autenticación. Se define para todos los roles en",
+      "mfaSettings": "Configuración › Acceso › MFA",
       "relations": "Relaciones con otros roles",
       "relationsHelp": "Dónde está entre los roles, qué pueden hacer sus miembros debajo, quién lo asigna y con qué roles no puede tenerse."
     },
@@ -179,6 +182,7 @@
       "invalidJson": "No es un JSON válido.",
       "invalidJsonRule": "No es un JSON válido: {rule}",
       "saved": "Permiso guardado",
+      "savedWithAdvice": "Permiso guardado - revisá esto",
       "saveError": "No se pudo guardar el permiso",
       "cleared": "Permiso quitado",
       "clearError": "No se pudo quitar el permiso",
@@ -510,7 +514,8 @@
         "failed": "Inicios de sesión fallidos",
         "lockedUntil": "Bloqueado hasta el {date} - desbloquéalo desde el menú ⋯",
         "failedCount": "{n} desde el último inicio de sesión correcto",
-        "created": "Creado"
+        "created": "Creado",
+        "held": "Direcciones bloqueadas por inicios de sesión fallidos"
       },
       "danger": {
         "title": "Zona de peligro",
@@ -521,7 +526,7 @@
         "deleteTitle": "Eliminar usuario",
         "deleteHelp": "Elimina para siempre la cuenta con sus sesiones, tokens de API, asignaciones de roles y avatar. Las entradas del registro de auditoría se conservan. No se puede deshacer.",
         "removeTitle": "Remover usuario",
-        "removeHelp": "Para alguien que ya no es parte de la organización: conserva la cuenta para el registro de auditoría y le quita toda forma de entrar: contraseña, sesiones, tokens de API, autenticación en dos pasos y roles. Vuelve solo por invitación.",
+        "removeHelp": "Para alguien que ya no es parte de la organización: conserva la cuenta para el registro de auditoría y le quita toda forma de entrar: contraseña, sesiones, tokens de API, MFA y roles. Vuelve solo por invitación.",
         "removedTitle": "Este usuario fue removido",
         "removedHelp": "La cuenta se conserva para el registro de auditoría y nada suyo funciona. Para traerlo de vuelta, envíale una invitación desde el menú de arriba y vuelve a darle sus roles."
       },
@@ -549,20 +554,21 @@
         "notSet": "Se creó el usuario, pero no sus datos adicionales"
       },
       "mfa": {
-        "label": "Verificación en dos pasos",
+        "label": "MFA",
         "on": "Activada",
         "off": "Desactivada",
-        "reset": "Restablecer la verificación en dos pasos",
-        "resetTitle": "Restablecer la verificación en dos pasos",
-        "resetDescription": "Se quitan la app de autenticación y los códigos de recuperación de {name}, por ejemplo si perdió el teléfono. Sus sesiones siguen; vuelve a configurarla (en su próximo inicio de sesión, si la instancia la exige).",
+        "required": "Obligatoria",
+        "reset": "Restablecer MFA",
+        "resetTitle": "Restablecer MFA",
+        "resetDescription": "Se quitan la app de autenticación y los códigos de recuperación de {name}, por ejemplo si perdió el teléfono. Sus sesiones siguen; vuelve a configurarla (en su próximo inicio de sesión, si su cuenta la exige).",
         "resetButton": "Restablecer",
-        "resetDone": "Verificación en dos pasos restablecida",
-        "resetError": "No se pudo restablecer la verificación en dos pasos."
+        "resetDone": "MFA restablecida",
+        "resetError": "No se pudo restablecer MFA."
       },
       "removed": "Usuario removido",
       "removeError": "No se pudo remover al usuario",
       "removeTitle": "¿Remover a este usuario?",
-      "removeDescription": "La cuenta queda, para que el registro de auditoría lo siga nombrando, pero ya nada suyo funciona: se van su contraseña, sus sesiones, sus tokens de API, la autenticación en dos pasos, sus proveedores de inicio de sesión, los enlaces pendientes y sus roles. Solo una nueva invitación lo trae de vuelta.",
+      "removeDescription": "La cuenta queda, para que el registro de auditoría lo siga nombrando, pero ya nada suyo funciona: se van su contraseña, sus sesiones, sus tokens de API, su MFA, sus proveedores de inicio de sesión, los enlaces pendientes y sus roles. Solo una nueva invitación lo trae de vuelta.",
       "removeConfirm": "Remover"
     },
     "userCreate": {

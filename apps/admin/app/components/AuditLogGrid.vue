@@ -125,6 +125,7 @@ defineExpose({ refresh: logs.load, pending: logs.pending })
             size="sm"
             icon="i-lucide-history"
             :title="emptyTitle ?? t('audit.empty')"
+            :class="embedded ? undefined : 'table-empty'"
           />
         </slot>
       </template>

@@ -1,6 +1,6 @@
 import { TotalBaseError } from "@totalbase/errors";
 import { describe, expect, it } from "vitest";
-import { assertRedirectAllowed } from "./oauth-redirect.js";
+import { assertRedirectAllowed, redirectEntryProblem } from "./oauth-redirect.js";
 
 describe("assertRedirectAllowed", () => {
   it("allows an exact match", () => {
@@ -35,5 +35,21 @@ describe("assertRedirectAllowed", () => {
     expect(() =>
       assertRedirectAllowed(["https://app.example.com/callback"], "https://app.example.com/callback/extra"),
     ).toThrow(TotalBaseError);
+  });
+});
+
+// Security regression (Security.md §2.11): an allowlist entry of `/*` matched `//evil.example`, and a non-string one
+// threw at a sign-in. An entry is an absolute http(s) URL with a host.
+describe("redirectEntryProblem", () => {
+  it("takes absolute http(s) URLs, exact or ending in /*", () => {
+    for (const entry of ["https://app.example.com/callback", "https://app.example.com/*", "http://localhost:3000/auth", "https://app.example.com"]) {
+      expect(redirectEntryProblem(entry), entry).toBeNull();
+    }
+  });
+
+  it("refuses a relative path, another scheme or anything but text", () => {
+    for (const entry of ["/*", "//evil.example/*", "javascript:alert(1)", "ftp://files.example.com/*", "app.example.com/*", 42, null]) {
+      expect(redirectEntryProblem(entry), String(entry)).not.toBeNull();
+    }
   });
 });

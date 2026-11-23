@@ -16,6 +16,7 @@ import {
 } from "@totalbase/pg-catalog";
 import { TotalBaseError } from "@totalbase/errors";
 import { isProtectedField } from "@totalbase/mutations";
+import { getPasswordColumns } from "@totalbase/resources";
 import type { AppContext } from "../context.js";
 import { recordCatalog } from "../record-catalog.js";
 import { brokenReferences, syncCatalog, catalogScope } from "../catalog-refresh.js";
@@ -191,7 +192,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
         summary: "Preview a page of a table's rows",
         description:
           "Every column, unfiltered and unordered (`SELECT *`), in its own READ ONLY transaction under api.request_timeout_ms. " +
-          "Ignores Data API exposure and permissions - an administrator's look at the raw table. Not audited.",
+          "Ignores Data API exposure and permissions - an administrator's look at the raw table - but never holds a protected column (a password or token hash, a secret's ciphertext). Not audited.",
         pathParameters: BY_ID,
         parameters: [
           { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
@@ -201,9 +202,21 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, context: AppCon
       }),
     },
     async (request) => {
-      const oid = await resolveResourceOid(context, request.params.id, "TABLE");
+      const resource = await resolveResource(context, request.params.id, "TABLE");
       const { limit, offset } = pageOf(request.query, { max: 200, defaultLimit: 50 });
-      return { data: await previewRelationRows(context.database, oid, { limit, offset }, await dataApiTimeout(context)) };
+      const page = await previewRelationRows(context.database, resource.postgresOid, { limit, offset }, await dataApiTimeout(context));
+      // Never a protected column (a password hash, a token's hash, a secret's ciphertext), nor a Password column of
+      // the project's own: left out of the page.
+      const passwords = await getPasswordColumns(context.database, resource.id);
+      const hidden = page.columns.filter((column) => isProtectedField(resource.schema, resource.name, column.name) || passwords.has(column.name)).map((column) => column.name);
+      if (hidden.length === 0) return { data: page };
+      return {
+        data: {
+          ...page,
+          columns: page.columns.filter((column) => !hidden.includes(column.name)),
+          rows: page.rows.map((row) => Object.fromEntries(Object.entries(row as Record<string, unknown>).filter(([name]) => !hidden.includes(name)))),
+        },
+      };
     },
   );
 

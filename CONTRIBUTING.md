@@ -27,7 +27,7 @@ pnpm -r run build
 TOTALBASE_TEST_DB=totalbase_test pnpm test:integration    # every package, against its own database
 ```
 
-Integration tests run against **real PostgreSQL**, in a database of their own - never the one `pnpm dev` uses: they create and drop tables. Files run one at a time (`fileParallelism: false`); don't turn that off. End-to-end tests (Playwright, `e2e/`) run against `pnpm dev` with one worker.
+Integration tests run against **real PostgreSQL**, in a database of their own - never the one `pnpm dev` uses: they create and drop tables. Files run one at a time (`fileParallelism: false`); don't turn that off. End-to-end tests (Playwright, `e2e/`) run against `pnpm dev` with one worker. The security suite (`e2e/tests/security/`, `npx playwright test --project=security` in `e2e/`) attacks the instance the way a hostile client or agent would; a security fix found that way adds its attack there.
 
 ## The rules
 

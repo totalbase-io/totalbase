@@ -27,11 +27,13 @@ export interface AdminUserListItem extends AdminUser {
   lastLoginAt: string | null
   /** Sign-in refused until then (too many failed attempts); null when not locked. */
   lockedUntil: string | null
+  /** An address locked out of the account, or its sign-in delay on (Security.md §2.4). */
+  signInHeld: boolean
   /** Consecutive failed sign-ins since the last success/unlock/lockout. */
   failedLoginCount: number
   /** The picture of the user's most recently used sign-in provider, if any. */
   providerAvatar: { url: string, provider: string } | null
-  /** Two-factor authentication is on (Security.md §2.17). */
+  /** MFA is on (Security.md §2.17). */
   mfaEnabled: boolean
   /** When the account was removed (Security.md §1.12) - no way in left, the row kept for the audit log; null otherwise. */
   removedAt: string | null
@@ -39,6 +41,11 @@ export interface AdminUserListItem extends AdminUser {
   passwordChangedAt: string | null
   /** The password must be changed at the user's next sign-in. */
   passwordChangeRequired: boolean
+}
+
+/** One user (`GET /admin/api/users/:id`): a list item, and whether `mfa.required` covers them (Security.md §2.17). */
+export interface AdminUserDetail extends AdminUserListItem {
+  mfaRequired: boolean
 }
 
 // Kept in sync with @totalbase/shared's WORKFLOWS_SYSTEM_USER_EMAIL - not

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AuditStatus } from "@totalbase/audit";
 import { isRedactedKey, type Principal } from "@totalbase/shared";
 import type { AppContext } from "./context.js";
+import { routePath } from "./admin-ui.js";
 
 /**
  * Audit of access-related events (Security.md §11: "Always
@@ -216,7 +217,7 @@ export function registerAccessAudit(app: FastifyInstance, context: AppContext): 
         onBehalfOf: request.onBehalfOf,
         action: "AUTH",
         status: request.auditOutcome?.status ?? statusFor(reply.statusCode),
-        source: request.url.startsWith("/admin/") ? "admin" : "auth",
+        source: routePath(request).startsWith("/admin/") ? "admin" : "auth",
         ip: request.ip,
         userAgent: request.headers["user-agent"],
         payload: request.body === undefined ? undefined : sanitizeForAudit(bodyContent(request.body)),

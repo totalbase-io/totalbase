@@ -93,6 +93,8 @@
     "NETWORK_ERROR": "No se pudo conectar con el servidor.",
     "AUTHENTICATION_REQUIRED": "Tu sesión terminó - vuelve a iniciar sesión.",
     "PERMISSION_DENIED": "No tienes permiso para hacer esto.",
+    "LOCKDOWN": "Esta instancia está en lockdown: por ahora solo los administradores pueden usarla.",
+    "lockdownReadOnly": "Esta instancia está en lockdown, solo lectura: por ahora no se pueden guardar cambios.",
     "RATE_LIMIT_EXCEEDED": "Demasiadas solicitudes - espera un momento y vuelve a intentarlo.",
     "INVALID_RESPONSE": "El servidor respondió con algo distinto de la respuesta de la API.",
     "INVALID_TOKEN": "Este enlace o token no es válido, venció o ya se usó.",
@@ -303,29 +305,29 @@
       "empty": "Aún no hay actividad"
     },
     "mfa": {
-      "label": "Verificación en dos pasos",
+      "label": "Autenticación multifactor (MFA)",
       "onSince": "Activada desde {date}",
       "off": "Desactivada",
-      "offRequired": "Desactivada - esta instancia la exige; se te pedirá configurarla en tu próximo inicio de sesión",
+      "offRequired": "Desactivada - tu cuenta la exige; se te pedirá configurarla en tu próximo inicio de sesión",
       "setUp": "Configurar",
       "newCodes": "Nuevos códigos de recuperación",
       "turnOff": "Desactivar",
       "codesLeft": "No quedan códigos de recuperación | Queda 1 código de recuperación | Quedan {n} códigos de recuperación",
-      "required": "Esta instancia la exige: no se puede desactivar.",
-      "setupTitle": "Configurar la verificación en dos pasos",
-      "setupDescription": "El inicio de sesión también pedirá un código de una app de autenticación: Google Authenticator, Microsoft Authenticator, 1Password, Authy u otra.",
+      "required": "Tu cuenta la exige: no se puede desactivar.",
+      "setupTitle": "Configurar MFA",
+      "setupDescription": "El inicio de sesión también pedirá un código de una app de autenticación.",
       "passwordDescription": "Para confirmar que eres tú.",
       "codeDescription": "Los 6 dígitos que muestra la app para esta cuenta, para comprobar que quedó configurada.",
       "turnOn": "Activar",
-      "startError": "No se pudo empezar a configurar la verificación en dos pasos.",
-      "confirmError": "No se pudo activar la verificación en dos pasos.",
-      "disableTitle": "Desactivar la verificación en dos pasos",
+      "startError": "No se pudo empezar a configurar MFA.",
+      "confirmError": "No se pudo activar MFA.",
+      "disableTitle": "Desactivar MFA",
       "disableDescription": "El inicio de sesión pedirá solo tu contraseña. Tus códigos de recuperación dejan de funcionar.",
       "codesTitle": "Nuevos códigos de recuperación",
       "codesDescription": "Tus códigos de recuperación actuales dejan de funcionar y se muestran diez nuevos, una sola vez.",
       "generate": "Generar",
-      "disabled": "La verificación en dos pasos está desactivada",
-      "disableError": "No se pudo desactivar la verificación en dos pasos.",
+      "disabled": "MFA está desactivada",
+      "disableError": "No se pudo desactivar MFA.",
       "codesError": "No se pudieron generar nuevos códigos de recuperación."
     }
   },
@@ -379,9 +381,10 @@
         "connector": "Conector",
         "maintenance": "Mantenimiento",
         "emailSmtp": "SMTP",
-        "s3Storage": "Almacenamiento S3",
+        "s3Storage": "S3",
         "access": "Acceso",
         "authentication": "Autenticación",
+        "mfa": "MFA",
         "tokens": "Tokens",
         "authProviders": "Proveedores",
         "security": "Seguridad",
@@ -397,6 +400,7 @@
         "dashboards": "Dashboards",
         "maps": "Mapas",
         "appearance": "Apariencia",
+        "lockdown": "Lockdown",
         "files": "Archivos",
         "postgresql": "PostgreSQL",
         "backups": "Backups",
@@ -440,91 +444,181 @@
         "tokensExpiring": "{n} token de API vence pronto | {n} tokens de API vencen pronto",
         "failedSignIns": "{n} inicio de sesión fallido en las últimas 24 horas | {n} inicios de sesión fallidos en las últimas 24 horas",
         "tokensRefused": "{n} uso rechazado de un token de API en las últimas 24 horas | {n} usos rechazados de tokens de API en las últimas 24 horas",
-        "backupFailed": "El último backup falló - mira por qué en Backups | El último backup falló - mira por qué en Backups"
+        "backupFailed": "El último backup falló - mira por qué en Backups | El último backup falló - mira por qué en Backups",
+        "smtpNotConfigured": "SMTP no está configurado - no se pueden enviar invitaciones ni restablecimientos de contraseña | SMTP no está configurado - no se pueden enviar invitaciones ni restablecimientos de contraseña",
+        "backupsOff": "Los backups están desactivados - TotalBase no está respaldando esta base de datos | Los backups están desactivados - TotalBase no está respaldando esta base de datos",
+        "connectionsHigh": "{n} conexiones abiertas - cerca del límite que permite el servidor PostgreSQL | {n} conexiones abiertas - cerca del límite que permite el servidor PostgreSQL",
+        "invalidIndexes": "{n} índice inválido - reconstrúyelo en Mantenimiento | {n} índices inválidos - reconstrúyelos en Mantenimiento",
+        "tablesWithDeadRows": "{n} tabla tiene muchas filas muertas - ejecuta VACUUM en Mantenimiento | {n} tablas tienen muchas filas muertas - ejecuta VACUUM en Mantenimiento",
+        "executionsFailed": "{n} ejecución asíncrona falló en las últimas 24 horas | {n} ejecuciones asíncronas fallaron en las últimas 24 horas",
+        "masterKeyFile": "La clave maestra es un archivo generado por TotalBase - respáldalo aparte de la base de datos | La clave maestra es un archivo generado por TotalBase - respáldalo aparte de la base de datos",
+        "publicUrlHttp": "La URL pública es http: los inicios de sesión y los datos viajan sin cifrar; sírvela por https | La URL pública es http: los inicios de sesión y los datos viajan sin cifrar; sírvela por https",
+        "rateLimitOff": "El límite por dirección está apagado aunque hay un proxy de confianza configurado: actívalo | El límite por dirección está apagado aunque hay un proxy de confianza configurado: actívalo",
+        "userRateLimitOff": "El límite por usuario está apagado: una sola cuenta puede saturar la API | El límite por usuario está apagado: una sola cuenta puede saturar la API",
+        "untrustedProxy": "Un proxy reenvía peticiones en las que TotalBase no confía: todos llegan con su dirección; activa Confiar en las cabeceras del proxy inverso | Un proxy reenvía peticiones en las que TotalBase no confía: todos llegan con su dirección; activa Confiar en las cabeceras del proxy inverso",
+        "certificateInvalid": "El certificado de la URL pública no es válido o venció: los navegadores lo rechazan | El certificado de la URL pública no es válido o venció: los navegadores lo rechazan",
+        "certificateExpiring": "El certificado de la URL pública vence en {n} día: renuévalo | El certificado de la URL pública vence en {n} días: renuévalo",
+        "securityHeadersMissing": "{n} cabecera de seguridad no llega a la URL pública: el proxy inverso la quita | {n} cabeceras de seguridad no llegan a la URL pública: el proxy inverso las quita",
+        "publicUrlUnreachable": "El servidor no llega a su propia URL pública: su certificado y sus cabeceras no se revisan | El servidor no llega a su propia URL pública: su certificado y sus cabeceras no se revisan",
+        "lockoutOff": "El bloqueo de inicio de sesión está apagado: una contraseña puede adivinarse sin límite | El bloqueo de inicio de sesión está apagado: una contraseña puede adivinarse sin límite",
+        "mfaNotRequired": "MFA no es obligatoria para el rol Administrators | MFA no es obligatoria para el rol Administrators",
+        "registrationUnfilteredWrites": "El rol de autorregistro puede cambiar o borrar todas las filas de {n} recurso, y lo recibe cualquiera que se registre | El rol de autorregistro puede cambiar o borrar todas las filas de {n} recursos, y lo recibe cualquiera que se registre",
+        "definerFunctionsExposed": "{n} función expuesta se ejecuta como su dueño (SECURITY DEFINER): revisa qué le permite a quien la llama | {n} funciones expuestas se ejecutan como su dueño (SECURITY DEFINER): revisa qué le permiten a quien las llama",
+        "postgresSuperuser": "TotalBase se conecta a PostgreSQL como superusuario: dale un rol común dueño de la base | TotalBase se conecta a PostgreSQL como superusuario: dale un rol común dueño de la base",
+        "postgresRolePrivileges": "El rol de PostgreSQL de TotalBase tiene {n} privilegio que no necesita: quítaselo | El rol de PostgreSQL de TotalBase tiene {n} privilegios que no necesita: quítaselos",
+        "postgresPasswordMd5": "PostgreSQL guarda las contraseñas nuevas con md5: configura password_encryption en scram-sha-256 | PostgreSQL guarda las contraseñas nuevas con md5: configura password_encryption en scram-sha-256",
+        "postgresTlsOff": "La conexión a PostgreSQL cruza una red pública sin cifrar: configura POSTGRES_SSL | La conexión a PostgreSQL cruza una red pública sin cifrar: configura POSTGRES_SSL",
+        "dashboardsQueryRole": "El rol de las consultas de widgets protege menos de lo que debería, o los widgets no pueden ejecutarse: revísalo | El rol de las consultas de widgets protege menos de lo que debería, o los widgets no pueden ejecutarse: revísalo"
       },
       "kpis": {
         "denied": "{n} denegadas",
         "failed": "{n} fallidas",
         "people": "Personas",
-        "peopleHint": "Cuentas activas que pueden iniciar sesión",
+        "peopleHint": "Cuentas que pueden iniciar sesión",
         "apiTokens": "Tokens de API",
         "apiTokensHint": "Tokens que aún autentican",
         "exposedResources": "Recursos expuestos",
         "exposedResourcesHint": "de {total} en tus esquemas",
         "actions24h": "Acciones, últimas 24 h",
-        "noProblems": "Ninguna denegada ni fallida"
+        "noProblems": "Ninguna denegada ni fallida",
+        "activeSessions": "Sesiones activas",
+        "activeSessionsHint": "Con sesión iniciada ahora",
+        "workflowRuns24h": "Workflows, últimas 24 h",
+        "workflowRunsFailed": "{n} fallidas",
+        "workflowRunsNoneFailed": "Ninguna fallida",
+        "deltaHint": "Comparado con las 24 horas anteriores"
       },
       "categories": {
-        "data": "Datos",
         "access": "Acceso y seguridad",
         "sql": "Consola SQL",
         "bulk": "Importar / Exportar / Imprimir",
-        "other": "Otros"
+        "other": "Otros",
+        "config": "Configuración"
       },
       "age": {
         "noneWaiting": "ninguno en espera",
         "underMinute": "menos de un minuto",
         "minutes": "{n} min",
-        "hours": "{n} h"
+        "hours": "{n} h",
+        "days": "{n} d"
       },
       "title": "Estado",
       "description": "Qué necesita atención y cómo está esta instancia.",
       "needsAttention": "Necesita atención",
       "allClear": "Todo en orden - nada necesita tu atención.",
       "activity": {
-        "title": "Actividad, últimos 14 días",
-        "description": "Del registro de auditoría, por día en {timeZone}. Haz clic en un día para abrirlo en el Registro de actividad.",
+        "title": "Actividad",
+        "description": "Por día en {timeZone}. Las lecturas cuentan solo donde se auditan.",
         "insights": "Estadísticas",
-        "empty": "Sin actividad en los últimos 14 días."
-      },
-      "busiest": {
-        "title": "Recursos más usados, últimos 7 días",
-        "empty": "Sin actividad en tus recursos en los últimos 7 días."
+        "tabs": {
+          "space": "Espacio",
+          "workflows": "Workflows",
+          "backups": "Backups"
+        },
+        "dataApi": "Data API",
+        "adminApi": "Administración",
+        "problems": "{n} denegada o fallida | {n} denegadas o fallidas",
+        "noProblems": "Ninguna denegada ni fallida",
+        "emptyData": "Nada pasó por la Data API en los últimos {n} días.",
+        "emptyAdmin": "Sin actividad de administración en los últimos {n} días."
       },
       "trends": {
-        "title": "¿Algo está fallando?",
-        "description": "Por día en los mismos 14 días. Haz clic en un punto para abrirlo.",
-        "tabs": {
-          "problems": "Errores",
-          "workflows": "Workflows"
-        },
-        "failed": "Fallidas",
-        "denied": "Denegadas",
         "succeeded": "Completadas",
         "failedRuns": "Fallidas",
-        "noProblems": "Nada denegado ni fallido en los últimos 14 días.",
-        "noRuns": "Ninguna ejecución de workflow terminó en los últimos 14 días."
+        "noRuns": "Ninguna ejecución de workflow terminó en los últimos {n} días.",
+        "noBackups": "Sin backups en los últimos {n} días.",
+        "backupsOff": "Los backups están desactivados - actívalos en Configuración › Backups."
       },
       "space": {
-        "title": "Espacio de la base de datos",
-        "description": "Tablas y vistas materializadas, con sus índices.",
-        "tabs": {
-          "schemas": "Por esquema",
-          "totalbase": "TotalBase"
-        },
         "other": "Otros",
-        "maintenance": "Mantenimiento",
-        "empty": "Todavía no hay tablas."
+        "empty": "Todavía no hay tablas.",
+        "schema": "Esquema"
       },
       "system": {
         "title": "Sistema",
         "databaseSize": "Tamaño de la base de datos",
         "connections": "Conexiones",
-        "connectionsValue": "{n} de {max} permitidas por el servidor",
+        "connectionsValue": "{n} de {max}",
         "pool": "Pool de TotalBase",
-        "poolValue": "{total} de {max} abiertas · {idle} inactivas",
         "poolWaiting": "{n} en espera",
-        "activeSessions": "Sesiones activas",
         "eventsWaiting": "Eventos de datos en espera",
         "oldest": "el más antiguo {age}",
         "masterKey": "Clave maestra",
         "masterKeyEnv": "TOTALBASE_MASTER_KEY (variable de entorno)",
         "masterKeyFile": "Generada por TotalBase. Respalda este archivo aparte de la base: sin él no se pueden leer los secretos guardados.",
-        "backups": "Backups",
         "backupsLast": "Último: {when}",
-        "backupsNone": "Ninguno completado todavía",
-        "backupsNext": "Próximo: {when}"
-      }
+        "executions": "Ejecuciones asíncronas",
+        "executionsValue": "{pending} en espera · {running} en curso",
+        "executionsFailed": "{n} fallidas en las últimas 24 horas",
+        "maintenanceRunning": "Hay un lote de mantenimiento en curso",
+        "maintenanceIdle": "Sin mantenimiento en curso",
+        "runningFor": "en marcha hace {age}",
+        "publicUrl": "URL pública",
+        "poolBusy": "{busy} de {max} en uso",
+        "publicUrlHelp": "La dirección con la que se arman los enlaces que envía TotalBase",
+        "connectionsHelp": "Abiertas en el servidor PostgreSQL, de las que admite",
+        "poolHelp": "Las conexiones propias de TotalBase",
+        "masterKeyHelp": "Descifra los secretos guardados",
+        "eventsHelp": "Cambios de datos camino a sus Workflows",
+        "executionsHelp": "Trabajo en cola para ejecutarse en segundo plano"
+      },
+      "instance": {
+        "publicUrlMismatch": "Abriste esta página desde {origin}. Los enlaces que envía TotalBase usan la URL pública.",
+        "lockdownScheduled": "Un lockdown comienza {when}.",
+        "readOnlyScheduled": "El modo solo lectura comienza {when}."
+      },
+      "refresh": {
+        "auto": "Actualización automática",
+        "off": "Desactivada"
+      },
+      "services": {
+        "title": "Servicios",
+        "on": "Activo",
+        "off": "Apagado",
+        "notConfigured": "Sin configurar",
+        "descriptions": {
+          "smtp": "Invitaciones, restablecimientos de contraseña y correos de Workflows",
+          "backups": "Backups programados de esta base de datos",
+          "s3": "Un bucket S3 para archivos y backups",
+          "audit": "Registra cada escritura, inicio de sesión y cambio de configuración",
+          "openapi": "La referencia de la API generada y sus documentos",
+          "graphql": "Un endpoint GraphQL sobre la Data API",
+          "realtime": "Cambios en vivo por WebSocket",
+          "mcp": "Permite a agentes de IA trabajar con esta instancia",
+          "sql_console": "SQL directo para administradores"
+        }
+      },
+      "changes": {
+        "title": "Últimos cambios de configuración",
+        "description": "Esquema, usuarios, roles, permisos, tokens, secretos y ajustes.",
+        "all": "Registro de actividad",
+        "empty": "Todavía no hay cambios de configuración",
+        "today": "Hoy",
+        "yesterday": "Ayer"
+      },
+      "attentionCount": "{n} elemento necesita atención | {n} elementos necesitan atención",
+      "signIns": {
+        "title": "Últimos inicios de sesión",
+        "description": "Quién inició sesión, a quién se rechazó y por qué.",
+        "all": "Estadísticas",
+        "empty": "Todavía no hay inicios de sesión",
+        "onlyRefused": "Solo rechazados",
+        "doors": {
+          "api": "API",
+          "portal": "Portal",
+          "oauth": "Proveedor",
+          "mfa": "Segundo factor",
+          "passwordRenew": "Renovación de contraseña"
+        },
+        "signedIn": "Inició sesión",
+        "more": "Ver el día completo en Logs",
+        "outcomes": {
+          "EXECUTED": "{count} inició sesión | {count} iniciaron sesión",
+          "DENIED": "{count} denegado | {count} denegados",
+          "FAILED": "{count} fallido | {count} fallidos"
+        }
+      },
+      "feedFailed": "No se pudo cargar"
     },
     "publishStatus": {
       "live": "Publicado",
@@ -672,7 +766,9 @@
         "CONSTRAINT_WITHOUT_MESSAGE": "{columns} no tienen mensaje: una escritura rechazada muestra un texto genérico en lugar de qué corregir.",
         "SECRET_COLUMN_SHOWN": "{columns} parecen secretos y se muestran en la grilla: ocúltalos o deniega el campo en los permisos de los roles.",
         "STYLE_IN_CSS_CLASS": "El widget {widget} pone {columns} en sus clases CSS: la pestaña Estilo las tiene.",
-        "WIDGET_IGNORES_ROW_FILTER": "El widget {widget} lee {resource}, de la que {role} solo puede leer algunas filas, pero su SQL nunca filtra por $USER: {role} ve todas las filas a través de él."
+        "WIDGET_IGNORES_ROW_FILTER": "El widget {widget} lee {resource}, de la que {role} solo puede leer algunas filas, pero su SQL nunca filtra por $USER: {role} ve todas las filas a través de él.",
+        "WIDGET_READS_UNREADABLE_TABLE": "El widget {widget} lee {resource}, que {role} no puede leer, y su SQL nunca filtra por $USER: {role} ve lo que muestra de todas las filas. Está bien para cifras de todos.",
+        "WIDGET_SHOWS_HIDDEN_FIELD": "El widget {widget} muestra {columns} de {resource}, que {role} no puede leer: su SQL corre con la autoridad del tablero, así que {role} lo ve a través de él."
       },
       "actions": {
         "CREATE": "crear",
@@ -764,6 +860,25 @@
       "hidePassword": "Ocultar contraseña",
       "showPassword": "Mostrar contraseña"
     },
+    "lockdown": {
+      "title": "Esta instancia está en lockdown",
+      "description": "Por ahora solo los administradores pueden usarla.",
+      "until": "Termina {time}.",
+      "signIn": "Por ahora solo los administradores pueden iniciar sesión.",
+      "tryAgain": "Reintentar",
+      "signInOther": "Iniciar sesión con otra cuenta",
+      "bannerOn": "El lockdown está activo: solo se responde a los administradores.",
+      "bannerUntil": "Lockdown hasta {time}: solo se responde a los administradores.",
+      "bannerScheduled": "Hay un lockdown programado desde {from} hasta {until}.",
+      "bannerNotice": "Esta instancia estará en lockdown desde {from} hasta {until}: solo los administradores podrán usarla.",
+      "titleReadOnly": "Esta instancia está en solo lectura por ahora",
+      "signInReadOnly": "Puedes iniciar sesión y leer; solo los administradores pueden cambiar algo.",
+      "bannerReadOnlyOn": "Lockdown, solo lectura: solo los administradores pueden cambiar algo.",
+      "bannerReadOnlyUntil": "Lockdown, solo lectura, hasta {time}: solo los administradores pueden cambiar algo.",
+      "bannerReadOnlyScheduled": "Hay un lockdown de solo lectura programado desde {from} hasta {until}.",
+      "bannerReadOnlyNotice": "Esta instancia estará en solo lectura desde {from} hasta {until}: solo los administradores podrán cambiar algo.",
+      "settings": "Configuración"
+    },
     "verifyEmail": {
       "linkIncomplete": "Esta página necesita el enlace completo de tu correo.",
       "invalidToken": "Este enlace no es válido, ha caducado o ya se usó.",
@@ -792,11 +907,11 @@
       "submit": "Crear administrador"
     },
     "mfa": {
-      "title": "Verificación en dos pasos",
+      "title": "Autenticación multifactor (MFA)",
       "description": "Ingresa el código de 6 dígitos que muestra tu app de autenticación para esta cuenta.",
-      "recoveryDescription": "Ingresa uno de los códigos de recuperación que guardaste al configurar la verificación en dos pasos. Cada uno sirve una vez.",
-      "enrollTitle": "Configura la verificación en dos pasos",
-      "enrollDescription": "Esta instancia exige un código de una app de autenticación para iniciar sesión: Google Authenticator, Microsoft Authenticator, 1Password, Authy u otra. Agrega esta cuenta a la tuya e ingresa el código que muestra.",
+      "recoveryDescription": "Ingresa uno de los códigos de recuperación que guardaste al configurar MFA. Cada uno sirve una vez.",
+      "enrollTitle": "Configura MFA",
+      "enrollDescription": "Tu cuenta exige un código de una app de autenticación para iniciar sesión. Agrega esta cuenta a la tuya e ingresa el código que muestra.",
       "code": "Código de verificación",
       "recoveryCode": "Código de recuperación",
       "verify": "Verificar",
@@ -809,12 +924,14 @@
       "startAgain": "Iniciar sesión de nuevo",
       "enrollError": "No se pudo empezar a configurar la app de autenticación.",
       "continue": "Continuar",
+      "appsToggle": "¿No tienes una app de autenticación?",
+      "appsDescription": "Sirve cualquier app que genere códigos TOTP. Algunas de las más usadas:",
       "qrAlt": "Código QR para agregar esta cuenta a una app de autenticación",
       "scan": "Escanea este código QR con tu app de autenticación.",
       "typeSecret": "¿No puedes escanearlo? Ingresa esta clave en la app:",
       "codesTitle": "Guarda tus códigos de recuperación",
       "codesDescription": "Si pierdes el teléfono, cada uno de estos códigos te deja iniciar sesión una vez. No se volverán a mostrar: cópialos o descárgalos y guárdalos en un lugar seguro.",
-      "codesFileTitle": "{name} - códigos de recuperación de la verificación en dos pasos",
+      "codesFileTitle": "{name} - códigos de recuperación de MFA",
       "download": "Descargar"
     },
     "reauthenticate": {
@@ -920,14 +1037,15 @@
       "userSessionsRevoke": "Cerró todas las sesiones de un usuario",
       "userUnlock": "Desbloqueó a un usuario",
       "authMfaChallenge": "Pasó el paso de la contraseña (se pidió el código)",
-      "authMfaEnroll": "Empezó a configurar la verificación en dos pasos al iniciar sesión",
+      "authMfaEnroll": "Empezó a configurar MFA al iniciar sesión",
       "authMfaVerify": "Inició sesión con un código de verificación (API)",
       "authPortalMfaVerify": "Inició sesión en el portal con un código de verificación",
-      "accountMfaStart": "Empezó a configurar la verificación en dos pasos",
-      "accountMfaEnable": "Activó la verificación en dos pasos",
-      "accountMfaDisable": "Desactivó la verificación en dos pasos",
+      "accountMfaStart": "Empezó a configurar MFA",
+      "accountMfaEnable": "Activó MFA",
+      "accountMfaDisable": "Desactivó MFA",
       "accountMfaRecoveryCodes": "Generó nuevos códigos de recuperación",
-      "userMfaReset": "Restableció la verificación en dos pasos de un usuario"
+      "userMfaReset": "Restableció la MFA de un usuario",
+      "schemaApply": "Cambió el esquema"
     },
     "entities": {
       "user": "un usuario",

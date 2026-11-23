@@ -70,6 +70,8 @@ describe("Files public API (/api/totalbase/table/files)", () => {
       filename: "files-pkg-test-private.txt",
       declaredContentType: "text/plain",
       visibility: "PRIVATE",
+      // Its uploader: a PRIVATE file is reached by its uploader only (Administration.md §10.6).
+      actorUserId: apiKeyUserId,
     });
     privateFileId = privateFile.id;
   });
@@ -330,6 +332,95 @@ describe("Files public API (/api/totalbase/table/files)", () => {
       expect((await context.filesAdmin.readContent(privateFileId)).content.toString()).toBe("new private content");
     } finally {
       await context.permissions.delete(roleId, filesResourceId, "UPDATE");
+    }
+  });
+  // Security regression (Administration.md §10.5): a file's content is served on the instance's own origin, so what
+  // an uploader put in it must never run there - an uploaded HTML page or SVG with a <script> ran with the session
+  // of whoever opened it (an administrator: the SQL Console).
+  it("never lets a file's content run: a download, and sandboxed, unless it is a picture or a PDF", async () => {
+    const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+    const cases: { name: string; type: string; content: Buffer; disposition: "inline" | "attachment"; sandboxed: boolean }[] = [
+      { name: "page.html", type: "text/html", content: Buffer.from("<script>alert(1)</script>"), disposition: "attachment", sandboxed: true },
+      { name: "logo.svg", type: "image/svg+xml", content: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), disposition: "attachment", sandboxed: true },
+      { name: "app.js", type: "text/javascript", content: Buffer.from("alert(1)"), disposition: "attachment", sandboxed: true },
+      { name: "notes.txt", type: "text/plain", content: Buffer.from("plain"), disposition: "attachment", sandboxed: true },
+      // Claims to be a picture, isn't one: still that picture's type, which nosniff keeps from becoming HTML.
+      { name: "fake.png", type: "image/png", content: Buffer.from("<script>alert(1)</script>"), disposition: "inline", sandboxed: true },
+      { name: "real.png", type: "image/png", content: PNG, disposition: "inline", sandboxed: true },
+      { name: "doc.pdf", type: "application/pdf", content: Buffer.from("%PDF-1.4\n"), disposition: "inline", sandboxed: false },
+    ];
+    const ids: string[] = [];
+    try {
+      for (const file of cases) {
+        const uploaded = await context.filesAdmin.upload({ content: file.content, filename: file.name, declaredContentType: file.type, visibility: "PUBLIC" });
+        ids.push(uploaded.id);
+        const res = await app.inject({ method: "GET", url: `/api/totalbase/table/files/${uploaded.id}` });
+        expect(res.statusCode, file.name).toBe(200);
+        expect(String(res.headers["content-disposition"]), file.name).toMatch(new RegExp(`^${file.disposition};`));
+        expect(res.headers["x-content-type-options"], file.name).toBe("nosniff");
+        expect(res.headers["cross-origin-resource-policy"], file.name).toBe("cross-origin");
+        const csp = String(res.headers["content-security-policy"] ?? "");
+        expect(csp.startsWith("sandbox"), `${file.name}: ${csp}`).toBe(file.sandboxed);
+      }
+    } finally {
+      for (const id of ids) await context.filesAdmin.remove(id).catch(() => undefined);
+    }
+  });
+  // Security regression (Administration.md §10.4): a multipart upload was read whole (up to 1 GiB) into memory before
+  // its size was checked, and a replaced content was checked for neither size nor type.
+  it("refuses an upload past the size limit as it arrives, and holds a replaced content to the same checks", async () => {
+    const boundary = "files-test-boundary";
+    const multipart = (name: string, type: string, content: Buffer) => Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: ${type}\r\n\r\n`),
+      content,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const headers = { authorization: `Bearer ${apiKeyPlain}`, "content-type": `multipart/form-data; boundary=${boundary}` };
+    await context.permissions.set(roleId, filesResourceId, "CREATE", { effect: "ALLOW" });
+    await context.permissions.set(roleId, filesResourceId, "UPDATE", { effect: "ALLOW" });
+    await context.settings.set("files.max_file_size_bytes", 1024);
+    try {
+      const big = await app.inject({ method: "POST", url: "/api/totalbase/table/files", headers, payload: multipart("big.txt", "text/plain", Buffer.alloc(4096, 120)) });
+      expect([big.statusCode, big.json().errors?.[0]?.code], big.body).toEqual([413, "FILE_TOO_LARGE"]);
+
+      const replaced = (content: Buffer, type = "text/plain") => app.inject({ method: "PUT", url: `/api/totalbase/table/files/${privateFileId}/content`, headers, payload: multipart("x", type, content) });
+      expect((await replaced(Buffer.alloc(4096, 120))).json().errors?.[0]?.code).toBe("FILE_TOO_LARGE");
+      await context.settings.set("files.allowed_mime_types", ["text/*"]);
+      expect((await replaced(Buffer.from("%PDF-1.4\n"), "application/pdf")).json().errors?.[0]?.code).toBe("FILE_MIME_TYPE_NOT_ALLOWED");
+      expect((await context.filesAdmin.readContent(privateFileId)).content.length).toBeLessThan(1024);
+    } finally {
+      await context.settings.reset("files.max_file_size_bytes");
+      await context.settings.reset("files.allowed_mime_types");
+      await context.permissions.delete(roleId, filesResourceId, "CREATE");
+      await context.permissions.delete(roleId, filesResourceId, "UPDATE");
+    }
+  });
+  // Security regression (Administration.md §10.4): an upload checked only the CREATE action - a role denied the
+  // `visibility` field published a file as PUBLIC, and the grant's row filter never applied to the new file.
+  it("holds an upload to the CREATE grant's fields and row filter", async () => {
+    const boundary = "files-create-boundary";
+    const form = (parts: Record<string, string>) => Buffer.concat([
+      ...Object.entries(parts).map(([name, value]) => Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`)),
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="note.txt"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--${boundary}--\r\n`),
+    ]);
+    const upload = (parts: Record<string, string>) => app.inject({
+      method: "POST", url: "/api/totalbase/table/files",
+      headers: { authorization: `Bearer ${apiKeyPlain}`, "content-type": `multipart/form-data; boundary=${boundary}` }, payload: form(parts),
+    });
+    const count = async () => (await database.query<{ n: number }>(`SELECT count(*)::int AS n FROM totalbase.files WHERE name = 'note.txt'`)).rows[0]!.n;
+    const before = await count();
+    try {
+      await context.permissions.set(roleId, filesResourceId, "CREATE", { effect: "ALLOW", fields: [{ field: "description", effect: "ALLOW" }] });
+      expect([(await upload({ visibility: "PUBLIC" })).statusCode]).toEqual([403]);
+      await context.permissions.set(roleId, filesResourceId, "CREATE", { effect: "ALLOW", where: { visibility: { _eq: "PRIVATE" } }, fields: [{ field: "visibility", effect: "ALLOW" }] });
+      const outside = await upload({ visibility: "PUBLIC" });
+      expect([outside.statusCode, outside.json().errors?.[0]?.code]).toEqual([403, "FILE_ACCESS_DENIED"]);
+      expect(await count()).toBe(before);
+      const inside = await upload({ visibility: "PRIVATE" });
+      expect(inside.statusCode, inside.body).toBe(201);
+      await context.filesAdmin.remove(inside.json().data.id);
+    } finally {
+      await context.permissions.delete(roleId, filesResourceId, "CREATE");
     }
   });
 });

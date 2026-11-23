@@ -73,6 +73,21 @@ describe("PUT /admin/api/roles/:role/resources/:resource/permissions/:action - w
     expect(permissions.find((p) => p.resource === resourceId && p.action === "READ")).toBeUndefined();
   });
 
+  // DELEG-01: an unknown key (`deny_fields`, the MCP tool's name for it) was dropped, leaving those columns allowed.
+  it("refuses an unknown key by name on every grant route - never drops it", async () => {
+    const put = (url: string, data: unknown) => app.inject({ method: "PUT", url, headers: { authorization: `Bearer ${adminToken}` }, payload: { data } });
+    const refusals = [
+      await put(`/admin/api/roles/${roleId}/resources/${resourceId}/permissions/UPDATE`, { effect: "ALLOW", deny_fields: ["status"] }),
+      await put(`/admin/api/roles/${roleId}/permissions`, { permissions: [{ resource: resourceId, action: "UPDATE", effect: "ALLOW", denyFields: ["status"] }] }),
+      await put(`/admin/api/resources/${resourceId}/permissions/UPDATE`, { roleIds: [roleId], effect: "ALLOW", deny_fields: ["status"] }),
+    ];
+    for (const res of refusals) {
+      expect(res.statusCode, res.body).toBe(400);
+      expect(res.json().errors[0]).toMatchObject({ code: "INVALID_QUERY", message: expect.stringMatching(/^Unknown key in the grant: deny_?[fF]ields/) });
+    }
+    expect((await context.permissions.listForRole(roleId)).find((p) => p.resource === resourceId && p.action === "UPDATE")).toBeUndefined();
+  });
+
   it("accepts the nested {field: {operator: value}} shape - same grammar as where[...] - and actually filters rows at request time", async () => {
     const res = await app.inject({
       method: "PUT",

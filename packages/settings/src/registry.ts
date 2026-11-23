@@ -1,4 +1,4 @@
-import type { ColorMode, LoginCardPosition, LoginLayout, McpMode, NeutralColor } from "@totalbase/shared";
+import type { ColorMode, LockdownMode, LockdownWhen, LoginCardPosition, LoginLayout, McpMode, NeutralColor } from "@totalbase/shared";
 import { MAIL_FOOTER_DEFAULT, MAIL_TEMPLATE_DEFAULTS, type MailTemplate } from "./mail-templates.js";
 
 /**
@@ -60,8 +60,6 @@ export interface SettingsRegistry {
   // account for lockout_duration_minutes. 0 turns lockout off.
   "auth.lockout_max_attempts": number;
   "auth.lockout_duration_minutes": number;
-  /** Who must sign in with a second factor (Security.md §2.17): NONE, ADMINISTRATORS (holders of the Administrators role) or EVERYONE. */
-  "auth.mfa_required": string;
   // Where the single-use links in system emails point - `{{public_url}}`
   // and `{{token}}` are filled in by TotalBase. Default: the built-in
   // pages under /auth/*; point them at your own app instead.
@@ -70,7 +68,11 @@ export interface SettingsRegistry {
   "auth.links.email_verification": string;
   "auth.password_changed_email_enabled": boolean;
   "auth.email_changed_email_enabled": boolean;
-  "auth.mfa_disabled_email_enabled": boolean;
+  /** Who must sign in with a second factor (Security.md §2.17): NONE, EVERYONE, or ROLES (holders of one of `mfa.required_roles`). */
+  "mfa.required": string;
+  /** With `mfa.required = ROLES`: the role ids whose holders must use a second factor. */
+  "mfa.required_roles": string[];
+  "mfa.disabled_email_enabled": boolean;
   "auth.token_created_email_enabled": boolean;
   "auth.welcome_email_enabled": boolean;
   "auth.access_review_interval_days": number;
@@ -91,6 +93,26 @@ export interface SettingsRegistry {
   // (Security.md §4.2). Empty = each viewer's browser zone.
   "system.timezone": string;
   "system.timezone_user_choice": boolean;
+  // Lockdown (Security.md §2.21): only administrators are answered while it is on. `enabled` is the page's
+  // switch - off, there is no lockdown and nothing below counts; on, `when` says when: NOW (until it is turned
+  // off), ONCE (`from` inclusive, `until` exclusive; ISO 8601 instants) or RECURRING (from each occurrence of
+  // `recurring_schedule`, a cron expression in the instance's timezone, for `recurring_minutes`).
+  "lockdown.enabled": boolean;
+  "lockdown.when": LockdownWhen;
+  "lockdown.from": string;
+  "lockdown.until": string;
+  "lockdown.recurring_schedule": string;
+  "lockdown.recurring_minutes": number;
+  /** FULL: administrators only. READ_ONLY: everyone reads, only administrators write. */
+  "lockdown.mode": LockdownMode;
+  /** The exceptions: role ids whose users are answered during a lockdown as administrators are - their sessions and tokens. */
+  "lockdown.allowed_roles": string[];
+  /** Scheduled and event-driven workflows wait until the lockdown ends. */
+  "lockdown.pause_workflows": boolean;
+  /** How long before a scheduled lockdown its users are told, in minutes; 0 = they are not. */
+  "lockdown.notice_minutes": number;
+  /** What everyone else is told meanwhile, beside the fixed line; empty = the fixed line alone. */
+  "lockdown.message": string;
 
   // The operator's branding (Admin_UI.md §4.1.1): served
   // public, before sign-in, by /api/instance and /theme.css.
@@ -144,6 +166,7 @@ export interface SettingsRegistry {
   "files.max_file_size_bytes": number;
   "files.allowed_mime_types": string[];
   "files.default_visibility_public": boolean;
+  "files.uploader_can_publish": boolean;
   "files.storage_provider": string;
   "files.storage_local_path": string;
 
@@ -224,6 +247,7 @@ export interface SettingsRegistry {
   // Realtime subscriptions (Data_API.md §16): the /api/realtime WebSocket.
   "realtime.enabled": boolean;
   "realtime.max_subscriptions": number;
+  "realtime.max_subscriptions_per_user": number;
   "realtime.heartbeat_seconds": number;
 
   // The GraphQL API (Data_API.md §17): POST /api/graphql,
@@ -232,6 +256,7 @@ export interface SettingsRegistry {
   "graphql.default_schema": string;
   "graphql.max_calls": number;
   "graphql.max_depth": number;
+  "graphql.max_fields": number;
 
   "sql_console.enabled": boolean;
   // Raw SQL through a personal access token (the MCP server's agent, a
@@ -343,6 +368,8 @@ export interface SettingsRegistry {
   // widget's result is reused (0 = none) - D24.
   "dashboards.max_concurrent_queries": number;
   "dashboards.cache_seconds": number;
+  // The PostgreSQL role widget SQL runs as ("" = TotalBase's own) - Dashboards.md §2.10.
+  "dashboards.query_role": string;
   // Signed embedding (Dashboards.md §9.5): the Settings → Secrets
   // entry embed tokens are signed with ("" = embedding off), the longest a
   // token may live, and the sites that may frame an embed.
@@ -370,6 +397,7 @@ export interface SettingsRegistry {
   // max_history_payload_bytes/history_*_retention_days (history), and
   // max_sync_wait_ms (the WEBHOOK trigger's synchronous response mode).
   "workflows.max_sync_wait_ms": number;
+  "workflows.webhook_max_concurrent_runs": number;
   "workflows.max_run_duration_ms": number;
   "workflows.max_operations_per_run": number;
   "workflows.max_iteration_items": number;
@@ -429,13 +457,14 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "auth.session_retention_days": 30,
   "auth.lockout_max_attempts": 5,
   "auth.lockout_duration_minutes": 15,
-  "auth.mfa_required": "NONE",
   "auth.links.invitation": "{{public_url}}/auth/accept-invitation?token={{token}}",
   "auth.links.password_reset": "{{public_url}}/auth/reset-password?token={{token}}",
   "auth.links.email_verification": "{{public_url}}/auth/verify-email?token={{token}}",
   "auth.password_changed_email_enabled": true,
   "auth.email_changed_email_enabled": true,
-  "auth.mfa_disabled_email_enabled": true,
+  "mfa.required": "NONE",
+  "mfa.required_roles": [],
+  "mfa.disabled_email_enabled": true,
   "auth.token_created_email_enabled": true,
   "auth.welcome_email_enabled": false,
   "auth.access_review_interval_days": 90,
@@ -447,6 +476,17 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "system.regional_format": "",
   "system.timezone": "",
   "system.timezone_user_choice": false,
+  "lockdown.enabled": false,
+  "lockdown.when": "NOW",
+  "lockdown.from": "",
+  "lockdown.until": "",
+  "lockdown.recurring_schedule": "0 3 * * 0",
+  "lockdown.recurring_minutes": 60,
+  "lockdown.mode": "FULL",
+  "lockdown.allowed_roles": [],
+  "lockdown.pause_workflows": false,
+  "lockdown.notice_minutes": 0,
+  "lockdown.message": "",
 
   "appearance.primary_color": "",
   "appearance.neutral_color": "slate",
@@ -480,8 +520,8 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
 
   "security.rate_limit_enabled": false,
   "security.rate_limit_per_minute": 3000,
-  "security.rate_limit_sign_in_per_minute": 5,
-  "security.rate_limit_per_user_per_minute": 600,
+  "security.rate_limit_sign_in_per_minute": 10,
+  "security.rate_limit_per_user_per_minute": 1200,
   "security.cors_enabled": true,
   "security.cors_origins": [],
   "security.trust_proxy": false,
@@ -492,7 +532,9 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "files.max_file_size_bytes": 10_485_760,
   "files.allowed_mime_types": ["text/*", "image/*", "application/pdf", "application/json", "application/zip"],
   "files.default_visibility_public": false,
+  "files.uploader_can_publish": true,
   "files.storage_provider": "local",
+  // With a data directory known (TOTALBASE_DATA_DIR), <data dir>/files instead (SettingsService.defaultOf).
   "files.storage_local_path": "/var/lib/totalbase/files",
 
   // Image transformations for Files, ported from Assets.
@@ -575,12 +617,14 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
 
   "realtime.enabled": false,
   "realtime.max_subscriptions": 50,
+  "realtime.max_subscriptions_per_user": 200,
   "realtime.heartbeat_seconds": 30,
 
   "graphql.enabled": false,
   "graphql.default_schema": "public",
   "graphql.max_calls": 10,
   "graphql.max_depth": 8,
+  "graphql.max_fields": 500,
 
   "sql_console.enabled": true,
   "sql_console.token_access": false,
@@ -606,6 +650,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "backups.schedule": "0 3 * * *",
   "backups.keep": 7,
   "backups.destination": "local",
+  // With a data directory known, <data dir>/backups instead (SettingsService.defaultOf).
   "backups.local_path": "/var/lib/totalbase/backups",
   "backups.include_files": true,
 
@@ -633,6 +678,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
   "dashboards.query_max_rows": 1_000,
   "dashboards.max_concurrent_queries": 4,
   "dashboards.cache_seconds": 300,
+  "dashboards.query_role": "",
   "dashboards.embed_secret_key": "",
   "dashboards.embed_max_ttl_minutes": 60,
   "dashboards.embed_allowed_origins": [],
@@ -644,6 +690,7 @@ export const SETTINGS_DEFAULTS: SettingsRegistry = {
 
   // Workflows (see the registry interface's own comment just above).
   "workflows.max_sync_wait_ms": 30_000,
+  "workflows.webhook_max_concurrent_runs": 50,
   "workflows.max_run_duration_ms": 900_000, // 15 minutes
   "workflows.max_operations_per_run": 1_000,
   "workflows.max_iteration_items": 500,
@@ -673,11 +720,13 @@ export interface SettingBounds {
 
 export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api.default_limit": { min: 1 },
-  "api.max_limit": { min: 1 },
+  "api.max_limit": { min: 1, max: 10_000 },
   "realtime.max_subscriptions": { min: 1, max: 1_000 },
+  "realtime.max_subscriptions_per_user": { min: 1, max: 10_000 },
   "realtime.heartbeat_seconds": { min: 5, max: 3_600 },
   "graphql.max_calls": { min: 1, max: 100 },
   "graphql.max_depth": { min: 2, max: 32 },
+  "graphql.max_fields": { min: 10, max: 10_000 },
   "api.max_relation_depth": { min: 1 },
   "api.max_filter_depth": { min: 1 },
   "api.bulk_max_items": { min: 1 },
@@ -707,8 +756,8 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "api_keys.purge_after_days": { min: 0, max: 3650 },
 
   "security.rate_limit_per_minute": { min: 1 },
-  "security.rate_limit_sign_in_per_minute": { min: 1, max: 1000 },
-  "security.rate_limit_per_user_per_minute": { min: 1 },
+  "security.rate_limit_sign_in_per_minute": { min: 0, max: 1000 },
+  "security.rate_limit_per_user_per_minute": { min: 0 },
   "auth.access_review_interval_days": { min: 0, max: 3650 },
 
   "files.max_file_size_bytes": { min: 1 },
@@ -733,6 +782,8 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
 
   "smtp.port": { min: 1, max: 65_535 },
   "backups.keep": { min: 1, max: 365 },
+  "lockdown.recurring_minutes": { min: 1, max: 1_440 },
+  "lockdown.notice_minutes": { min: 0, max: 10_080 },
 
   "sql_console.max_rows": { min: 1, max: 100_000 },
   "mcp.rate_limit_per_minute": { min: 1, max: 100_000 },
@@ -760,6 +811,7 @@ export const SETTINGS_BOUNDS: Partial<Record<SettingKey, SettingBounds>> = {
   "dashboards.embed_max_ttl_minutes": { min: 1, max: 1440 },
 
   "workflows.max_sync_wait_ms": { min: 1000 },
+  "workflows.webhook_max_concurrent_runs": { min: 1, max: 10_000 },
   "workflows.max_run_duration_ms": { min: 1000 },
   "workflows.max_operations_per_run": { min: 1 },
   "workflows.max_iteration_items": { min: 1 },

@@ -88,7 +88,7 @@ export const FILE_SCHEMAS: Record<string, JsonSchema> = {
       checksum: { type: ["string", "null"] },
       width: { type: ["integer", "null"] },
       height: { type: ["integer", "null"] },
-      visibility: { type: "string", enum: ["PRIVATE", "PUBLIC"] },
+      visibility: { type: "string", enum: ["PRIVATE", "LINKED", "PUBLIC"] },
       metadata: { type: "object", additionalProperties: true },
       description: { type: ["string", "null"] },
       tags: { type: "array", items: { type: "string" } },

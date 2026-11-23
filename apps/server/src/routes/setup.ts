@@ -16,12 +16,15 @@ import { signal } from "../invalidations.js";
  */
 interface SetupBody { code?: unknown; email?: unknown; name?: unknown; password?: unknown; publicUrl?: unknown; language?: unknown }
 
-/** Wrong codes, per process: at most 10 in 10 minutes - an 80-bit code needs no more, a guesser gets no more. */
+/**
+ * Wrong codes, per address and process: at most 10 in 10 minutes - an 80-bit code needs no more, a guesser gets no
+ * more - and never a count anyone shares: a stranger's wrong codes never keep the operator from setting up.
+ */
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_FAILURES = 10;
 
 export function registerSetupRoutes(app: FastifyInstance, context: AppContext): void {
-  let failures: number[] = [];
+  const failures = new Map<string, number[]>();
 
   app.get("/api/setup", {
     config: {
@@ -57,11 +60,16 @@ export function registerSetupRoutes(app: FastifyInstance, context: AppContext): 
   }, async (request, reply) => {
     if (context.setup.code === null) throw new TotalBaseError("RESOURCE_NOT_FOUND", "This instance is already set up.");
     const now = Date.now();
-    failures = failures.filter((at) => now - at < WINDOW_MS);
-    if (failures.length >= MAX_FAILURES) throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many wrong setup codes - wait a few minutes.");
+    for (const [address, times] of failures) {
+      const recent = times.filter((at) => now - at < WINDOW_MS);
+      if (recent.length) failures.set(address, recent);
+      else failures.delete(address);
+    }
+    const mine = failures.get(request.ip) ?? [];
+    if (mine.length >= MAX_FAILURES) throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many wrong setup codes - wait a few minutes.");
     const body = requestData(request.body);
     if (!setupCodeMatches(context.setup, body.code)) {
-      failures.push(now);
+      failures.set(request.ip, [...mine, now]);
       throw new TotalBaseError("INVALID_SETUP_CODE", "That setup code isn't this instance's - it's in the server's log.");
     }
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";

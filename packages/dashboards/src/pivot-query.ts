@@ -1,3 +1,4 @@
+import { TotalBaseError } from "@totalbase/errors";
 import { quoteIdentifier } from "@totalbase/database";
 
 /**
@@ -7,7 +8,8 @@ import { quoteIdentifier } from "@totalbase/database";
  * nothing up, so an average is the real one, never an average of averages.
  */
 
-export type PivotAggregate = "sum" | "avg" | "min" | "max" | "count";
+export const PIVOT_AGGREGATES = ["sum", "avg", "min", "max", "count"] as const;
+export type PivotAggregate = (typeof PIVOT_AGGREGATES)[number];
 
 export interface PivotSpec {
   /** The Rows role's columns, outermost first. */
@@ -51,7 +53,11 @@ export function pivotGroupingSets(spec: PivotSpec): string[][] {
 export function pivotSql(innerSql: string, spec: PivotSpec, limit: number): string {
   const names = [...spec.rows, ...spec.columns];
   const dimensions = names.map(quoteIdentifier);
-  const aggregates = spec.values.map(({ column, aggregate }) => `${aggregate}(${quoteIdentifier(column)}) AS ${quoteIdentifier(column)}`);
+  const aggregates = spec.values.map(({ column, aggregate }) => {
+    // Written as a function name: only one of the five, whatever a stored definition says.
+    if (!PIVOT_AGGREGATES.includes(aggregate)) throw new TotalBaseError("DASHBOARD_PIVOT_AGGREGATE_REQUIRED", `"${String(aggregate)}" is not a pivot aggregate - one of ${PIVOT_AGGREGATES.join(", ")}.`);
+    return `${aggregate}(${quoteIdentifier(column)}) AS ${quoteIdentifier(column)}`;
+  });
   const sets = pivotGroupingSets(spec).map((set) => `(${set.map(quoteIdentifier).join(", ")})`);
   const grouping = dimensions.length ? `GROUPING(${dimensions.join(", ")})` : "0";
   const groupingColumn = quoteIdentifier(PIVOT_GROUPING_COLUMN);

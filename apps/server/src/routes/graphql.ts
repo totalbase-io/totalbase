@@ -12,6 +12,7 @@ import { createRows, deleteRowByKey, deleteRows, updateRowByKey, updateRows } fr
 import { withIdempotency } from "../idempotency-helper.js";
 import { readOrigin, type ReadOrigin } from "../read-audit.js";
 import type { RealtimeHub } from "../realtime.js";
+import { assertLockdownAllowsWrite } from "../lockdown.js";
 import { registerGraphQLWebSocket } from "./graphql-ws.js";
 import { dataApiFieldGuard } from "./openapi.js";
 
@@ -24,7 +25,7 @@ export function executorFor(
   context: AppContext,
   dataPrincipal: DataPrincipal,
   origin: () => ReadOrigin,
-  options: { idempotencyKey: boolean },
+  options: { idempotencyKey: boolean; beforeWrite?: () => void | Promise<void> },
 ): GraphQLDataExecutor {
   const writeOrigin = () => ({ ...origin(), source: "api" });
   // A resource that requires an Idempotency-Key (Data_API.md §9.1) refuses a create or a call without one, as
@@ -34,8 +35,11 @@ export function executorFor(
       throw new TotalBaseError("IDEMPOTENCY_KEY_REQUIRED", "This operation requires an Idempotency-Key header.");
     }
   };
-  const resolve = (ref: GraphQLResourceRef, method: "GET" | "POST" | "PATCH" | "DELETE") =>
-    ref.type === "VIEW" ? resolveViewResource(context, ref.schema, ref.name) : resolveTableResource(context, ref.schema, ref.name, method);
+  const resolve = async (ref: GraphQLResourceRef, method: "GET" | "POST" | "PATCH" | "DELETE") => {
+    // A read-only lockdown (Security.md §2.21) refuses a mutation here, where it would write.
+    if (method !== "GET") await options.beforeWrite?.();
+    return ref.type === "VIEW" ? resolveViewResource(context, ref.schema, ref.name) : resolveTableResource(context, ref.schema, ref.name, method);
+  };
   return {
     readRows: async (ref, rawQuery, readOptions) => readRows(context, dataPrincipal, await resolve(ref, "GET"), rawQuery, origin(), readOptions),
     createRows: async (ref, input) => {
@@ -51,6 +55,7 @@ export function executorFor(
       deleteRows(context, dataPrincipal, await resolve(ref, "DELETE"), { ...input, data: undefined, bulk: false }, writeOrigin()),
     // As POST /api/{schema}/function/{name} runs it (routes/data-function.ts), synchronously.
     callFunction: async (schema, name, args) => {
+      await options.beforeWrite?.();
       const startedAt = new Date();
       const { resource, detail } = await resolveFunctionCall(context, schema, name, args);
       await assertKey(resource);
@@ -67,9 +72,10 @@ export function executorFor(
 export async function graphqlSchemaFor(context: AppContext, dataPrincipal: DataPrincipal): Promise<{ schema: GraphQLSchema; limits: GraphQLLimits }> {
   const { roleIds } = dataPrincipal;
   const principalType = dataPrincipal.principal.type === "API_KEY" ? "API_KEY" : "USER";
-  const [maxCalls, maxDepth, maxRelationDepth, defaultSchema, maxLimit, subscriptions] = await Promise.all([
+  const [maxCalls, maxDepth, maxFields, maxRelationDepth, defaultSchema, maxLimit, subscriptions] = await Promise.all([
     context.settings.get("graphql.max_calls"),
     context.settings.get("graphql.max_depth"),
+    context.settings.get("graphql.max_fields"),
     context.settings.get("api.max_relation_depth"),
     context.settings.get("graphql.default_schema"),
     context.settings.get("api.max_limit"),
@@ -85,7 +91,7 @@ export async function graphqlSchemaFor(context: AppContext, dataPrincipal: DataP
       subscriptions,
     }),
   );
-  return { schema, limits: { maxCalls, maxDepth } };
+  return { schema, limits: { maxCalls, maxDepth, maxFields } };
 }
 
 /**
@@ -142,7 +148,7 @@ export function registerGraphQLRoutes(app: FastifyInstance, context: AppContext,
       const run = () => executeGraphQL(
         schema,
         request.body,
-        { executor: executorFor(context, dataPrincipal, () => readOrigin(request), { idempotencyKey: hasKey && isMutation }) },
+        { executor: executorFor(context, dataPrincipal, () => readOrigin(request), { idempotencyKey: hasKey && isMutation, beforeWrite: () => assertLockdownAllowsWrite(request) }) },
         limits,
         (error) => request.log.error(error),
       );

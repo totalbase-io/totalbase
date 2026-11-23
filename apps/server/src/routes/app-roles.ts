@@ -1,10 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { grantObject, isObjectKind, managedRoleIds, OBJECT_KINDS, objectsOpenedBy, opensObject, revokeObject, type ObjectKind, type ResourceAction, type SetPermissionInput } from "@totalbase/permissions";
+import { grantAdvisories, grantObject, isObjectKind, managedRoleIds, OBJECT_KINDS, objectsOpenedBy, opensObject, revokeObject, type ObjectKind, type ResourceAction, type SetPermissionInput } from "@totalbase/permissions";
 import { TotalBaseError } from "@totalbase/errors";
+import { assertFilterFeatures, filterFieldPaths, parseFilter } from "@totalbase/query-engine";
+import { loadQueryFeatures } from "../query-features.js";
 import type { AppContext } from "../context.js";
 import { extractBearerToken, requireAppAccess } from "../auth-guards.js";
 import { resolveDataPrincipal, type DataPrincipal } from "../data-principal.js";
-import { parseGrant, parseRoleIdList, requireValidAction, type PermissionBody } from "./admin-permissions.js";
+import { assertGrantPathsResolve, parseGrant, parseRoleIdList, requireValidAction, withAdvice, type PermissionBody } from "./admin-permissions.js";
 import { listableDataViews } from "./app-dataviews.js";
 import { optionalData } from "../request-body.js";
 
@@ -103,12 +105,52 @@ async function assertWithinCeiling(context: AppContext, parent: string, resource
     throw new TotalBaseError("PERMISSION_DENIED", "A role you manage is granted with ALLOW only.");
   }
   const beyond = await context.effectivePermissions.beyondCeiling(parent, resourceId, action, grant);
-  if (!beyond) return;
+  if (!beyond) {
+    await assertFiltersWithinCeiling(context, parent, resourceId, grant);
+    return;
+  }
   const parentName = (await context.roles.findById(parent))?.name ?? "parent";
   const fields = beyond.reason === "FIELDS" ? beyond.fields : [];
   const what = beyond.reason === "FIELDS" ? `use ${fields.join(", ")} for ${action}` : `${action} on this resource`;
   throw new TotalBaseError("PERMISSION_EXCEEDS_CEILING", `The ${parentName} role can't ${what}, so a role under it can't either.`, {
     meta: { parent, action, fields },
+  });
+}
+
+/**
+ * A DENY on a role is an administrator's (a delegated grant is ALLOW only, Security.md §9.6), and it takes the action
+ * away whatever the user's other roles allow (§6.2) - so a manager never removes or replaces one: that would hand back
+ * access the administrator took away, from branches the manager doesn't manage.
+ */
+async function assertNoDenyReplaced(context: AppContext, roleIds: string[], resourceId: string, action: ResourceAction): Promise<void> {
+  for (const roleId of roleIds) {
+    if ((await context.permissions.get(roleId, resourceId, action))?.effect === "DENY") {
+      throw new TotalBaseError("PERMISSION_DENIED", "This role is denied that action by an administrator: only an administrator removes or replaces a deny.");
+    }
+  }
+}
+
+/**
+ * A delegated grant's row filter and payload checks name only fields the parent may read (Security.md §9.6): a filter
+ * decides which rows a holder sees or may write, so one on a column the parent can't read - a relation's protected
+ * column too - would tell that column's values through the rows that appear. Each path the filters name (a
+ * comparison's field, a `$ROW.<column>`) needs the parent's READ field ALLOW on the resource.
+ */
+async function assertFiltersWithinCeiling(context: AppContext, parent: string, resourceId: string, grant: SetPermissionInput): Promise<void> {
+  const filters = [grant.where, ...(grant.payloadChecks ?? []).map((check) => check.rule)].filter((filter) => filter !== undefined && filter !== null);
+  if (filters.length === 0) return;
+  const [maxFilterDepth, maxRelationDepth] = await Promise.all([context.settings.get("api.max_filter_depth"), context.settings.get("api.max_relation_depth")]);
+  const parsed = filters.map((filter) => parseFilter(filter, { maxFilterDepth, maxRelationDepth }, 0));
+  // Not an administrator's filter: the instance's query switches hold for it, as for any caller's (Data_API.md §3.12).
+  const features = await loadQueryFeatures(context);
+  for (const filter of parsed) assertFilterFeatures(filter, features);
+  const paths = [...new Set(parsed.flatMap((filter) => filterFieldPaths(filter)))];
+  const read = await context.effectivePermissions.resolve([parent], resourceId, "READ");
+  const hidden = paths.filter((path) => read.action !== "ALLOW" || read.fieldDecision(path) !== "ALLOW");
+  if (hidden.length === 0) return;
+  const parentName = (await context.roles.findById(parent))?.name ?? "parent";
+  throw new TotalBaseError("PERMISSION_EXCEEDS_CEILING", `The ${parentName} role can't read ${hidden.join(", ")}, so a role under it can't filter on ${hidden.length === 1 ? "it" : "them"} either.`, {
+    meta: { parent, action: "READ", fields: hidden },
   });
 }
 
@@ -135,10 +177,12 @@ export function registerAppRolesRoutes(app: FastifyInstance, context: AppContext
     async (request) => {
       const action = requireValidAction(request.params.action);
       const { principal, parent } = await managedRole(context, request, request.params.role);
-      const grant = await parseGrant(context, request.body?.data);
+      const grant = await parseGrant(context, request.params.resource, request.body?.data, { checkPaths: false });
       await assertWithinCeiling(context, parent, request.params.resource, action, grant);
+      await assertGrantPathsResolve(context, request.params.resource, grant);
+      await assertNoDenyReplaced(context, [request.params.role], request.params.resource, action);
       const permission = await context.permissions.set(request.params.role, request.params.resource, action, grant, { actorUserId: principal.actorUserId });
-      return { data: permission };
+      return withAdvice({ data: permission }, await grantAdvisories(context.database, request.params.role, request.params.resource, action));
     },
   );
 
@@ -149,7 +193,7 @@ export function registerAppRolesRoutes(app: FastifyInstance, context: AppContext
     async (request) => {
       const action = requireValidAction(request.params.action);
       const roleIds = parseRoleIdList(optionalData(request.body).roleIds);
-      const grant = await parseGrant(context, request.body?.data);
+      const grant = await parseGrant(context, request.params.resource, request.body?.data, { checkPaths: false, extraKeys: ["roleIds"] });
       let actor: string | undefined;
       // Roles under one parent share its ceiling: checked once per parent.
       const parents = new Set<string>();
@@ -159,7 +203,11 @@ export function registerAppRolesRoutes(app: FastifyInstance, context: AppContext
         parents.add(parent);
       }
       await Promise.all([...parents].map((parent) => assertWithinCeiling(context, parent, request.params.resource, action, grant)));
-      return { data: await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: actor }) };
+      await assertGrantPathsResolve(context, request.params.resource, grant);
+      await assertNoDenyReplaced(context, roleIds, request.params.resource, action);
+      const written = await context.permissions.setForRoles(roleIds, request.params.resource, action, grant, { actorUserId: actor });
+      const advice = [...new Set((await Promise.all(roleIds.map((roleId) => grantAdvisories(context.database, roleId, request.params.resource, action)))).flat())];
+      return withAdvice({ data: written }, advice);
     },
   );
 
@@ -216,6 +264,7 @@ export function registerAppRolesRoutes(app: FastifyInstance, context: AppContext
     async (request, reply) => {
       const action = requireValidAction(request.params.action);
       await managedRole(context, request, request.params.role);
+      await assertNoDenyReplaced(context, [request.params.role], request.params.resource, action);
       if (!(await context.permissions.delete(request.params.role, request.params.resource, action))) {
         throw new TotalBaseError("RESOURCE_NOT_FOUND", "The role has no such grant.");
       }

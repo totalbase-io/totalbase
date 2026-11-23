@@ -1,6 +1,6 @@
 import { Database, loadDatabaseConfigFromEnv } from "@totalbase/database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getMaintenanceOverview, listMaintenanceIndexes, resolveMaintenanceTarget } from "./maintenance-stats.js";
+import { getDatabaseSummary, getMaintenanceAttention, getMaintenanceOverview, listMaintenanceIndexes, resolveMaintenanceTarget } from "./maintenance-stats.js";
 
 const TABLE = "maintenance_stats_test_t";
 
@@ -90,6 +90,28 @@ describe("maintenance stats (integration)", () => {
       expect(await resolveMaintenanceTarget(probe, foreignOid)).toMatchObject({ canMaintain: true });
       await database.query(`REVOKE MAINTAIN ON public.${FOREIGN} FROM ${ROLE}`);
     });
+  });
+
+  it("summarizes the database, with when the server started", async () => {
+    const summary = await getDatabaseSummary(database);
+    expect(summary.maxConnections).toBeGreaterThan(0);
+    expect(summary.startedAt).toBeInstanceOf(Date);
+    expect(summary.startedAt.getTime()).toBeLessThan(Date.now());
+  });
+
+  it("counts invalid indexes - a concurrent build that failed", async () => {
+    const before = await getMaintenanceAttention(database);
+    expect(before.tablesWithDeadRows).toBeGreaterThanOrEqual(0);
+    await database.query(`DROP TABLE IF EXISTS public.${TABLE}_dup`);
+    await database.query(`CREATE TABLE public.${TABLE}_dup (v int)`);
+    await database.query(`INSERT INTO public.${TABLE}_dup VALUES (1), (1)`);
+    try {
+      // Two equal values: the unique build fails and PostgreSQL leaves the index behind, invalid.
+      await expect(database.query(`CREATE UNIQUE INDEX CONCURRENTLY ${TABLE}_dup_idx ON public.${TABLE}_dup (v)`)).rejects.toThrow();
+      expect((await getMaintenanceAttention(database)).invalidIndexes).toBe(before.invalidIndexes + 1);
+    } finally {
+      await database.query(`DROP TABLE IF EXISTS public.${TABLE}_dup`);
+    }
   });
 });
 

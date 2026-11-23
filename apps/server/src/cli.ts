@@ -1,9 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { restoreBackup } from "@totalbase/backups";
 import { Database, loadDatabaseConfigFromEnv, postgresClientEnv } from "@totalbase/database";
 import { MIGRATIONS_DIR } from "./bootstrap.js";
-import { fingerprint } from "./master-key.js";
+import { acceptedFingerprints, FORMAT_MARKER } from "./master-key.js";
 
 /**
  * The image's command line - `totalbase <command>` (/usr/local/bin/totalbase runs this file).
@@ -49,11 +49,14 @@ async function main(args: string[]): Promise<number> {
       database,
       clientEnv: postgresClientEnv(),
       pgBinDir: process.env["TOTALBASE_PG_BIN"] || undefined,
-      masterKeyVerifier: fingerprint(key),
+      masterKeyVerifiers: acceptedFingerprints(key),
       migrationsDir: MIGRATIONS_DIR,
+      dataDir,
       workDir: join(dataDir, "tmp"),
       log: print,
     });
+    // The backup may hold an older ciphertext format: the next start moves it (master-key.ts FORMAT_MARKER).
+    await rm(join(dataDir, FORMAT_MARKER), { force: true });
     return 0;
   } finally {
     await database.close();

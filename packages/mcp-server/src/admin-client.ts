@@ -1,3 +1,4 @@
+import { TotalBaseError } from "@totalbase/errors";
 import { fixFor } from "./error-fixes.js";
 /**
  * Thin HTTP client for TotalBase's Admin API (/admin/api/*) and Data API
@@ -50,6 +51,33 @@ const RATE_LIMIT_WAITS_MS = [15_000, 25_000, 25_000];
 export class AdminClient {
   constructor(private readonly config: AdminClientConfig) {}
 
+  /**
+   * The URL for a path a tool built - often from an id a model passed (Administration.md §11.3). The path is only a
+   * path - its query goes in `query` - and reaches exactly the route it names: a character a URL would rewrite or end
+   * the path at (`\`, `?`, `#`, a space, a control character), an empty segment, or a segment that is - or decodes to -
+   * `.`, `..`, or holds `/` `\` `?` `#`, is refused, and so is a URL whose path or origin came out other than written.
+   * Otherwise `id: "..\\sql\\execute"` or `id: "x?"` would reach another route than the tool's, past the tool groups
+   * and the mode the instance set.
+   */
+  private url(path: string): URL {
+    const refuse = (): never => {
+      throw new TotalBaseError("INVALID_QUERY", `Not a valid id in ${JSON.stringify(path)} - an id is one path segment: no ".", "..", "/", "\\", "?", "#", spaces or control characters.`);
+    };
+    if (!/^(\/[A-Za-z0-9\-._~%!$&'()*+,;=:@]+)+$/.test(path)) refuse();
+    for (const segment of path.split("/").slice(1)) {
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(segment);
+      } catch {
+        return refuse();
+      }
+      if (decoded === "." || decoded === ".." || /[/\\?#\s\u0000-\u001f\u007f]/.test(decoded)) refuse();
+    }
+    const url = new URL(path, this.config.baseUrl);
+    if (url.pathname !== path || url.origin !== new URL(this.config.baseUrl).origin) refuse();
+    return url;
+  }
+
   /** fetch, waiting out a rate limit (429) a few times before giving the refusal back. */
   private async fetch(url: URL, init: RequestInit): Promise<Response> {
     const waits = this.config.rateLimitWaitsMs ?? RATE_LIMIT_WAITS_MS;
@@ -70,7 +98,7 @@ export class AdminClient {
 
   /** The whole response envelope - `data` and the `meta` beside it (a list's `count`) - and its status. */
   private async envelope<T>(method: string, path: string, body?: unknown, plane: "/admin/api" | "/api" = "/admin/api", query?: Record<string, string>): Promise<{ data: T; meta?: Record<string, unknown>; status: number }> {
-    const url = new URL(`${plane}${path}`, this.config.baseUrl);
+    const url = this.url(`${plane}${path}`);
     for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
     const init: RequestInit = {
       method,
@@ -97,8 +125,8 @@ export class AdminClient {
     return { ...(json as { data: T; meta?: Record<string, unknown> }), status: response.status };
   }
 
-  get<T>(path: string): Promise<T> {
-    return this.request<T>("GET", path);
+  get<T>(path: string, query?: Record<string, string>): Promise<T> {
+    return this.request<T>("GET", path, undefined, "/admin/api", query);
   }
 
   post<T>(path: string, body?: unknown): Promise<T> {
@@ -114,12 +142,17 @@ export class AdminClient {
     return this.envelope<T>("POST", path, body ?? {});
   }
 
+  /** A PUT with its `meta` - a grant's advice (`meta.warnings`). */
+  putWithMeta<T>(path: string, body?: unknown): Promise<{ data: T; meta?: Record<string, unknown>; status: number }> {
+    return this.envelope<T>("PUT", path, body ?? {});
+  }
+
   put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, body ?? {});
   }
 
-  delete<T>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  delete<T>(path: string, query?: Record<string, string>): Promise<T> {
+    return this.request<T>("DELETE", path, undefined, "/admin/api", query);
   }
 
   /**
@@ -127,7 +160,7 @@ export class AdminClient {
    * (`/api/openapi.json`, `/admin/api/openapi`, `/admin/api/openapi/data`).
    */
   async document<T>(path: string, query?: Record<string, string>): Promise<T> {
-    const url = new URL(path, this.config.baseUrl);
+    const url = this.url(path);
     for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
     const response = await this.fetch(url, { headers: { Authorization: `Bearer ${this.config.token}` } });
     const json = (await response.json().catch(() => null)) as T | { errors: AdminApiErrorShape[] } | null;
@@ -140,7 +173,7 @@ export class AdminClient {
 
   /** A POST answering a file (a rendered PDF): its type and size - the bytes themselves are no use to an agent. */
   async binary(path: string, body: unknown): Promise<{ contentType: string; bytes: number }> {
-    const response = await this.fetch(new URL(path, this.config.baseUrl), {
+    const response = await this.fetch(this.url(path), {
       method: "POST",
       headers: { Authorization: `Bearer ${this.config.token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -164,7 +197,7 @@ export class AdminClient {
 
   /** A multipart POST to the Data API - a file's content (`/totalbase/table/files`); answers its `data`. */
   async upload<T>(path: string, form: FormData): Promise<T> {
-    const response = await this.fetch(new URL(`/api${path}`, this.config.baseUrl), {
+    const response = await this.fetch(this.url(`/api${path}`), {
       method: "POST",
       headers: { Authorization: `Bearer ${this.config.token}` },
       body: form,

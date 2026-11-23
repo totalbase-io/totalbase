@@ -80,7 +80,7 @@ describe("Password expiration (integration)", () => {
 
   afterAll(async () => {
     await context.settings.reset("auth.password_max_age_days");
-    await context.settings.reset("auth.mfa_required");
+    await context.settings.reset("mfa.required");
     await database.query(`DELETE FROM totalbase.users WHERE email = ANY($1)`, [emails]);
     await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [roleId]);
     await app.close();
@@ -282,7 +282,7 @@ describe("Password expiration (integration)", () => {
   it("a required second factor not set up yet comes after the new password", async () => {
     const who = await person();
     await age(who.id);
-    await context.settings.set("auth.mfa_required", "EVERYONE");
+    await context.settings.set("mfa.required", "EVERYONE");
     try {
       const challenge = await dueSignIn("/admin/api/auth/login", who.email);
       const renewed = await call("POST", "/admin/api/auth/password/renew", { challenge, newPassword: RENEWED });
@@ -300,7 +300,7 @@ describe("Password expiration (integration)", () => {
       )).rows[0]);
       expect(row).toMatchObject({ status: "EXECUTED", metadata: { mfa: "ENROLL" } });
     } finally {
-      await context.settings.reset("auth.mfa_required");
+      await context.settings.reset("mfa.required");
     }
   });
 

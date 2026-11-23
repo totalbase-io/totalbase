@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { commonWidgetProps, defaultWidgetWidth, newWidgetControlConfig, widgetDefinition, WIDGET_NAMES, type WidgetName } from "@totalbase/tb-catalog";
 import { UUID_PATTERN } from "@totalbase/shared";
 import type { AdminClient } from "./admin-client.js";
-import { ADDITIVE, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, result, type ResourceRow } from "./tool-helpers.js";
+import { ADDITIVE, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, jsonObject, READ_ONLY, result, type ResourceRow } from "./tool-helpers.js";
 
 /**
  * Pages (DataViews.md §7-§13): a CUSTOM DataView - or any
@@ -175,6 +175,9 @@ const variableInput = z
     "VALUE {type, default?: {source:'constant',value} | {source:'formula',formula} | {source:'param',name} | {source:'user',field}}; RESOURCE {resource: 'schema.table', query: {fields (required), where, order_by, limit, ...}, mode: list|record, immediate, watch, count}; CALL {target: {type:'FUNCTION', resource:'schema.fn'} | {type:'WORKFLOW', slug} (stored by its id) | {type:'TABLE', resource:'schema.table', action: CREATE|UPDATE|DELETE}, input?: {data: {...}}}; any kind: emits {event: codeFunction}",
   );
 
+/** The page's widgets as widgetTree answers them: each with its id, widget, name, slot, size, props, bindings, emits and children. */
+const widgetsOutput = z.array(jsonObject());
+
 export function registerPageTools(server: McpServer, client: AdminClient): void {
   const fieldsOf = (id: string) => client.get<PageField[]>(`/dataviews/${id}/fields`);
 
@@ -185,6 +188,19 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
       description:
         "A page's design (a CUSTOM DataView, or any DataView's record form): its record table, variables, widgets as a tree (id, widget, name, slot, width, props, bindings, emits, children - in order), Code, and the record's hooks. Read it before changing a page.",
       inputSchema: { id: z.string().describe("The DataView's id (list_dataviews)") },
+      outputSchema: {
+        id: z.string(),
+        name: z.string(),
+        slug: z.string(),
+        viewType: z.string(),
+        record: z.string().nullable().describe("The page's record table, schema.name"),
+        variables: z.array(jsonObject()),
+        recordEmits: z.record(z.string(), z.string()).optional(),
+        widgets: widgetsOutput,
+        code: z.string().nullable().optional(),
+        liveVersion: z.number().nullable(),
+        hasUnpublishedChanges: z.boolean().optional(),
+      },
       annotations: READ_ONLY,
     },
     async ({ id }) => {
@@ -216,6 +232,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
         variables: z.array(variableInput).default([]),
         remove: z.array(z.string()).optional().describe("Names of variables to drop"),
       },
+      outputSchema: { id: z.string(), variables: z.array(jsonObject()) },
       annotations: IDEMPOTENT,
     },
     async ({ id, variables, remove }) => {
@@ -243,6 +260,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
         parent: z.string().optional().describe("The widget they go in - its Name or id"),
         widgets: z.array(widgetSpec).min(1),
       },
+      outputSchema: { id: z.string(), widgets: widgetsOutput },
       annotations: ADDITIVE,
     },
     async ({ id, parent, widgets }) => {
@@ -301,6 +319,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
         width: z.number().int().min(0).max(12).optional(),
         height: z.number().int().min(2).max(30).optional(),
       },
+      outputSchema: { id: z.string(), widgets: widgetsOutput },
       annotations: IDEMPOTENT,
     },
     async ({ id, widget, name, props, bindings, emits, width, height }) => {
@@ -339,6 +358,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
         slot: z.string().optional().describe("The parent's slot (a Card's header / default / footer, a Tab's content:<tab value>)"),
         position: z.number().int().min(0).optional().describe("Its place in that area: 0 = first; omitted = last"),
       },
+      outputSchema: { id: z.string(), moved: z.string(), widgets: widgetsOutput },
       annotations: IDEMPOTENT,
     },
     async ({ id, widget, parent, slot, position }) => {
@@ -363,6 +383,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
       title: "Delete page widget",
       description: "Remove a placed widget from a page's draft, with everything its slots hold. Requires confirm=true.",
       inputSchema: { id: z.string().describe("The DataView's id"), widget: z.string().describe("The widget's Name or id"), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: { deleted: z.string(), widgets: widgetsOutput },
       annotations: DESTRUCTIVE,
     },
     async ({ id, widget }) => {
@@ -386,6 +407,7 @@ export function registerPageTools(server: McpServer, client: AdminClient): void 
           .optional()
           .describe("A page with a record: its events -> Code functions"),
       },
+      outputSchema: { id: z.string(), saved: z.boolean(), functions: z.array(z.string()).describe("The functions the Code declares"), warning: z.string().optional(), missing: z.array(z.object({ widget: z.string().optional(), variable: z.string().optional(), emit: z.string(), fn: z.string() })).optional() },
       annotations: IDEMPOTENT,
     },
     async ({ id, code, record_emits }) => {

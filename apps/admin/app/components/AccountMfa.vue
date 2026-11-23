@@ -205,6 +205,7 @@ async function runAction() {
           :otpauth-url="enrollment.otpauthUrl"
           :secret="enrollment.secret"
         />
+        <MfaAuthenticatorApps />
         <UFormField
           :label="t('auth.mfa.code')"
           :description="t('account.mfa.codeDescription')"

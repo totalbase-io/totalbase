@@ -73,7 +73,7 @@ export function buildCreateIndexSql(input: CreateIndexInput): string {
   sql += `(${columnsSql.join(", ")})`;
   if (input.where) {
     validateSqlExpression(input.where, "WHERE");
-    sql += ` WHERE ${input.where}`;
+    sql += ` WHERE (${input.where})`;
   }
   return sql;
 }

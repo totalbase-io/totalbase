@@ -35,7 +35,7 @@ const key = ref('')
 const encoding = ref<'HEX' | 'BASE64'>('HEX')
 const hmac = computed(() => format.value === 'HMAC_SHA256')
 const api = useAdminApi()
-const { data: secretKeys } = useAsyncData('sign-secrets', () => api.get<{ key: string }[]>('/secrets').then(r => r.data.map(s => s.key)), { default: () => [] })
+const { data: secretKeys } = useAsyncData('sign-secrets', () => api.get<{ key: string }[]>('/secrets', { scope: 'WORKFLOWS' }).then(r => r.data.map(s => s.key)), { default: () => [] })
 
 watch(open, (value) => {
   if (!value) return

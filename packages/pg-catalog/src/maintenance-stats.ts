@@ -75,25 +75,54 @@ export interface DatabaseSummary {
   connections: number;
   /** The server-wide max_connections. */
   maxConnections: number;
+  /** When the PostgreSQL server started (pg_postmaster_start_time). */
+  startedAt: Date;
 }
 
 export async function getDatabaseSummary(database: Database): Promise<DatabaseSummary> {
-  const { rows } = await database.query<{ database: string; version: string; size_bytes: string; connections: number; max_connections: number }>(
+  const { rows } = await database.query<{ database: string; version: string; size_bytes: string; connections: number; max_connections: number; started_at: Date }>(
     `SELECT current_database() AS database, split_part(current_setting('server_version'), ' ', 1) AS version,
             pg_database_size(current_database()) AS size_bytes,
             (SELECT count(*)::int FROM pg_catalog.pg_stat_activity WHERE datname = current_database()) AS connections,
-            current_setting('max_connections')::int AS max_connections`,
+            current_setting('max_connections')::int AS max_connections,
+            pg_catalog.pg_postmaster_start_time() AS started_at`,
   );
   const row = rows[0]!;
-  return { database: row.database, version: row.version, sizeBytes: Number(row.size_bytes), connections: row.connections, maxConnections: row.max_connections };
+  return { database: row.database, version: row.version, sizeBytes: Number(row.size_bytes), connections: row.connections, maxConnections: row.max_connections, startedAt: row.started_at };
 }
+
+/** What Settings > Maintenance would flag, as counts - the admin dashboard's needs-attention list. */
+export interface MaintenanceAttention {
+  /** Invalid indexes (a failed concurrent build) outside PostgreSQL's own schemas - unused by queries until rebuilt. */
+  invalidIndexes: number;
+  /** Tables with at least 1,000 dead rows that are 10% or more of their rows - the Maintenance page's own mark. */
+  tablesWithDeadRows: number;
+}
+
+/** Counts only, from the statistics PostgreSQL already keeps - no relation is sized or read. */
+export async function getMaintenanceAttention(database: Database): Promise<MaintenanceAttention> {
+  const { rows } = await database.query<{ invalid_indexes: number; tables_with_dead_rows: number }>(
+    `SELECT (SELECT count(*)::int
+             FROM pg_catalog.pg_index i
+             JOIN pg_catalog.pg_class c ON c.oid = i.indrelid
+             JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+             WHERE NOT i.indisvalid
+               AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+               AND n.nspname NOT LIKE 'pg\\_toast%' AND n.nspname NOT LIKE 'pg\\_temp%') AS invalid_indexes,
+            (SELECT count(*)::int
+             FROM pg_catalog.pg_stat_user_tables s
+             WHERE s.n_dead_tup >= 1000 AND s.n_dead_tup >= (s.n_dead_tup + s.n_live_tup) * 0.1) AS tables_with_dead_rows`,
+  );
+  return { invalidIndexes: rows[0]!.invalid_indexes, tablesWithDeadRows: rows[0]!.tables_with_dead_rows };
+}
+
+/** How many of a schema's tables the space breakdown names - the rest is the schema's total less theirs. */
+const SPACE_TABLES_PER_SCHEMA = 10;
 
 /** What takes the database's space: tables and materialized views with their indexes and TOAST (`pg_total_relation_size`). */
 export interface DatabaseSpace {
-  /** Every schema but PostgreSQL's own, largest first. */
-  schemas: Array<{ schema: string; bytes: number }>;
-  /** TotalBase's own tables (the reserved `totalbase` schema), largest first. */
-  totalbase: Array<{ table: string; bytes: number }>;
+  /** Every schema but PostgreSQL's own, largest first - each with its total and its largest tables, largest first. */
+  schemas: Array<{ schema: string; bytes: number; tables: Array<{ table: string; bytes: number }> }>;
 }
 
 /** The dashboard's space breakdown - sizes from PostgreSQL itself, nothing stored. A partitioned table counts through its partitions. */
@@ -104,18 +133,20 @@ export async function getDatabaseSpace(database: Database): Promise<DatabaseSpac
      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
      WHERE c.relkind IN ('r', 'm')
        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-       AND n.nspname NOT LIKE 'pg\_toast%' AND n.nspname NOT LIKE 'pg\_temp%'`,
+       AND n.nspname NOT LIKE 'pg\\_toast%' AND n.nspname NOT LIKE 'pg\\_temp%'`,
   );
-  const bySchema = new Map<string, number>();
-  const totalbase: DatabaseSpace["totalbase"] = [];
+  const bySchema = new Map<string, DatabaseSpace["schemas"][number]>();
   for (const row of rows) {
     const bytes = Number(row.bytes);
-    bySchema.set(row.schema, (bySchema.get(row.schema) ?? 0) + bytes);
-    if (row.schema === "totalbase") totalbase.push({ table: row.name, bytes });
+    const entry = bySchema.get(row.schema) ?? { schema: row.schema, bytes: 0, tables: [] };
+    entry.bytes += bytes;
+    entry.tables.push({ table: row.name, bytes });
+    bySchema.set(row.schema, entry);
   }
   return {
-    schemas: [...bySchema].map(([schema, bytes]) => ({ schema, bytes })).sort((a, b) => b.bytes - a.bytes || a.schema.localeCompare(b.schema)),
-    totalbase: totalbase.sort((a, b) => b.bytes - a.bytes || a.table.localeCompare(b.table)),
+    schemas: [...bySchema.values()]
+      .map((entry) => ({ ...entry, tables: entry.tables.sort((a, b) => b.bytes - a.bytes || a.table.localeCompare(b.table)).slice(0, SPACE_TABLES_PER_SCHEMA) }))
+      .sort((a, b) => b.bytes - a.bytes || a.schema.localeCompare(b.schema)),
   };
 }
 

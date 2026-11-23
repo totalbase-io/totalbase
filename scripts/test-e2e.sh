@@ -19,7 +19,7 @@
 #      temporary one from source; it migrates the empty database as it boots (from source, the migrations CLI first);
 #   4. raise the two limits a whole suite exceeds from one IP and one admin: security.rate_limit_per_minute (3000)
 #      and auth.max_sessions_per_user (20) - on this instance only, the product's defaults stay;
-#   5. run Playwright (e2e/playwright.config.ts: the v1 files one at a time, the rest in parallel - graphql, then its docs examples, after them - then ui-dataviews alone);
+#   5. run Playwright (e2e/playwright.config.ts: the v1 files one at a time, the rest in parallel - graphql, then its docs examples, after them - then ui-dataviews alone, then the security suite (tests/security) one file at a time, then ui-lockdown alone, last);
 #   6. stop the instance, whatever happened, keeping its log. The database stays, to look into a failure; the next run drops it.
 # TOTALBASE_E2E_SKIP_BUILD=1 skips step 1 (the image totalbase:e2e already built); TOTALBASE_E2E_PORT runs the instance
 # on another port than TOTALBASE_PORT. Playwright's report: e2e/test-results/.
@@ -29,6 +29,9 @@ cd "$(dirname "$0")/.."
 set -a
 source .env
 set +a
+# The throwaway instance's first administrator: a password the password rule accepts (Security.md §2.3), whatever
+# the development .env holds - the owner is created with it, and every spec signs in with it.
+export TOTALBASE_ADMIN_PASSWORD="${TOTALBASE_E2E_ADMIN_PASSWORD:-E2e-Admin-Pass-2026!}"
 
 DB="${TOTALBASE_E2E_DB:-totalbase_e2e}"
 PG_PORT="${TOTALBASE_E2E_PG_PORT:-5415}"
@@ -111,11 +114,15 @@ BASE_URL="$BASE_URL" node -e '
 '
 
 echo "=== Playwright against $BASE_URL ($([ "$FROM_SOURCE" = "1" ] && echo "from source" || echo "image $IMAGE"); server log, once stopped: $LOG)"
-# The whole suite in two passes: the dataviews project alone, after the rest (e2e/playwright.config.ts).
+# The whole suite in four passes: the dataviews project alone after the rest, then the security suite (it turns
+# instance settings on and back off), then the lockdown project alone, last - it closes the instance to everyone
+# else (e2e/playwright.config.ts).
 if [ $# -eq 0 ]; then
   status=0
   (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project parallel --project v1 --project graphql --project graphql-docs) || status=$?
   (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project dataviews) || status=$?
+  (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project security) || status=$?
+  (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test --project lockdown) || status=$?
   exit "$status"
 fi
 (cd e2e && E2E_BASE_URL="$BASE_URL" npx playwright test "$@")

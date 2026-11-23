@@ -188,6 +188,7 @@ const frameActions = computed<HeaderAction[]>(() => {
       icon="i-lucide-lock"
       :title="t('dataviews.grid.notAvailable')"
       :description="t('dataviews.grid.notAvailableHelp')"
+      class="page-empty"
     />
 
     <template v-else>

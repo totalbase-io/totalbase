@@ -44,6 +44,7 @@ const { data: resource, pending, error } = await useAsyncData(
       :title="t('database.resourceDataPage.getOffTitle')"
       :description="t('database.tableResourceDetail.browseDataNeedsGet')"
       :actions="[{ label: t('database.resourceDataPage.openEndpoints'), color: 'neutral', variant: 'outline', to: `/resources/${resource.id}` }]"
+      class="page-empty"
     />
     <template v-else>
       <div class="min-h-0 flex-1 -mx-4 sm:-mx-6">

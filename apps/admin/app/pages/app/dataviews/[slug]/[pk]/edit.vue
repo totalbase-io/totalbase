@@ -32,6 +32,7 @@ const { dataview, fields, error, primaryKey, features, canCreate, canDelete } = 
       icon="i-lucide-lock"
       :title="t('dataviews.grid.notAvailable')"
       :description="t('dataviews.grid.notAvailableHelp')"
+      class="page-empty"
     />
     <UEmpty
       v-else

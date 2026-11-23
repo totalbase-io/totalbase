@@ -75,7 +75,8 @@ export async function compileFilter(
         return "CURRENT_TIME";
       case "interval": {
         const { sql, param } = intervalSql(raw);
-        return sql.replace("?", nextParam(param));
+        const placeholder = nextParam(param);
+        return sql.replace("?", () => placeholder);
       }
       case "period":
         return periodSql(raw.period, raw.bound);
@@ -117,7 +118,8 @@ export async function compileFilter(
 
     const template = OPERATOR_SQL[n.operator];
     const value = await valueSql(n.value as RawValue, dataType);
-    return `${columnSql} ${template.replace("?", value)}`;
+    // A function replacer: `$&` or `$'` in the value is text, never a replacement pattern.
+    return `${columnSql} ${template.replace("?", () => value)}`;
   }
 
   /**

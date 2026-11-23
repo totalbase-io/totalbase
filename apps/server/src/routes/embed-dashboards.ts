@@ -16,7 +16,7 @@ import {
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
 import { resolveTimezone, runTimezone } from "../display-preferences.js";
-import { dashboardQueryLimits, freshRun, variableValues, type VariableValues } from "./admin-dashboards.js";
+import { dashboardQueryLimits, variableValues, type VariableValues } from "./admin-dashboards.js";
 import { recordWidgetExport, withoutOptionsQuery, withoutQuery, type ExportAuditBody } from "./app-dashboards.js";
 import { serveDashboardFile, verifyDashboardFile, withFileLinks } from "../dashboard-files.js";
 import { EMBED_PREVIEW_TTL_SECONDS } from "./admin-dashboard-embeds.js";
@@ -70,7 +70,7 @@ async function resolve(context: AppContext, raw: string): Promise<{ dashboardId:
     context.settings.get("dashboards.embed_secret_key"),
     context.settings.get("dashboards.embed_max_ttl_minutes"),
   ]);
-  const secret = secretKey ? await context.secrets.decrypt(secretKey).catch(() => "") : "";
+  const secret = secretKey ? await context.secrets.decrypt(secretKey, "DASHBOARD_EMBEDS").catch(() => "") : "";
   const claims = verifyEmbedToken(raw, secret, maxTtlMinutes * 60);
   const embed = await context.dashboardEmbeds.findById(claims.embed);
   if (!embed || embed.type !== "SIGNED" || embed.revokedAt || (embed.expiresAt && new Date(embed.expiresAt) <= new Date())) throw notAvailable();
@@ -113,7 +113,9 @@ async function embedOf(context: AppContext, request: FastifyRequest): Promise<Em
       if (config.value !== undefined) {
         fixed[name] = config.value;
       } else if (resolved.kind === "SIGNED") {
-        if (!(name in resolved.tokenParams)) throw new TotalBaseError("EMBED_TOKEN_INVALID", `The embed token must give "${name}", a variable this embed locks.`);
+        const given = resolved.tokenParams[name];
+        // Given as nothing - null, empty - a locked variable restricts nothing: refused like one left out.
+        if (!(name in resolved.tokenParams) || given === null || given === "") throw new TotalBaseError("EMBED_TOKEN_INVALID", `The embed token must give "${name}", a variable this embed locks - a value, never null or empty.`);
         fixed[name] = resolved.tokenParams[name];
         fromToken.add(name);
       } else {
@@ -297,7 +299,9 @@ export function registerEmbedDashboardsRoutes(app: FastifyInstance, context: App
     const result = await withFileLinks(context, await context.dashboardsAdmin.executePublishedWidget(
       embed.dashboard.id,
       request.params.widgetId,
-      { ...(await dashboardQueryLimits(context)), ...freshRun(request.body) },
+      // An embed's visitor never skips the cache (Dashboards.md §2.9): anyone holding the link would run the
+      // dashboard's SQL on every request.
+      await dashboardQueryLimits(context),
       viewer,
       boundValues(embed, request.body),
     ), {

@@ -67,6 +67,9 @@ export function isPreviewToken(token: string): boolean {
   }
 }
 
+/** The shortest embedding secret a signed token is checked with (Dashboards.md §9.5): 32 characters. */
+export const MIN_EMBED_SECRET_LENGTH = 32;
+
 /**
  * Verifies a JWT's form, header (`alg` exactly HS256 - never `none`), its
  * signature in constant time and its `exp` (future, at most `maxTtlSeconds`
@@ -74,6 +77,8 @@ export function isPreviewToken(token: string): boolean {
  */
 function verify(token: string, key: string, maxTtlSeconds: number, nowSeconds: number): Record<string, unknown> & { exp: number } {
   if (!key) throw invalid("Embedding is not set up on this instance.");
+  // A short secret is guessed offline from any token a browser saw, and then every signed embed is open to forgery.
+  if (key.length < MIN_EMBED_SECRET_LENGTH) throw invalid(`The embedding secret is shorter than ${MIN_EMBED_SECRET_LENGTH} characters - an administrator sets a longer one (Settings › Dashboards › Embedding).`);
   const parts = token.split(".");
   if (parts.length !== 3 || parts.some((part) => !/^[A-Za-z0-9_-]+$/.test(part))) throw invalid("The embed token is malformed.");
   const [headerPart, payloadPart, signaturePart] = parts as [string, string, string];

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { isRegionalFormat, regionalFormatLabel } from '@totalbase/shared'
 import { invalidateDataViewCaps } from '~/composables/useDisplayFormatDefaults'
 import type { Role } from '~/types/permission'
@@ -45,13 +46,19 @@ interface SettingField {
   description: string
   unit?: string
   section?: string
-  input?: 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron'
+  input?: 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'datetime' | 'roles'
+  /** `secret`: the one feature it reads secrets of - the picker lists only those. */
+  secretScope?: string
   options?: Array<{ label: string, value: string, description?: string }>
   orientation?: 'vertical'
   dependsOn?: string
+  /** With `dependsOn` a choice instead of a switch: the one value of it this setting belongs to. */
+  dependsOnValue?: string
   /** The switch that turns the page's whole feature on - shown first, on its own. */
   primary?: boolean
   links?: SettingLink[]
+  /** `roles`: the Administrators role is offered too. */
+  rolesWithAdministrators?: boolean
   default?: unknown
   min?: number
   max?: number
@@ -170,7 +177,7 @@ function shortKey(fullKey: string) {
   return fullKey.startsWith(`${group}.`) ? fullKey.slice(group.length + 1) : fullKey
 }
 
-type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'string'
+type Widget = 'boolean' | 'number' | 'array' | 'select' | 'secret' | 'timezone' | 'regional' | 'json' | 'role' | 'image' | 'color' | 'css' | 'cards' | 'textarea' | 'cron' | 'datetime' | 'roles' | 'string'
 function widgetFor(field: SettingField): Widget {
   if (field.input) return field.input
   if (field.options) return 'select'
@@ -179,6 +186,18 @@ function widgetFor(field: SettingField): Widget {
   if (typeof value === 'number') return 'number'
   if (Array.isArray(value)) return 'array'
   return 'string'
+}
+
+// `datetime`: the stored instant as the wall clock of the viewer's zone, and back.
+const { timezone: displayTimezone } = useDateTimeFormat()
+const fieldZone = () => displayTimezone.value ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+function instantToLocal(instant: string): string {
+  return instant && !Number.isNaN(Date.parse(instant)) ? formatInTimeZone(new Date(instant), fieldZone(), 'yyyy-MM-dd\'T\'HH:mm') : ''
+}
+function localToInstant(local: string): string {
+  if (!local) return ''
+  const date = fromZonedTime(local, fieldZone())
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
@@ -190,9 +209,10 @@ function restartPending(field: SettingField) {
   return field.liveValue !== undefined && !isDirty(field.key) && !same(field.liveValue, settings.value?.[field.key])
 }
 /** Dimmed while its switch is off in the draft - turning the switch on brightens it at once, before saving. */
-/** Locked while its switch, or one its switch depends on, is off in the draft - turning it on frees it at once. */
+/** Locked while its switch, or one its switch depends on, is off in the draft (or its choice is another one) - turning it on frees it at once. */
 function isDisabled(field: SettingField) {
   const byKey = new Map(fields.value.map(f => [f.key, f]))
+  if (field.dependsOn && field.dependsOnValue !== undefined && draft.value[field.dependsOn] !== field.dependsOnValue) return true
   for (let key = field.dependsOn, hops = 0; key && hops < 8; key = byKey.get(key)?.dependsOn, hops++) {
     if (draft.value[key] === false) return true
   }
@@ -223,7 +243,10 @@ function numberHint(field: SettingField, value: unknown): string | null {
 }
 function formatValue(field: SettingField, value: unknown): string {
   if (typeof value === 'boolean') return value ? t('settings.groupForm.on') : t('settings.groupForm.off')
-  if (Array.isArray(value)) return value.length ? value.join(', ') : t('settings.groupForm.none')
+  if (Array.isArray(value)) {
+    const names = field.input === 'roles' ? value.map(id => roles.value.find(r => r.id === id)?.name ?? String(id)) : value
+    return names.length ? names.join(', ') : t('settings.groupForm.none')
+  }
   // An option for "empty" (Regional format's Browser) names it.
   const emptyOption = value === '' ? field.options?.find(o => o.value === '') : undefined
   if (emptyOption) return optionText(field, emptyOption)
@@ -244,17 +267,19 @@ function formatValue(field: SettingField, value: unknown): string {
 // value, so an empty setting maps to NONE and back. ---
 const NONE = '__none__'
 const needsSecrets = computed(() => fields.value.some(f => f.input === 'secret'))
-const { data: secretKeys } = await useAsyncData(
+const { data: secrets } = await useAsyncData(
   `settings-${dataKey}-secret-keys`,
   () => needsSecrets.value
-    ? api.get<Array<{ key: string }>>('/secrets').then(r => r.data.map(s => s.key))
-    : Promise.resolve([] as string[]),
-  { default: () => [] as string[] }
+    ? api.get<Array<{ key: string, scope: string }>>('/secrets').then(r => r.data)
+    : Promise.resolve([] as Array<{ key: string, scope: string }>),
+  { default: () => [] as Array<{ key: string, scope: string }> }
 )
+/** The keys a `secret` setting may name: its feature's own (Security.md §12.3). */
+const secretKeysFor = (field: SettingField) => secrets.value.filter(s => !field.secretScope || s.scope === field.secretScope).map(s => s.key)
 // `role`: the roles a user can be given by a setting - never a reserved
 // one nor one with admin access (the server refuses those on save too).
 const rolesApi = useRolesApi()
-const needsRoles = computed(() => fields.value.some(f => f.input === 'role'))
+const needsRoles = computed(() => fields.value.some(f => f.input === 'role' || f.input === 'roles'))
 const { data: roles } = await useAsyncData(
   `settings-${dataKey}-roles`,
   () => needsRoles.value ? rolesApi.list() : Promise.resolve([] as Role[]),
@@ -264,11 +289,21 @@ const timezoneItems = computed(() => [
   { label: t('settings.groupForm.browserTimezone'), value: NONE },
   ...(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['UTC']).map(z => ({ label: z, value: z }))
 ])
+/** `roles`: any role but the reserved ones (the server refuses those too) - Administrators where the setting takes it; a stored one deleted since still shows. */
+function roleListItems(field: SettingField) {
+  const offered = roles.value.filter(r => !r.reserved || (field.rolesWithAdministrators && r.name === 'Administrators'))
+  const items = offered.map(r => ({ label: r.name, description: r.description ?? undefined, value: r.id }))
+  for (const id of (draft.value[field.key] as string[] | undefined) ?? []) {
+    if (!offered.some(r => r.id === id)) items.unshift({ label: t('settings.groupForm.unknownRole', { id }), description: undefined, value: id })
+  }
+  return items
+}
 function selectItems(field: SettingField) {
   if (field.input === 'timezone') return timezoneItems.value
   if (field.input === 'secret') {
     const current = String(settings.value?.[field.key] ?? '')
-    const keys = secretKeys.value.includes(current) || !current ? secretKeys.value : [current, ...secretKeys.value]
+    const own = secretKeysFor(field)
+    const keys = own.includes(current) || !current ? own : [current, ...own]
     return [{ label: t('common.none'), value: NONE }, ...keys.map(k => ({ label: k, value: k }))]
   }
   if (field.input === 'role') {
@@ -305,7 +340,7 @@ const LINK_PAGES = {
 function fieldLinks(field: SettingField): { key: string, to: string, label: string, icon: string }[] {
   const links: SettingLink[] = [
     ...(field.input === 'secret' ? [{ page: 'secrets' as const }] : []),
-    ...(field.input === 'role' ? [{ page: 'roles' as const }] : []),
+    ...(field.input === 'role' || field.input === 'roles' ? [{ page: 'roles' as const }] : []),
     ...(field.links ?? [])
   ]
   return links.flatMap((link) => {
@@ -629,6 +664,25 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                     class="w-full max-w-xs"
                     @keydown.enter="save"
                   />
+                  <!-- An instant, picked and shown in the viewer's zone (the instance's, unless they chose their own); stored as ISO 8601. -->
+                  <UInput
+                    v-else-if="widgetFor(field) === 'datetime'"
+                    :model-value="instantToLocal(draft[field.key] as string)"
+                    type="datetime-local"
+                    :aria-label="fieldLabel(field)"
+                    class="w-full max-w-xs"
+                    @update:model-value="(v: string | number) => { draft[field.key] = localToInstant(String(v)) }"
+                  />
+                  <USelectMenu
+                    v-else-if="widgetFor(field) === 'roles'"
+                    v-model="draft[field.key] as string[]"
+                    :items="roleListItems(field)"
+                    value-key="value"
+                    multiple
+                    :search-input="{}"
+                    :aria-label="fieldLabel(field)"
+                    class="w-full max-w-md"
+                  />
                   <UInputTags
                     v-else-if="widgetFor(field) === 'array'"
                     v-model="draft[field.key] as string[]"
@@ -684,7 +738,7 @@ useRecordFormShortcuts(computed(() => dirtyKeys.value.length > 0), { onSave: sav
                   >{{ unitText(field.unit) }}<template v-if="numberHint(field, draft[field.key])"> · {{ numberHint(field, draft[field.key]) }}</template></span>
                 </div>
                 <p
-                  v-if="widgetFor(field) === 'secret' && secretKeys.length === 0"
+                  v-if="widgetFor(field) === 'secret' && secretKeysFor(field).length === 0"
                   class="text-xs text-muted"
                 >
                   <i18n-t

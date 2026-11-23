@@ -32,10 +32,24 @@ export function validateIdentifier(name: string, kind: string): void {
 export { quoteIdentifier };
 
 /** e.g. "numeric(12,2)", "character varying(255)", "text[]", "timestamptz". */
-const DATA_TYPE_PATTERN = /^[A-Za-z_][A-Za-z0-9_ ]*(\(\s*\d+\s*(,\s*\d+\s*)?\))?(\s*\[\s*\])?$/;
+const DATA_TYPE_PATTERN = /^([A-Za-z_][A-Za-z0-9_ ]*?)\s*(\(\s*\d+\s*(,\s*\d+\s*)?\))?(\s*\[\s*\])?$/;
+
+/**
+ * The type names PostgreSQL writes in more than one word. Any other name is one word - a built-in, a domain, an enum -
+ * so the words after a type are never a constraint (`integer PRIMARY KEY`) or ALTER TYPE's `USING`.
+ */
+const MULTI_WORD_TYPES = new Set([
+  "character varying", "bit varying", "double precision",
+  "time with time zone", "time without time zone", "timestamp with time zone", "timestamp without time zone",
+  "interval year", "interval month", "interval day", "interval hour", "interval minute", "interval second",
+  "interval year to month", "interval day to hour", "interval day to minute", "interval day to second",
+  "interval hour to minute", "interval hour to second", "interval minute to second",
+]);
 
 export function validateDataType(dataType: string): void {
-  if (dataType.length === 0 || dataType.length > 100 || !DATA_TYPE_PATTERN.test(dataType)) {
+  const match = DATA_TYPE_PATTERN.exec(dataType);
+  const name = match?.[1]?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+  if (dataType.length === 0 || dataType.length > 100 || !match || (name.includes(" ") && !MULTI_WORD_TYPES.has(name))) {
     throw new TotalBaseError(
       "INVALID_SCHEMA_OPERATION",
       `Invalid data type: "${dataType}". Expected a plain PostgreSQL type name, optionally with (precision[,scale]) or [] - no expressions.`,
@@ -63,21 +77,47 @@ export function validateSqlExpression(expression: string, kind: string): void {
   if (expression.includes("--") || expression.includes("/*") || expression.includes("*/")) {
     throw new TotalBaseError("INVALID_SCHEMA_OPERATION", `${kind} expression must not contain SQL comments.`);
   }
-  if (expression.includes("$$")) {
+  // Any `$tag$`, the tag whatever PostgreSQL takes in one (digits and non-ASCII letters too): a dollar-quoted string
+  // hides everything after it from the checks below.
+  if (/\$[^$\s]*\$/u.test(expression)) {
     throw new TotalBaseError("INVALID_SCHEMA_OPERATION", `${kind} expression must not contain dollar-quoting.`);
   }
   if (FORBIDDEN_TOKENS.test(expression)) {
     throw new TotalBaseError("INVALID_SCHEMA_OPERATION", `${kind} expression contains a forbidden keyword.`);
   }
+  if (!balancedOutsideQuotes(expression)) {
+    throw new TotalBaseError("INVALID_SCHEMA_OPERATION", `${kind} expression has unbalanced parentheses or quotes.`);
+  }
+}
+
+/**
+ * Whether an expression's parentheses balance - never closing more than it opened - counting only those outside
+ * string literals (`'...'`, `E'...'` with its backslash escapes) and quoted identifiers (`"..."`), every one of which
+ * must close. With the expression always placed inside parentheses of its own (`DEFAULT (<expr>)`, `CHECK (<expr>)`,
+ * `WHERE (<expr>)`), it then can't end its clause and add another (`0), DISABLE ROW LEVEL SECURITY, ... (0`).
+ */
+function balancedOutsideQuotes(expression: string): boolean {
   let depth = 0;
-  for (const char of expression) {
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i]!;
+    if (char === "'" || char === '"') {
+      const escapes = char === "'" && /[eE]/.test(expression[i - 1] ?? "") && !/[A-Za-z0-9_]/.test(expression[i - 2] ?? "");
+      let closed = false;
+      for (i += 1; i < expression.length; i++) {
+        if (escapes && expression[i] === "\\") { i += 1; continue; }
+        if (expression[i] === char) {
+          if (expression[i + 1] === char) { i += 1; continue; }
+          closed = true;
+          break;
+        }
+      }
+      if (!closed) return false;
+      continue;
+    }
     if (char === "(") depth += 1;
-    if (char === ")") depth -= 1;
-    if (depth < 0) break;
+    if (char === ")" && --depth < 0) return false;
   }
-  if (depth !== 0) {
-    throw new TotalBaseError("INVALID_SCHEMA_OPERATION", `${kind} expression has unbalanced parentheses.`);
-  }
+  return depth === 0;
 }
 
 export const FK_ACTIONS = ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"] as const;

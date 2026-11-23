@@ -235,7 +235,7 @@ test('Edit table: Tables list Edit opens its page; rename, retype and constrain 
     await dialog.getByLabel('Type').fill('bigint')
     await page.getByRole('option', { name: 'bigint', exact: true }).click()
     await dialog.getByLabel('Default').fill('0')
-  }, ['TYPE bigint', 'SET DEFAULT 0'])
+  }, ['TYPE bigint', 'SET DEFAULT (0)'])
   await editColumn(page, 'name', async (dialog) => {
     await dialog.getByRole('switch', { name: 'Not null' }).click()
     await dialog.getByRole('switch', { name: 'Unique' }).click()

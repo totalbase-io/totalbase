@@ -186,7 +186,16 @@ export function useAuditLogDisplay() {
           const name = text(payload.name) ?? (id && tokens.name(id))
           return name ? { text: name, mono: false } : null
         }
-        case 'settings': return text(params.group) ? { text: text(params.group)!, mono: true } : null
+        case 'settings': {
+          // The group and what was set in it: one setting with its new value when that is short, else the settings' names.
+          const group = text(params.group)
+          if (!group) return null
+          const keys = Object.keys(payload)
+          const value = keys.length === 1 ? payload[keys[0]!] : undefined
+          const shown = ['string', 'number', 'boolean'].includes(typeof value) && String(value) !== '' && String(value).length <= 24 ? ` → ${String(value)}` : ''
+          const settings = keys.length > 3 ? `${keys.slice(0, 3).join(', ')}…` : keys.join(', ')
+          return { text: settings ? `${group} · ${settings}${shown}` : group, mono: true }
+        }
         case 'system_email': return text(params.slot) ? { text: text(params.slot)!, mono: true } : null
         case 'secret': return text(params.key) ? { text: text(params.key)!, mono: true } : null
         default: {

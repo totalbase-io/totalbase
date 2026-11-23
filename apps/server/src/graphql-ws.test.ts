@@ -140,6 +140,22 @@ describe("GraphQL over a WebSocket", () => {
     await client.next((m) => m.type === "pong");
   });
 
+  // Security regression (Data_API.md §17.7, Administration.md §7.7): rate limiting counted the upgrade only - every
+  // operation sent over the open socket ran free of security.rate_limit_per_user_per_minute.
+  it("counts each operation against its credential's rate limit, as over HTTP", async () => {
+    await context.settings.set("security.rate_limit_enabled", true);
+    await context.settings.set("security.rate_limit_per_user_per_minute", 3);
+    try {
+      const client = await ready();
+      for (let i = 0; i < 6; i++) client.send({ type: "subscribe", id: `r${i}`, payload: { query: "{ __typename }" } });
+      const refused = await client.next((m) => m.type === "error" && (m.payload as { extensions?: { code?: string } }[])[0]?.extensions?.code === "RATE_LIMIT_EXCEEDED");
+      expect(refused.id).toMatch(/^r\d$/);
+    } finally {
+      await context.settings.reset("security.rate_limit_per_user_per_minute");
+      await context.settings.reset("security.rate_limit_enabled");
+    }
+  }, 20_000);
+
   it("lists a Subscription for the tables exposing REALTIME only while realtime is on, and over HTTP refuses it", async () => {
     const http = (query: string) => app.inject({ method: "POST", url: "/api/graphql", headers: { authorization: `Bearer ${key}` }, payload: { query } });
     const fieldsOf = async () => (await http("{ __schema { subscriptionType { fields { name } } } }")).json().data.__schema.subscriptionType?.fields.map((f: { name: string }) => f.name);

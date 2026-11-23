@@ -347,6 +347,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
             size="sm"
             icon="i-lucide-monitor-smartphone"
             :title="query ? t('users.sessions.noMatch', { query }) : t(`users.sessions.empty.${status}`)"
+            class="table-empty"
           />
         </template>
         <template #select-header>

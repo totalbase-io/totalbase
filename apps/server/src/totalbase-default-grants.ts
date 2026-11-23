@@ -43,7 +43,8 @@ const CREATED_BY_ME = { created_by: { _eq: "$USER.id" } };
 const MY_ENTRIES = { principal: { _eq: "$USER.id" } };
 
 export const TOTALBASE_DEFAULT_GRANTS: DefaultGrant[] = [
-  // Everyone reads and uploads; a file is changed or deleted by whoever uploaded it.
+  // Everyone reads and uploads - within each file's visibility, which caps every action (Administration.md §10.6):
+  // one's own files, and those linked to a row one reads. A file is changed or deleted by whoever uploaded it.
   {
     table: "files",
     actions: [

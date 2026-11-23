@@ -649,8 +649,10 @@ function addToManyFields(
         resolve: async (source, args, context, info) => {
           const key = (source as Record<string, unknown>)[parentKey];
           if (key === null || key === undefined) return [];
-          // Every parent row of this field, alias and arguments in the response shares one read.
-          const batch = `${pathKey(info.path)}:${JSON.stringify(args)}`;
+          // Every parent row of this field in the response shares one read, keyed by its path alone: one response key at
+          // one path has one set of arguments (validation refuses two), so they are never serialized again for every
+          // parent row - a large `where` variable times hundreds of parents blocked the process (Data_API.md §17.8).
+          const batch = pathKey(info.path);
           const perParent = (args["limit"] ?? null) !== null || (args["offset"] ?? null) !== null;
           return context.batcher!.load(batch, String(key), async (keys) => {
             const paths = new Set([...selectedPaths(info, shapes, child.read.typeName), fk]);

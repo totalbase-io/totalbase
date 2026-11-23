@@ -20,6 +20,7 @@
  * is the other way round: its card fills whatever frame the site gives it.
  */
 import { isUiLanguage } from '@totalbase/shared'
+import { embedCredentialFor } from '~/utils/embed-credential'
 import { parseEmbedParams } from '~/utils/embed-params'
 import { setRegionalLocale } from '~/utils/regional-locale'
 
@@ -91,7 +92,7 @@ function parentOrigin(): string | null {
 let observer: ResizeObserver | null = null
 onMounted(() => {
   notFramed.value = isLink && window.top === window
-  credential.value = isLink ? key : decodeURIComponent(window.location.hash.replace(/^#/, ''))
+  credential.value = embedCredentialFor(key, window.location.hash)
   const target = parentOrigin()
   if (window.parent !== window && target && root.value) {
     let last = 0

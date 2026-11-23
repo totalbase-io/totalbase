@@ -9,7 +9,7 @@ import { SettingsService } from "@totalbase/settings";
 import { FILE_THUMBNAIL_QUERY } from "@totalbase/shared";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FilesLocalStorageProvider } from "./local-storage-provider.js";
-import { FilesTransformService } from "./transform-service.js";
+import { MAX_NEW_RENDITIONS_PER_HOUR, FilesTransformService } from "./transform-service.js";
 import { transformCacheKey } from "./transform-params.js";
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", import.meta.url));
@@ -117,6 +117,16 @@ describe("FilesTransformService (integration)", () => {
     await expect(transformService.warmThumbnail({ id: "file-warm-2", checksum: "h", mime_type: "application/pdf" }, Buffer.from("%PDF"))).resolves.toBeUndefined();
     await settings.set("files.transforms.enabled", false);
     await expect(transformService.warmThumbnail({ id: "file-warm-3", checksum: "h", mime_type: "image/png" }, source)).resolves.toBeUndefined();
+  });
+
+  // Security regression (Administration.md §10.8): every distinct parameter set made a new rendition - a sharp run and
+  // a stored file - and anyone may ask a PUBLIC file for them: unbounded CPU and disk until the cache's purge.
+  it("makes at most MAX_NEW_RENDITIONS_PER_HOUR new renditions of a file an hour, still serving the ones made", async () => {
+    const source = await testImage(64, 64);
+    const ask = (width: number) => transformService.resolve({ fileId: "file-flood", sourceHash: "hash-flood", mimeType: "image/png", query: { width: String(width) }, readOriginal: async () => source });
+    for (let width = 1; width <= MAX_NEW_RENDITIONS_PER_HOUR; width++) await ask(width);
+    await expect(ask(MAX_NEW_RENDITIONS_PER_HOUR + 1)).rejects.toMatchObject({ code: "RATE_LIMIT_EXCEEDED" });
+    expect((await ask(1))?.contentType).toBe("image/png");
   });
 
   it("rejects transformation query params on a non-image file", async () => {

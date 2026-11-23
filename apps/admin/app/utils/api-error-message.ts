@@ -17,6 +17,11 @@ export function apiErrorMessage(i18n: Pick<Composer, 't' | 'te' | 'locale'>, err
 }
 
 /** One of the API's errors - `{ code, source, message }` as a response's `errors` carries it - as the viewer reads it. */
+/** A write refused by a read-only lockdown (Security.md §2.21) - the user stays where they are, unlike a full one's refusal. */
+export function isReadOnlyLockdown(error: ApiErrorLike): boolean {
+  return error.code === 'LOCKDOWN' && error.message.startsWith('This instance is in lockdown, read-only')
+}
+
 export function apiErrorText(i18n: Pick<Composer, 't' | 'te' | 'locale'>, error: ApiErrorLike): string {
   // A UNIQUE or FOREIGN KEY violation whose constraint has no message of its own: PostgreSQL's raw English
   // ("duplicate key value violates…") read in the UI's language instead - a constraint's COMMENT stays as written.
@@ -31,6 +36,7 @@ export function apiErrorText(i18n: Pick<Composer, 't' | 'te' | 'locale'>, error:
     const who = denied[3] === 'your roles' ? i18n.t('errors.deniedYourRoles') : denied[3]!
     return i18n.t('errors.actionDeniedOn', { action: i18n.t(`errors.actions.${denied[1]}`), resource: denied[2]!, who })
   }
+  if (isReadOnlyLockdown(error)) return i18n.t('errors.lockdownReadOnly')
   if (error.source !== 'POSTGRESQL' && error.code && i18n.te(`errors.${error.code}`)) return i18n.t(`errors.${error.code}`)
   return error.message
 }

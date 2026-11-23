@@ -21,6 +21,7 @@ const api = useAdminApi()
 const { t } = useI18n()
 const notifyError = useErrorToast()
 const publishToast = usePublishToast()
+const toast = useToast()
 const workflowId = String(route.params.id)
 
 const { data: draft, error, refresh: refreshDraft } = await useAsyncData(`workflow-settings-${workflowId}`, () => api.get<WorkflowDraft>(`/workflows/${workflowId}/draft`).then(r => r.data), { deep: true })
@@ -149,6 +150,8 @@ async function publish(note?: string) {
     const result = await api.post<{ version: number }>(`/workflows/${workflowId}/publish`, { data: { revision: draft.value.workflow.revision, ...(note && { note }) } })
     await Promise.all([refreshDraft(), refreshVersions()])
     publishToast(result, t('workflows.editor.published'))
+    // The server's advice (Workflows.md §6.5): a public webhook anyone with its URL sets off.
+    for (const warning of (result.meta?.warnings as string[] | undefined) ?? []) toast.add({ title: t('designer.publishWarning'), description: warning, color: 'warning', duration: 0 })
   } catch (error) {
     notifyError(error, t('workflows.editor.publishFailed'))
   } finally {

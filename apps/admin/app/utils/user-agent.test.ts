@@ -12,7 +12,12 @@ describe('describeUserAgent', () => {
     ['curl/8.5.0', 'curl', 'i-lucide-terminal'],
     ['node', 'Node.js', 'i-lucide-terminal']
   ])('%s → %s', (ua, label, icon) => {
-    expect(describeUserAgent(ua)).toEqual({ label, icon })
+    expect(describeUserAgent(ua)).toMatchObject({ label, icon })
+  })
+
+  it('gives a browser\'s two parts apart, and none for a script', () => {
+    expect(describeUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36')).toMatchObject({ browser: 'Chrome', system: 'Linux' })
+    expect(describeUserAgent('curl/8.14.1').browser).toBeUndefined()
   })
 
   it('handles a missing user agent', () => {

@@ -133,11 +133,13 @@ async function submit() {
           variant="subtle"
           :title="enrollError"
         />
-        <MfaQrCode
-          v-else-if="enrollment"
-          :otpauth-url="enrollment.otpauthUrl"
-          :secret="enrollment.secret"
-        />
+        <template v-else-if="enrollment">
+          <MfaQrCode
+            :otpauth-url="enrollment.otpauthUrl"
+            :secret="enrollment.secret"
+          />
+          <MfaAuthenticatorApps />
+        </template>
       </template>
 
       <UFormField

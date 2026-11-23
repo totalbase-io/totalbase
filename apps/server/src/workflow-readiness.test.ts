@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { validateExecutionReadiness } from "@totalbase/workflows";
+import { publishAdvisories, validateExecutionReadiness } from "@totalbase/workflows";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AppContext } from "./context.js";
 import { setupTestApp } from "./test-support.js";
@@ -57,6 +57,55 @@ describe("workflow publish readiness", () => {
     ]));
   });
 
+  // Found only on a run: a Read records query that fails to parse or names what the table hasn't, and a step in an
+  // error branch reading the step that failed ("references a step that hasn't run yet").
+  it("checks a Read records query against its table, and a failed step read in its error branch", async () => {
+    const { rows } = await context.database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'roles' AND status = 'ACTIVE'`);
+    const start = op("start", "totalbase.start", { trigger: "MANUAL" });
+    const read = op("read", "totalbase.read-records", { resource: rows[0]!.id, query: { fields: ["id", "name"], sort: "-name", where: { nombre: { _eq: "{{start.data.name}}" } } } });
+    const call = op("call", "totalbase.http-request", { method: "GET", url: "https://example.com/{{read.data}}" });
+    const warn = op("warn", "totalbase.finish-result", { result: "{{call.error.message}}" });
+    const done = op("done", "totalbase.finish-result", { result: "{{call.data}}" });
+    const issues = await issuesOf({ operations: [start, read, call, warn, done], connections: [link(start, read), link(read, call), link(call, warn, "error"), link(call, done)] });
+    expect(issues).toEqual([
+      expect.stringMatching(/^Step "read": its query - Unknown query parameter: sort \(sort -> order_by\)/),
+      'Step "warn": {{call...}} runs only after "call" failed, which leaves no result - its error is {{error.message}}.',
+    ]);
+    read.configuration.query = { fields: ["id", "name"], where: { nombre: { _eq: "x" } } };
+    expect((await issuesOf({ operations: [start, read], connections: [link(start, read)] }))[0]).toMatch(/^Step "read": its query - Unknown field: roles\.nombre/);
+    read.configuration.query = { fields: "id,name", order_by: "-name", where: { name: { _eq: "{{start.data.name}}" } } };
+    warn.configuration.result = "{{error.message}}";
+    expect(await issuesOf({ operations: [start, read, call, warn, done], connections: [link(start, read), link(read, call), link(call, warn, "error"), link(call, done)] })).toEqual([]);
+  });
+
+  // WF-01: an Update/Delete records `where` that is itself a {{...}} took its grammar from a webhook's body.
+  it("checks an Update and a Delete records where like a Read records query - refusing one that is itself a {{...}}", async () => {
+    const { rows } = await context.database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'roles' AND status = 'ACTIVE'`);
+    const start = op("start", "totalbase.start", { trigger: "MANUAL" });
+    for (const type of ["totalbase.update-records", "totalbase.delete-records"]) {
+      const step = op("step", type, { resource: rows[0]!.id, where: "{{start.data.where}}", ...(type.includes("update") && { set: { description: "x" } }) });
+      expect(await issuesOf({ operations: [start, step], connections: [link(start, step)] }), type).toEqual([expect.stringMatching(/^Step "step": its where - Invalid filter object/)]);
+      step.configuration.where = { nombre: { _eq: "{{start.data.id}}" } };
+      expect((await issuesOf({ operations: [start, step], connections: [link(start, step)] }))[0], type).toMatch(/^Step "step": its where - Unknown field: roles\.nombre/);
+      step.configuration.where = { id: { _eq: "{{start.data.id}}" } };
+      expect(await issuesOf({ operations: [start, step], connections: [link(start, step)] }), type).toEqual([]);
+    }
+  });
+
+  // WF-L1: a public webhook with no secret, no allowed addresses, acting as its Execute as user - advised at publish.
+  it("advises on a public webhook anyone with its URL sets off - quiet once it has a secret or allowed addresses", async () => {
+    const { rows } = await context.database.query<{ id: string }>(`SELECT a."user" AS id FROM totalbase.users_roles a JOIN totalbase.roles r ON r.id = a.role WHERE r.admin_access LIMIT 1`);
+    const start = op("start", "totalbase.start", { trigger: "WEBHOOK", access: "PUBLIC", execute_as: rows[0]!.id });
+    const write = op("write", "totalbase.delete-records", { resource: randomUUID(), where: { id: { _eq: "{{start.data.id}}" } } });
+    const definition = { operations: [start, write], connections: [link(start, write)] };
+    expect(await publishAdvisories(definition, context)).toEqual([expect.stringMatching(/^This webhook is public with no secret and no allowed addresses: anyone who learns its URL runs "write" as an administrator/)]);
+    expect(await publishAdvisories({ operations: [start], connections: [] }, context)).toEqual([]);
+    start.configuration.allowed_ips = ["10.0.0.0/8"];
+    expect(await publishAdvisories(definition, context)).toEqual([]);
+    start.configuration = { trigger: "WEBHOOK", access: "PUBLIC", execute_as: rows[0]!.id, secret: "hook_secret" };
+    expect(await publishAdvisories(definition, context)).toEqual([]);
+  });
+
   it("refuses a Schedule the dispatcher would skip - expression, time zone and Execute as", async () => {
     const finish = (start: { id: string }) => {
       const end = op("finish", "totalbase.finish-result", { result: "ok" });
@@ -77,13 +126,26 @@ describe("workflow publish readiness", () => {
     ]);
   });
 
+  // Security regression (round 9): a DATA_EVENT Start filter with $USER.* or $PERIOD.* published, then failed on every
+  // matching row - an event retried until it failed for good, every later workflow of it losing its admission.
+  it("refuses $USER.* and $PERIOD.* in a data event's filter - nothing resolves them there", async () => {
+    const start = op("start", "totalbase.start", { trigger: "DATA_EVENT", resource: randomUUID(), events: ["INSERT"], filter: { owner: { _eq: "$USER.id" } } });
+    const end = op("finish", "totalbase.finish-result", { result: "ok" });
+    const issues = await issuesOf({ operations: [start, end], connections: [link(start, end)] });
+    expect(issues.some((issue) => /can't use \$USER\.\* or \$PERIOD\.\*/.test(issue))).toBe(true);
+    // Round 10: also as an item of a list, which the parser splits on commas.
+    const listed = op("start", "totalbase.start", { trigger: "DATA_EVENT", resource: randomUUID(), events: ["INSERT"], filter: { status: { _in: "a,$USER.id" } } });
+    const listedIssues = await issuesOf({ operations: [listed, end], connections: [link(listed, end)] });
+    expect(listedIssues.some((issue) => /can't use \$USER\.\* or \$PERIOD\.\*/.test(issue))).toBe(true);
+  });
+
   it("refuses a secret header naming no secret - not left to the first run", async () => {
     const key = `readiness-${randomUUID().slice(0, 8)}`;
-    await context.secrets.set(key, "s3cret");
+    await context.secrets.set(key, "s3cret", "WORKFLOWS");
     try {
       const start = op("start", "totalbase.start", { trigger: "MANUAL" });
       const call = op("call", "totalbase.http-request", { method: "GET", url: "https://example.com", secretHeaders: [{ name: "Authorization", secret: key }, { name: "X-Key", secret: "ACCOUNTING_API_KEY" }] });
-      expect(await issuesOf({ operations: [start, call], connections: [link(start, call)] })).toEqual(['Step "call": no secret "ACCOUNTING_API_KEY" in Settings > Secrets.']);
+      expect(await issuesOf({ operations: [start, call], connections: [link(start, call)] })).toEqual(['Step "call": no workflow secret "ACCOUNTING_API_KEY" in Settings > Secrets.']);
     } finally {
       await context.secrets.delete(key);
     }

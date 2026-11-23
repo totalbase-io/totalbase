@@ -4,7 +4,7 @@ import type { SettingsService } from "@totalbase/settings";
 import { AuthTokensService } from "./auth-tokens-service.js";
 import type { EmailSender } from "./email-sender.js";
 import { SystemMailer, type SystemEmailRecipient } from "./system-mailer.js";
-import { assertPasswordStrength, hashPassword, verifyPassword } from "./password.js";
+import { admitPasswordCheck, assertPasswordStrength, hashPassword, timingEqualizerHash, verifyPassword } from "./password.js";
 import { MfaService, type MfaSurface } from "./mfa-service.js";
 import { SessionsService } from "./sessions-service.js";
 import { UsersService } from "./users-service.js";
@@ -21,8 +21,8 @@ export interface AuthServiceOptions {
   onBackgroundError?: (error: unknown, context: string) => void;
   /** TOTALBASE_MASTER_KEY - encrypts MFA secrets (Security.md §2.17). */
   masterKey: string;
-  /** Whether the user holds the Administrators role - for `auth.mfa_required = ADMINISTRATORS`. */
-  isAdministrator: (userId: string) => Promise<boolean>;
+  /** The roles that grant the user something right now - for `mfa.required = ROLES` (Security.md §2.17). */
+  effectiveRoles: (userId: string) => Promise<string[]>;
 }
 
 /**
@@ -37,7 +37,7 @@ export type SignInAdmission = (userId: string) => Promise<"no_api_access" | "no_
  * reached once the password matched (EMAIL_NOT_VERIFIED, 403).
  */
 export type LoginFailureReason =
-  | "unknown_email" | "no_password" | "inactive" | "cannot_login" | "locked" | "wrong_password" | "email_not_verified"
+  | "unknown_email" | "no_password" | "inactive" | "cannot_login" | "locked" | "address_locked" | "sign_in_delayed" | "wrong_password" | "email_not_verified"
   | "no_api_access" | "no_portal_access" | "mfa_code_invalid" | "mfa_challenge_invalid" | "password_challenge_invalid";
 
 /** A step of a sign-in was passed and another is due - who it is, and what the audit row should keep of it. */
@@ -65,6 +65,12 @@ export interface InvitationDetails {
 }
 
 /**
+ * How long a link a caller asks for by address (a password reset, a verification resend) is the only one: asked again
+ * within it, nothing is issued or sent (Security.md §2.8).
+ */
+const PUBLIC_LINK_COOLDOWN_SECONDS = 60;
+
+/**
  * Composes users/sessions/tokens/settings into the LOCAL authentication
  * flows described in Security.md §2.
  */
@@ -82,11 +88,16 @@ export class AuthService {
     emailSender: EmailSender,
     options: AuthServiceOptions,
   ) {
+    // The sign-in's timing equalizer, made now rather than by the first refused sign-in - which may come in a flood.
+    void timingEqualizerHash().catch(() => undefined);
     this.users = new UsersService(database);
     this.sessions = new SessionsService(database, settings);
     this.authTokens = new AuthTokensService(database);
     this.mailer = new SystemMailer(settings, emailSender, options.publicUrl ?? "");
-    this.mfa = new MfaService(database, settings, options.masterKey, { isAdministrator: options.isAdministrator });
+    this.mfa = new MfaService(database, settings, options.masterKey, {
+      effectiveRoles: options.effectiveRoles,
+      countedProof: (userId, refusal, fn) => this.countedProof(userId, refusal, fn),
+    });
     this.onBackgroundError = options.onBackgroundError ?? (() => {});
   }
 
@@ -124,10 +135,10 @@ export class AuthService {
 
   /**
    * The security notice that an account's two-factor authentication was turned off - by its owner, or reset by
-   * an administrator (auth.mfa_disabled_email_enabled, Security.md §2.17). Best-effort, after the change.
+   * an administrator (mfa.disabled_email_enabled, Security.md §2.17). Best-effort, after the change.
    */
   async notifyMfaDisabled(userId: string): Promise<void> {
-    if (!(await this.settings.get("auth.mfa_disabled_email_enabled"))) return;
+    if (!(await this.settings.get("mfa.disabled_email_enabled"))) return;
     const user = await this.users.findById(userId);
     if (!user?.email || !user.canLogin) return;
     this.sendBestEffort("mfa_disabled email", () =>
@@ -247,23 +258,55 @@ export class AuthService {
       throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid email or password.", { httpStatus: 401 });
     };
 
-    const user = await this.users.findByEmailWithPasswordHash(input.email);
-    if (!user) refuse("unknown_email");
-    const found = user!;
-    if (found.locked) refuse("locked", { userId: found.id });
-    if (!found.active) refuse("inactive", { userId: found.id });
-    if (!found.canLogin) refuse("cannot_login", { userId: found.id });
-    if (!found.passwordHash) refuse("no_password", { userId: found.id });
+    // A body's email and password are whatever JSON it sent: what isn't text is empty text - a sign-in without a
+    // password is a wrong password like any other, answered alike for every email (SEC-116), never an error that
+    // tells an account that has one from one that doesn't.
+    const email = typeof input.email === "string" ? input.email : "";
+    const password = typeof input.password === "string" ? input.password : "";
 
-    const valid = await verifyPassword(found.passwordHash!, input.password);
-    if (!valid) {
-      const [maxAttempts, lockMinutes] = await Promise.all([
-        this.settings.get("auth.lockout_max_attempts"),
-        this.settings.get("auth.lockout_duration_minutes"),
-      ]);
-      const { locked } = await this.users.recordFailedLogin(found.id, maxAttempts, lockMinutes);
-      refuse("wrong_password", { lockedNow: locked, userId: found.id });
+    // The password check admitted first, before the account is even looked up (Security.md §2.4): a full queue answers
+    // `429` alike for every email - never telling which exist - and no attempt is counted for a check that never ran.
+    // Admitted, it holds no turn: its computations take one each, so waiting on the database blocks no one (SEC-117).
+    const check = admitPasswordCheck();
+    let found: NonNullable<Awaited<ReturnType<UsersService["findByEmailWithPasswordHash"]>>>;
+    let attempt: { wrong(): Promise<{ locked: boolean }>; right(): Promise<void>; release(): Promise<void> };
+    try {
+      // Every refusal before the password is checked costs what checking it does: an unknown, locked, inactive or
+      // password-less account answers in the time a wrong password takes - never sooner.
+      const refuseAfterHashing = async (reason: LoginFailureReason, details?: { userId?: string }): Promise<never> => {
+        await timingEqualizerHash().then((hash) => verifyPassword(hash, password, check)).catch(() => false);
+        return refuse(reason, details);
+      };
+      const user = await this.users.findByEmailWithPasswordHash(email);
+      if (!user) return await refuseAfterHashing("unknown_email");
+      found = user;
+      if (found.locked) await refuseAfterHashing("locked", { userId: found.id });
+      if (!found.active) await refuseAfterHashing("inactive", { userId: found.id });
+      if (!found.canLogin) await refuseAfterHashing("cannot_login", { userId: found.id });
+      if (!found.passwordHash) await refuseAfterHashing("no_password", { userId: found.id });
+
+      // Counted per account and address: wrong passwords from one address lock that address out, never the account
+      // for everyone; an address it never signed in from also waits the account-wide delay.
+      const taken = await this.takeSignInAttempt(found.id, input.ip ?? "0.0.0.0");
+      if ("refused" in taken) return await refuseAfterHashing(taken.refused, { userId: found.id });
+      attempt = taken;
+      let valid: boolean;
+      try {
+        valid = await verifyPassword(found.passwordHash!, password, check);
+      } catch (error) {
+        // The password is text, so only the stored hash can fail - unreadable: the attempt goes back, as a proof on a
+        // session's does (countedProof).
+        await attempt.release();
+        throw error;
+      }
+      if (!valid) {
+        const { locked } = await attempt.wrong();
+        refuse("wrong_password", { lockedNow: locked, userId: found.id });
+      }
+    } finally {
+      check.release();
     }
+    await attempt.right();
     await this.assertEmailVerified(found, (reason, details) => onFailure?.(reason, details));
     const refused = input.admit ? await input.admit(found.id) : null;
     if (refused) refuse(refused, { userId: found.id });
@@ -406,12 +449,8 @@ export class AuthService {
         surface: input.surface,
         code: input.code,
         recoveryCode: input.recoveryCode,
-        onWrongCode: async (userId) => {
-          const [maxAttempts, lockMinutes] = await Promise.all([
-            this.settings.get("auth.lockout_max_attempts"),
-            this.settings.get("auth.lockout_duration_minutes"),
-          ]);
-          const { locked } = await this.users.recordFailedLogin(userId, maxAttempts, lockMinutes);
+        takeAttempt: (userId) => this.takeAttempt(userId),
+        onWrongCode: async (userId, locked) => {
           onFailure?.("mfa_code_invalid", { userId, ...(locked && { lockedNow: true }) });
         },
       });
@@ -490,7 +529,9 @@ export class AuthService {
     const user = await this.users.findByEmail(email);
     if (!user || !user.email || !user.active || !user.canLogin) return;
     this.sendBestEffort("password_reset email", async () => {
-      await this.sendPasswordReset({ id: user.id, email: user.email!, name: user.name }, "email");
+      // Anyone can ask for an address's link: one per cooldown, the one already sent kept - an inbox never flooded, a
+      // reset in progress never retired by someone else's request.
+      await this.issuePasswordReset({ id: user.id, email: user.email!, name: user.name }, "email", PUBLIC_LINK_COOLDOWN_SECONDS);
     });
   }
 
@@ -501,8 +542,16 @@ export class AuthService {
    * returned for the admin to share.
    */
   async sendPasswordReset(user: { id: string } & SystemEmailRecipient, delivery: LinkDelivery): Promise<string> {
+    return (await this.issuePasswordReset(user, delivery))!;
+  }
+
+  /** With `cooldownSeconds`, nothing is issued or sent - null - while a link of the cooldown's age is out (§2.8). */
+  private async issuePasswordReset(user: { id: string } & SystemEmailRecipient, delivery: LinkDelivery, cooldownSeconds?: number): Promise<string | null> {
     const ttlMinutes = await this.settings.get("auth.password_reset_ttl_minutes");
-    const token = await this.authTokens.create(user.id, "PASSWORD_RESET", ttlMinutes / 60);
+    const token = cooldownSeconds === undefined
+      ? await this.authTokens.create(user.id, "PASSWORD_RESET", ttlMinutes / 60)
+      : await this.authTokens.createUnlessRecent(user.id, "PASSWORD_RESET", ttlMinutes / 60, cooldownSeconds);
+    if (token === null) return null;
     const url = await this.mailer.buildLink("password_reset", token);
     if (delivery === "email") {
       await this.mailer.send("password_reset", user, { url, expiresInHours: ttlMinutes / 60 });
@@ -524,8 +573,12 @@ export class AuthService {
     // the link only reached the person through that address.
     await this.users.unlock(userId);
     await this.users.markEmailVerified(userId);
-    // Invalidate existing sessions on password change (security best practice).
+    // Invalidate existing sessions on password change (security best practice), and every other pending link: an
+    // invitation still out would set the password again. A reset is how an account is taken back: the personal
+    // tokens go too - one an intruder made would outlive the password it was made with (Security.md §2.8).
     await this.sessions.revokeAllForUser(userId);
+    await this.authTokens.retire(userId, ["INVITATION", "PASSWORD_RESET"]);
+    await this.revokePersonalTokens(userId);
     await this.notifyPasswordChanged(userId);
   }
 
@@ -551,9 +604,12 @@ export class AuthService {
     if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
     if (!user.canLogin) throw new TotalBaseError("PERMISSION_DENIED", "System accounts don't sign in with a password.");
     if (input.currentPassword !== undefined && user.passwordHash) {
-      if (typeof input.currentPassword !== "string" || !(await verifyPassword(user.passwordHash, input.currentPassword))) {
-        throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
-      }
+      const passwordHash = user.passwordHash;
+      await this.countedProof(user.id, "INVALID_CURRENT_PASSWORD", async () => {
+        if (typeof input.currentPassword !== "string" || !(await verifyPassword(passwordHash, input.currentPassword))) {
+          throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
+        }
+      });
     }
     // One's own account (the current password was asked): a new one, as in My account. Someone else's is not
     // compared - the administrator doesn't know it.
@@ -586,9 +642,12 @@ export class AuthService {
     if (!user.passwordHash) {
       throw new TotalBaseError("PERMISSION_DENIED", "This account has no password yet - use \"Forgot password\" on the sign-in page to set one.");
     }
-    if (typeof input.currentPassword !== "string" || !(await verifyPassword(user.passwordHash, input.currentPassword))) {
-      throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
-    }
+    const passwordHash = user.passwordHash;
+    await this.countedProof(user.id, "INVALID_CURRENT_PASSWORD", async () => {
+      if (typeof input.currentPassword !== "string" || !(await verifyPassword(passwordHash, input.currentPassword))) {
+        throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
+      }
+    });
     await this.applyNewPassword({
       userId: input.userId,
       password: input.password,
@@ -610,32 +669,74 @@ export class AuthService {
     };
     const user = await this.users.findByIdWithPasswordHash(input.userId);
     if (!user) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Invalid session or token.");
-    if (await this.users.isLocked(user.id)) refuse("This account is locked for a while after too many failed attempts.");
-    const countFailure = async () => {
-      const [maxAttempts, lockMinutes] = await Promise.all([
-        this.settings.get("auth.lockout_max_attempts"),
-        this.settings.get("auth.lockout_duration_minutes"),
-      ]);
-      await this.users.recordFailedLogin(user.id, maxAttempts, lockMinutes);
-    };
+    if (typeof input.password !== "string" && input.code === undefined && input.recoveryCode === undefined) {
+      throw new TotalBaseError("INVALID_QUERY", "password, code or recoveryCode is required.");
+    }
+    if (typeof input.password === "string" && !user.passwordHash) refuse("This account has no password - confirm with your authenticator app, or sign in again.");
+    const attempt = await this.takeAttempt(user.id);
+    if (!attempt) refuse("This account is locked for a while after too many failed attempts.");
     if (typeof input.password === "string") {
-      if (!user.passwordHash) refuse("This account has no password - confirm with your authenticator app, or sign in again.");
       if (!(await verifyPassword(user.passwordHash!, input.password))) {
-        await countFailure();
+        await attempt!.wrong();
         refuse("The password is incorrect.");
       }
-    } else if (input.code !== undefined || input.recoveryCode !== undefined) {
+    } else {
       try {
         await this.mfa.confirm(user.id, { code: input.code, recoveryCode: input.recoveryCode });
       } catch (error) {
+        if (error instanceof TotalBaseError && error.code === "INVALID_MFA_CODE") await attempt!.wrong();
+        else await attempt!.right();
         if (!(error instanceof TotalBaseError)) throw error;
-        if (error.code === "INVALID_MFA_CODE") await countFailure();
         refuse(error.code === "MFA_NOT_ENABLED" ? "This account has no authenticator app - confirm with your password." : error.message);
       }
-    } else {
-      throw new TotalBaseError("INVALID_QUERY", "password, code or recoveryCode is required.");
     }
+    await attempt!.right();
     await this.sessions.markReauthenticated(input.sessionId, user.id);
+  }
+
+  /**
+   * A proof of identity on an open session - the current password, an authenticator code (Security.md §2.4): refused
+   * while the account is locked, and a wrong one (`refusal`) counts toward its lockout as a wrong password at sign-in
+   * does. A stolen or left-open session otherwise guessed the password, or six digits, without limit.
+   */
+  async countedProof<T>(userId: string, refusal: "INVALID_CURRENT_PASSWORD" | "INVALID_MFA_CODE", fn: () => Promise<T>): Promise<T> {
+    const attempt = await this.takeAttempt(userId);
+    if (!attempt) throw new TotalBaseError(refusal, "This account is locked for a while after too many failed attempts.");
+    let result: T;
+    try {
+      result = await fn();
+    } catch (error) {
+      if (error instanceof TotalBaseError && error.code === refusal) await attempt.wrong();
+      else await attempt.right();
+      throw error;
+    }
+    await attempt.right();
+    return result;
+  }
+
+  /**
+   * One of the account's attempts, taken before a proof is checked (UsersService.takeAttempt) - null when it is
+   * locked or every attempt is out. `wrong()` spends it (the last one locks), `right()` gives it back.
+   */
+  private async takeAttempt(userId: string): Promise<{ wrong(): Promise<{ locked: boolean }>; right(): Promise<void> } | null> {
+    const [maxAttempts, lockMinutes] = await Promise.all([this.settings.get("auth.lockout_max_attempts"), this.settings.get("auth.lockout_duration_minutes")]);
+    if (!(await this.users.takeAttempt(userId, maxAttempts))) return null;
+    return {
+      wrong: () => this.users.spendAttempt(userId, maxAttempts, lockMinutes),
+      right: () => (maxAttempts > 0 ? this.users.returnAttempt(userId) : Promise.resolve()),
+    };
+  }
+
+  /** takeAttempt's sign-in form: per account and address (UsersService.takeSignInAttempt). */
+  private async takeSignInAttempt(userId: string, ip: string): Promise<{ wrong(): Promise<{ locked: boolean }>; right(): Promise<void>; release(): Promise<void> } | { refused: "locked" | "address_locked" | "sign_in_delayed" }> {
+    const [maxAttempts, lockMinutes] = await Promise.all([this.settings.get("auth.lockout_max_attempts"), this.settings.get("auth.lockout_duration_minutes")]);
+    const taken = await this.users.takeSignInAttempt(userId, ip, maxAttempts, lockMinutes);
+    if (!taken.taken) return { refused: taken.reason };
+    return {
+      wrong: () => this.users.spendSignInAttempt(userId, ip, maxAttempts, lockMinutes),
+      right: () => (maxAttempts > 0 ? this.users.returnSignInAttempt(userId, ip, taken.known) : Promise.resolve()),
+      release: () => (maxAttempts > 0 ? this.users.releaseSignInAttempt(userId, ip, taken.known) : Promise.resolve()),
+    };
   }
 
   /** Whether the session signed in or re-authenticated within auth.reauthentication_minutes (Security.md §2.19). */
@@ -650,9 +751,12 @@ export class AuthService {
     if (!user.passwordHash) {
       throw new TotalBaseError("PERMISSION_DENIED", "This account has no password yet - use \"Forgot password\" on the sign-in page to set one first.");
     }
-    if (typeof currentPassword !== "string" || !(await verifyPassword(user.passwordHash, currentPassword))) {
-      throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
-    }
+    const passwordHash = user.passwordHash;
+    await this.countedProof(user.id, "INVALID_CURRENT_PASSWORD", async () => {
+      if (typeof currentPassword !== "string" || !(await verifyPassword(passwordHash, currentPassword))) {
+        throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
+      }
+    });
   }
 
   private async applyNewPassword(input: { userId: string; password: unknown; signOut: boolean; keepSessionId?: string | undefined; currentHash: string | null }): Promise<void> {
@@ -667,7 +771,7 @@ export class AuthService {
   }
 
   /** POST /api/auth/password/change. Requires an authenticated user. */
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(userId: string, currentPassword: string, newPassword: string, keepSessionId?: string): Promise<void> {
     const user = await this.users.findByIdWithPasswordHash(userId);
     if (!user) throw new TotalBaseError("RESOURCE_NOT_FOUND", "User not found.");
     // Same answers as My account's change (changeOwnPassword): the session
@@ -675,21 +779,25 @@ export class AuthService {
     if (!user.passwordHash) {
       throw new TotalBaseError("PERMISSION_DENIED", "This account has no password yet - use \"Forgot password\" on the sign-in page to set one.");
     }
-    if (typeof currentPassword !== "string" || !(await verifyPassword(user.passwordHash, currentPassword))) {
-      throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
-    }
+    const passwordHash = user.passwordHash;
+    await this.countedProof(user.id, "INVALID_CURRENT_PASSWORD", async () => {
+      if (typeof currentPassword !== "string" || !(await verifyPassword(passwordHash, currentPassword))) {
+        throw new TotalBaseError("INVALID_CURRENT_PASSWORD", "The current password is incorrect.");
+      }
+    });
 
-    await this.assertNewPassword(newPassword, user.passwordHash);
-
-    const passwordHash = await hashPassword(newPassword);
-    await this.users.setPasswordHash(userId, passwordHash);
-    await this.notifyPasswordChanged(userId);
+    // As My account's change does (Security.md §2.8): the account's other sessions end and its pending reset and
+    // invitation links are retired - a stolen session or link never outlives the password it was got with.
+    await this.applyNewPassword({ userId, password: newPassword, signOut: true, keepSessionId, currentHash: passwordHash });
   }
 
   /** POST /api/auth/email/resend, and internally after registration. */
-  async sendEmailVerification(userId: string, email: string): Promise<void> {
+  async sendEmailVerification(userId: string, email: string, cooldownSeconds?: number): Promise<void> {
     const ttlHours = await this.settings.get("auth.email_verification_ttl_hours");
-    const token = await this.authTokens.create(userId, "EMAIL_VERIFICATION", ttlHours);
+    const token = cooldownSeconds === undefined
+      ? await this.authTokens.create(userId, "EMAIL_VERIFICATION", ttlHours)
+      : await this.authTokens.createUnlessRecent(userId, "EMAIL_VERIFICATION", ttlHours, cooldownSeconds);
+    if (token === null) return;
     const user = await this.users.findById(userId);
     const url = await this.mailer.buildLink("email_verification", token);
     await this.mailer.send("email_verification", { email, name: user?.name ?? null }, { url, expiresInHours: ttlHours });
@@ -699,7 +807,7 @@ export class AuthService {
   async resendEmailVerification(userId: string): Promise<void> {
     const user = await this.users.findById(userId);
     if (!user?.email || user.emailVerifiedAt) return;
-    await this.sendEmailVerification(user.id, user.email);
+    await this.sendEmailVerification(user.id, user.email, PUBLIC_LINK_COOLDOWN_SECONDS);
   }
 
   /**
@@ -712,7 +820,7 @@ export class AuthService {
   async resendEmailVerificationByEmail(email: string): Promise<void> {
     const user = await this.users.findByEmail(email);
     if (!user?.email || user.emailVerifiedAt || !user.active || !user.canLogin) return;
-    this.sendBestEffort("email_verification email", () => this.sendEmailVerification(user.id, user.email!));
+    this.sendBestEffort("email_verification email", () => this.sendEmailVerification(user.id, user.email!, PUBLIC_LINK_COOLDOWN_SECONDS));
   }
 
   /** POST /api/auth/email/verify. */
@@ -750,9 +858,18 @@ export class AuthService {
     assertPasswordStrength(password, minLength);
 
     const userId = await this.authTokens.consume(token, "INVITATION");
+    const before = await this.users.findByIdWithPasswordHash(userId);
     const passwordHash = await hashPassword(password);
     await this.users.setPasswordHash(userId, passwordHash);
     await this.users.markEmailVerified(userId);
+    // An account invited again while it had a password (Security.md §2.9): the link replaced it, so it is a reset in
+    // all but name - its other sessions and personal tokens end, its other links go, and its owner is told.
+    if (before?.passwordHash) {
+      await this.sessions.revokeAllForUser(userId);
+      await this.revokePersonalTokens(userId);
+      await this.authTokens.retire(userId, ["INVITATION", "PASSWORD_RESET"]);
+      await this.notifyPasswordChanged(userId);
+    }
 
     const ttlHours = await this.settings.get("auth.session_ttl_hours");
     const maxSessions = await this.settings.get("auth.max_sessions_per_user");
@@ -765,5 +882,10 @@ export class AuthService {
     const user = await this.users.findById(userId);
     await this.sendWelcome(userId);
     return { token: sessionToken, user: user! };
+  }
+
+  /** Every personal token of the account revoked - a reset takes the account back from whoever had it. */
+  private async revokePersonalTokens(userId: string): Promise<void> {
+    await this.database.query(`UPDATE totalbase.tokens SET active = false, revoked_at = now(), updated_at = now() WHERE "user" = $1 AND revoked_at IS NULL`, [userId]);
   }
 }

@@ -110,8 +110,6 @@
         "visibilityError": "Could not update visibility",
         "fileUpdated": "File updated",
         "updateError": "Could not update file",
-        "renamed": "File renamed",
-        "renameError": "Could not rename file",
         "moved": "Moved to {where} | {n} files moved to {where}",
         "partialMoved": "{done} of {total} moved",
         "failedRetry": "{n} failed - selection kept so you can retry.",
@@ -138,7 +136,6 @@
         "uploadFile": "Upload file",
         "selectAll": "Select every file",
         "selectOne": "Select {name}",
-        "private": "Private",
         "properties": "File properties",
         "renameHelp": "Up to 255 characters. The extension follows the name.",
         "folder": "Folder",
@@ -165,7 +162,14 @@
         "deleteOne": "Delete file?",
         "deleteN": "Delete {n} files?",
         "deleteHelp": "This permanently deletes the selected files and their metadata. This cannot be undone.",
-        "downloadError": "Could not download the file"
+        "downloadError": "Could not download the file",
+        "madeLinked": "{n} files linked to their records | {n} file linked to its records | {n} files linked to their records",
+        "makeLinked": "Link to records",
+        "rowActions": "Actions for {name}",
+        "openFullSize": "Open at full size",
+        "copyId": "Copy ID",
+        "copyFailed": "Couldn't copy",
+        "visibilityOwnerOnly": "Only whoever uploaded the file, or an administrator, can change it."
       },
       "textEditor": {
         "undo": "Undo",
@@ -185,6 +189,14 @@
       "pager": {
         "noun": "file",
         "plural": "files"
+      },
+      "visibility": {
+        "PRIVATE": "Private",
+        "PRIVATEHelp": "Only whoever uploaded it.",
+        "LINKED": "Linked",
+        "LINKEDHelp": "Whoever uploaded it, and whoever can read a record that uses it.",
+        "PUBLIC": "Public",
+        "PUBLICHelp": "Anyone with its link, without signing in."
       }
     },
     "logs": {
@@ -318,8 +330,8 @@
           "description": "A security notice sent to the previous address when an admin changes a user's email."
         },
         "mfa_disabled": {
-          "label": "Two-factor authentication turned off",
-          "description": "A security notice sent when an account's two-factor authentication is turned off, or reset by an admin."
+          "label": "MFA turned off",
+          "description": "A security notice sent when an account's MFA is turned off, or reset by an admin."
         },
         "token_created": {
           "label": "New API token",

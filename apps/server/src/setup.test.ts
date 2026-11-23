@@ -57,6 +57,9 @@ describe("the first-start setup", () => {
     expect([wrong.statusCode, wrong.json().errors?.[0]?.code]).toEqual([403, "INVALID_SETUP_CODE"]);
     for (let i = 0; i < 9; i++) await post("AAAA-BBBB-CCCC-DDDD");
     expect((await post("K7QP-M2XD-9WFA-H4TN")).statusCode).toBe(429);
+    // Security regression: the count was the whole instance's - a stranger's ten wrong codes kept the operator out.
+    const elsewhere = await app.inject({ method: "POST", url: "/api/setup", remoteAddress: "10.77.0.1", payload: { data: { code: "AAAA-BBBB-CCCC-DDDD" } } });
+    expect(elsewhere.statusCode).toBe(403);
   });
 
   it("never reads TOTALBASE_SETUP_CODE once an administrator exists - not even to check it", async () => {

@@ -36,19 +36,32 @@ export function sessionModeOf(body: unknown): SessionMode {
   throw new TotalBaseError("INVALID_FIELD", "mode must be json or session.");
 }
 
-/** The session cookie's value, if the request carries one. */
+/**
+ * The session cookie's value, if the request carries one (Security.md §2.18). The `__Host-` one wins whenever it is
+ * there: only this instance's own https origin can set it, while a plain `tb_session` can be planted by a sibling
+ * subdomain or over plain http - read first, it would sign the browser in to someone else's account. A value that
+ * isn't valid percent-encoding is no cookie, never a failed request.
+ */
 export function readSessionCookie(request: FastifyRequest): string | undefined {
   const header = request.headers.cookie;
   if (!header) return undefined;
+  let plain: string | undefined;
   for (const pair of header.split(";")) {
     const separator = pair.indexOf("=");
     if (separator < 0) continue;
     const name = pair.slice(0, separator).trim();
     if (name !== SESSION_COOKIE && name !== SECURE_SESSION_COOKIE) continue;
-    const value = pair.slice(separator + 1).trim();
-    if (value) return decodeURIComponent(value);
+    let value: string;
+    try {
+      value = decodeURIComponent(pair.slice(separator + 1).trim());
+    } catch {
+      continue;
+    }
+    if (!value) continue;
+    if (name === SECURE_SESSION_COOKIE) return value;
+    plain ??= value;
   }
-  return undefined;
+  return plain;
 }
 
 const isHttps = (publicUrl: string) => publicUrl.startsWith("https://");
@@ -119,4 +132,43 @@ export async function deliverSession(
   const publicUrl = await context.auth.mailer.publicUrl();
   setSessionCookie(reply, publicUrl, token, await context.settings.get("auth.session_ttl_hours"));
   return null;
+}
+
+/**
+ * The OAuth sign-in's browser binding (Security.md §2.11): a random value the start route sets in this cookie and
+ * whose hash the `state` carries, so only the browser that started a sign-in completes it. HttpOnly, SameSite=Lax (the
+ * provider's redirect back is a top-level navigation, which sends it), for the OAuth routes only, ten minutes - the
+ * state's own life. Under https it is `__Host-tb_oauth` (Secure, `Path=/`, no Domain), and only that name is read:
+ * a sibling subdomain can't plant its own binding in someone's browser and hand them the callback of a sign-in it
+ * started (login CSRF).
+ */
+const OAUTH_BINDING_COOKIE = "tb_oauth";
+
+function oauthBindingCookie(publicUrl: string, value: string, maxAgeSeconds: number): string {
+  const secure = isHttps(publicUrl);
+  return secure
+    ? `__Host-${OAUTH_BINDING_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}; Secure`
+    : `${OAUTH_BINDING_COOKIE}=${value}; Path=/api/auth/oauth; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
+}
+
+export function setOAuthBindingCookie(reply: FastifyReply, publicUrl: string, value: string): void {
+  reply.header("set-cookie", oauthBindingCookie(publicUrl, encodeURIComponent(value), 600));
+}
+
+export function clearOAuthBindingCookie(reply: FastifyReply, publicUrl: string): void {
+  reply.header("set-cookie", oauthBindingCookie(publicUrl, "", 0));
+}
+
+export function readOAuthBindingCookie(request: FastifyRequest, publicUrl: string): string | undefined {
+  const name = isHttps(publicUrl) ? `__Host-${OAUTH_BINDING_COOKIE}` : OAUTH_BINDING_COOKIE;
+  for (const pair of (request.headers.cookie ?? "").split(";")) {
+    const separator = pair.indexOf("=");
+    if (separator < 0 || pair.slice(0, separator).trim() !== name) continue;
+    try {
+      return decodeURIComponent(pair.slice(separator + 1).trim()) || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }

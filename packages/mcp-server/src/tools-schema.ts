@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { checkConstraintValues, columnFormInput, columnValueKind, COLUMN_INPUT_KEYS, type ColumnInputKey } from "@totalbase/tb-catalog";
 import type { AdminClient } from "./admin-client.js";
 import { FULL_POLICY, refuseDestructive, type McpPolicy } from "./policy.js";
-import { ADDITIVE, columnSchema, confirmFlag, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, READ_ONLY, result, schemaName, toColumnDefinition, type ResourceRow } from "./tool-helpers.js";
+import { ADDITIVE, columnSchema, confirmFlag, DESTRUCTIVE, filterForStorage, findResource, IDEMPOTENT, jsonObject, passthrough, READ_ONLY, result, schemaName, toColumnDefinition, type ResourceRow } from "./tool-helpers.js";
 
 /**
  * A table's structure and presentation, read and changed
@@ -109,9 +109,9 @@ async function describeRelation(client: AdminClient, resource: ResourceRow & { r
 const identifier = z.string().describe("A PostgreSQL identifier: a letter or underscore, then letters, digits or underscores");
 
 const operationSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("rename_table"), new_name: identifier }),
-  z.object({ kind: z.literal("add_column"), column: columnSchema }),
-  z.object({
+  z.strictObject({ kind: z.literal("rename_table"), new_name: identifier }),
+  z.strictObject({ kind: z.literal("add_column"), column: columnSchema }),
+  z.strictObject({
     kind: z.literal("alter_column"),
     column: z.string(),
     rename: identifier.optional(),
@@ -119,10 +119,10 @@ const operationSchema = z.discriminatedUnion("kind", [
     nullable: z.boolean().optional().describe("false: SET NOT NULL (fails if a row holds NULL); true: DROP NOT NULL"),
     default: z.string().nullable().optional().describe("New DEFAULT expression, or null to drop it"),
   }),
-  z.object({ kind: z.literal("drop_column"), column: z.string(), cascade: z.boolean().optional() }),
-  z.object({ kind: z.literal("set_primary_key"), columns: z.array(z.string()).min(1) }),
-  z.object({ kind: z.literal("add_unique"), columns: z.array(z.string()).min(1).describe("Several columns: unique together"), name: z.string().optional() }),
-  z.object({
+  z.strictObject({ kind: z.literal("drop_column"), column: z.string(), cascade: z.boolean().optional() }),
+  z.strictObject({ kind: z.literal("set_primary_key"), columns: z.array(z.string()).min(1) }),
+  z.strictObject({ kind: z.literal("add_unique"), columns: z.array(z.string()).min(1).describe("Several columns: unique together"), name: z.string().optional() }),
+  z.strictObject({
     kind: z.literal("add_foreign_key"),
     column: z.string(),
     references_schema: z.string(),
@@ -132,15 +132,15 @@ const operationSchema = z.discriminatedUnion("kind", [
     on_update: z.enum(["CASCADE", "RESTRICT", "SET NULL", "SET DEFAULT", "NO ACTION"]).optional(),
     name: z.string().optional(),
   }),
-  z.object({
+  z.strictObject({
     kind: z.literal("add_check"),
     name: z.string(),
     expression: z.string().describe("A boolean SQL expression, e.g. 'price > 0' - never a full statement; existing rows must satisfy it"),
     message: z.string().optional().describe("What a user reads under the field when a write breaks it, e.g. 'The CUIT goes with hyphens: 30-12345678-9' - without one they read PostgreSQL's 'violates check constraint ...'"),
   }),
-  z.object({ kind: z.literal("set_constraint_message"), name: z.string().describe("A CHECK, UNIQUE or FOREIGN KEY constraint's name - an inline column CHECK's too (describe_table lists them)"), message: z.string().nullable().describe("The message a user reads when a write breaks it; null removes it") }),
-  z.object({ kind: z.literal("drop_constraint"), name: z.string().describe("A UNIQUE, FOREIGN KEY or CHECK constraint's name (describe_table lists them)") }),
-  z.object({
+  z.strictObject({ kind: z.literal("set_constraint_message"), name: z.string().describe("A CHECK, UNIQUE or FOREIGN KEY constraint's name - an inline column CHECK's too (describe_table lists them)"), message: z.string().nullable().describe("The message a user reads when a write breaks it; null removes it") }),
+  z.strictObject({ kind: z.literal("drop_constraint"), name: z.string().describe("A UNIQUE, FOREIGN KEY or CHECK constraint's name (describe_table lists them)") }),
+  z.strictObject({
     kind: z.literal("create_index"),
     columns: z.array(z.string()).min(1),
     name: z.string().optional(),
@@ -149,7 +149,7 @@ const operationSchema = z.discriminatedUnion("kind", [
     where: z.string().optional().describe("Partial index condition"),
     concurrently: z.boolean().optional().describe("Doesn't lock writes on a large table; can't run with other operations in the same batch"),
   }),
-  z.object({ kind: z.literal("drop_index"), name: z.string(), concurrently: z.boolean().optional() }),
+  z.strictObject({ kind: z.literal("drop_index"), name: z.string(), concurrently: z.boolean().optional() }),
 ]);
 type Operation = z.infer<typeof operationSchema>;
 
@@ -237,6 +237,42 @@ const presentationSchema = z
   .loose()
   .describe("Replaces the column's whole presentation - send every key it should keep; {} clears it");
 
+/** A column as describe_table answers it. */
+const columnOutput = z.looseObject({
+  name: z.string(),
+  type: z.string(),
+  domain: z.string().optional(),
+  nullable: z.boolean(),
+  default: z.string().optional().describe("Its DEFAULT expression"),
+  identity: z.boolean().optional(),
+  generated: z.boolean().optional(),
+  input: z.string().nullable().optional().describe("The input a form gives it (column input catalog)"),
+  widget: z.string().nullable().optional(),
+  widgetProps: jsonObject().optional(),
+  inputReason: z.string().nullable().optional(),
+  values: z.array(z.unknown()).optional().describe("The values its CHECK allows"),
+  editedAs: z.string().optional(),
+  presentation: jsonObject().optional(),
+  inheritedPresentation: jsonObject().optional(),
+});
+
+/** describe_table's answer: a table or view with its columns and constraints; a function with what the catalog says of it. */
+const relationOutput = passthrough("A table, view or function as PostgreSQL has it", {
+  schema: z.string(),
+  name: z.string(),
+  type: z.enum(["TABLE", "VIEW", "FUNCTION"]),
+  exposedMethods: z.array(z.string()),
+  description: z.string().optional(),
+  columns: z.array(columnOutput).optional(),
+  primaryKey: z.array(z.string()).optional(),
+  foreignKeys: z.array(z.object({ name: z.string(), column: z.string(), references: z.string().describe("schema.table.column"), message: z.string().nullable() })).optional(),
+  unique: z.array(z.object({ name: z.string().optional(), columns: z.array(z.string()), message: z.string().nullable() })).optional(),
+  checks: z.array(z.object({ name: z.string(), expression: z.string(), message: z.string().nullable() })).optional(),
+  indexes: z.array(z.object({ name: z.string(), columns: z.array(z.string()), unique: z.boolean(), method: z.string(), where: z.string().optional() })).optional(),
+  rowPresentation: jsonObject().optional(),
+  definition: z.string().optional().describe("A view's SQL"),
+});
+
 export function registerSchemaTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
   server.registerTool(
     "describe_table",
@@ -245,6 +281,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
       description:
         "A table's, view's or function's structure. Table: columns (type, nullable, default, identity/generated, input - its control, a column input catalog entry, with the widget and widgetProps it is and inputReason: chosen, file, relation, check-list, small-integer, small-range, number, link-type, pattern or default -, presentation, values - a CHECK IN list's, which a DataView's form shows as a select), primary key, foreign keys, UNIQUE and CHECK constraints (named - drop_constraint takes the name), indexes, row presentation and exposed methods. View: its columns and definition. Function: its parameters and return shape. Read it before changing a table or building on it.",
       inputSchema: { schema: schemaName(), name: z.string().describe("Table, view or function name") },
+      outputSchema: relationOutput,
       annotations: READ_ONLY,
     },
     async ({ schema, name }) => result(await describeRelation(client, await findResource(client, schema, name))),
@@ -264,6 +301,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
         confirm: confirmFlag().describe("Required when the list drops something - ask the user first"),
         verbose: z.boolean().optional().describe("Answer the whole structure afterwards, as describe_table"),
       },
+      outputSchema: passthrough("With preview, the SQL it would run; else the table after the change - names only, or with verbose as describe_table answers it", { table: z.string().optional(), resourceId: z.string().optional(), applied: z.array(z.string()).optional(), columns: z.array(z.union([z.string(), columnOutput])).optional(), primaryKey: z.array(z.string()).optional(), foreignKeys: z.array(z.unknown()).optional(), unique: z.array(z.unknown()).optional(), checks: z.array(z.unknown()).optional(), indexes: z.array(z.unknown()).optional() }),
       annotations: DESTRUCTIVE,
     },
     async ({ schema, name, operations, preview, confirm, verbose }) => {
@@ -305,6 +343,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
       title: "Create schema",
       description: "Create a PostgreSQL schema, to group a module's tables apart from 'public' (e.g. 'sales', 'hr'). Its tables are addressed as schema + name everywhere; dashboard SQL must qualify them (\"sales\".orders).",
       inputSchema: { name: identifier },
+      outputSchema: passthrough("The schema created"),
       annotations: ADDITIVE,
     },
     async ({ name }) => result(await client.post("/schema", { data: { name } })),
@@ -323,6 +362,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
         presentation: presentationSchema,
         merge: z.boolean().optional().describe("true: only the keys given change, the rest of its presentation stays (a key set to null is unset); default: the presentation given is all of it"),
       },
+      outputSchema: { resource: z.string(), column: z.string(), presentation: jsonObject() },
       annotations: IDEMPOTENT,
     },
     async ({ schema, name, column, presentation: given, merge }) => {
@@ -342,6 +382,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
       description:
         "What a table's or view's columns' types and constraints suggest for their presentation - never their names: a unique whole number monospaced (a code: 3000, not 3.000), a nullable column's empty text, an example a CHECK pattern accepts, an email or URL pattern's link and icon, each CHECK list value's label, COMMENT ON COLUMN as the description - and its row presentation (its first unique, required text) when it has none. Nothing is applied: each suggestion has its reason, and `replaces` when the column has its own value (a change - ask the user). Apply the ones wanted with set_column_presentation merge: true (or set_column_presentations). Labels: a column's name humanized is already its default - set one only to say something else.",
       inputSchema: { schema: schemaName(), name: z.string().describe("Table or view name") },
+      outputSchema: passthrough("What each column's type and constraints suggest, by column"),
       annotations: READ_ONLY,
     },
     async ({ schema, name }) => {
@@ -362,6 +403,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
         columns: z.record(z.string(), presentationSchema).describe("Each column's name → its presentation"),
         merge: z.boolean().optional().describe("true: only the keys given change in each column, the rest of its presentation stays (a key set to null is unset); default: each presentation given is all of it"),
       },
+      outputSchema: { resource: z.string(), columns: z.array(z.union([z.string(), z.object({ column: z.string(), presentation: jsonObject() })])).describe("The columns saved; with merge, each with its presentation after it") },
       annotations: IDEMPOTENT,
     },
     async ({ schema, name, columns: given, merge }) => {
@@ -388,6 +430,7 @@ export function registerSchemaTools(server: McpServer, client: AdminClient, poli
         display_field: z.string().optional().describe("The column shown instead of the key"),
         display_template: z.string().optional().describe("Several columns, e.g. '{{code}} - {{name}}'; wins over display_field"),
       },
+      outputSchema: { resource: z.string(), rowPresentation: jsonObject().nullable().optional() },
       annotations: IDEMPOTENT,
     },
     async ({ schema, name, display_field, display_template }) => {

@@ -72,6 +72,7 @@ export async function buildPublicOpenApiSpec(
   );
 
   const schemaContext = new SchemaContext(database);
+  const relationTargets = new Set(rows.filter((row) => row.type !== "FUNCTION" && row.exposed_methods.includes("GET")).map((row) => `${row.schema}.${row.name}`));
   const paths: Record<string, PathItem> = {};
   const schemas: Record<string, JsonSchema> = {};
 
@@ -121,6 +122,7 @@ export async function buildPublicOpenApiSpec(
       passwordColumns: await getPasswordColumns(database, row.id),
       includeExamples: options.includeExamples,
       requireIdempotencyKey,
+      relationTargets,
     });
     Object.assign(paths, resourcePaths);
     Object.assign(schemas, resourceSchemas);

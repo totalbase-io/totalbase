@@ -163,6 +163,8 @@ describe("request parsing", () => {
     const malformed = await app.inject({
       method: "POST",
       url: "/api/auth/login",
+      // An address of its own: the suite's other refused sign-ins count against 127.0.0.1 (security.rate_limit_sign_in_per_minute).
+      remoteAddress: "203.0.113.41",
       headers: { "content-type": "application/json" },
       payload: "{not json",
     });
@@ -174,6 +176,8 @@ describe("request parsing", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/auth/login",
+      // An address of its own: the suite's other refused sign-ins count against 127.0.0.1 (security.rate_limit_sign_in_per_minute).
+      remoteAddress: "203.0.113.41",
       headers: { "content-type": "application/json" },
       payload: '{"__proto__":{"admin":true}}',
     });

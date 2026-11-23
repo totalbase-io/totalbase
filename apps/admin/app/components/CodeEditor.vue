@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import { adminThemeName, defineAdminThemes } from '~/utils/monaco-theme'
 
 // A full-size JS/TS code editor - sibling of JsonEditor.vue (same
@@ -28,6 +29,7 @@ onMounted(async () => {
   // Loaded dynamically so Monaco (a few MB) is only fetched once this
   // editor actually mounts - same rationale as JsonEditor.vue/SqlEditor.vue.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
 

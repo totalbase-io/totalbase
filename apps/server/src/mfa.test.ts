@@ -65,7 +65,8 @@ describe("Two-factor authentication (integration)", () => {
   });
 
   afterAll(async () => {
-    await context.settings.reset("auth.mfa_required");
+    await context.settings.reset("mfa.required");
+    await context.settings.reset("mfa.required_roles");
     await database.query(`DELETE FROM totalbase.users WHERE email = ANY($1)`, [emails]);
     await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [roleId]);
     await app.close();
@@ -170,6 +171,19 @@ describe("Two-factor authentication (integration)", () => {
     expect((await call("POST", "/api/auth/login", { email: who.email, password: PASSWORD })).json().errors[0].code).toBe("AUTHENTICATION_REQUIRED");
   });
 
+  // Security regression (Security.md §2.17): a challenge's attempt was counted after the code was checked and the
+  // transaction rolled back - codes sent together each waited on the row lock, then had their code checked: with the
+  // password, about 2,000 parallel guesses at the six digits per burst.
+  it("never checks more codes than a challenge allows, however many arrive together", async () => {
+    const who = await person();
+    await enable(who);
+    const challenge = (await call("POST", "/api/auth/login", { email: who.email, password: PASSWORD })).json().errors[0].meta.challenge;
+    const answers = await Promise.all(Array.from({ length: 30 }, (_, i) => call("POST", "/api/auth/mfa/verify", { challenge, code: String(100000 + i) })));
+    const checked = answers.filter((answer) => answer.json().errors?.[0]?.code === "INVALID_MFA_CODE");
+    expect(checked.length).toBeGreaterThan(0);
+    expect(checked.length).toBeLessThanOrEqual(5);
+  });
+
   it("a recovery code signs in once", async () => {
     const who = await person();
     const { recoveryCodes } = await enable(who);
@@ -210,7 +224,7 @@ describe("Two-factor authentication (integration)", () => {
 
   it("required for everyone: a user without it sets it up while signing in, and can't turn it off", async () => {
     const who = await person();
-    await context.settings.set("auth.mfa_required", "EVERYONE");
+    await context.settings.set("mfa.required", "EVERYONE");
     try {
       const login = await call("POST", "/admin/api/auth/login", { email: who.email, password: PASSWORD });
       expect([login.statusCode, login.json().errors[0].code]).toEqual([403, "MFA_ENROLLMENT_REQUIRED"]);
@@ -228,13 +242,41 @@ describe("Two-factor authentication (integration)", () => {
       const off = await call("POST", "/app/api/me/mfa/disable", { data: { currentPassword: PASSWORD, code: await nextCode(who.id, enrolled.json().data.secret) } }, session);
       expect([off.statusCode, off.json().errors[0].code]).toEqual([403, "PERMISSION_DENIED"]);
     } finally {
-      await context.settings.reset("auth.mfa_required");
+      await context.settings.reset("mfa.required");
+    }
+  });
+
+  it("required for selected roles: only their holders are asked, and the list takes Administrators but never Workflows", async () => {
+    const who = await person();
+    const other = (await context.roles.create(`mfa-other-${uniqueSuffix()}`, { appAccess: true })).id;
+    try {
+      await context.settings.set("mfa.required", "ROLES");
+      await context.settings.set("mfa.required_roles", [other, await context.roles.getAdministratorsRoleId()]);
+      expect((await call("POST", "/admin/api/auth/login", { email: who.email, password: PASSWORD })).statusCode).toBe(200);
+      expect((await call("GET", `/admin/api/users/${who.id}`, undefined, admin)).json().data.mfaRequired).toBe(false);
+
+      // Security regression (round 11, SEC-115): an id in upper case was accepted and matched no role - stored as
+      // PostgreSQL writes it, it covers its holders like any other.
+      await context.settings.set("mfa.required_roles", [roleId.toUpperCase()]);
+      expect(await context.settings.get("mfa.required_roles")).toEqual([roleId]);
+      const login = await call("POST", "/admin/api/auth/login", { email: who.email, password: PASSWORD });
+      expect([login.statusCode, login.json().errors[0].code]).toEqual([403, "MFA_ENROLLMENT_REQUIRED"]);
+      expect((await call("GET", `/admin/api/users/${who.id}`, undefined, admin)).json().data.mfaRequired).toBe(true);
+
+      const workflows = (await database.query<{ id: string }>(`SELECT id FROM totalbase.roles WHERE name = 'Workflows' AND reserved`)).rows[0]!.id;
+      await expect(context.settings.set("mfa.required_roles", [workflows])).rejects.toMatchObject({ code: "INVALID_SETTING" });
+      await expect(context.settings.set("mfa.required_roles", ["00000000-0000-4000-8000-000000000000"])).rejects.toMatchObject({ code: "INVALID_SETTING" });
+      await expect(context.settings.set("mfa.required", "ADMINISTRATORS")).rejects.toMatchObject({ code: "INVALID_SETTING" });
+    } finally {
+      await context.settings.reset("mfa.required");
+      await context.settings.reset("mfa.required_roles");
+      await database.query(`DELETE FROM totalbase.roles WHERE id = $1`, [other]);
     }
   });
 
   it("an enrollment challenge only continues while its user's access lasts", async () => {
     const who = await person();
-    await context.settings.set("auth.mfa_required", "EVERYONE");
+    await context.settings.set("mfa.required", "EVERYONE");
     try {
       const challenge = (await call("POST", "/admin/api/auth/login", { email: who.email, password: PASSWORD })).json().errors[0].meta.challenge;
       const { secret } = (await call("POST", "/api/auth/mfa/enroll", { challenge })).json().data;
@@ -243,8 +285,47 @@ describe("Two-factor authentication (integration)", () => {
       const refused = await call("POST", "/admin/api/auth/mfa/verify", { challenge, code: await nextCode(who.id, secret) });
       expect([refused.statusCode, refused.json().errors[0].code]).toEqual([401, "AUTHENTICATION_REQUIRED"]);
     } finally {
-      await context.settings.reset("auth.mfa_required");
+      await context.settings.reset("mfa.required");
     }
+  });
+
+  // Security regression (Security.md §2.4): on an open session, a wrong authenticator code or current password
+  // counted nothing - a stolen session guessed six digits (three valid per try) without limit, then a recovery code
+  // passed re-authentication; the current password the same, never tripping the lockout.
+  it("counts wrong codes and current passwords on an open session toward the lockout, and refuses once locked", async () => {
+    await context.settings.set("auth.lockout_max_attempts", 3);
+    try {
+      const who = await person();
+      const { secret } = await enable(who);
+      for (let i = 0; i < 3; i++) {
+        const wrong = await call("POST", "/app/api/me/mfa/recovery-codes", { data: { code: "000000" } }, who.session);
+        expect(wrong.json().errors?.[0]?.code).toBe("INVALID_MFA_CODE");
+      }
+      // Locked: the session stops answering, and even the right code gets nothing.
+      const right = await call("POST", "/app/api/me/mfa/recovery-codes", { data: { code: await nextCode(who.id, secret) } }, who.session);
+      expect(right.statusCode).toBe(401);
+
+      const other = await person();
+      for (let i = 0; i < 3; i++) {
+        const wrong = await call("PUT", "/app/api/me/email", { data: { email: `x-${uniqueSuffix()}@example.com`, currentPassword: "not-it" } }, other.session);
+        expect(wrong.json().errors?.[0]?.code).toBe("INVALID_CURRENT_PASSWORD");
+      }
+      const locked = (await database.query<{ locked: boolean }>(`SELECT locked_until > now() AS locked FROM totalbase.users WHERE id = $1`, [other.id])).rows[0];
+      expect(locked).toEqual({ locked: true });
+    } finally {
+      await context.settings.reset("auth.lockout_max_attempts");
+    }
+  });
+
+  // Security regression (Security.md §2.17): an account invited again while it had a second factor got a session
+  // from accepting the invitation alone - whoever read the invitee's mailbox was in without the factor.
+  it("an invitation never answers with a session for an account that has a second factor", async () => {
+    const who = await person();
+    await enable(who);
+    const link = new URL((await call("POST", `/admin/api/users/${who.id}/invite`, { data: { delivery: "link" } }, admin)).json().data.actionUrl);
+    const accepted = await call("POST", "/api/auth/invitations/accept", { token: link.searchParams.get("token") ?? link.hash.replace(/^#?token=/, ""), password: "another-strong-password" });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+    expect(accepted.json().data.token ?? null).toBeNull();
   });
 
   it("keeps its tables out of the Data API", async () => {

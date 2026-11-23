@@ -26,42 +26,42 @@ describe("@totalbase/secrets (integration)", () => {
   });
 
   it("creates a secret and decrypts it back internally", async () => {
-    await secrets.set("pkg-test-afip-token", "s3cr3t-value");
-    expect(await secrets.decrypt("pkg-test-afip-token")).toBe("s3cr3t-value");
+    await secrets.set("pkg-test-afip-token", "s3cr3t-value", "WORKFLOWS");
+    expect(await secrets.decrypt("pkg-test-afip-token", "WORKFLOWS")).toBe("s3cr3t-value");
   });
 
   it("list() and exists() never return the value", async () => {
-    await secrets.set("pkg-test-smtp-password", "hunter2");
+    await secrets.set("pkg-test-smtp-password", "hunter2", "WORKFLOWS");
     const list = await secrets.list();
     const entry = list.find((s) => s.key === "pkg-test-smtp-password");
     expect(entry).toBeDefined();
     expect(JSON.stringify(entry)).not.toContain("hunter2");
-    expect(await secrets.exists("pkg-test-smtp-password")).toBe(true);
-    expect(await secrets.exists("pkg-test-does-not-exist")).toBe(false);
+    expect(await secrets.exists("pkg-test-smtp-password", "WORKFLOWS")).toBe(true);
+    expect(await secrets.exists("pkg-test-does-not-exist", "WORKFLOWS")).toBe(false);
   });
 
   it("replaces an existing secret's value on set() (write-only, replaceable)", async () => {
-    await secrets.set("pkg-test-rotate", "old-value");
-    await secrets.set("pkg-test-rotate", "new-value");
-    expect(await secrets.decrypt("pkg-test-rotate")).toBe("new-value");
+    await secrets.set("pkg-test-rotate", "old-value", "WORKFLOWS");
+    await secrets.set("pkg-test-rotate", "new-value", "WORKFLOWS");
+    expect(await secrets.decrypt("pkg-test-rotate", "WORKFLOWS")).toBe("new-value");
     const list = await secrets.list();
     expect(list.filter((s) => s.key === "pkg-test-rotate")).toHaveLength(1);
   });
 
   it("deletes a secret", async () => {
-    await secrets.set("pkg-test-delete-me", "value");
+    await secrets.set("pkg-test-delete-me", "value", "WORKFLOWS");
     await secrets.delete("pkg-test-delete-me");
-    await expect(secrets.decrypt("pkg-test-delete-me")).rejects.toMatchObject({ code: "SECRET_NOT_FOUND" });
+    await expect(secrets.decrypt("pkg-test-delete-me", "WORKFLOWS")).rejects.toMatchObject({ code: "SECRET_NOT_FOUND" });
   });
 
   it("rejects an invalid key", async () => {
-    await expect(secrets.set("Not A Valid Key!", "value")).rejects.toMatchObject({ code: "INVALID_SECRET_KEY" });
+    await expect(secrets.set("Not A Valid Key!", "value", "WORKFLOWS")).rejects.toMatchObject({ code: "INVALID_SECRET_KEY" });
   });
 
   it("accepts dotted and hyphenated keys (mail.password, afip-bearer-token)", async () => {
-    await secrets.set("pkg-test.mail.password", "smtp-pass");
-    await secrets.set("pkg-test-afip-bearer-token", "bearer-value");
-    expect(await secrets.decrypt("pkg-test.mail.password")).toBe("smtp-pass");
-    expect(await secrets.decrypt("pkg-test-afip-bearer-token")).toBe("bearer-value");
+    await secrets.set("pkg-test.mail.password", "smtp-pass", "WORKFLOWS");
+    await secrets.set("pkg-test-afip-bearer-token", "bearer-value", "WORKFLOWS");
+    expect(await secrets.decrypt("pkg-test.mail.password", "WORKFLOWS")).toBe("smtp-pass");
+    expect(await secrets.decrypt("pkg-test-afip-bearer-token", "WORKFLOWS")).toBe("bearer-value");
   });
 });

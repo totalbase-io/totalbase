@@ -82,4 +82,14 @@ describe("PermissionsService (integration)", () => {
     expect(actions).toContain("READ");
     expect(actions).toContain("CREATE");
   });
+  it("counts a role's UPDATE and DELETE grants without a row filter", async () => {
+    const base = await permissions.countUnfilteredWrites(roleId);
+    await permissions.set(roleId, resourceId, "UPDATE", { effect: "ALLOW" });
+    await permissions.set(roleId, resourceId, "DELETE", { effect: "ALLOW", where: { field: "active", operator: "_eq", value: true } });
+    await permissions.set(roleId, resourceId, "CREATE", { effect: "ALLOW" });
+    expect(await permissions.countUnfilteredWrites(roleId)).toBe(base + 1);
+    await permissions.set(roleId, resourceId, "UPDATE", { effect: "DENY" });
+    expect(await permissions.countUnfilteredWrites(roleId)).toBe(base);
+    for (const action of ["UPDATE", "DELETE", "CREATE"] as const) await permissions.delete(roleId, resourceId, action);
+  });
 });

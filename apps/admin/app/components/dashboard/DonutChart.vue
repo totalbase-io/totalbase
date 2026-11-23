@@ -6,6 +6,8 @@ const props = defineProps<{
   format?: (value: number) => string
   /** Height in px - 160 by default; 256 beside an ActivityAreaChart, so the two line up. */
   height?: number
+  /** A narrow place: the ring alone, centered, no legend - a slice names itself in its tooltip. */
+  bare?: boolean
 }>()
 
 const { colors } = useChartTheme()
@@ -16,6 +18,7 @@ const option = computed(() => ({
   color: props.items.map(i => i.color),
   tooltip: { trigger: 'item', ...(props.format ? { valueFormatter: (value: number) => props.format!(value) } : {}) },
   legend: {
+    show: !props.bare,
     orient: 'vertical',
     right: 4,
     top: 'center',
@@ -27,7 +30,7 @@ const option = computed(() => ({
   series: [{
     type: 'pie',
     radius: ['62%', '85%'],
-    center: ['32%', '50%'],
+    center: [props.bare ? '50%' : '32%', '50%'],
     avoidLabelOverlap: false,
     label: { show: false },
     labelLine: { show: false },
@@ -46,7 +49,10 @@ const option = computed(() => ({
       :option="option"
       autoresize
     />
-    <div class="pointer-events-none absolute inset-y-0 left-0 flex w-[64%] flex-col items-center justify-center">
+    <div
+      class="pointer-events-none absolute left-0 flex flex-col items-center justify-center"
+      :class="bare ? 'inset-0' : 'inset-y-0 w-[64%]'"
+    >
       <p class="text-xl font-semibold">
         {{ format ? format(total) : total }}
       </p>

@@ -193,6 +193,23 @@ export class PermissionsService {
     }, { actorUserId: options.actorUserId });
   }
 
+  /**
+   * A role's UPDATE and DELETE grants with no row filter, on an active resource - every row of it is theirs to change
+   * or remove. The Status page counts them for the self-registration role, which anyone who signs up holds
+   * (Administration.md §1.6).
+   */
+  async countUnfilteredWrites(roleId: string): Promise<number> {
+    const { rows } = await this.database.query<{ count: number }>(
+      `SELECT count(*)::int AS count
+         FROM totalbase.permissions p
+         JOIN totalbase.resources r ON r.id = p.resource
+        WHERE p.role = $1 AND p.effect = 'ALLOW' AND p.action IN ('UPDATE', 'DELETE') AND r.status = 'ACTIVE'
+          AND (p.where_clause IS NULL OR p.where_clause = '{}'::jsonb)`,
+      [roleId],
+    );
+    return rows[0]!.count;
+  }
+
   /** Whether there was such a grant to remove. */
   async delete(roleId: string, resourceId: string, action: ResourceAction): Promise<boolean> {
     const { rowCount } = await this.database.query(

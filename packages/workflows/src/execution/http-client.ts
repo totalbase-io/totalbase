@@ -102,19 +102,30 @@ export interface OutboundResponse {
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const CREDENTIAL_HEADERS = new Set(["authorization", "cookie", "proxy-authorization"]);
+/** The request headers a redirect to another origin keeps: what describes the request, nothing that authenticates it. */
+const CARRIED_ACROSS_ORIGINS = new Set(["accept", "accept-language", "user-agent"]);
 
-function decode(body: Buffer, encoding: string | undefined): Buffer {
-  switch (encoding?.trim().toLowerCase()) {
-    case "gzip":
-    case "x-gzip":
-      return zlib.gunzipSync(body);
-    case "deflate":
-      return zlib.inflateSync(body);
-    case "br":
-      return zlib.brotliDecompressSync(body);
-    default:
-      return body;
+/**
+ * The body as sent, decompressed - never past `limit` bytes: zlib stops at it (`maxOutputLength`) rather than inflating
+ * a few compressed megabytes into gigabytes on the event loop, and the step fails as for any response too large.
+ */
+function decode(body: Buffer, encoding: string | undefined, limit: number): Buffer {
+  const options = { maxOutputLength: limit + 1 };
+  try {
+    switch (encoding?.trim().toLowerCase()) {
+      case "gzip":
+      case "x-gzip":
+        return zlib.gunzipSync(body, options);
+      case "deflate":
+        return zlib.inflateSync(body, options);
+      case "br":
+        return zlib.brotliDecompressSync(body, options);
+      default:
+        return body;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE") throw tooLarge(limit);
+    throw error;
   }
 }
 
@@ -152,7 +163,7 @@ function send(target: URL, request: OutboundRequest, policy: OutboundPolicy, sig
       response.on("error", reject);
       response.on("end", () => {
         try {
-          const body = decode(Buffer.concat(chunks), response.headers["content-encoding"]);
+          const body = decode(Buffer.concat(chunks), response.headers["content-encoding"], limit);
           if (body.length > limit) return reject(tooLarge(limit));
           resolve({ status: response.statusCode ?? 0, headers: response.headers, body });
         } catch (error) {
@@ -195,6 +206,14 @@ export async function outboundFetch(request: OutboundRequest, policy: OutboundPo
       body = undefined;
       headers = Object.fromEntries(Object.entries(headers).filter(([name]) => !["content-type", "content-length"].includes(name.toLowerCase())));
     }
-    if (url.origin !== origin) headers = Object.fromEntries(Object.entries(headers).filter(([name]) => !CREDENTIAL_HEADERS.has(name.toLowerCase())));
+    // Another origin than the step names gets nothing the step meant for its own: only the headers that describe the
+    // request (CARRIED_ACROSS_ORIGINS) follow - never a credential, a secret header (`X-Api-Key`) or any other the step
+    // set - and a body (a 307/308 keeps it) is not sent there at all (Workflows.md §5.15).
+    if (url.origin !== origin) {
+      if (body !== undefined) {
+        throw new TotalBaseError("WORKFLOW_HTTP_DESTINATION_BLOCKED", `HTTP request was redirected to another origin (${url.origin}) with its body - it isn't sent there.`);
+      }
+      headers = Object.fromEntries(Object.entries(headers).filter(([name]) => CARRIED_ACROSS_ORIGINS.has(name.toLowerCase())));
+    }
   }
 }

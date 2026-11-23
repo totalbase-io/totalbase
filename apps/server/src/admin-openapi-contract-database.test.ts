@@ -97,6 +97,14 @@ describe("Admin OpenAPI matches real responses: catalog and schema", () => {
     await contract.expectMatches(`/admin/api/catalog/columns?schema=${schema}`, "/admin/api/catalog/columns");
     await contract.expectMatches(`/admin/api/catalog/table/${tableId}`, "/admin/api/catalog/table/{id}");
     await contract.expectMatches(`/admin/api/catalog/table/${tableId}/rows?limit=10`, "/admin/api/catalog/table/{id}/rows");
+    // Security regression (Administration.md §4.1): the preview returned every column - totalbase.users' password
+    // hashes, tokens' key hashes, secrets' ciphertexts - to any administrator or ADMIN token.
+    const usersId = (await contract.database.query<{ id: string }>(`SELECT id FROM totalbase.resources WHERE postgres_oid = 'totalbase.users'::regclass::oid`)).rows[0]!.id;
+    const users = (await contract.get(`/admin/api/catalog/table/${usersId}/rows?limit=5`)).json().data as { columns: { name: string }[]; rows: Record<string, unknown>[] };
+    expect(users.rows.length).toBeGreaterThan(0);
+    expect(users.columns.map((column) => column.name)).not.toContain("password_hash");
+    expect(users.columns.map((column) => column.name)).toContain("email");
+    expect(users.rows.every((row) => !("password_hash" in row))).toBe(true);
     await contract.expectMatches(`/admin/api/catalog/table/${tableId}/indexes`, "/admin/api/catalog/table/{id}/indexes");
     await contract.expectMatches(`/admin/api/catalog/table/${tableId}/record`, "/admin/api/catalog/table/{id}/record");
     await contract.expectMatches(`/admin/api/catalog/view/${viewId}`, "/admin/api/catalog/view/{id}");

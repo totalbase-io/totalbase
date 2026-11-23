@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { access, copyFile, mkdir, mkdtemp, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, chmod, copyFile, mkdir, mkdtemp, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
 import type { Database } from "@totalbase/database";
@@ -218,7 +218,7 @@ export class BackupsService {
     if (backup.destination === "S3") {
       stream = await (await this.ctx.s3Store()).readStream(backup.name);
     } else {
-      const path = join(await this.ctx.settings.get("backups.local_path"), backup.name);
+      const path = join(await this.ctx.settings.confinedStoragePath("backups.local_path"), backup.name);
       if (!(await exists(path))) throw new TotalBaseError("BACKUP_NOT_FOUND", `The archive is no longer at ${path}.`);
       stream = createReadStream(path);
     }
@@ -255,7 +255,7 @@ export class BackupsService {
 
   private async removeArchive(backup: Backup): Promise<void> {
     if (backup.destination === "S3") await (await this.ctx.s3Store()).delete(backup.name);
-    else await rm(join(await this.ctx.settings.get("backups.local_path"), backup.name), { force: true });
+    else await rm(join(await this.ctx.settings.confinedStoragePath("backups.local_path"), backup.name), { force: true });
   }
 
   private async run(backup: Backup): Promise<void> {
@@ -270,13 +270,15 @@ export class BackupsService {
       if (backup.destination === "S3") {
         await (await this.ctx.s3Store()).storeFile(backup.name, archive);
       } else {
-        const directory = await this.ctx.settings.get("backups.local_path");
-        await mkdir(directory, { recursive: true });
+        const directory = await this.ctx.settings.confinedStoragePath("backups.local_path");
+        // The whole database, password hashes included: the server's user only, whatever its umask.
+        await mkdir(directory, { recursive: true, mode: 0o700 });
         // Written beside its final name, then renamed: a half-copied archive is never listed as one.
         const partial = join(directory, `.${backup.name}.partial`);
         try {
-          // Another disk than the work directory's: copied instead.
+          // Another disk than the work directory's: copied instead - and its mode set again, as a copy may not keep it.
           await rename(archive, partial).catch(() => copyFile(archive, partial));
+          await chmod(partial, 0o600);
           await rename(partial, join(directory, backup.name));
         } catch (error) {
           await rm(partial, { force: true });
@@ -309,10 +311,11 @@ export class BackupsService {
     // A consistent snapshot of the whole database; a lock it can't get in a minute fails the backup instead of waiting on DDL.
     await runCommand(pgTool("pg_dump", this.ctx.pgBinDir), ["--format=custom", "--no-password", "--lock-wait-timeout=60000", `--file=${join(work, DATABASE_FILE)}`], env);
 
-    const [filesPath, includeFiles] = await Promise.all([this.ctx.settings.get("files.storage_local_path"), this.ctx.settings.get("backups.include_files")]);
+    const [filesPath, includeFiles] = await Promise.all([this.ctx.settings.confinedStoragePath("files.storage_local_path"), this.ctx.settings.get("backups.include_files")]);
     const withFiles = includeFiles && (await exists(filesPath));
     // After the dump: every file a dumped row points at is already there.
-    if (withFiles) await runCommand("tar", ["-cf", join(work, FILES_FILE), "-C", filesPath, "."], {});
+    // The path is checked again as stored (confinedStoragePath); and the data directory's own files never go in, at any depth.
+    if (withFiles) await runCommand("tar", ["-cf", join(work, FILES_FILE), "--exclude=master.key", "--exclude=setup-code", "-C", filesPath, "."], {});
 
     const { rows } = await this.ctx.database.query<{ server_version: string; server_version_num: string; database: string; migration: string | null; verifier: string | null }>(
       `SELECT current_setting('server_version') AS server_version, current_setting('server_version_num') AS server_version_num, current_database() AS database,
@@ -336,6 +339,7 @@ export class BackupsService {
     await writeFile(join(work, MANIFEST_FILE), JSON.stringify(manifest, null, 2) + "\n");
     const archive = join(work, backup.name);
     await runCommand("tar", ["-cf", archive, "-C", work, MANIFEST_FILE, DATABASE_FILE, ...(withFiles ? [FILES_FILE] : [])], {});
+    await chmod(archive, 0o600);
     return { manifest, archive };
   }
 

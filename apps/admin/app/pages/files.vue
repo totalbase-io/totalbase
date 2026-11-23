@@ -3,6 +3,8 @@ import type { FolderNode } from '~/composables/useFilesApi'
 import type { FileNode } from '~/types/file'
 import { deferredFileSrc } from '~/composables/useFileObjectUrl'
 import { useApiErrorMessage } from '~/utils/api-error-message'
+import { recordMenu } from '~/utils/record-menu'
+import { copyText } from '~/utils/copy-text'
 // Absolute dates/times in the user's zone and format (My account > Preferences).
 const dates = useDateTimeFormat()
 const { t } = useI18n()
@@ -34,6 +36,10 @@ const uploading = ref(false)
 const uploadFiles = ref<File[]>([])
 const rowSelection = ref<Record<string, boolean>>({})
 const savingDetails = ref(false)
+// The details panel is a record form (Admin_UI.md §7.3): name, visibility, description and tags are drafts,
+// saved together by Save, never dropped without asking (useDiscardGuard).
+const editName = ref('')
+const editVisibility = ref<FileNode['visibility']>('PRIVATE')
 const editDescription = ref('')
 const editTags = ref<string[]>([])
 const previewUrls = ref<Map<string, string>>(new Map())
@@ -118,8 +124,8 @@ const fileColumns = computed(() => [
   { accessorKey: 'size_bytes', header: t('content.files.page.size') },
   { accessorKey: 'visibility', header: t('content.files.page.visibility') },
   { accessorKey: 'created_by', header: t('content.files.page.createdBy') },
-  { accessorKey: 'updated_by', header: t('content.files.page.modifiedBy') },
-  { accessorKey: 'updated_at', header: t('content.files.page.modified') }
+  { accessorKey: 'updated_at', header: t('content.files.page.modified') },
+  { id: 'actions', header: '' }
 ])
 
 const tree = computed<FolderTreeNode[]>(() => {
@@ -158,7 +164,8 @@ function cleanName(value: string): string {
   return value.trim().replace(/\s+/g, ' ')
 }
 
-function selectFolder(id: string) {
+async function selectFolder(id: string) {
+  if (!(await confirmDiscard())) return
   selectedFolderId.value = id
   selectedFile.value = null
   rowSelection.value = {}
@@ -293,8 +300,12 @@ function fileIcon(file: FileNode): string {
   return 'i-lucide-file'
 }
 
-function openFile(file: FileNode) {
+async function openFile(file: FileNode) {
+  if (selectedFile.value?.id === file.id) return
+  if (!(await confirmDiscard())) return
   selectedFile.value = file
+  editName.value = file.name
+  editVisibility.value = file.visibility
   editDescription.value = file.description ?? ''
   editTags.value = [...file.tags]
   if (isImageFile(file)) loadDetailPreview(file)
@@ -373,6 +384,7 @@ function languageForFile(file: FileNode): string {
 }
 
 async function openTextEditor(file: FileNode) {
+  if (!(await confirmDiscard())) return
   selectedFile.value = null
   editorFile.value = file
   editorContent.value = ''
@@ -471,25 +483,85 @@ function replaceStoredFile(file: FileNode) {
   if (selectedFile.value?.id === file.id) selectedFile.value = file
 }
 
-async function toggleVisibility(file: FileNode) {
+// A file's visibility (Administration.md §10.6): who may reach it at all, whatever a role's grant says.
+type Visibility = FileNode['visibility']
+const VISIBILITIES: Visibility[] = ['PRIVATE', 'LINKED', 'PUBLIC']
+function visibilityColor(visibility: Visibility) {
+  return visibility === 'PUBLIC' ? 'success' : visibility === 'LINKED' ? 'info' : 'warning'
+}
+// Who sets it: an administrator, or the file's uploader with UPDATE - Public only while uploaders may publish
+// (files.uploader_can_publish). Everyone else who reaches a file sees its visibility, never changes it. The server
+// decides either way; the screen offers only what it would allow.
+const isAdministrator = computed(() => session.admin.value?.access === 'ADMIN')
+const canPublish = computed(() => isAdministrator.value || session.admin.value?.files?.uploaderCanPublish !== false)
+function canSetVisibility(file: FileNode) {
+  return isAdministrator.value || (canUpdate.value && file.created_by === session.admin.value?.id)
+}
+/** The three, the file's own checked; Public disabled for an uploader who may not publish. */
+function visibilityMenu(file: FileNode) {
+  return VISIBILITIES.map(value => ({
+    label: t(`content.files.visibility.${value}`),
+    description: t(`content.files.visibility.${value}Help`),
+    type: 'checkbox' as const,
+    checked: file.visibility === value,
+    disabled: value === 'PUBLIC' && !canPublish.value && file.visibility !== 'PUBLIC',
+    onSelect: () => setVisibility(file, value)
+  }))
+}
+
+/** A row's "⋮" (Admin_UI.md §5.5): open and download, then what the caller may change, then delete. */
+function rowActions(file: FileNode) {
+  const groups: Record<string, unknown>[][] = [[
+    { label: t('common.open'), icon: 'i-lucide-arrow-up-right', onSelect: () => openFile(file) },
+    { label: t('common.download'), icon: 'i-lucide-download', onSelect: () => downloadFile(file) }
+  ]]
+  const changes: Record<string, unknown>[] = []
+  if (canSetVisibility(file)) changes.push({ label: t('content.files.page.visibility'), icon: 'i-lucide-eye', children: visibilityMenu(file) })
+  if (canUpdate.value) changes.push({ label: t('content.files.page.moveToFolder'), icon: 'i-lucide-folder-input', onSelect: () => openMove([file]) })
+  if (changes.length) groups.push(changes)
+  if (canDelete.value) groups.push([{ label: t('common.delete'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => fileDelete.start([file]) }])
+  return groups
+}
+
+async function setVisibility(file: FileNode, visibility: Visibility) {
+  if (file.visibility === visibility) return
   try {
-    const data = await filesApi.updateMetadata(file.id, {
-      visibility: file.visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC'
-    })
+    const data = await filesApi.updateMetadata(file.id, { visibility })
     replaceStoredFile(data)
   } catch (err) {
     notifyError(err, t('content.files.page.visibilityError'))
   }
 }
 
+/** What the drafts change - only those fields are sent, so each needs its own field grant and no other. */
+const detailsPatch = computed(() => {
+  const file = selectedFile.value
+  const patch: { name?: string, visibility?: FileNode['visibility'], description?: string | null, tags?: string[] } = {}
+  if (!file) return patch
+  const name = editName.value.trim()
+  if (name !== file.name) patch.name = name
+  if (editVisibility.value !== file.visibility) patch.visibility = editVisibility.value
+  const description = editDescription.value.trim() === '' ? null : editDescription.value.trim()
+  if (description !== (file.description ?? null)) patch.description = description
+  if (editTags.value.join('\n') !== file.tags.join('\n')) patch.tags = [...editTags.value]
+  return patch
+})
+const detailsDirty = computed(() => Object.keys(detailsPatch.value).length > 0)
+const { confirmDiscard } = useDiscardGuard(() => selectedFile.value !== null && detailsDirty.value)
+/** The panel's own close (X, Esc, outside, Cancel) - asks first when there are unsaved edits. */
+async function closeDetails() {
+  if (await confirmDiscard()) selectedFile.value = null
+}
+
 async function saveFileDetails() {
   if (!selectedFile.value) return
+  if (!detailsDirty.value) {
+    selectedFile.value = null
+    return
+  }
   savingDetails.value = true
   try {
-    const data = await filesApi.updateMetadata(selectedFile.value.id, {
-      description: editDescription.value.trim() === '' ? null : editDescription.value.trim(),
-      tags: editTags.value
-    })
+    const data = await filesApi.updateMetadata(selectedFile.value.id, detailsPatch.value)
     replaceStoredFile(data)
     toast.add({ title: t('content.files.page.fileUpdated'), color: 'success' })
     // Saved is done: the properties close, as a record form's Save does.
@@ -499,6 +571,52 @@ async function saveFileDetails() {
   } finally {
     savingDetails.value = false
   }
+}
+
+/** The visibility field's three, Public disabled for an uploader who may not publish (Administration.md §10.6). */
+const visibilityItems = computed(() => VISIBILITIES.map(value => ({
+  value,
+  label: t(`content.files.visibility.${value}`),
+  description: t(`content.files.visibility.${value}Help`),
+  disabled: value === 'PUBLIC' && !canPublish.value && selectedFile.value?.visibility !== 'PUBLIC'
+})))
+
+/** The panel's "⋮" (utils/record-menu.ts): Move to folder, then Delete - what the caller may do. */
+const detailsMenu = computed(() => {
+  const file = selectedFile.value
+  if (!file) return []
+  return recordMenu({
+    custom: canUpdate.value ? [{ label: t('content.files.page.moveToFolder'), icon: 'i-lucide-folder-input', onSelect: () => openMove([file]) }] : [],
+    ...(canDelete.value && { delete: () => fileDelete.start([file]) })
+  }, t)
+})
+
+async function copyFileId(id: string) {
+  try {
+    await copyText(id)
+    toast.add({ title: t('common.copied'), color: 'success' })
+  } catch (err) {
+    notifyError(err, t('content.files.page.copyFailed'))
+  }
+}
+
+// An image at full size, in a modal over the panel - its original content, read with the viewer's READ.
+const fullImage = ref<{ name: string, url: string } | null>(null)
+const fullImageLoading = ref(false)
+async function openFullImage(file: FileNode) {
+  fullImageLoading.value = true
+  try {
+    const response = await fetchFileContent(`/api/totalbase/table/files/${file.id}?v=${file.checksum}`)
+    fullImage.value = { name: file.name, url: URL.createObjectURL(response._data as Blob) }
+  } catch (err) {
+    notifyError(err, t('content.files.page.downloadError'))
+  } finally {
+    fullImageLoading.value = false
+  }
+}
+function closeFullImage() {
+  if (fullImage.value) URL.revokeObjectURL(fullImage.value.url)
+  fullImage.value = null
 }
 
 // --- Rename and move (Administration.md §10.12) - the same
@@ -521,26 +639,6 @@ const folderOptions = computed(() => [
   { label: t('content.files.tree.root'), value: ROOT_ID },
   ...(storedFolders.value ?? []).map(folder => ({ label: folderPath(folder.id), value: folder.id })).sort((a, b) => a.label.localeCompare(b.label))
 ])
-
-const renameOpen = ref(false)
-const renameDraft = ref('')
-const renaming = ref(false)
-watch(renameOpen, (open) => {
-  if (open && selectedFile.value) renameDraft.value = selectedFile.value.name
-})
-async function renameFile() {
-  if (!selectedFile.value) return
-  renaming.value = true
-  try {
-    replaceStoredFile(await filesApi.updateMetadata(selectedFile.value.id, { name: renameDraft.value }))
-    renameOpen.value = false
-    toast.add({ title: t('content.files.page.renamed'), color: 'success' })
-  } catch (err) {
-    notifyError(err, t('content.files.page.renameError'))
-  } finally {
-    renaming.value = false
-  }
-}
 
 const moveTargets = ref<FileNode[]>([])
 const isMoveOpen = computed({
@@ -591,7 +689,7 @@ async function confirmMove() {
 // §25 "Popover vs modal"). Same pattern as assets.vue's own bulk
 // visibility action. ---
 const bulkVisibilityWorking = ref(false)
-async function bulkSetVisibility(visibility: 'PUBLIC' | 'PRIVATE') {
+async function bulkSetVisibility(visibility: Visibility) {
   const targets = selectedFiles.value
   bulkVisibilityWorking.value = true
   let failures = 0
@@ -605,7 +703,8 @@ async function bulkSetVisibility(visibility: 'PUBLIC' | 'PRIVATE') {
   }
   bulkVisibilityWorking.value = false
   if (failures === 0) {
-    toast.add({ title: visibility === 'PUBLIC' ? t('content.files.page.madePublic', targets.length) : t('content.files.page.madePrivate', targets.length), color: 'success' })
+    const done = { PUBLIC: 'madePublic', LINKED: 'madeLinked', PRIVATE: 'madePrivate' }[visibility]
+    toast.add({ title: t(`content.files.page.${done}`, targets.length), color: 'success' })
     rowSelection.value = {}
   } else {
     toast.add({
@@ -693,16 +792,19 @@ const headerActions = computed<HeaderAction[]>(() => [
 ])
 const headerSelection = computed<HeaderSelection>(() => {
   const actions: HeaderAction[] = []
-  if (canUpdate.value) {
+  if (selectedFiles.value.every(canSetVisibility)) {
     actions.push({
       label: t('content.files.page.visibility'),
       icon: 'i-lucide-eye',
       loading: bulkVisibilityWorking.value,
       children: [
-        { label: t('content.files.page.makePublic'), icon: 'i-lucide-eye', onSelect: () => bulkSetVisibility('PUBLIC') },
-        { label: t('content.files.page.makePrivate'), icon: 'i-lucide-eye-off', onSelect: () => bulkSetVisibility('PRIVATE') }
+        { label: t('content.files.page.makePrivate'), icon: 'i-lucide-eye-off', onSelect: () => bulkSetVisibility('PRIVATE') },
+        { label: t('content.files.page.makeLinked'), icon: 'i-lucide-link', onSelect: () => bulkSetVisibility('LINKED') },
+        { label: t('content.files.page.makePublic'), icon: 'i-lucide-globe', disabled: !canPublish.value, onSelect: () => bulkSetVisibility('PUBLIC') }
       ]
     })
+  }
+  if (canUpdate.value) {
     actions.push({ label: t('content.files.page.tags'), icon: 'i-lucide-tag', onSelect: openBulkTags })
     actions.push({ label: t('content.files.page.moveToFolder'), icon: 'i-lucide-folder-input', onSelect: () => openMove(selectedFiles.value) })
   }
@@ -788,10 +890,7 @@ const folderTreeBindings = computed(() => ({
       </template>
     </USlideover>
 
-    <PageShell
-      class="min-w-0 flex-1"
-      :scroll="false"
-    >
+    <PageShell class="min-w-0 flex-1">
       <template #header>
         <PageHeader
           :title="t('content.files.page.title')"
@@ -834,123 +933,108 @@ const folderTreeBindings = computed(() => ({
       />
 
       <div
-        v-if="!filesError && !filesPending && filesTotal === 0"
-        class="flex min-h-[420px] flex-1 flex-col items-center justify-center py-16 text-center"
+        v-if="!filesError"
+        class="overflow-x-auto"
       >
-        <div class="flex size-12 items-center justify-center rounded-xl bg-elevated ring-1 ring-default">
-          <UIcon
-            name="i-lucide-folder-open"
-            class="size-5 text-muted"
-          />
-        </div>
-        <h2 class="mt-4 text-base font-semibold text-highlighted">
-          {{ search.trim() ? t('content.files.page.noMatchTitle') : t('content.files.page.emptyTitle') }}
-        </h2>
-        <p class="mt-1 max-w-sm text-sm text-muted">
-          {{ search.trim() ? t('content.files.page.noMatchDescription') : t('content.files.page.emptyDescription') }}
-        </p>
-        <UButton
-          v-if="!search.trim() && canCreate"
-          class="mt-4"
-          icon="i-lucide-upload"
-          :label="t('content.files.page.uploadFile')"
-          @click="openUpload"
-        />
-      </div>
-
-      <div
-        v-else-if="!filesError"
-        class="flex min-h-0 flex-1 flex-col py-3"
-      >
-        <div class="min-h-0 flex-1 overflow-x-auto">
-          <UTable
-            v-model:row-selection="rowSelection"
-            sticky
-            :data="pageFiles"
-            :columns="fileColumns"
-            :loading="filesPending"
-            :get-row-id="(row: FileNode) => row.id"
-            :on-select="(_event: Event, row: { original: FileNode }) => openFile(row.original)"
-          >
-            <template #select-header="{ table }">
-              <UCheckbox
-                :model-value="table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected()"
-                :aria-label="t('content.files.page.selectAll')"
-                @update:model-value="(value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(value === true)"
-                @click.stop
+        <UTable
+          v-model:row-selection="rowSelection"
+          sticky
+          :data="pageFiles"
+          :columns="fileColumns"
+          :loading="filesPending"
+          :get-row-id="(row: FileNode) => row.id"
+          :on-select="(_event: Event, row: { original: FileNode }) => openFile(row.original)"
+        >
+          <template #select-header="{ table }">
+            <UCheckbox
+              :model-value="table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected()"
+              :aria-label="t('content.files.page.selectAll')"
+              @update:model-value="(value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(value === true)"
+              @click.stop
+            />
+          </template>
+          <template #select-cell="{ row }">
+            <UCheckbox
+              :model-value="row.getIsSelected()"
+              :aria-label="t('content.files.page.selectOne', { name: row.original.name })"
+              @update:model-value="(value: boolean | 'indeterminate') => row.toggleSelected(value === true)"
+              @click.stop
+            />
+          </template>
+          <template #name-cell="{ row }">
+            <div class="flex min-w-64 cursor-pointer items-center gap-3">
+              <FileImage
+                v-if="isImageFile(row.original)"
+                :src="deferredFileSrc(row.original.id, THUMBNAIL_WIDTH)"
+                class="size-8 shrink-0 rounded-md border border-default bg-default object-cover"
+                alt=""
               />
-            </template>
-            <template #select-cell="{ row }">
-              <UCheckbox
-                :model-value="row.getIsSelected()"
-                :aria-label="t('content.files.page.selectOne', { name: row.original.name })"
-                @update:model-value="(value: boolean | 'indeterminate') => row.toggleSelected(value === true)"
-                @click.stop
-              />
-            </template>
-            <template #name-cell="{ row }">
-              <div class="flex min-w-64 cursor-pointer items-center gap-3">
-                <FileImage
-                  v-if="isImageFile(row.original)"
-                  :src="deferredFileSrc(row.original.id, THUMBNAIL_WIDTH)"
-                  class="size-8 shrink-0 rounded-md border border-default bg-default object-cover"
-                  alt=""
-                />
-                <div
-                  v-else
-                  class="flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-default"
-                >
-                  <UIcon
-                    :name="fileIcon(row.original)"
-                    class="size-4 text-muted"
-                  />
-                </div>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-highlighted">
-                    {{ row.original.name }}
-                  </p>
-                  <p
-                    v-if="row.original.description"
-                    class="truncate text-xs text-muted"
-                  >
-                    {{ row.original.description }}
-                  </p>
-                </div>
-              </div>
-            </template>
-            <template #extension-cell="{ row }">
-              <span class="uppercase text-muted">{{ row.original.extension }}</span>
-            </template>
-            <template #size_bytes-cell="{ row }">
-              {{ formatBytes(row.original.size_bytes) }}
-            </template>
-            <template #visibility-cell="{ row }">
-              <button
-                type="button"
-                class="inline-flex"
-                @click.stop="toggleVisibility(row.original)"
+              <div
+                v-else
+                class="flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-default"
               >
-                <UBadge
-                  :color="row.original.visibility === 'PUBLIC' ? 'success' : 'warning'"
-                  variant="subtle"
-                  size="sm"
-                  class="cursor-pointer"
+                <UIcon
+                  :name="fileIcon(row.original)"
+                  class="size-4 text-muted"
+                />
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-highlighted">
+                  {{ row.original.name }}
+                </p>
+                <p
+                  v-if="row.original.description"
+                  class="truncate text-xs text-muted"
                 >
-                  {{ row.original.visibility === 'PUBLIC' ? t('content.docs.endpoints.public') : t('content.files.page.private') }}
-                </UBadge>
-              </button>
-            </template>
-            <template #created_by-cell="{ row }">
-              <span class="text-muted">{{ userLabel(row.original.created_by) }}</span>
-            </template>
-            <template #updated_by-cell="{ row }">
-              <span class="text-muted">{{ userLabel(row.original.updated_by) }}</span>
-            </template>
-            <template #updated_at-cell="{ row }">
-              <span class="text-muted">{{ formatDate(row.original.updated_at) }}</span>
-            </template>
-          </UTable>
-        </div>
+                  {{ row.original.description }}
+                </p>
+              </div>
+            </div>
+          </template>
+          <template #extension-cell="{ row }">
+            <span class="uppercase text-muted">{{ row.original.extension }}</span>
+          </template>
+          <template #size_bytes-cell="{ row }">
+            {{ formatBytes(row.original.size_bytes) }}
+          </template>
+          <template #visibility-cell="{ row }">
+            <UBadge
+              :color="visibilityColor(row.original.visibility)"
+              variant="subtle"
+              size="sm"
+            >
+              {{ t(`content.files.visibility.${row.original.visibility}`) }}
+            </UBadge>
+          </template>
+          <template #created_by-cell="{ row }">
+            <span class="text-muted">{{ userLabel(row.original.created_by) }}</span>
+          </template>
+          <template #updated_at-cell="{ row }">
+            <span class="text-muted">{{ formatDate(row.original.updated_at) }}</span>
+          </template>
+          <template #actions-cell="{ row }">
+            <UDropdownMenu :items="rowActions(row.original)">
+              <UButton
+                icon="i-lucide-ellipsis-vertical"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                :aria-label="t('content.files.page.rowActions', { name: row.original.name })"
+                @click.stop
+              />
+            </UDropdownMenu>
+          </template>
+          <template #empty>
+            <UEmpty
+              variant="naked"
+              icon="i-lucide-folder-open"
+              :title="search.trim() ? t('content.files.page.noMatchTitle') : t('content.files.page.emptyTitle')"
+              :description="search.trim() ? t('content.files.page.noMatchDescription') : t('content.files.page.emptyDescription')"
+              :actions="!search.trim() && canCreate ? [{ icon: 'i-lucide-upload', label: t('content.files.page.uploadFile'), onClick: openUpload }] : undefined"
+              class="table-empty"
+            />
+          </template>
+        </UTable>
       </div>
 
       <template #footer>
@@ -970,197 +1054,76 @@ const folderTreeBindings = computed(() => ({
       :title="selectedFile?.name"
       :description="t('content.files.page.properties')"
       :ui="{ content: 'max-w-md' }"
-      @update:open="open => { if (!open) selectedFile = null }"
+      @update:open="open => { if (!open) closeDetails() }"
     >
+      <template
+        v-if="detailsMenu.length"
+        #actions
+      >
+        <RecordHeaderActions :menu="detailsMenu" />
+      </template>
       <template #body>
         <div
           v-if="selectedFile"
           class="flex flex-col gap-5"
         >
-          <div class="flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-default bg-default">
+          <!-- The preview; an image opens at full size. -->
+          <button
+            v-if="isImageFile(selectedFile)"
+            type="button"
+            class="flex aspect-video cursor-zoom-in items-center justify-center overflow-hidden rounded-lg border border-default bg-default"
+            :aria-label="t('content.files.page.openFullSize')"
+            @click="openFullImage(selectedFile)"
+          >
             <img
-              v-if="isImageFile(selectedFile) && previewUrls.get(selectedFile.id)"
+              v-if="previewUrls.get(selectedFile.id)"
               :src="previewUrls.get(selectedFile.id)"
               class="max-h-full max-w-full object-contain"
               alt=""
             >
             <UIcon
-              v-else-if="isImageFile(selectedFile) && previewsLoading.has(selectedFile.id)"
-              name="i-lucide-loader-circle"
-              class="size-6 animate-spin text-muted"
-            />
-            <UIcon
               v-else
+              :name="previewsLoading.has(selectedFile.id) || fullImageLoading ? 'i-lucide-loader-circle' : fileIcon(selectedFile)"
+              :class="previewsLoading.has(selectedFile.id) || fullImageLoading ? 'size-6 animate-spin text-muted' : 'size-12 text-muted'"
+            />
+          </button>
+          <div
+            v-else
+            class="flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-default bg-default"
+          >
+            <UIcon
               :name="fileIcon(selectedFile)"
               class="size-12 text-muted"
             />
           </div>
 
-          <UButton
-            v-if="canUpdate && isTextEditable(selectedFile)"
-            icon="i-lucide-pencil"
-            :label="t('common.edit')"
-            class="self-start"
-            @click="openTextEditor(selectedFile)"
-          />
-          <UButton
-            v-if="canUpdate && isImageFile(selectedFile)"
-            icon="i-lucide-image"
-            :label="t('common.edit')"
-            class="self-start"
-            @click="openImageEditor(selectedFile)"
-          />
-
-          <UButton
-            icon="i-lucide-download"
-            :label="t('common.download')"
-            color="neutral"
-            variant="outline"
-            class="self-start"
-            :loading="downloading"
-            @click="downloadFile(selectedFile)"
-          />
-
-          <div
-            v-if="canUpdate"
-            class="flex flex-wrap gap-2"
-          >
-            <UPopover v-model:open="renameOpen">
-              <UButton
-                icon="i-lucide-text-cursor-input"
-                :label="t('common.rename')"
-                color="neutral"
-                variant="outline"
-              />
-              <template #content>
-                <form
-                  class="flex w-72 flex-col gap-3 p-3"
-                  @submit.prevent="renameFile"
-                >
-                  <UFormField
-                    :label="t('common.name')"
-                    :description="t('content.files.page.renameHelp')"
-                  >
-                    <UInput
-                      v-model="renameDraft"
-                      class="w-full"
-                      autofocus
-                    />
-                  </UFormField>
-                  <div class="flex justify-end gap-2">
-                    <UButton
-                      :label="t('common.cancel')"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      @click="renameOpen = false"
-                    />
-                    <UButton
-                      type="submit"
-                      :label="t('common.rename')"
-                      size="sm"
-                      :loading="renaming"
-                      :disabled="!renameDraft.trim() || renameDraft.trim() === selectedFile.name"
-                    />
-                  </div>
-                </form>
-              </template>
-            </UPopover>
+          <div class="flex flex-wrap gap-2">
             <UButton
-              icon="i-lucide-folder-input"
-              :label="t('content.files.page.moveToFolder')"
+              v-if="canUpdate && (isTextEditable(selectedFile) || isImageFile(selectedFile))"
+              :icon="isImageFile(selectedFile) ? 'i-lucide-image' : 'i-lucide-pencil'"
+              :label="t('common.edit')"
+              @click="isImageFile(selectedFile) ? openImageEditor(selectedFile) : openTextEditor(selectedFile)"
+            />
+            <UButton
+              icon="i-lucide-download"
+              :label="t('common.download')"
               color="neutral"
               variant="outline"
-              @click="openMove([selectedFile])"
+              :loading="downloading"
+              @click="downloadFile(selectedFile)"
             />
           </div>
 
-          <div class="space-y-2">
-            <p class="text-xs font-medium uppercase text-muted">
-              {{ t('common.details') }}
-            </p>
-            <dl class="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-              <dt class="text-muted">
-                ID
-              </dt>
-              <dd class="truncate font-mono text-xs">
-                {{ selectedFile.id }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.folder') }}
-              </dt>
-              <dd>{{ folderPath(selectedFile.folder) }}</dd>
-              <dt class="text-muted">
-                {{ t('common.name') }}
-              </dt>
-              <dd class="truncate">
-                {{ selectedFile.name }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.extension') }}
-              </dt>
-              <dd class="uppercase">
-                {{ selectedFile.extension }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.mimeType') }}
-              </dt>
-              <dd class="truncate font-mono text-xs">
-                {{ selectedFile.mime_type }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.size') }}
-              </dt>
-              <dd>{{ formatBytes(selectedFile.size_bytes) }}</dd>
-              <template v-if="selectedFile.width && selectedFile.height">
-                <dt class="text-muted">
-                  {{ t('content.files.page.dimensions') }}
-                </dt>
-                <dd>{{ selectedFile.width }} × {{ selectedFile.height }}px</dd>
-              </template>
-              <dt class="text-muted">
-                {{ t('content.files.page.visibility') }}
-              </dt>
-              <dd>
-                <button
-                  type="button"
-                  class="inline-flex"
-                  @click="toggleVisibility(selectedFile)"
-                >
-                  <UBadge
-                    :color="selectedFile.visibility === 'PUBLIC' ? 'success' : 'warning'"
-                    variant="subtle"
-                    size="sm"
-                    class="cursor-pointer"
-                  >
-                    {{ selectedFile.visibility === 'PUBLIC' ? t('content.docs.endpoints.public') : t('content.files.page.private') }}
-                  </UBadge>
-                </button>
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.createdBy') }}
-              </dt>
-              <dd class="truncate">
-                {{ userLabel(selectedFile.created_by) }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.modifiedBy') }}
-              </dt>
-              <dd class="truncate">
-                {{ userLabel(selectedFile.updated_by) }}
-              </dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.created') }}
-              </dt>
-              <dd>{{ formatDate(selectedFile.created_at) }}</dd>
-              <dt class="text-muted">
-                {{ t('content.files.page.modified') }}
-              </dt>
-              <dd>{{ formatDate(selectedFile.updated_at) }}</dd>
-            </dl>
-          </div>
-
-          <USeparator />
+          <UFormField
+            :label="t('common.name')"
+            :description="t('content.files.page.renameHelp')"
+          >
+            <UInput
+              v-model="editName"
+              :disabled="!canUpdate"
+              class="w-full"
+            />
+          </UFormField>
 
           <UFormField
             :label="t('common.description')"
@@ -1169,6 +1132,7 @@ const folderTreeBindings = computed(() => ({
             <UTextarea
               v-model="editDescription"
               :rows="3"
+              :disabled="!canUpdate"
               class="w-full"
             />
           </UFormField>
@@ -1179,7 +1143,19 @@ const folderTreeBindings = computed(() => ({
           >
             <UInputTags
               v-model="editTags"
+              :disabled="!canUpdate"
               class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            :label="t('content.files.page.visibility')"
+            :description="canSetVisibility(selectedFile) ? undefined : t('content.files.page.visibilityOwnerOnly')"
+          >
+            <URadioGroup
+              v-model="editVisibility"
+              :items="visibilityItems"
+              :disabled="!canSetVisibility(selectedFile)"
             />
           </UFormField>
 
@@ -1187,9 +1163,63 @@ const folderTreeBindings = computed(() => ({
 
           <div class="space-y-2">
             <p class="text-xs font-medium uppercase text-muted">
-              {{ t('content.files.page.storage') }}
+              {{ t('common.details') }}
             </p>
-            <dl class="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+            <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+              <dt class="text-muted">
+                {{ t('common.type') }}
+              </dt>
+              <dd class="truncate">
+                <span class="uppercase">{{ selectedFile.extension }}</span>
+                <span class="text-muted"> · </span>
+                <span class="font-mono text-xs">{{ selectedFile.mime_type }}</span>
+              </dd>
+              <dt class="text-muted">
+                {{ t('content.files.page.size') }}
+              </dt>
+              <dd>
+                {{ formatBytes(selectedFile.size_bytes) }}<template v-if="selectedFile.width && selectedFile.height">
+                  <span class="text-muted"> · </span>{{ selectedFile.width }} × {{ selectedFile.height }} px
+                </template>
+              </dd>
+              <dt class="text-muted">
+                {{ t('content.files.page.folder') }}
+              </dt>
+              <dd class="truncate">
+                {{ folderPath(selectedFile.folder) }}
+              </dd>
+              <dt class="text-muted">
+                {{ t('content.files.page.created') }}
+              </dt>
+              <dd class="truncate">
+                {{ formatDate(selectedFile.created_at) }}<span class="text-muted"> · {{ userLabel(selectedFile.created_by) }}</span>
+              </dd>
+              <dt class="text-muted">
+                {{ t('content.files.page.modified') }}
+              </dt>
+              <dd class="truncate">
+                {{ formatDate(selectedFile.updated_at) }}<span class="text-muted"> · {{ userLabel(selectedFile.updated_by) }}</span>
+              </dd>
+              <dt class="text-muted">
+                ID
+              </dt>
+              <dd class="flex min-w-0 items-center gap-1">
+                <span class="truncate font-mono text-xs">{{ selectedFile.id }}</span>
+                <UButton
+                  icon="i-lucide-copy"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :aria-label="t('content.files.page.copyId')"
+                  @click="copyFileId(selectedFile.id)"
+                />
+              </dd>
+              <dt class="text-muted">
+                {{ t('content.files.page.checksum') }}
+              </dt>
+              <dd class="truncate font-mono text-xs">
+                {{ selectedFile.checksum }}
+              </dd>
               <!-- Provider/key never come out of the Data API (a protected
               column) - shown only where a response carries them. -->
               <template v-if="selectedFile.storage_key">
@@ -1204,44 +1234,41 @@ const folderTreeBindings = computed(() => ({
                   {{ selectedFile.storage_key }}
                 </dd>
               </template>
-              <dt class="text-muted">
-                {{ t('content.files.page.checksum') }}
-              </dt>
-              <dd class="truncate font-mono text-xs">
-                {{ selectedFile.checksum }}
-              </dd>
             </dl>
           </div>
-
-          <UButton
-            v-if="canDelete"
-            icon="i-lucide-trash-2"
-            :label="t('common.deleteEllipsis')"
-            color="error"
-            variant="soft"
-            class="self-start"
-            @click="fileDelete.start([selectedFile])"
-          />
         </div>
       </template>
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <UButton
-            :label="t('common.close')"
-            color="neutral"
-            variant="ghost"
-            :disabled="savingDetails"
-            @click="selectedFile = null"
-          />
-          <UButton
-            :label="t('common.save')"
-            icon="i-lucide-save"
-            :loading="savingDetails"
-            @click="saveFileDetails"
-          />
-        </div>
+      <template
+        v-if="canUpdate"
+        #footer
+      >
+        <RecordFormFooter
+          :saving="savingDetails"
+          @cancel="closeDetails"
+          @save="saveFileDetails"
+        />
       </template>
     </USlideover>
+
+    <UModal
+      :open="fullImage !== null"
+      :title="fullImage?.name"
+      fullscreen
+      @update:open="open => { if (!open) closeFullImage() }"
+    >
+      <template #body>
+        <div
+          v-if="fullImage"
+          class="flex h-full items-center justify-center"
+        >
+          <img
+            :src="fullImage.url"
+            class="max-h-full max-w-full object-contain"
+            :alt="fullImage.name"
+          >
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="isUploadOpen"

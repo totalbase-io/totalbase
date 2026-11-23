@@ -17,6 +17,8 @@ export interface InstanceInfo {
     /** The auth providers shown on the sign-in page, each with where its button leads. */
     providers: SignInProvider[]
   }
+  /** Lockdown (Security.md §2.21): on until turned off (`active` with no `from`/`until`), or by its scheduled window - `from`/`until`: the one running now, else the next one ahead. */
+  lockdown: { active: boolean, mode: 'FULL' | 'READ_ONLY', from: string | null, until: string | null, message: string, noticeMinutes: number }
 }
 
 export interface SignInProvider {
@@ -33,7 +35,8 @@ const DEFAULT_INSTANCE: InstanceInfo = {
   name: PRODUCT_NAME,
   logoUrl: null,
   colorMode: 'SYSTEM',
-  login: { layout: 'SPLIT', cardPosition: 'RIGHT', backgroundUrl: null, headline: '', intro: '', providers: [] }
+  login: { layout: 'SPLIT', cardPosition: 'RIGHT', backgroundUrl: null, headline: '', intro: '', providers: [] },
+  lockdown: { active: false, mode: 'FULL', from: null, until: null, message: '', noticeMinutes: 0 }
 }
 
 /** The instance's name, mark and sign-in layout (§4.1.1) - the defaults until the plugin has read them. */

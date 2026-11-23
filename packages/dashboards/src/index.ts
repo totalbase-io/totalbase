@@ -10,3 +10,4 @@ export * from "./widget-marks.js";
 export * from "./pivot-query.js";
 export * from "./dashboard-spec.js";
 export * from "./dashboard-suggest.js";
+export { type QueryRoleProblem } from "./query-role.js";

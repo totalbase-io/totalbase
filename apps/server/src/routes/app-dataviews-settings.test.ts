@@ -92,6 +92,22 @@ describe("SETTINGS DataViews", () => {
     expect([...(data.keys ?? [])].sort()).toEqual(["activo", "dias"]);
   });
 
+  // Security regression (Security.md §10.3): the keys were read on the pool, without the viewer's actor - a Row Level
+  // Security policy keyed on totalbase.actor_user_id let every row through (TotalBase's own work), across tenants.
+  it("reads its keys as the viewer, so a Row Level Security policy keyed on the actor decides", async () => {
+    await database.query(`ALTER TABLE public.${TABLE} ENABLE ROW LEVEL SECURITY, FORCE ROW LEVEL SECURITY`);
+    await database.query(
+      `CREATE POLICY app_dv_settings_actor ON public.${TABLE} USING (clave <> 'dias' OR NULLIF(current_setting('totalbase.actor_user_id', true), '') IS NULL)`,
+    );
+    try {
+      const data = (await writable(editorToken)).json().data as { keys: string[] | null };
+      expect(data.keys).toEqual(["activo"]);
+    } finally {
+      await database.query(`DROP POLICY IF EXISTS app_dv_settings_actor ON public.${TABLE}`);
+      await database.query(`ALTER TABLE public.${TABLE} NO FORCE ROW LEVEL SECURITY, DISABLE ROW LEVEL SECURITY`);
+    }
+  });
+
   it("locks every setting for a viewer with no UPDATE", async () => {
     const res = await writable(readerToken);
     expect(res.json().data).toEqual({ valueWritable: false, keys: [] });

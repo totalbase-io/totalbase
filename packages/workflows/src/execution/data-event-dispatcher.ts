@@ -1,10 +1,12 @@
+import { TotalBaseError } from "@totalbase/errors";
 import { randomUUID } from "node:crypto";
 import type { WorkflowEngineContext } from "./context.js";
 import { resolveDataPrincipalForConfiguredUser } from "./context.js";
-import { buildRowFilter } from "@totalbase/mutations";
-import { parseFilter, type FilterNode } from "@totalbase/query-engine";
+import { buildRowFilter, userVariableResolver, type DataPrincipal } from "@totalbase/mutations";
+import { compileFilter, mutationFilterContext, parseFilter, qualifiedTable, relatedResolver, SchemaContext, type FilterNode } from "@totalbase/query-engine";
+import { resolveWorkflowResource } from "./resource-resolution.js";
 import { recordSuppressedAdmission, runWorkflow } from "./engine.js";
-import { evaluateFilter } from "./filter-evaluator.js";
+import { evaluateFilter, matchPatterns } from "./filter-evaluator.js";
 
 interface OutboxRow {
   id: string;
@@ -42,15 +44,16 @@ interface AffectedRow {
  * memory like a row filter. Admin-authored, so evaluated over the whole row;
  * what the run then receives is re-projected through the executor's READ.
  */
-function startMatcher(config: Record<string, unknown>, event: OutboxRow["event"], limits: { maxFilterDepth: number; maxRelationDepth: number }) {
+function startMatcher(database: WorkflowEngineContext["database"], config: Record<string, unknown>, event: OutboxRow["event"], limits: { maxFilterDepth: number; maxRelationDepth: number }) {
   const parse = (raw: unknown): FilterNode | undefined =>
     raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw).length > 0 ? parseFilter(raw as Record<string, unknown>, limits, 0) : undefined;
   const filter = parse(config.filter);
   const oldFilter = event === "UPDATE" ? parse(config.old_filter) : undefined;
   const changedFields = event === "UPDATE" && Array.isArray(config.changed_fields) ? (config.changed_fields as string[]) : [];
-  return (affected: AffectedRow): boolean => {
-    if (filter && !evaluateFilter(filter, affected.row)) return false;
-    if (oldFilter && !(affected.old && evaluateFilter(oldFilter, affected.old))) return false;
+  // A pattern (`_like`, `_regex`) is matched by PostgreSQL first (matchPatterns).
+  return async (affected: AffectedRow): Promise<boolean> => {
+    if (filter && !evaluateFilter(filter, affected.row, await matchPatterns(database, filter, affected.row))) return false;
+    if (oldFilter && !(affected.old && evaluateFilter(oldFilter, affected.old, await matchPatterns(database, oldFilter, affected.old)))) return false;
     if (changedFields.length > 0 && !(affected.changed ?? []).some((column) => changedFields.includes(column))) return false;
     return true;
   };
@@ -91,6 +94,34 @@ interface DefinitionOperation {
  * every run - or suppression - it admits takes a claim in
  * `outbox_admissions`, so a retried event never admits one twice.
  */
+/**
+ * Which of an event's rows (by position) pass `rowFilter` - the executor's READ row filter (Workflows.md §6.3.3):
+ * each row rebuilt as a record of the resource's own type (`jsonb_populate_record`) and the filter compiled as a
+ * write's is (`mutationFilterContext`, relation paths through subqueries, `$USER.*` the executor's), evaluated by
+ * PostgreSQL. A row the event no longer has in the table - a DELETE's - is judged as it was.
+ */
+async function rowsPassingFilter(
+  context: WorkflowEngineContext,
+  resourceId: string,
+  rowFilter: FilterNode,
+  executor: DataPrincipal,
+  rows: Record<string, unknown>[],
+): Promise<Set<number>> {
+  if (rows.length === 0) return new Set();
+  const resource = await resolveWorkflowResource(context, resourceId, ["TABLE", "VIEW"]);
+  const schemaContext = new SchemaContext(context.database);
+  const root = await schemaContext.loadRoot(resource.schema, resource.name, resource.postgresOid);
+  const compiled = await compileFilter(rowFilter, mutationFilterContext(root, "r", userVariableResolver(executor), relatedResolver(schemaContext)), 1);
+  const { rows: passing } = await context.database.query<{ i: number }>(
+    `SELECT (t.idx - 1)::int AS i
+       FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS t(v, idx),
+            LATERAL jsonb_populate_record(NULL::${qualifiedTable(root.schema, root.table)}, t.v) AS r
+      WHERE ${compiled.sql}`,
+    [JSON.stringify(rows), ...compiled.params],
+  );
+  return new Set(passing.map((row) => row.i));
+}
+
 export async function dispatchDataEvent(context: WorkflowEngineContext, outboxEventId: string): Promise<void> {
   const workerId = `data-event-${randomUUID()}`;
   const leaseSeconds = await context.settings.get("outbox.lease_seconds");
@@ -195,9 +226,9 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
     if (!events.includes(outbox.event)) continue;
     const perStatement = config.for_each === "STATEMENT";
     if (perStatement && (await statementRows()).anchor !== outbox.id) continue; // the write's first event admits it
-    let matches: (affected: AffectedRow) => boolean;
+    let matches: (affected: AffectedRow) => Promise<boolean>;
     try {
-      matches = startMatcher(config, outbox.event, limits);
+      matches = startMatcher(context.database, config, outbox.event, limits);
     } catch (error) {
       context.logger.warn({ error, workflowId: workflow.id }, "DATA_EVENT workflow's Start filter is invalid, admission skipped");
       continue;
@@ -249,11 +280,39 @@ async function dispatch(context: WorkflowEngineContext, outbox: OutboxRow, renew
     // initiating write was allowed").
     // Each record keeps its position in the event's payload - its
     // admission claim's `item`, stable across retries.
-    const candidatesRows = perStatement ? (await statementRows()).rows : affectedRows;
+    // A pattern PostgreSQL gave up on (its timeout) or can't read admits nothing - logged, as an invalid filter is,
+    // never retried forever. Any other error (the database unreachable) fails the event, which is retried: a
+    // transient failure never drops an admission. Matching a long statement's rows keeps the lease.
+    const candidatesRows: AffectedRow[] = [];
+    let leaseRenewedAt = Date.now();
+    for (const affected of perStatement ? (await statementRows()).rows : affectedRows) {
+      const matched = await matches(affected).catch((error: unknown) => {
+        // The workflow's own design or data, deterministic for this row: never a reason to fail the whole event.
+        const unmatched = error instanceof TotalBaseError && (error.code === "WORKFLOW_LIMIT_EXCEEDED" || error.code === "WORKFLOW_INVALID_DESIGN" || error.sqlstate?.startsWith("22") === true);
+        if (!unmatched) throw error;
+        context.logger.warn({ error, workflowId: workflow.id }, "DATA_EVENT workflow's Start filter could not be matched, row skipped");
+        return false;
+      });
+      if (matched) candidatesRows.push(affected);
+      if (Date.now() - leaseRenewedAt > 10_000) {
+        await renewLease();
+        leaseRenewedAt = Date.now();
+      }
+    }
+    // The executor's row filter, decided by PostgreSQL on the rows as the event recorded them - relation paths,
+    // `$USER.*` and comparisons as in any read - never re-implemented here (AGENTS.md §7).
+    // A row its own content makes the row filter refuse (a column read as a pattern: 22xxx) passes nothing - logged,
+    // never a reason to fail the event for every workflow after this one.
+    const readable = rowFilter
+      ? await rowsPassingFilter(context, outbox.resource, rowFilter, executor, candidatesRows.map(({ row }) => row)).catch((error: unknown) => {
+          if (!(error instanceof TotalBaseError && error.sqlstate?.startsWith("22") === true)) throw error;
+          context.logger.warn({ error, workflowId: workflow.id }, "DATA_EVENT rows couldn't be checked against the executor's row filter, none admitted");
+          return new Set<number>();
+        })
+      : undefined;
     const projected = candidatesRows
-      .filter(matches)
       .map(({ row, item }) => ({ row, item }))
-      .filter(({ row }) => !rowFilter || evaluateFilter(rowFilter, row))
+      .filter((_candidate, index) => !readable || readable.has(index))
       .map(({ row, item }) => {
         const visible: Record<string, unknown> = {};
         for (const [field, value] of Object.entries(row)) {

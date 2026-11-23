@@ -1,5 +1,6 @@
 import { TotalBaseError } from "@totalbase/errors";
 import { escapeHtml } from "@totalbase/auth";
+import { FilterLiteral, isComparisonOperator } from "@totalbase/query-engine";
 import type { RunState } from "./bindings.js";
 
 /**
@@ -93,7 +94,7 @@ function resolveRoot(state: RunState, key: string): unknown {
     return state.currentItem;
   }
   if (!state.resultsByKey.has(key)) {
-    throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `{{${key}...}} references a step that hasn't run yet (forward reference or unreachable predecessor).`);
+    throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `{{${key}...}} references a step that hasn't run yet (forward reference or unreachable predecessor) - in an error branch, the step that failed left no result: its error is {{error...}}.`);
   }
   return state.resultsByKey.get(key);
 }
@@ -176,11 +177,43 @@ function resolveString(state: RunState, text: string, html: boolean): unknown {
  * §5.16). A `{{...}}` embedded in it is spliced in HTML-escaped - a visitor's `<script>` arrives as text - while a
  * string that is, in full, one `{{...}}` is still that value untouched: the body another step built.
  */
-export function resolveTemplates(value: unknown, state: RunState, options: { html?: boolean } = {}): unknown {
+export function resolveTemplates(value: unknown, state: RunState, options: { html?: boolean; filter?: boolean } = {}): unknown {
+  if (options.filter) return resolveFilterTemplates(value, state);
   if (typeof value === "string") return resolveString(state, value, options.html === true);
   if (Array.isArray(value)) return value.map((item) => resolveTemplates(item, state, options));
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveTemplates(item, state, options)]));
   }
   return value;
+}
+
+const HAS_EXPRESSION = /\{\{\s*[^{}]+?\s*\}\}/;
+
+/**
+ * A field that holds a filter (the catalog's filterTemplates, Workflows.md §4.3): an operator's value with a
+ * `{{...}}` resolves to a FilterLiteral - what a trigger or a step carried is a value, never the filter grammar
+ * (`"$ROW.id"` would otherwise compare the column with itself, and `"1,2,3"` widen an `_in`). The author's own
+ * text (`"$USER.id"`) stays the grammar; every other `{{...}}` in the field resolves as anywhere else.
+ */
+function resolveFilterTemplates(value: unknown, state: RunState): unknown {
+  if (Array.isArray(value)) return value.map((item) => resolveFilterTemplates(item, state));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, isComparisonOperator(key) ? resolveOperatorValue(item, state) : resolveFilterTemplates(item, state)]));
+  }
+  const resolved = resolveTemplates(value, state);
+  // Anywhere but an operator's value - the whole filter, a field, a `_and`/`_or` list, a Read records query's `where`
+  // - a `{{...}}` is still a value: one that resolves to an object or a list would hand the filter's grammar to
+  // whoever sent it (a webhook's caller choosing which rows an Update records touches).
+  if (typeof value === "string" && HAS_EXPRESSION.test(value) && resolved !== null && typeof resolved === "object" && !(resolved instanceof Date)) {
+    throw new TotalBaseError(
+      "WORKFLOW_INVALID_DESIGN",
+      `"${value}" resolves to ${Array.isArray(resolved) ? "a list" : "an object"} where a filter takes the author's own grammar - a {{...}} goes as an operator's value: { "id": { "_eq": "{{start.data.id}}" } }.`,
+    );
+  }
+  return resolved;
+}
+
+function resolveOperatorValue(value: unknown, state: RunState): unknown {
+  const literal = (item: unknown) => (typeof item === "string" && HAS_EXPRESSION.test(item) ? new FilterLiteral(resolveString(state, item, false)) : item);
+  return Array.isArray(value) ? value.map(literal) : literal(value);
 }

@@ -10,7 +10,11 @@ import {
   EXPOSE_METHODS,
   findResource,
   IDEMPOTENT,
+  jsonObject,
+  listOf,
+  passthrough,
   READ_ONLY,
+  resourceOutput,
   RESOURCES,
   resourceSummary,
   result,
@@ -29,7 +33,7 @@ import { registerUserTools } from "./tools-users.js";
 import { registerWorkflowTools } from "./tools-workflows.js";
 import { registerOpenApiTools } from "./tools-openapi.js";
 import { destructiveStatements } from "./sql-guard.js";
-import { FULL_POLICY, refuseDestructive, type McpPolicy } from "./policy.js";
+import { FULL_POLICY, refuseDestructive, refuseRevokingCreate, refuseRevokingUpdate, type McpPolicy } from "./policy.js";
 import { registerTemplateTools } from "./tools-templates.js";
 import { registerAppTools } from "./tools-app.js";
 
@@ -72,6 +76,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       title: "Who am I",
       description: "The administrator this MCP server acts as, and the instance: its public URL, environment, time zone and language. Call it first in a session.",
       inputSchema: {},
+      outputSchema: { id: z.string(), email: z.string(), name: z.string().nullable(), environment: z.string().optional(), publicUrl: z.string().optional(), appUrl: z.string().optional().describe("Where the App is served"), timezone: z.string().optional(), language: z.string().optional() },
       annotations: READ_ONLY,
     },
     async () => {
@@ -99,6 +104,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         type: z.enum(["TABLE", "VIEW", "FUNCTION"]).optional(),
         include_missing: z.boolean().optional().describe("Also list resources whose object was dropped (MISSING)"),
       },
+      outputSchema: listOf(resourceOutput()),
       annotations: READ_ONLY,
     },
     async ({ schema, type, include_missing }) => {
@@ -123,6 +129,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         group: z.string().optional().describe("A settings group, e.g. 'api'; every group when omitted"),
         describe: z.boolean().optional().describe("With group: its fields' descriptions, defaults and bounds instead of values"),
       },
+      outputSchema: passthrough("The settings' current values by key; with describe, the group's fields"),
       annotations: READ_ONLY,
     },
     async ({ group, describe }) => {
@@ -141,6 +148,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       inputSchema: {
         auto_presentation: z.boolean().optional().describe("Fill what each column's type and constraints suggest (suggest_presentation); never replaces a value already set"),
       },
+      outputSchema: passthrough("What the sync found", { discovered: z.number().optional(), reactivated: z.number().optional(), missing: z.number().optional(), purged: z.number().optional(), columns: jsonObject().optional(), dataviewsSynced: z.number().optional(), presentedColumns: z.number().nullable().optional(), brokenReferences: jsonObject().nullable().optional() }),
       annotations: IDEMPOTENT,
     },
     async ({ auto_presentation }) => result(await client.post("/catalog/refresh", auto_presentation ? { data: { autoPresentation: true } } : undefined)),
@@ -155,9 +163,10 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       inputSchema: {
         resource: z.string().uuid().optional().describe("A resource id - only that table's or view's DataViews and the widgets whose query names it"),
       },
+      outputSchema: passthrough("What names something gone", { dashboards: z.array(jsonObject()).optional(), dataviews: z.array(jsonObject()).optional() }),
       annotations: READ_ONLY,
     },
-    async ({ resource }) => result(await client.get(`/catalog/broken-references${resource ? `?resource=${encodeURIComponent(resource)}` : ""}`)),
+    async ({ resource }) => result(await client.get("/catalog/broken-references", resource ? { resource } : undefined)),
   );
 
   server.registerTool(
@@ -165,12 +174,13 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
     {
       title: "Execute SQL",
       description:
-        "Run raw SQL through TotalBase's SQL Console, as TotalBase's PostgreSQL role: views, functions, triggers, types, indexes, extensions - what the table tools don't cover. Prefer create_table / alter_table for tables, and write_records for rows (those go through permissions, audit and outbox; SQL here does not). Several statements are allowed; transactional=true rolls the whole script back on error. Answers each statement's command and rows in `statements`, in order (each capped by sql_console.max_rows). Audited and kept in the SQL Console history under this token; the catalog is synced afterwards, so a new view or function is a resource at once - hidden until expose_resource / grant_permission. After dropping or renaming a column or a view, call list_broken_references (or sync_catalog) - dashboards and DataViews may still name it. Off unless an administrator turned on Settings > SQL Console > Allow API tokens (SQL_CONSOLE_DISABLED otherwise - tell the user; a token can't turn it on). A statement that DROPs, TRUNCATEs, DELETEs FROM, REVOKEs or ALTERs ... DROP requires confirm=true - ask the user first; the same words inside a function body, a trigger's events, a comment or a literal don't.",
+        "Run raw SQL through TotalBase's SQL Console, as TotalBase's PostgreSQL role: views, functions, triggers, types, indexes, extensions - what the table tools don't cover. Prefer create_table / alter_table for tables, and write_records for rows (those go through permissions, audit and outbox; SQL here does not). Several statements are allowed; transactional=true rolls the whole script back on error. Answers each statement's command and rows in `statements`, in order (each capped by sql_console.max_rows). Audited and kept in the SQL Console history under this token; the catalog is synced afterwards, so a new view or function is a resource at once - hidden until expose_resource / grant_permission. After dropping or renaming a column or a view, call list_broken_references (or sync_catalog) - dashboards and DataViews may still name it. Off unless an administrator turned on Settings > SQL Console > Allow API tokens (SQL_CONSOLE_DISABLED otherwise - tell the user; a token can't turn it on). A statement that DROPs, TRUNCATEs, DELETEs FROM, REVOKEs or ALTERs ... DROP requires confirm=true - ask the user first; the same words inside a function body, a trigger's events, a comment or a literal don't. When get_settings says mcp.mode is STANDARD or READ_ONLY, it runs one statement read-only and rolls it back: it queries, it never creates or changes anything (cannot execute ... in a read-only transaction) - ask an administrator for FULL mode to run DDL.",
       inputSchema: {
         sql: z.string().min(1),
         transactional: z.boolean().optional().describe("Wrap the script in one transaction - all or nothing"),
         confirm: confirmFlag().describe("Must be true when the SQL drops, truncates, deletes or revokes - ask the user first"),
       },
+      outputSchema: passthrough("The run: one statement's rows at the top, or every statement's under statements", { status: z.string().optional(), rows: z.array(jsonObject()).optional(), rowCount: z.number().nullable().optional(), truncated: z.boolean().optional(), columns: z.array(jsonObject()).optional(), statements: z.array(jsonObject()).optional(), notices: z.array(jsonObject()).optional(), durationMs: z.number().optional() }),
       annotations: DESTRUCTIVE,
     },
     async ({ sql, transactional, confirm }) => {
@@ -182,7 +192,12 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         throw new Error(`This SQL destroys data or access (${[...new Set(destructive)].join(", ")}) - ask the user, then pass confirm=true.`);
       }
       // The console's top-level rows repeat the last statement's: `statements` alone says it once.
-      const answer = await client.post<Record<string, unknown>>("/sql/execute", { data: { sql, ...(transactional !== undefined && { transactional }) } });
+      // Outside FULL mode nothing it runs commits (Administration.md §11.6): the statements are judged above, but a
+      // function a SELECT calls runs SQL no guard reads - one statement, READ ONLY, always rolled back.
+      const readOnly = policy.mode !== "FULL";
+      const answer = await client.post<Record<string, unknown>>("/sql/execute", {
+        data: { sql, ...(readOnly ? { readOnly } : transactional !== undefined && { transactional }) },
+      });
       if (Array.isArray(answer["statements"])) for (const key of ["rows", "rowCount", "truncated", "columns"]) delete answer[key];
       return result(answer);
     },
@@ -195,6 +210,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       description:
         "PostgreSQL's plan for one statement (EXPLAIN, FORMAT JSON) - planned, never executed, not kept in the history. Use it to check a dashboard query or a view is indexed before saving it. Same gate as execute_sql (SQL_CONSOLE_DISABLED until API tokens are allowed).",
       inputSchema: { sql: z.string().min(1).describe("One statement") },
+      outputSchema: passthrough("PostgreSQL's EXPLAIN (FORMAT JSON)", { plan: z.array(jsonObject()).optional() }),
       annotations: READ_ONLY,
     },
     async ({ sql }) => result(await client.post("/sql/explain", { data: { sql } })),
@@ -216,6 +232,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
           .describe("Data API methods to expose immediately - usually ['GET','POST','PATCH','DELETE']; GET only for read-only data"),
         auto_presentation: z.boolean().optional().describe("Fill what its columns' types and constraints suggest (suggest_presentation)"),
       },
+      outputSchema: { id: z.string().nullable().describe("The new resource's id"), schema: z.string(), name: z.string(), exposedMethods: z.array(z.string()), presentedColumns: z.array(z.string()).optional(), next: z.string() },
       annotations: ADDITIVE,
     },
     async ({ schema, name, columns, expose_methods, auto_presentation }) => {
@@ -254,10 +271,14 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         audit_read: z.boolean().optional().describe("Also audit every read of it (Logs)"),
         function_class: z.enum(["UNCLASSIFIED", "QUERY", "ACTION"]).optional().describe("FUNCTION only: QUERY reads only, ACTION changes data"),
       },
+      outputSchema: { id: z.string(), schema: z.string(), name: z.string(), type: z.enum(["TABLE", "VIEW", "FUNCTION"]), exposedMethods: z.array(z.string()), description: z.string().nullable().optional(), requireIdempotencyKey: z.boolean().optional(), auditRead: z.boolean().optional(), functionClass: z.string().nullable().optional() },
       annotations: IDEMPOTENT,
     },
     async ({ schema, name, expose_methods, description, require_idempotency_key, audit_read, function_class }) => {
       const resource = await findResource(client, schema, name);
+      // A method dropped is the table hidden from it for everyone - a removal.
+      const dropped = expose_methods ? resource.exposed_methods.filter((method) => !expose_methods.includes(method as (typeof expose_methods)[number])) : [];
+      if (dropped.length > 0) refuseDestructive(policy, `Unexposing ${dropped.join(", ")}`);
       const patch = defined({ exposedMethods: expose_methods, description, requireIdempotencyKey: require_idempotency_key, auditRead: audit_read, functionClass: function_class });
       if (Object.keys(patch).length === 0) throw new Error("Nothing to change - pass expose_methods or a setting.");
       const updated = await client.patch<{ exposedMethods: string[]; description: string | null; requireIdempotencyKey: boolean; auditRead: boolean; functionClass: string | null }>(`/resources/${resource.id}`, { data: patch });
@@ -282,6 +303,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       description:
         "Every role: id, name, description, active (an inactive role grants nothing), parent (the role above it: its ceiling - it can do at most what its parent can, resolved live - and its managers' scope; null = top level) and its access flags - app_access (people who sign into the App), api_access (personal access tokens), admin_access (administrators: every permission bypassed), reserved (built in, never deleted). Create, change or delete a role with write_records on totalbase / roles (delete takes its grants and assignments with it; reserved roles can't be deleted; a role with roles under it can't be deleted until they go or move); its grants with grant_permission / grant_permissions; a copy with duplicate_role.",
       inputSchema: {},
+      outputSchema: listOf(z.object({ id: z.string(), name: z.string(), description: z.string().nullable(), active: z.boolean(), parent: z.string().nullable(), app_access: z.boolean(), api_access: z.boolean(), admin_access: z.boolean(), reserved: z.boolean() })),
       annotations: READ_ONLY,
     },
     async () => {
@@ -311,12 +333,13 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         offset: z.number().int().min(0).default(0),
         count: z.boolean().optional().describe("Also return the total number of matching rows (groups, when grouped)"),
         aggregates: z
-          .array(z.object({ fn: z.enum(AGGREGATES), field: z.string().describe("A column or path; '*' for count"), alias: z.string().describe("The output key") }))
+          .array(z.strictObject({ fn: z.enum(AGGREGATES), field: z.string().describe("A column or path; '*' for count"), alias: z.string().describe("The output key") }))
           .optional()
           .describe("e.g. [{fn:'sum', field:'amount', alias:'total'}]; with aggregates or group_by the rows hold only the group fields and the aggregates"),
         group_by: z.string().optional().describe("Comma-separated group fields, e.g. 'status,customer.name'"),
         having: z.record(z.string(), z.unknown()).optional().describe("A filter over group fields and aggregate aliases, e.g. {\"total\":{\"_gt\":1000}}"),
       },
+      outputSchema: { rows: z.array(jsonObject()).describe("The rows, each keyed by the fields asked for"), count: z.number().optional().describe("With count=true: every row the filter matches") },
       annotations: READ_ONLY,
     },
     async ({ schema, name, kind, where, fields, search, order_by, limit, offset, count, aggregates, group_by, having }) => {
@@ -338,7 +361,8 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         const { data, meta } = await client.dataWithMeta(path, query);
         return result({ rows: data, count: meta?.["count"] });
       }
-      return result(await client.data("GET", path, { query }));
+      const rows = await client.data("GET", path, { query });
+      return result(rows, { rows });
     },
   );
 
@@ -347,16 +371,17 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
     {
       title: "Upload file",
       description:
-        "Store a file in TotalBase's file store (totalbase.files - totalbase://guide/files) from its content: base64 for any file, or text for a text one (an SVG, a CSV). Answers the file's id - what a file column, a TImage's src or a UFileUpload keeps. visibility PUBLIC: anyone with its URL (/api/totalbase/table/files/<id>) gets it, no credentials - an illustration or a logo, never private data; PRIVATE (the default): read under READ on files. Change its name, folder, description or visibility later with write_records (update on files).",
+        "Store a file in TotalBase's file store (totalbase.files - totalbase://guide/files) from its content: base64 for any file, or text for a text one (an SVG, a CSV). Answers the file's id - what a file column, a TImage's src or a UFileUpload keeps. visibility PRIVATE (the default): its uploader only; LINKED: also whoever may read a row whose file column references it - a record's photo or document; PUBLIC: anyone with its URL (/api/totalbase/table/files/<id>) gets it, no credentials - an illustration or a logo, never private data. Change its name, folder, description or visibility later with write_records (update on files).",
       inputSchema: {
         name: z.string().min(1).describe("The file's name, with its extension - e.g. 'dni-frente.svg'"),
         mime_type: z.string().min(1).describe("e.g. image/svg+xml, image/png, application/pdf"),
         content_base64: z.string().optional().describe("The content, base64 - any file"),
         text: z.string().optional().describe("Or the content as text - an SVG, a CSV"),
         folder: z.string().uuid().optional().describe("A folder's id (folders)"),
-        visibility: z.enum(["PRIVATE", "PUBLIC"]).optional().describe("PRIVATE by default"),
+        visibility: z.enum(["PRIVATE", "LINKED", "PUBLIC"]).optional().describe("PRIVATE by default; LINKED for a file a record's file column will reference"),
         description: z.string().optional(),
       },
+      outputSchema: passthrough("The new totalbase.files row", { id: z.string().optional() }),
       annotations: ADDITIVE,
     },
     async ({ name, mime_type, content_base64, text, folder, visibility, description }) => {
@@ -397,6 +422,7 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
           .describe("create only: PostgreSQL's ON CONFLICT - NOTHING skips existing rows, UPDATE upserts (needs CREATE and UPDATE grants)"),
         confirm: confirmFlag().describe("delete: must be true"),
       },
+      outputSchema: { rows: z.array(jsonObject()).optional().describe("create and update: the rows written"), deleted: z.number().optional().describe("delete: how many rows"), ids: z.array(z.unknown()).optional().describe("delete: their ids, when the table has an id") },
       annotations: DESTRUCTIVE,
     },
     async ({ schema, name, operation, data, id, where, on_conflict, confirm }) => {
@@ -411,12 +437,16 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
       try {
         if (operation === "create") {
           if (data === undefined) throw new Error("create needs data.");
-          return result(await client.data("POST", path, { body: { data, ...(on_conflict && { on_conflict }) }, ...(Array.isArray(data) && { query: { bulk: "true" } }) }));
+          refuseRevokingCreate(policy, schema, name, (Array.isArray(data) ? data : [data]) as Record<string, unknown>[]);
+          if (on_conflict?.action === "UPDATE") refuseRevokingUpdate(policy, schema, name, (on_conflict.data ?? {}) as Record<string, unknown>);
+          return written(await client.data("POST", path, { body: { data, ...(on_conflict && { on_conflict }) }, ...(Array.isArray(data) && { query: { bulk: "true" } }) }));
         }
         if (operation === "update") {
           if (data === undefined || Array.isArray(data)) throw new Error("update needs data as one object.");
           if (id === undefined && !where) throw new Error("update needs an id or a where filter.");
-          return result(await client.data("PATCH", target, { body: { data }, ...(query && { query }) }));
+          // Revoking a session or a token, or moving an assignment, is a removal too.
+          refuseRevokingUpdate(policy, schema, name, data as Record<string, unknown>);
+          return written(await client.data("PATCH", target, { body: { data }, ...(query && { query }) }));
         }
         refuseDestructive(policy, "Deleting rows");
         if (confirm !== true) throw new Error("delete is irreversible - ask the user, then pass confirm=true.");
@@ -443,10 +473,13 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         name: z.string().describe("The function's name"),
         arguments: z.record(z.string(), z.unknown()).optional().describe("Named arguments, e.g. {\"invoice\": 42}; parameters with a DEFAULT may be left out"),
       },
+      outputSchema: { value: z.unknown().describe("What the function returned: a scalar, a row, or rows") },
       annotations: ADDITIVE,
     },
-    async ({ schema, name, arguments: args }) =>
-      result(await client.data("POST", `/${encodeURIComponent(schema)}/function/${encodeURIComponent(name)}`, { body: { data: args ?? {} } })),
+    async ({ schema, name, arguments: args }) => {
+      const value = await client.data("POST", `/${encodeURIComponent(schema)}/function/${encodeURIComponent(name)}`, { body: { data: args ?? {} } });
+      return result(value, { value: value ?? null });
+    },
   );
 
   // --- Destructive tools ---
@@ -470,26 +503,30 @@ export function registerTools(server: McpServer, client: AdminClient, policy: Mc
         cascade: z.boolean().optional().describe("Also drop dependent objects (foreign keys, views) instead of failing"),
         confirm: z.literal(true).describe("Must be explicitly set to true to run this irreversible operation."),
       },
+      outputSchema: { dropped: z.string() },
       annotations: DESTRUCTIVE,
     },
     async ({ schema, name, cascade }) => {
-      await client.delete(`/schema/${encodeURIComponent(schema)}/tables/${encodeURIComponent(name)}${cascade ? "?cascade=true" : ""}`);
+      await client.delete(`/schema/${encodeURIComponent(schema)}/tables/${encodeURIComponent(name)}`, cascade ? { cascade: "true" } : undefined);
       return result({ dropped: `${schema}.${name}` });
     },
   );
 
   registerSchemaTools(server, client, policy);
-  registerPermissionTools(server, client);
-  registerUserTools(server, client);
-  registerDataViewTools(server, client);
+  registerPermissionTools(server, client, policy);
+  registerUserTools(server, client, policy);
+  registerDataViewTools(server, client, policy);
   registerPageTools(server, client);
   registerDashboardTools(server, client, policy);
   registerDashboardSuggestTools(server, client);
-  registerWorkflowTools(server, client);
+  registerWorkflowTools(server, client, policy);
   registerTemplateTools(server, client);
   registerAppTools(server, client);
   registerOpenApiTools(server, client);
 }
+
+/** write_records' create and update: the Data API's answer as text (one row, or the rows), and always as `rows` in the structured form. */
+const written = (rows: unknown) => result(rows, { rows: Array.isArray(rows) ? rows : rows === undefined || rows === null ? [] : [rows] });
 
 const METHOD_BY_OPERATION = { create: "POST", update: "PATCH", delete: "DELETE" } as const;
 

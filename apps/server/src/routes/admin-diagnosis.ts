@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { dashboardRowFilterIssues, objectReachIssues, type DiagnosisIssue } from "@totalbase/dataviews";
+import { dashboardWidgetIssues, objectReachIssues, type DiagnosisIssue } from "@totalbase/dataviews";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AppContext } from "../context.js";
 import { type DataBody, requestData } from "../request-body.js";
@@ -15,7 +15,7 @@ import { adminAuditEntry } from "../admin-audit-entry.js";
  */
 const NAMED = object({ id: UUID, name: { type: "string" } }, ["id", "name"]);
 const ISSUE = object({
-  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "SECRET_COLUMN_SHOWN", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "STYLE_IN_CSS_CLASS", "WIDGET_IGNORES_ROW_FILTER"] },
+  code: { type: "string", enum: ["NOT_PUBLISHED", "NO_ROLES", "BROKEN_REFERENCE", "CONSTRAINT_WITHOUT_MESSAGE", "SECRET_COLUMN_SHOWN", "ROLE_CANNOT_READ", "ROLE_FIELDS_HIDDEN", "ROLE_SEES_KEY", "ROLE_VARIABLE_REFUSED", "ROLE_CANNOT_WRITE", "STYLE_IN_CSS_CLASS", "WIDGET_IGNORES_ROW_FILTER", "WIDGET_READS_UNREADABLE_TABLE", "WIDGET_SHOWS_HIDDEN_FIELD"] },
   severity: { type: "string", enum: ["warning", "info"] },
   message: { type: "string", description: "The issue in English." },
   role: { ...NAMED, type: ["object", "null"], description: "The role it is about - null for the object itself." },
@@ -23,7 +23,7 @@ const ISSUE = object({
   actions: { type: ["array", "null"], items: { type: "string", enum: ["CREATE", "UPDATE", "DELETE"] }, description: "ROLE_CANNOT_WRITE: what the role lacks." },
   columns: { type: ["array", "null"], items: { type: "string" }, description: "The columns or related paths; CONSTRAINT_WITHOUT_MESSAGE: the constraints; STYLE_IN_CSS_CLASS: the classes." },
   variable: { type: ["string", "null"], description: "ROLE_VARIABLE_REFUSED: the variable." },
-  widget: { ...NAMED, type: ["object", "null"], description: "WIDGET_IGNORES_ROW_FILTER: the dashboard's widget; STYLE_IN_CSS_CLASS: the page's widget." },
+  widget: { ...NAMED, type: ["object", "null"], description: "WIDGET_*: the dashboard's widget; STYLE_IN_CSS_CLASS: the page's widget." },
 }, ["code", "severity", "message", "role", "resource", "actions", "columns", "variable", "widget"]);
 
 export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppContext): void {
@@ -33,8 +33,8 @@ export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppC
     const roleIds = await context.dashboardsAdmin.listRoles(dashboard.id);
     const { issues, roles } = await objectReachIssues(context, "dashboard", { id: dashboard.id, liveVersion: dashboard.liveVersion ?? null }, roleIds);
     if (roles.length === 0 || (dashboard.liveVersion ?? null) === null) return issues;
-    const widgets = await context.dashboardsAdmin.unscopedWidgetTables(dashboard.id, await context.settings.get("dashboards.query_timeout_ms"));
-    return [...issues, ...await dashboardRowFilterIssues(context, context.effectivePermissions, roles, widgets)];
+    const widgets = await context.dashboardsAdmin.liveWidgetReads(dashboard.id, await context.settings.get("dashboards.query_timeout_ms"));
+    return [...issues, ...await dashboardWidgetIssues(context, context.effectivePermissions, roles, widgets)];
   }
 
   app.get<{ Params: { id: string } }>("/admin/api/dataviews/:id/diagnosis", {
@@ -59,9 +59,11 @@ export function registerAdminDiagnosisRoutes(app: FastifyInstance, context: AppC
     ...adminDoc("dashboards", {
       summary: "What stops a dashboard from reaching its viewers",
       description:
-        "Not published, no role opens it; and per role that opens it, a published widget whose SQL never names " +
-        "`$USER.*` reading a table the role may read only some rows of: its SQL runs with the dashboard's authority, so " +
-        "the role sees every row through it. Decided by PostgreSQL's plan and the Permission Resolver; never grants anything.",
+        "Not published, no role opens it; and per role that opens it - a published widget's SQL runs with the " +
+        "dashboard's authority, not the role's grants -: a widget whose SQL never names `$USER.*` reading a table the role " +
+        "may read only some rows of (it sees every row), or may not read at all (`info`: fine for figures of everyone); " +
+        "and any widget showing a column the role may not read, or a protected one. Decided by PostgreSQL's plan and " +
+        "the Permission Resolver; never grants anything.",
       pathParameters: { id: { description: "The dashboard's id.", schema: UUID } },
       response: ok(arrayOf(ISSUE)),
     }),

@@ -104,12 +104,22 @@ export const USER_API_MAX_GRACE_HOURS = 168;
  * every validate() call, for the same live-revocation reason.
  */
 export class UsersApisService {
+  private readonly validatedListeners: Array<(credential: string, userId: string) => void> = [];
+
   constructor(
     private readonly database: Database,
     private readonly settings: SettingsService,
     private readonly roles: RolesService,
     private readonly roleAssignments: RoleAssignmentsService,
   ) {}
+
+  /**
+   * Told the user of every credential that validates - the server's rate limiter keys a credential's requests on
+   * its user from then on, so every session and token of one person shares one limit (Administration.md §7.8).
+   */
+  onValidated(listener: (credential: string, userId: string) => void): void {
+    this.validatedListeners.push(listener);
+  }
 
   async listForUser(userId: string): Promise<UserApi[]> {
     const { rows } = await this.database.query<UserApiRow>(
@@ -230,6 +240,7 @@ export class UsersApisService {
       [row.id],
     );
 
+    for (const listener of this.validatedListeners) listener(plainKey, row.user);
     return { id: row.id, userId: row.user, plane: row.plane, roleIds };
   }
 

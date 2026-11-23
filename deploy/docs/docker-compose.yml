@@ -15,7 +15,8 @@ services:
       - pgdata:/var/lib/postgresql
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5434:5432"
+      # This machine only: a PostgreSQL published on every interface is reachable from any network the host is on.
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d totalbase_docs"]
       interval: 5s
@@ -42,6 +43,9 @@ services:
       TOTALBASE_PUBLIC_URL: http://localhost:3080
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
+      # The data directory: backups (backups.local_path), the setup code, a generated master key - kept apart from the
+      # container, as the files are.
+      - data:/var/lib/totalbase
       - files:/var/lib/totalbase/files
     ports:
       - "3080:3030"
@@ -50,8 +54,9 @@ services:
   mailpit:
     image: axllent/mailpit:v1.21
     ports:
-      - "8026:8025"
+      - "127.0.0.1:8026:8025"
 
 volumes:
   pgdata:
   files:
+  data:

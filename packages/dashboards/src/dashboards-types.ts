@@ -345,8 +345,10 @@ export interface DashboardsContext {
   snapshots: Map<string, Promise<AdminDashboardVersionSnapshot>>;
   /** Published widgets' planned columns, keyed `dashboard/version/widget` (`plannedColumns`) - same bound and lifetime as the snapshots. */
   plans: Map<string, Promise<TypedResultColumn[] | null>>;
-  /** Whether a published widget's query reads a table under Row Level Security, keyed like `plans` (`readsRowSecuredTable`) - its cached result is then the viewer's. */
-  rowSecured: Map<string, Promise<boolean>>;
+  /** `dashboards.query_role` (Dashboards.md §2.10) - "" or absent: widget SQL runs as TotalBase's own role. */
+  queryRole?: () => Promise<string>;
+  /** The role this process last checked and handed the query function to (`queryRole()` in query-role.ts). */
+  queryRoleReady?: string | null;
 }
 
 /** How many snapshots, and how many plans, the memos keep at most - oldest use out first. */

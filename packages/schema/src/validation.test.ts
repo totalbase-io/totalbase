@@ -85,3 +85,44 @@ describe("validateFkAction", () => {
     expect(() => validateFkAction("cascade", "ON DELETE")).toThrow(); // case-sensitive, matches PostgreSQL keyword casing
   });
 });
+
+// Security regression (Administration.md §3.2): the expression check counted parentheses inside string literals and
+// knew only `$$` as dollar-quoting, and a DEFAULT went into ALTER TABLE unparenthesized - `0, DISABLE ROW LEVEL
+// SECURITY` added a second action. A type name took any words after it (`integer PRIMARY KEY`).
+describe("an expression or a type never adds a clause", () => {
+  it("refuses a parenthesis that closes the expression's own, wherever quotes hide it", () => {
+    for (const expression of [
+      "0), DISABLE ROW LEVEL SECURITY, ALTER COLUMN c SET DEFAULT (0",
+      "'(' = 'a') , ADD COLUMN pwn text DEFAULT (')'",
+      "E'\\'') , ADD COLUMN x int, ALTER COLUMN c SET DEFAULT (0",
+      "'unterminated",
+      '"unterminated',
+      "$a$)$a$ = 'x'",
+    ]) {
+      expect(() => validateSqlExpression(expression, "DEFAULT"), expression).toThrow();
+    }
+  });
+
+  // Security regression (Administration.md §3.2): a tag holding digits or non-ASCII letters (`$a1$`, `$ñ$`) - which
+  // PostgreSQL takes - passed the dollar-quoting check, and the quote hid a closing parenthesis.
+  it("refuses dollar-quoting whatever its tag holds", () => {
+    for (const expression of ["$a1$)$a1$ = 'x'", "$ñ$) , ADD COLUMN x int, ALTER COLUMN c SET DEFAULT ($ñ$ = 'x'", "$_9$x$_9$ = name", "$$x$$ = name"]) {
+      expect(() => validateSqlExpression(expression, "DEFAULT"), expression).toThrow(/dollar-quoting/);
+    }
+  });
+
+  it("still takes what quotes legitimately hold", () => {
+    for (const expression of ["name <> ')'", "note ~ '^\\(x\\)$'", "label = 'it''s (fine)'", "E'a\\'b' = label", `"Weird ) name" > 0`]) {
+      expect(() => validateSqlExpression(expression, "CHECK"), expression).not.toThrow();
+    }
+  });
+
+  it("refuses words after a type that aren't the type's own", () => {
+    for (const type of ["integer PRIMARY KEY", "text NOT NULL UNIQUE", "integer REFERENCES users", "integer USING other_col", "text COLLATE C"]) {
+      expect(() => validateDataType(type), type).toThrow();
+    }
+    for (const type of ["character varying(255)", "double precision", "timestamp with time zone", "Timestamp  Without Time Zone", "numeric(12,2)", "text[]", "my_enum"]) {
+      expect(() => validateDataType(type), type).not.toThrow();
+    }
+  });
+});

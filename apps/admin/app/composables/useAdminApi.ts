@@ -40,6 +40,15 @@ export function createSessionApi(prefix: string, onForbidden?: (session: ReturnT
       session.clear()
       await navigateTo('/login')
     }
+    // A lockdown began (Security.md §2.21): this user isn't an administrator - they wait it out, still signed in.
+    // Read-only, they stay: only this write was refused, and its error says so.
+    if (error.code === 'LOCKDOWN') {
+      const keptOut = !isReadOnlyLockdown(error)
+      // Said first: while the app boots there is no route to leave yet, and the middleware reads this (auth.global.ts).
+      if (keptOut) useLockedOut().value = true
+      await useInstance().refresh().catch(() => undefined)
+      if (keptOut) await Promise.resolve(navigateTo('/lockdown')).catch(() => undefined)
+    }
     // A re-authentication the user declined is no change of access.
     if (error.status === 403 && error.code !== 'REAUTHENTICATION_REQUIRED' && session.isAuthenticated.value) onForbidden?.(session)
     return error

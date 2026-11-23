@@ -26,7 +26,7 @@ export interface MfaStatus {
   enabledAt: Date | null;
   /** Unused recovery codes left (0 when not enabled). */
   recoveryCodesLeft: number;
-  /** `auth.mfa_required` covers this user - they can't turn it off. */
+  /** `mfa.required` covers this user - they can't turn it off. */
   required: boolean;
 }
 
@@ -37,8 +37,14 @@ export interface MfaEnrollment {
 }
 
 export interface MfaServiceOptions {
-  /** Whether the user holds the Administrators role - for `auth.mfa_required = ADMINISTRATORS`. */
-  isAdministrator: (userId: string) => Promise<boolean>;
+  /** The roles that grant the user something right now (RoleAssignmentsService.listEffectiveRolesForUser) - for `mfa.required = ROLES`. */
+  effectiveRoles: (userId: string) => Promise<string[]>;
+  /**
+   * A proof on an open session (AuthService.countedProof, Security.md §2.4): refused on a locked account, and a wrong
+   * one counts toward its lockout. My account's confirm, disable and new recovery codes go through it - a stolen
+   * session otherwise guessed six digits without limit.
+   */
+  countedProof?: <T>(userId: string, refusal: "INVALID_MFA_CODE", fn: () => Promise<T>) => Promise<T>;
 }
 
 /** About five minutes to type a code (Security.md §2.17). */
@@ -83,12 +89,18 @@ export class MfaService {
     private readonly options: MfaServiceOptions,
   ) {}
 
-  /** Whether `auth.mfa_required` covers this user. */
+  private counted<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    return this.options.countedProof ? this.options.countedProof(userId, "INVALID_MFA_CODE", fn) : fn();
+  }
+
+  /** Whether `mfa.required` covers this user: everyone, or a holder of one of `mfa.required_roles`. */
   async required(userId: string): Promise<boolean> {
-    const policy = await this.settings.get("auth.mfa_required");
+    const policy = await this.settings.get("mfa.required");
     if (policy === "EVERYONE") return true;
-    if (policy === "ADMINISTRATORS") return this.options.isAdministrator(userId);
-    return false;
+    if (policy !== "ROLES") return false;
+    const listed = await this.settings.get("mfa.required_roles");
+    if (listed.length === 0) return false;
+    return (await this.options.effectiveRoles(userId)).some((id) => listed.includes(id));
   }
 
   async status(userId: string): Promise<MfaStatus> {
@@ -183,7 +195,7 @@ export class MfaService {
       `INSERT INTO totalbase.factors ("user", type, secret) VALUES ($1, 'TOTP', $2)
        ON CONFLICT ("user", type) DO UPDATE SET secret = EXCLUDED.secret, last_used_step = NULL, created_at = now()
        WHERE totalbase.factors.confirmed_at IS NULL`,
-      [userId, encryptSecret(this.masterKey, secret)],
+      [userId, encryptSecret(this.masterKey, secret, "factor")],
     );
     if (rowCount === 0) throw new TotalBaseError("MFA_ALREADY_ENABLED", "Two-factor authentication is already on - turn it off first to set up another app.");
     return { secret, otpauthUrl: otpauthUrl({ secret, issuer: await this.issuer(), account }) };
@@ -191,6 +203,10 @@ export class MfaService {
 
   /** The first code of a pending factor confirms it; the recovery codes are returned, once. */
   async confirmEnrollment(userId: string, code: unknown): Promise<string[]> {
+    return this.counted(userId, () => this.confirmEnrollmentNow(userId, code));
+  }
+
+  private async confirmEnrollmentNow(userId: string, code: unknown): Promise<string[]> {
     return this.database.transaction(async (client) => {
       const { rows } = await client.query<FactorRow>(
         `SELECT id, secret, confirmed_at, last_used_step FROM totalbase.factors WHERE "user" = $1 AND type = 'TOTP' FOR UPDATE`,
@@ -205,8 +221,12 @@ export class MfaService {
     });
   }
 
-  /** Turns it off: the factor and its recovery codes go. Refused while `auth.mfa_required` covers the user. */
+  /** Turns it off: the factor and its recovery codes go. Refused while `mfa.required` covers the user. */
   async disable(userId: string, proof: { code?: unknown; recoveryCode?: unknown }): Promise<void> {
+    return this.counted(userId, () => this.disableNow(userId, proof));
+  }
+
+  private async disableNow(userId: string, proof: { code?: unknown; recoveryCode?: unknown }): Promise<void> {
     if (await this.required(userId)) {
       throw new TotalBaseError("PERMISSION_DENIED", "This instance requires two-factor authentication for your account - it can't be turned off.");
     }
@@ -229,6 +249,10 @@ export class MfaService {
 
   /** New recovery codes, the old ones dropped - with a current code. */
   async regenerateRecoveryCodes(userId: string, code: unknown): Promise<string[]> {
+    return this.counted(userId, () => this.regenerateRecoveryCodesNow(userId, code));
+  }
+
+  private async regenerateRecoveryCodesNow(userId: string, code: unknown): Promise<string[]> {
     return this.database.transaction(async (client) => {
       const factor = await this.lockedConfirmedFactor(client, userId);
       await this.acceptCode(client, factor, code);
@@ -261,9 +285,31 @@ export class MfaService {
     surface: MfaSurface;
     code?: unknown;
     recoveryCode?: unknown;
-    onWrongCode: (userId: string) => Promise<void>;
+    /**
+     * One of the account's lockout attempts, taken before the code is checked (AuthService.takeAttempt) - null
+     * when the account is locked or its attempts are out.
+     */
+    takeAttempt?: (userId: string) => Promise<{ wrong(): Promise<{ locked: boolean }>; right(): Promise<void> } | null>;
+    onWrongCode: (userId: string, locked: boolean) => Promise<void>;
   }): Promise<{ userId: string; recoveryCodes: string[] | null; usedRecoveryCode: boolean; passwordSignIn: boolean }> {
     const wrong: { userId?: string; spend?: boolean } = {};
+    if (typeof input.challenge !== "string" || !input.challenge) throw invalidChallenge();
+    // The challenge's attempt is counted before the code is checked, in one statement: codes sent together each
+    // take one, and past CHALLENGE_MAX_ATTEMPTS none is checked - counted after a rollback, every waiter behind the
+    // row lock had its code checked first.
+    const { rows: [reserved] } = await this.database.query<{ user: string }>(
+      `UPDATE totalbase.challenges SET attempts = attempts + 1
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() AND attempts < $2
+       RETURNING "user"`,
+      [hashToken(input.challenge), CHALLENGE_MAX_ATTEMPTS],
+    );
+    if (!reserved) throw invalidChallenge();
+    const attempt = input.takeAttempt ? await input.takeAttempt(reserved.user) : undefined;
+    if (attempt === null) {
+      await this.database.query(`UPDATE totalbase.challenges SET used_at = now() WHERE token_hash = $1`, [hashToken(input.challenge)]);
+      throw invalidChallenge();
+    }
+    let settled = false;
     try {
       return await this.database.transaction(async (client) => {
         const challenge = await this.openChallenge(client, input.challenge, { lock: true });
@@ -300,19 +346,24 @@ export class MfaService {
           if (error instanceof TotalBaseError && error.code === "INVALID_MFA_CODE") wrong.userId = challenge.user;
           throw error;
         }
+      }).then(async (completed) => {
+        settled = true;
+        await attempt?.right();
+        return completed;
       });
     } catch (error) {
-      // Outside the rolled-back transaction, so they stay: a spent challenge, a wrong code counted.
+      // A failure after the code was right (giving the attempt back) never gives it back a second time.
+      if (settled) throw error;
+      // Outside the rolled-back transaction, so they stay: a spent challenge; a wrong code's attempts already counted.
       if (wrong.spend) {
-        await this.database.query(`UPDATE totalbase.challenges SET used_at = now() WHERE token_hash = $1`, [hashToken(String(input.challenge))]);
+        await this.database.query(`UPDATE totalbase.challenges SET used_at = now() WHERE token_hash = $1`, [hashToken(input.challenge)]);
       }
       if (wrong.userId) {
-        await this.database.query(
-          `UPDATE totalbase.challenges SET attempts = attempts + 1, used_at = CASE WHEN attempts + 1 >= $2 THEN now() ELSE used_at END
-           WHERE token_hash = $1`,
-          [hashToken(String(input.challenge)), CHALLENGE_MAX_ATTEMPTS],
-        );
-        await input.onWrongCode(wrong.userId);
+        await this.database.query(`UPDATE totalbase.challenges SET used_at = now() WHERE token_hash = $1 AND attempts >= $2`, [hashToken(input.challenge), CHALLENGE_MAX_ATTEMPTS]);
+        const { locked } = attempt ? await attempt.wrong() : { locked: false };
+        await input.onWrongCode(wrong.userId, locked);
+      } else {
+        await attempt?.right();
       }
       throw error;
     }
@@ -364,7 +415,7 @@ export class MfaService {
 
   /** A current TOTP code, never one already used: `last_used_step` only moves forward, in one UPDATE. */
   private async acceptCode(client: Queryable, factor: FactorRow, code: unknown): Promise<void> {
-    const secret = decryptSecret(this.masterKey, factor.secret);
+    const secret = decryptSecret(this.masterKey, factor.secret, "factor");
     const lastUsed = factor.last_used_step === null ? null : Number(factor.last_used_step);
     const step = typeof code === "string" ? matchTotp(secret, code, lastUsed) : null;
     const { rowCount } = step === null

@@ -523,6 +523,7 @@ const tableColumns = computed<TableColumn<Row>[]>(() => [
           variant="naked"
           icon="i-lucide-table-2"
           :title="t('database.resourceDataGrid.empty')"
+          class="table-empty"
           :actions="canCreate ? [{ label: t('database.resourceDataGrid.addRow'), icon: 'i-lucide-plus', onClick: openAdd }] : []"
         />
       </template>

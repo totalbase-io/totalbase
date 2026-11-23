@@ -318,13 +318,14 @@ useRecordFormShortcuts(computed(() => showFooter.value), { onSave: () => void on
       </PageHeader>
     </template>
 
-    <div :class="[contentClass, fitToScreen ? 'h-full' : undefined]">
+    <div :class="[contentClass, fitToScreen ? 'h-full' : undefined, started ? undefined : 'flex min-h-full flex-col']">
       <UEmpty
         v-if="!started"
         icon="i-lucide-file-plus"
         :title="newLabel"
         :description="t('dataviews.record.startOne', { name: dataview.name })"
         :actions="[{ label: newLabel, icon: 'i-lucide-plus', onClick: onNew }]"
+        class="page-empty"
       />
       <CustomPage
         v-else

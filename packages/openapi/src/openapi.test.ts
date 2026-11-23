@@ -12,6 +12,7 @@ import { buildWorkflowPaths } from "./workflow-spec.js";
 import { listApiEndpoints } from "./endpoint-list.js";
 import { postgresTypeToSchema, withNull } from "./postgres-type-schema.js";
 import { buildFunctionSpec } from "./function-spec.js";
+import { buildTableOrViewSpec, type TableViewSpecInput } from "./table-view-spec.js";
 
 const OPTIONS = { publicUrl: "https://api.example.com/" };
 
@@ -34,6 +35,28 @@ describe("postgresTypeToSchema", () => {
     expect(postgresTypeToSchema("uuid", true).examples).toEqual(["3fa85f64-5717-4562-b3fc-2c963f66afa6"]);
     expect(postgresTypeToSchema("integer[]", true)).toEqual({ type: "array", items: { type: "integer" }, examples: [[1]] });
     expect(postgresTypeToSchema("jsonb", true)).toEqual({});
+  });
+});
+
+// Security regression (Data_API.md §14): x-totalbase-relations listed every foreign key - one from a column the
+// principal may not read, and one to a table the Data API doesn't expose - naming both in the principal's document.
+describe("x-totalbase-relations", () => {
+  it("lists a relation only from a column the row shows, to a table the Data API exposes", () => {
+    const column = (name: string) => ({ name, attnum: 1, dataType: "uuid", typeName: "uuid", nullable: true }) as unknown as TableViewSpecInput["resource"]["columns"][number];
+    const relation = (sourceColumn: string, targetTable: string) => ({ name: `${sourceColumn}_fk`, sourceColumn, targetSchema: "public", targetTable, targetColumn: "id" });
+    const resource = {
+      oid: 1, schema: "public", table: "orders", primaryKey: ["id"],
+      columns: [column("id"), column("customer"), column("approver"), column("vault")],
+      relations: [relation("customer", "customers"), relation("approver", "users_private"), relation("vault", "vaults")],
+    } as unknown as TableViewSpecInput["resource"];
+    const { schemas } = buildTableOrViewSpec({
+      schema: "public", name: "orders", type: "TABLE", resource,
+      allowedActions: new Set(["READ"]),
+      fieldDecisions: { READ: (field) => (field === "approver" ? "DENY" : "ALLOW") },
+      passwordColumns: new Set(),
+      relationTargets: new Set(["public.customers", "public.users_private"]),
+    });
+    expect(schemas["public_orders"]?.["x-totalbase-relations"]).toEqual([{ field: "customer", target: "public.customers" }]);
   });
 });
 

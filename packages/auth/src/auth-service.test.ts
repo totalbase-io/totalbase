@@ -6,7 +6,7 @@ import { SettingsService } from "@totalbase/settings";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { AuthService } from "./auth-service.js";
 import type { EmailSender } from "./email-sender.js";
-import { hashPassword } from "./password.js";
+import { admitPasswordCheck, hashPassword, PASSWORD_CHECKS_AT_ONCE, PASSWORD_CHECKS_WAITING } from "./password.js";
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../../migrations/totalbase", import.meta.url));
 /** Per-run suffix: a stale row from an interrupted run never collides with this one. */
@@ -20,7 +20,7 @@ const SETTING_KEYS = [
   "auth.max_sessions_per_user",
   "auth.session_idle_minutes",
   "auth.password_changed_email_enabled",
-  "auth.mfa_disabled_email_enabled",
+  "mfa.disabled_email_enabled",
   "auth.token_created_email_enabled",
   "auth.links.invitation",
   "system.public_url",
@@ -44,7 +44,7 @@ class CapturingEmailSender implements EmailSender {
 }
 
 /** No administrator and a fixed key: MFA itself is tested in mfa-service.test.ts. */
-const MFA_OPTIONS = { masterKey: "auth-service-test-key", isAdministrator: async () => false };
+const MFA_OPTIONS = { masterKey: "auth-service-test-key", effectiveRoles: async () => [] };
 
 describe("AuthService (integration)", () => {
   let database: Database;
@@ -245,6 +245,256 @@ describe("AuthService (integration)", () => {
     await expect(auth.resetPassword(resetToken, "another-password-1")).rejects.toMatchObject({
       code: "INVALID_TOKEN",
     });
+  });
+
+  // Security regression (Security.md §2.4): an unknown, locked, inactive or password-less account was refused before
+  // Argon2 ran, a wrong password after - the answer's time told which emails have an account.
+  it("takes as long to refuse an unknown email as a wrong password", async () => {
+    const user = await createUser({ email: emailOf("timing"), passwordHash: await hashPassword("timing-password-1"), emailVerified: true });
+    const elapsed = async (email: string) => {
+      const started = performance.now();
+      await auth.login({ email, password: "not-the-password" }).catch(() => undefined);
+      return performance.now() - started;
+    };
+    const median = async (email: string) => {
+      const runs = [await elapsed(email), await elapsed(email), await elapsed(email)].sort((a, b) => a - b);
+      return runs[1]!;
+    };
+    await elapsed(emailOf("timing-warmup"));
+    const known = await median(user.email!);
+    const unknown = await median(emailOf("timing-nobody"));
+    expect(unknown).toBeGreaterThan(known * 0.5);
+    await database.query(`UPDATE totalbase.users SET failed_login_count = 0, locked_until = NULL WHERE id = $1`, [user.id]);
+  });
+
+  // Security regression (Security.md §2.4): the lock was read before a proof was checked and written after it failed,
+  // so guesses sent together all passed the check - far more than auth.lockout_max_attempts were ever tried.
+  it("never checks more guesses than the lockout allows, however many arrive together", async () => {
+    const user = await createUser({ email: emailOf("parallel"), passwordHash: await hashPassword("parallel-right-password"), emailVerified: true });
+    const max = await settings.get("auth.lockout_max_attempts");
+    try {
+      const reasons: string[] = [];
+      await Promise.allSettled(
+        Array.from({ length: max * 3 }, (_, i) => auth.login({ email: user.email!, password: `wrong-${i}` }, (reason) => reasons.push(reason))),
+      );
+      expect(reasons.filter((reason) => reason === "wrong_password").length).toBeLessThanOrEqual(max);
+      await database.query(`UPDATE totalbase.users SET failed_login_count = 0, locked_until = NULL WHERE id = $1`, [user.id]);
+
+      const proofs = await Promise.allSettled(Array.from({ length: max * 3 }, (_, i) => auth.assertCurrentPassword(user.id, `wrong-${i}`)));
+      const checked = proofs.filter((proof) => proof.status === "rejected" && /incorrect/.test(String((proof.reason as Error).message)));
+      expect(checked.length).toBeLessThanOrEqual(max);
+    } finally {
+      await database.query(`UPDATE totalbase.users SET failed_login_count = 0, locked_until = NULL WHERE id = $1`, [user.id]);
+    }
+    await auth.assertCurrentPassword(user.id, "parallel-right-password");
+    const { rows } = await database.query<{ failed_login_count: number }>(`SELECT failed_login_count FROM totalbase.users WHERE id = $1`, [user.id]);
+    expect(rows[0]!.failed_login_count).toBe(0);
+  });
+
+  // Security regression (Security.md §2.4, SEC-35): five wrong passwords locked the account for everyone, so anyone
+  // knowing an email kept its owner out. Now an address locks out only itself, and the account slows down - never
+  // locks - for addresses it never signed in from.
+  // Security regression (round 11, SEC-112): the password-check cap answered 429 only where a password was checked -
+  // an existing account - while an unknown email's refusal swallowed it and answered 401 at once: under a flood the
+  // status told which accounts exist. And the 429 came after the attempt was counted, so a real user retrying
+  // "try again in a moment" locked their own address out with no expiry.
+  it("a full password queue answers 429 alike for every email, before any attempt is counted", async () => {
+    const user = await createUser({ email: emailOf("cap-oracle"), passwordHash: await hashPassword("cap-oracle-right-1"), emailVerified: true });
+    const max = await settings.get("auth.lockout_max_attempts");
+    // Every place taken: the turns and the queue behind them.
+    const admitted = Array.from({ length: PASSWORD_CHECKS_AT_ONCE + PASSWORD_CHECKS_WAITING }, () => admitPasswordCheck());
+    const codeOf = (email: string, password: string) =>
+      auth.login({ email, password, ip: "203.0.113.90" }).then(() => "SIGNED_IN", (error: TotalBaseError) => error.code);
+    try {
+      expect(await codeOf(emailOf("cap-oracle-nobody"), "whatever-1")).toBe("RATE_LIMIT_EXCEEDED");
+      for (let i = 0; i < max + 1; i++) expect(await codeOf(user.email!, "wrong-guess")).toBe("RATE_LIMIT_EXCEEDED");
+      const { rows } = await database.query(`SELECT failed_count FROM totalbase.users_addresses WHERE "user" = $1`, [user.id]);
+      expect(rows).toEqual([]);
+    } finally {
+      for (const check of admitted) check.release();
+    }
+    // The flood over, the owner signs in from that same address.
+    await expect(auth.login({ email: user.email!, password: "cap-oracle-right-1", ip: "203.0.113.90" })).resolves.toMatchObject({ token: expect.any(String) });
+  });
+
+  // Security regression (round 12, SEC-116): a body without a password - or with a number, an object - made the check
+  // throw: an account that has one answered 500 at once, any other email 401, and nothing counted the probe.
+  it("answers a sign-in without a text password as a wrong password, for every email alike", async () => {
+    const user = await createUser({ email: emailOf("no-text-password"), passwordHash: await hashPassword("no-text-right-1"), emailVerified: true });
+    const codeOf = (email: string, password: unknown) =>
+      auth.login({ email, password: password as string, ip: "203.0.113.92" }).then(() => "SIGNED_IN", (error: TotalBaseError) => error.code);
+    for (const password of [undefined, 12345, { a: 1 }]) {
+      expect(await codeOf(user.email!, password)).toBe("AUTHENTICATION_REQUIRED");
+      expect(await codeOf(emailOf("no-text-nobody"), password)).toBe("AUTHENTICATION_REQUIRED");
+    }
+    // Each counted, as a wrong password is.
+    const { rows } = await database.query<{ failed_count: number }>(`SELECT failed_count FROM totalbase.users_addresses WHERE "user" = $1`, [user.id]);
+    expect(rows.map((row) => row.failed_count)).toEqual([3]);
+    await auth.users.unlock(user.id);
+  });
+
+  // Security regression (round 12, SEC-117): a sign-in held its turn while it waited on the database - two sign-ins
+  // for an account whose row someone kept locked took both turns, and every password check of the instance waited.
+  it("a sign-in waiting on its account's row keeps no other password check from running", async () => {
+    const user = await createUser({ email: emailOf("row-locked"), passwordHash: await hashPassword("row-locked-right-1"), emailVerified: true });
+    let unlock!: () => void;
+    const held = new Promise<void>((resolve) => { unlock = resolve; });
+    let locked!: () => void;
+    const lockTaken = new Promise<void>((resolve) => { locked = resolve; });
+    const holder = database.transaction(async (client) => {
+      await client.query(`SELECT 1 FROM totalbase.users WHERE id = $1 FOR UPDATE`, [user.id]);
+      locked();
+      await held;
+    });
+    await lockTaken;
+    const waiters = Array.from({ length: PASSWORD_CHECKS_AT_ONCE }, () =>
+      auth.login({ email: user.email!, password: "row-locked-right-1", ip: "203.0.113.93" }).catch(() => undefined));
+    try {
+      const hashed = await Promise.race([hashPassword("someone-else-1").then(() => "HASHED"), new Promise((resolve) => setTimeout(() => resolve("WAITING"), 5000))]);
+      expect(hashed).toBe("HASHED");
+    } finally {
+      unlock();
+      await holder;
+      await Promise.all(waiters);
+    }
+  });
+
+  // Security regression (round 11, SEC-112): a check that failed for another reason than a wrong password kept its
+  // attempt spent - the address counted toward its lockout for nothing.
+  it("gives a sign-in attempt back when the password check itself fails", async () => {
+    const user = await createUser({ email: emailOf("check-fails"), passwordHash: "not-an-argon2-hash", emailVerified: true });
+    for (let i = 0; i < 3; i++) await auth.login({ email: user.email!, password: "anything-1", ip: "203.0.113.91" }).catch(() => undefined);
+    const { rows } = await database.query<{ failed_count: number }>(`SELECT failed_count FROM totalbase.users_addresses WHERE "user" = $1`, [user.id]);
+    expect(rows.map((row) => row.failed_count)).toEqual([0]);
+  });
+
+  it("locks an address out of an account, never the account: its owner signs in from where they always do", async () => {
+    const user = await createUser({ email: emailOf("per-address"), passwordHash: await hashPassword("per-address-right-1"), emailVerified: true });
+    const max = await settings.get("auth.lockout_max_attempts");
+    const reasonsFrom = async (ip: string, password: string, times: number) => {
+      const reasons: string[] = [];
+      for (let i = 0; i < times; i++) await auth.login({ email: user.email!, password, ip }, (reason) => reasons.push(reason)).catch(() => undefined);
+      return reasons;
+    };
+    // The owner's usual address, known from a sign-in.
+    await auth.login({ email: user.email!, password: "per-address-right-1", ip: "198.51.100.7" });
+
+    // An attacker from three addresses: each locks out after `max` wrong guesses - itself only.
+    for (const ip of ["203.0.113.1", "203.0.113.2", "203.0.113.3"]) {
+      const reasons = await reasonsFrom(ip, "wrong-guess", max + 2);
+      expect(reasons.filter((reason) => reason === "wrong_password").length, ip).toBeLessThanOrEqual(max);
+    }
+    expect(await reasonsFrom("203.0.113.1", "per-address-right-1", 1)).toEqual(["address_locked"]);
+    const { rows } = await database.query<{ locked: boolean }>(`SELECT coalesce(locked_until > now(), false) AS locked FROM totalbase.users WHERE id = $1`, [user.id]);
+    expect(rows[0]!.locked).toBe(false);
+
+    // The owner, from their address: in at once.
+    const failures = async () => (await database.query<{ n: number }>(`SELECT sign_in_failures AS n FROM totalbase.users WHERE id = $1`, [user.id])).rows[0]!.n;
+    const before = await failures();
+    expect(before).toBeGreaterThanOrEqual(max);
+    await expect(auth.login({ email: user.email!, password: "per-address-right-1", ip: "198.51.100.7" })).resolves.toMatchObject({ token: expect.any(String) });
+    // Their success from a known address leaves the delay standing for the others - it doesn't reopen it to the
+    // attacker: the count stays, and an address the account never signed in from waits its turn, its guess not even
+    // checked. The delay itself lasts seconds - a slow run outlives it - so it is set ahead here, as a guess would.
+    expect(await failures()).toBe(before);
+    await database.query(`UPDATE totalbase.users SET sign_in_delayed_until = now() + interval '1 minute' WHERE id = $1`, [user.id]);
+    expect(await reasonsFrom("192.0.2.50", "per-address-right-1", 1)).toEqual(["sign_in_delayed"]);
+    await expect(auth.login({ email: user.email!, password: "per-address-right-1", ip: "198.51.100.7" })).resolves.toMatchObject({ token: expect.any(String) });
+    // A password reset ends every address's lock.
+    await auth.users.unlock(user.id);
+    await expect(auth.login({ email: user.email!, password: "per-address-right-1", ip: "203.0.113.1" })).resolves.toMatchObject({ token: expect.any(String) });
+  });
+
+  // Security regression (round 7): addresses were counted whole, so one IPv6 /64 - 2^64 addresses - gave an attacker a
+  // fresh address per guess, and an owner whose privacy address rotated was unknown the next day.
+  it("counts an IPv6 address by its /64, and an administrator's Unlock account ends every address's lock", async () => {
+    const user = await createUser({ email: emailOf("ipv6"), passwordHash: await hashPassword("ipv6-right-password"), emailVerified: true });
+    const max = await settings.get("auth.lockout_max_attempts");
+    const reasons: string[] = [];
+    for (let i = 1; i <= max + 1; i++) await auth.login({ email: user.email!, password: "wrong", ip: `2001:db8:1:2::${i.toString(16)}` }, (reason) => reasons.push(reason)).catch(() => undefined);
+    expect(reasons.at(-1)).toBe("address_locked");
+    expect(reasons.filter((reason) => reason === "wrong_password").length).toBe(max);
+    const { rows } = await database.query<{ ip: string }>(`SELECT ip::text FROM totalbase.users_addresses WHERE "user" = $1`, [user.id]);
+    expect(rows.map((row) => row.ip)).toEqual(["2001:db8:1:2::/64"]);
+    // Unlock account is a Data API row update on users (UserAdminEditor.vue): it frees the addresses too.
+    await database.query(`UPDATE totalbase.users SET locked_until = NULL, failed_login_count = 0, sign_in_failures = 0, sign_in_delayed_until = NULL WHERE id = $1`, [user.id]);
+    await expect(auth.login({ email: user.email!, password: "ipv6-right-password", ip: "2001:db8:1:2::99" })).resolves.toMatchObject({ token: expect.any(String) });
+    // A sign-in's own success never counts as an unlock: it leaves the delay's end at now(), not NULL.
+    const { rows: [after] } = await database.query<{ delayed: Date | null }>(`SELECT sign_in_delayed_until AS delayed FROM totalbase.users WHERE id = $1`, [user.id]);
+    expect(after!.delayed).not.toBeNull();
+  });
+
+  // Security regression (Security.md §2.8): anyone may ask for an address's reset or verification link - asked again and
+  // again, each request emailed the address and retired the link it got before, so a reset in progress never finished.
+  it("sends one link per cooldown to an address anyone can ask for, and keeps the one already sent", async () => {
+    const user = await createUser({ email: emailOf("cooldown"), passwordHash: await hashPassword("cooldown-password"), emailVerified: true });
+    emailSender.sent = [];
+    await auth.requestPasswordReset(user.email!);
+    await auth.emailsSettled();
+    const first = emailSender.lastToken();
+    for (let i = 0; i < 3; i++) await auth.requestPasswordReset(user.email!);
+    await auth.emailsSettled();
+    expect(emailSender.sent).toHaveLength(1);
+    await auth.resetPassword(first, "after-cooldown-password");
+    expect((await auth.login({ email: user.email!, password: "after-cooldown-password" })).token).toBeTruthy();
+
+    const unverified = await createUser({ email: emailOf("cooldown-verify"), passwordHash: await hashPassword("cooldown-password") });
+    emailSender.sent = [];
+    for (let i = 0; i < 3; i++) await auth.resendEmailVerificationByEmail(unverified.email!);
+    await auth.emailsSettled();
+    expect(emailSender.sent).toHaveLength(1);
+  });
+
+  // Security regression (Security.md §2.8): past the cooldown, the next request anyone made still retired the link
+  // the owner was using - asked once a minute, a reset never finished.
+  it("never retires the link in progress when a new one is asked for past the cooldown", async () => {
+    const user = await createUser({ email: emailOf("cooldown-past"), passwordHash: await hashPassword("cooldown-password"), emailVerified: true });
+    emailSender.sent = [];
+    await auth.requestPasswordReset(user.email!);
+    await auth.emailsSettled();
+    const first = emailSender.lastToken();
+    // The cooldown has passed.
+    await database.query(`UPDATE totalbase.emails_tokens SET created_at = now() - interval '2 minutes' WHERE "user" = $1`, [user.id]);
+    await auth.requestPasswordReset(user.email!);
+    await auth.emailsSettled();
+    const second = emailSender.lastToken();
+    expect(second).not.toBe(first);
+    await auth.resetPassword(first, "first-link-still-works");
+    expect((await auth.login({ email: user.email!, password: "first-link-still-works" })).token).toBeTruthy();
+    // Used, it retires the other.
+    await expect(auth.resetPassword(second, "second-link-retired")).rejects.toMatchObject({ code: "INVALID_TOKEN" });
+  });
+
+  // Security regression (Security.md §2.8, §2.9): POST /api/auth/password/change kept every other session and pending
+  // link alive, a reset kept a pending invitation that would set the password again, and accepting an invitation on
+  // an account that had a password kept its sessions.
+  it("a password change, a reset and a re-invitation end what the old password opened", async () => {
+    const user = await createUser({ email: emailOf("aftermath"), passwordHash: await hashPassword("aftermath-pass-1"), emailVerified: true });
+    const pending = async () => (await database.query(`SELECT 1 FROM totalbase.emails_tokens WHERE "user" = $1 AND used_at IS NULL`, [user.id])).rows.length;
+
+    const mine = await auth.login({ email: user.email!, password: "aftermath-pass-1" });
+    const stolen = await auth.login({ email: user.email!, password: "aftermath-pass-1" });
+    await auth.createInvitation({ id: user.id, email: user.email!, name: null }, "link");
+    await auth.changePassword(user.id, "aftermath-pass-1", "aftermath-pass-2", (await auth.sessions.validate(mine.token))!.session.id);
+    expect(await auth.sessions.validate(mine.token)).not.toBeNull();
+    expect(await auth.sessions.validate(stolen.token)).toBeNull();
+    expect(await pending()).toBe(0);
+
+    // SEC-64: a token made with the old password survived a reset - the way an account is taken back.
+    const liveTokens = async () => (await database.query(`SELECT 1 FROM totalbase.tokens WHERE "user" = $1 AND revoked_at IS NULL`, [user.id])).rows.length;
+    await database.query(`INSERT INTO totalbase.tokens ("user", name, key_prefix, key_hash) VALUES ($1, 'intruder', 'tb_in', $2)`, [user.id, `intruder-${user.id}`]);
+    await auth.createInvitation({ id: user.id, email: user.email!, name: null }, "link");
+    await auth.requestPasswordReset(user.email!);
+    await auth.emailsSettled();
+    await auth.resetPassword(emailSender.lastToken(), "aftermath-pass-3");
+    expect(await pending()).toBe(0);
+    expect(await liveTokens()).toBe(0);
+
+    const session = await auth.login({ email: user.email!, password: "aftermath-pass-3" });
+    await auth.createInvitation({ id: user.id, email: user.email!, name: null });
+    await auth.emailsSettled();
+    await auth.acceptInvitation(emailSender.lastToken(), "aftermath-pass-4");
+    expect(await auth.sessions.validate(session.token)).toBeNull();
   });
 
   it("changePassword requires the current password to match (400 INVALID_CURRENT_PASSWORD, like My account)", async () => {
@@ -524,7 +774,7 @@ describe("AuthService (integration)", () => {
       expect(emailSender.sent.at(-1)!.to).toBe(user.email);
       expect(emailSender.sent.at(-1)!.body).toContain("deploy-bot (ADMIN)");
 
-      await settings.set("auth.mfa_disabled_email_enabled", false);
+      await settings.set("mfa.disabled_email_enabled", false);
       await settings.set("auth.token_created_email_enabled", false);
       const count = emailSender.sent.length;
       await auth.notifyMfaDisabled(user.id);

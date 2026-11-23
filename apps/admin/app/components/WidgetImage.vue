@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { imageSource } from '~/utils/image-source'
+
 /**
  * The Image widget (TImage, DataViews.md §9.10): an image on a page - uploaded in the designer (a
  * PUBLIC file: anyone who opens the page sees it, no grant on files), a file of the record
@@ -36,7 +38,6 @@ const emit = defineEmits<{ click: [event: MouseEvent | KeyboardEvent] }>()
 /** Clicked is wired: a button, reachable from the keyboard. */
 const clickable = !!getCurrentInstance()?.vnode.props?.onClick
 
-const FILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** What the `<img>` shows: a URL as it is; a file read with the viewer's token (a PUBLIC one needs none) into a blob. */
 const url = ref<string | null>(null)
 const failed = ref(false)
@@ -49,13 +50,13 @@ watch(() => props.src, async (src) => {
   release()
   failed.value = false
   url.value = null
-  const value = typeof src === 'string' ? src.trim() : ''
-  if (!value) return
-  const path = FILE_ID.test(value) ? `/api/totalbase/table/files/${value}` : value.startsWith('/') ? value : null
-  if (!path) {
-    url.value = /^https?:\/\//i.test(value) ? value : null
+  const source = imageSource(src)
+  if (!source) return
+  if ('url' in source) {
+    url.value = source.url
     return
   }
+  const path = `/api/totalbase/table/files/${source.file}`
   try {
     const response = await fetchFileContent(path)
     objectUrl = URL.createObjectURL(response._data as Blob)

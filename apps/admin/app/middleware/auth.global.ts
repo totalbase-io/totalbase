@@ -5,7 +5,8 @@
 // another site for visitors with no TotalBase account: its token is its access.
 const PUBLIC_PREFIXES = ['/auth/', '/embed/']
 // The first-start setup (pages/setup.vue): no one can sign in yet.
-const PUBLIC_PAGES = ['/setup']
+// /lockdown: where a signed-in user who isn't an administrator waits out a lockdown (Security.md §2.21).
+const PUBLIC_PAGES = ['/setup', '/lockdown']
 
 export default defineNuxtRouteMiddleware((to) => {
   if (import.meta.server) return
@@ -16,6 +17,9 @@ export default defineNuxtRouteMiddleware((to) => {
   const isLoginPage = to.path === '/login'
 
   if (!session.isAuthenticated.value && !isLoginPage) {
+    // A session a lockdown keeps out (plugins/session.client.ts): its user waits, still signed in - the sign-in
+    // page stays one click away, for an administrator on the same browser.
+    if (useLockedOut().value) return navigateTo('/lockdown')
     return navigateTo({ path: '/login', query: { redirect: to.fullPath } })
   }
   // `/` has no page of its own: each user's home (pages/index.vue).

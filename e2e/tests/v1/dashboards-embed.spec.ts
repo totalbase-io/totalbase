@@ -50,7 +50,7 @@ test.beforeAll(async ({ browser }) => {
   for (const d of (await api<{ id: string, name: string }[]>(page, token, 'GET', '/admin/api/dashboards')).filter(d => d.name === NAME)) {
     await api(page, token, 'DELETE', `/admin/api/dashboards/${d.id}`)
   }
-  await api(page, token, 'PUT', `/admin/api/secrets/${SECRET_KEY}`, { data: { value: SECRET } })
+  await api(page, token, 'PUT', `/admin/api/secrets/${SECRET_KEY}`, { data: { value: SECRET, scope: 'DASHBOARD_EMBEDS' } })
   await api(page, token, 'PATCH', '/admin/api/settings/dashboards', { data: { embed_secret_key: SECRET_KEY, embed_allowed_origins: [HOST] } })
   dashboardId = (await api<{ id: string }>(page, token, 'POST', '/admin/api/dashboards', { data: { name: NAME, description: 'Ventas por cliente' } })).id
   await api(page, token, 'PATCH', `/admin/api/dashboards/${dashboardId}`, { data: { variables: [

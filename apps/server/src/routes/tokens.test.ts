@@ -83,11 +83,36 @@ describe("Self-service API tokens", () => {
     expect((await call("POST", "/api/tokens", { data: { name: `${PREFIX}-ips-bad`, ttlDays: 1, allowedIps: ["nope"] } })).statusCode).toBe(400);
     expect((await call("DELETE", `/api/tokens/${id}`)).statusCode).toBe(204);
   });
+  // Security regression (MCP-1, MCP-2): an agent's ADMIN token minted itself an unrestricted ADMIN sibling, and cleared
+  // its own allowed addresses through the Data API - a token's containment contained nothing.
+  it("lets no token issue or regenerate an ADMIN token, nor change a token's allowed addresses", async () => {
+    const created = await call("POST", "/api/tokens", { data: { name: `${PREFIX}-agent`, plane: "ADMIN", ttlDays: 1, allowedIps: ["127.0.0.1"] } });
+    expect(created.statusCode, created.body).toBe(201);
+    const { id, key } = created.json().data as { id: string; key: string };
+    const me = await context.auth.me(token);
+    const asAgent = (method: "POST" | "PATCH", url: string, data: unknown) =>
+      app.inject({ method, url, remoteAddress: "127.0.0.1", headers: { authorization: `Bearer ${key}` }, payload: { data } });
+
+    const minted = await asAgent("POST", "/admin/api/tokens", { userId: me.id, name: `${PREFIX}-sibling`, plane: "ADMIN", ttlDays: 3650, allowedIps: null });
+    expect([minted.statusCode, minted.json().errors?.[0]?.code]).toEqual([403, "PERMISSION_DENIED"]);
+    const rotated = await asAgent("POST", `/admin/api/tokens/${id}/rotate`, { ttlDays: 3650 });
+    expect([rotated.statusCode, rotated.json().errors?.[0]?.code]).toEqual([403, "PERMISSION_DENIED"]);
+    // The self-service routes are a session's: the token isn't one.
+    expect((await asAgent("POST", "/api/tokens", { name: `${PREFIX}-self`, plane: "ADMIN" })).statusCode).toBe(401);
+    const lifted = await asAgent("PATCH", `/api/totalbase/table/tokens/${id}`, { allowed_ips: null });
+    expect([lifted.statusCode, lifted.json().errors?.[0]?.code]).toEqual([403, "PERMISSION_DENIED"]);
+    // An API-plane token it may still issue - narrower than itself, its owner's live roles.
+    const narrow = await asAgent("POST", "/admin/api/tokens", { userId: me.id, name: `${PREFIX}-narrow`, plane: "API", ttlDays: 1 });
+    expect(narrow.statusCode, narrow.body).toBe(201);
+    const { rows } = await database.query<{ allowed_ips: string[] | null }>(`SELECT allowed_ips::text[] FROM totalbase.tokens WHERE id = $1`, [id]);
+    expect(rows[0]!.allowed_ips).toEqual(["127.0.0.1/32"]);
+  });
+
   // Refused tokens in the audit log (Security.md §11.6): a secret that is some token's, never an invented one.
   it("records a refused token as auth.token_refused, with its reason - once a minute per token and reason", async () => {
     const created = await call("POST", "/api/tokens", { data: { name: `${PREFIX}-refused`, ttlDays: 1, allowedIps: ["203.0.113.7"] } });
     const { id, key } = created.json().data as { id: string; key: string };
-    const use = (ip: string, bearer = key) => app.inject({ method: "GET", url: "/api/totalbase/table/roles?limit=1&secret=in-the-url", remoteAddress: ip, headers: { authorization: `Bearer ${bearer}` } });
+    const use = (ip: string, bearer = key) => app.inject({ method: "GET", url: "/api/totalbase/table/roles?limit=1&where[name][_neq]=in-the-url", remoteAddress: ip, headers: { authorization: `Bearer ${bearer}` } });
     const entries = async () => {
       // Written after the response is sent.
       await new Promise((resolve) => setTimeout(resolve, 300));

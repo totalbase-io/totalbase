@@ -151,6 +151,34 @@ describe("Delegated administration", () => {
     expect(removeManaged.statusCode, removeManaged.body).toBe(200);
   });
 
+  // Security regression (Security.md §10.2, Data_API.md §5.7): an UPDATE of users_roles - a PATCH, or an upsert's DO
+  // UPDATE - checked only the role it set, so an assignment of a role out of reach was repointed at one in reach,
+  // taking that role from its user; and an upsert updated rows on a table that doesn't expose PATCH.
+  it("never moves an assignment away from a role out of reach, and an upsert updates only where PATCH is exposed", async () => {
+    await context.roleAssignments.assignRoleToUser(targetUserId, foreignRoleId);
+    const assignmentId = (await database.query<{ id: string }>(`SELECT id FROM totalbase.users_roles WHERE "user" = $1 AND role = $2`, [targetUserId, foreignRoleId])).rows[0]!.id;
+    const upsert = { data: { id: assignmentId, user: targetUserId, role: managedRoleId }, on_conflict: { target: ["id"], action: "UPDATE", data: { role: managedRoleId } } };
+    await context.permissions.set(managerRoleId, resources.users_roles!, "UPDATE", { effect: "ALLOW", fields: fields("user", "role") });
+    await context.permissions.set(managerRoleId, resources.users_roles!, "CREATE", { effect: "ALLOW", fields: fields("id", "user", "role") });
+    try {
+      const unexposed = await call("POST", "/api/totalbase/table/users_roles", { ...upsert, data: { ...upsert.data } });
+      expect([unexposed.statusCode, unexposed.json().errors?.[0]?.code], unexposed.body).toEqual([403, "ACTION_DENIED"]);
+
+      await database.query(`UPDATE totalbase.resources SET exposed_methods = $2 WHERE id = $1`, [resources.users_roles, ["GET", "POST", "PATCH", "DELETE"]]);
+      const patched = await call("PATCH", `/api/totalbase/table/users_roles/${assignmentId}`, { data: { role: managedRoleId } });
+      expect([patched.statusCode, patched.json().errors?.[0]?.code], patched.body).toEqual([403, "PERMISSION_DENIED"]);
+      const upserted = await call("POST", "/api/totalbase/table/users_roles", upsert);
+      expect([upserted.statusCode, upserted.json().errors?.[0]?.code], upserted.body).toEqual([403, "PERMISSION_DENIED"]);
+      const { rows } = await database.query<{ role: string }>(`SELECT role FROM totalbase.users_roles WHERE id = $1`, [assignmentId]);
+      expect(rows[0]!.role).toBe(foreignRoleId);
+    } finally {
+      await database.query(`UPDATE totalbase.resources SET exposed_methods = $2 WHERE id = $1`, [resources.users_roles, ["GET", "POST", "DELETE"]]);
+      await database.query(`DELETE FROM totalbase.permissions WHERE role = $1 AND resource = $2 AND action = 'UPDATE'`, [managerRoleId, resources.users_roles]);
+      await context.permissions.set(managerRoleId, resources.users_roles!, "CREATE", { effect: "ALLOW", fields: fields("user", "role") });
+      await database.query(`DELETE FROM totalbase.users_roles WHERE id = $1`, [assignmentId]);
+    }
+  });
+
   it("keeps role managers administrator-written", async () => {
     const res = await call("POST", "/api/totalbase/table/roles_managers", { data: { role: foreignRoleId, manager: managerRoleId } });
     expect(res.statusCode).toBe(403);

@@ -14,7 +14,7 @@ import { writeTransactionContext, type DataPrincipal, type MutationsContext } fr
 import { resolveTableResource } from "@totalbase/resources";
 import {
   assertAssignmentDeleteAllowed,
-  assertRoleOwnership,
+  roleOwnershipCheck,
   assertRolesDeleteAllowed,
   resolveWriteCaller,
   assertGuardedColumnsWriteAllowed,
@@ -22,7 +22,7 @@ import {
   protectedFieldDecision,
 } from "./totalbase-guardrails.js";
 import { hashPasswordFields, loadPasswordColumns, stripPasswordFields } from "./password-fields.js";
-import { mutationResponseProjection } from "./response-projection.js";
+import { mutationResponseProjection, readRowFilter, writeWhereFieldDecision, type RowProjection } from "./response-projection.js";
 import {
   assertAuthorizedRow,
   assertValidRow,
@@ -237,7 +237,7 @@ export async function executeTransaction(
       mutationDeps: MutationDeps;
       mutationContext: Parameters<typeof compileInsert>[0];
       passwordColumns: Set<string>;
-      project: (row: Record<string, unknown>) => Record<string, unknown>;
+      project: RowProjection;
     };
     const prepared: Prepared[] = [];
     for (const op of request.operations) {
@@ -261,21 +261,25 @@ export async function executeTransaction(
         await recordMutationFailure(mutationDeps, action, "DENIED", startedAt, error);
         throw error;
       }
+      const passwordColumns = await loadPasswordColumns(deps.context, resource.id);
       const mutationContext = {
         root,
         fieldDecision: protectedFieldDecision(root, permission.fieldDecision),
+        // The operation's own where names only what the caller may read (Security.md §6.4).
+        whereFieldDecision: await writeWhereFieldDecision(deps.context, deps.dataPrincipal, root, resource.id, passwordColumns),
         rowFilter: buildRowFilter(permission, deps.limits),
         payloadChecks: buildPayloadChecks(permission, deps.limits),
+        // A delete's answer shows a row the caller could read (Security.md §6.6).
+        ...(action === "DELETE" ? { readFilter: await readRowFilter(deps.context, deps.dataPrincipal, resource.id, deps.limits) } : {}),
         resolveUserVariable: userVariableResolver(deps.dataPrincipal),
         // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
         related: relatedResolver(schemaContext),
       };
       // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
       await preloadRelations(mutationContext);
-      const passwordColumns = await loadPasswordColumns(deps.context, resource.id);
       // Later operations' `$ref`s resolve against this projected row too - otherwise a reference could copy a
       // column the caller can't read into one it can.
-      const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, root, resource.id, passwordColumns);
+      const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, root, resource.id, passwordColumns, deps.limits);
       prepared.push({ op, action, mutationDeps, mutationContext, passwordColumns, project });
     }
 
@@ -303,7 +307,7 @@ export async function executeTransaction(
           assertValidRow(row, compiled.payloadCheckColumns);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await auditAndEnqueue(mutationDeps, client, "CREATE", startedAt, undefined, clean);
-          results.set(op.key, project(clean));
+          results.set(op.key, await project(clean, client));
         } else if (op.operation === "update") {
           const pkField = singlePrimaryKeyField(root);
           const id = resolveReferences(op.id, results);
@@ -311,29 +315,32 @@ export async function executeTransaction(
           assertGuardedColumnsWriteAllowed(root, data, caller, "UPDATE");
           await assertUserRoleAssignmentAllowed(client, root, data, caller);
           const hashedData = await hashPasswordFields(deps.context, passwordColumns, data);
+          // Which roles the caller may change, read before this operation moves any (Security.md §9.5).
+          const ownsRole = await roleOwnershipCheck(client, root, caller);
           const compiled = await compileUpdate(mutationContext, hashedData, pkEqualsFilter(pkField, id), updateOldValueFields(mutationDeps));
           const { rows } = await client.query(compiled.sql, compiled.params);
           const row = (rows as Record<string, unknown>[])[0];
           if (!row) throw new TotalBaseError("ROW_NOT_FOUND", `Operation "${op.key}": row not found.`);
           await assertAuthorizedRow(row, "UPDATE");
           assertValidRow(row, compiled.payloadCheckColumns);
-          await assertRoleOwnership(client, root, row, caller);
+          ownsRole(row);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await auditAndEnqueue(mutationDeps, client, "UPDATE", startedAt, oldRowOf(row, compiled, passwordColumns), clean);
-          results.set(op.key, project(clean));
+          results.set(op.key, await project(clean, client));
         } else {
           const pkField = singlePrimaryKeyField(root);
           const id = resolveReferences(op.id, results);
+          const ownsRole = await roleOwnershipCheck(client, root, caller);
           const compiled = await compileDelete(mutationContext, pkEqualsFilter(pkField, id));
           const { rows } = await client.query(compiled.sql, compiled.params);
           const row = (rows as Record<string, unknown>[])[0];
           if (!row) throw new TotalBaseError("ROW_NOT_FOUND", `Operation "${op.key}": row not found.`);
           assertRolesDeleteAllowed(root, row);
-          await assertRoleOwnership(client, root, row, caller);
+          ownsRole(row);
           await assertAssignmentDeleteAllowed(client, root, row, caller);
-          const clean = stripPasswordFields(row, passwordColumns);
+          const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await auditAndEnqueue(mutationDeps, client, "DELETE", startedAt, clean, undefined);
-          results.set(op.key, project(clean));
+          results.set(op.key, await project(clean, client, { readable: row["__readable"] === true }));
         }
       }
     }, { ...transactionContext, ...(ownTimeout > 0 ? { statementTimeoutMs: ownTimeout } : {}), ...deps.transactionContext });

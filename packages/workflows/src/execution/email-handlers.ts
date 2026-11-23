@@ -93,12 +93,43 @@ async function assertSendAllowed(context: WorkflowEngineContext, dataPrincipal: 
  * Empty, undefined; a list holding anything but text is a design error.
  */
 export function address(value: unknown): string | undefined {
+  const items = recipients(value);
+  return items.length > 0 ? items.join(", ") : undefined;
+}
+
+/** At most this many recipients - to, cc and bcc together - per Send email step: one invocation is never a mailing list. */
+export const MAX_RECIPIENTS_PER_STEP = 50;
+
+/** One address as a step may name it: `ana@example.com`, or `Ana <ana@example.com>`. */
+const ADDRESS_PATTERN = /^(?:[^<>@,;"]*<)?[^\s<>@,;"]+@[^\s<>@,;"]+\.[^\s<>@,;"]+>?$/;
+
+/**
+ * An address field's recipients, each checked (Workflows.md §5.16): a value a trigger carried - a webhook's body -
+ * is one address or several separated by commas, each a real one, never a text that slips extra recipients or
+ * anything else into the message's headers.
+ */
+function recipients(value: unknown): string[] {
+  let items: string[];
   if (Array.isArray(value)) {
     if (!value.every((item) => typeof item === "string")) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "A list of recipients holds email addresses only.");
-    const items = (value as string[]).map((item) => item.trim()).filter(Boolean);
-    return items.length > 0 ? items.join(", ") : undefined;
+    items = value as string[];
+  } else if (typeof value === "string") {
+    items = value.split(",");
+  } else {
+    return [];
   }
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const cleaned = items.map((item) => item.trim()).filter(Boolean);
+  const invalid = cleaned.find((item) => !ADDRESS_PATTERN.test(item));
+  if (invalid !== undefined) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", `Not an email address: ${JSON.stringify(invalid.slice(0, 100))}.`);
+  return cleaned;
+}
+
+/** Refuses a step whose recipients, all together, are more than MAX_RECIPIENTS_PER_STEP. */
+function assertRecipientCount(...fields: (string | undefined)[]): void {
+  const count = fields.reduce((sum, field) => sum + (field ? field.split(",").length : 0), 0);
+  if (count > MAX_RECIPIENTS_PER_STEP) {
+    throw new TotalBaseError("WORKFLOW_LIMIT_EXCEEDED", `This step has ${count} recipients - at most ${MAX_RECIPIENTS_PER_STEP} (to, cc and bcc together).`);
+  }
 }
 
 /**
@@ -200,6 +231,7 @@ const sendEmail: OperationHandler = async ({ context, dataPrincipal, configurati
     html = bodyType === "html" || bodyType === "both" ? (configuration.htmlBody as string | undefined) : undefined;
   }
   if (!subject) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no subject configured.");
+  assertRecipientCount(to, cc, bcc);
   const attachments = await readAttachments(context, dataPrincipal, configuration.attachments);
 
   const redirect = workflowContext.emailRedirect;

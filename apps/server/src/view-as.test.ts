@@ -84,6 +84,15 @@ describe("see as a role or a user", () => {
     expect((await database.query(`SELECT count(*)::int AS n FROM public.${TABLE} WHERE name = 'changed'`)).rows[0]).toEqual({ n: 0 });
   });
 
+  it("never writes through a percent-encoded path either - it is the route it reaches (Foundations.md §4.1)", async () => {
+    const res = await app.inject({
+      method: "PATCH", url: `/%61pi/public/table/${TABLE}?where[name][_eq]=theirs`,
+      headers: { authorization: `Bearer ${admin}`, "x-totalbase-view-as": `user:${userIds[0]}` }, payload: { data: { name: "changed" } },
+    });
+    expect([res.statusCode, res.json().errors?.[0]?.code]).toEqual([403, "VIEW_AS_READ_ONLY"]);
+    expect((await database.query(`SELECT count(*)::int AS n FROM public.${TABLE} WHERE name = 'changed'`)).rows[0]).toEqual({ n: 0 });
+  });
+
   it("a refusal says the action and the table, and - previewing - the role that lacks it", async () => {
     const res = await get(admin, "/api/totalbase/table/files", `role:${roleId}`);
     expect(res.statusCode, res.body).toBe(403);

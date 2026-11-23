@@ -19,7 +19,7 @@ export interface FileRecord {
   checksum: string | null;
   width: number | null;
   height: number | null;
-  visibility: "PRIVATE" | "PUBLIC";
+  visibility: "PRIVATE" | "LINKED" | "PUBLIC";
   metadata: Record<string, unknown>;
   description: string | null;
   tags: string[];
@@ -38,7 +38,7 @@ export interface UploadFileInput {
   content: Buffer;
   filename: string;
   declaredContentType?: string | undefined;
-  visibility?: "PRIVATE" | "PUBLIC" | undefined;
+  visibility?: "PRIVATE" | "LINKED" | "PUBLIC" | undefined;
   description?: string | undefined;
   tags?: string[] | undefined;
   /**
@@ -51,7 +51,7 @@ export interface UploadFileInput {
 }
 
 export interface UpdateFileMetadataInput {
-  visibility?: "PRIVATE" | "PUBLIC" | undefined;
+  visibility?: "PRIVATE" | "LINKED" | "PUBLIC" | undefined;
   description?: string | null | undefined;
   tags?: string[] | undefined;
   /** Rename: trimmed like an upload's filename; `extension` follows it. PostgreSQL's CHECKs decide the rest (1-255 characters). */
@@ -212,6 +212,16 @@ export class FilesAdminService {
   /** `updated_by` is set by PostgreSQL from the caller's transaction actor (`totalbase.actor_user_id`). */
   async updateContent(id: string, content: Buffer): Promise<FileRecord> {
     const file = await this.get(id);
+    // A replaced content is held to what an upload is (§10.4): the size limit, and - when its signature says what it
+    // is - a type the file may hold, never becoming what upload refuses.
+    const [maxSizeBytes, allowedMimeTypes] = await Promise.all([this.settings.get("files.max_file_size_bytes"), this.settings.get("files.allowed_mime_types")]);
+    if (content.length > maxSizeBytes) {
+      throw new TotalBaseError("FILE_TOO_LARGE", `Uploaded file exceeds the configured maximum of ${maxSizeBytes} bytes.`);
+    }
+    const detected = detectMimeType(content);
+    if (detected && !matchesAllowedMimeType(detected, allowedMimeTypes)) {
+      throw new TotalBaseError("FILE_MIME_TYPE_NOT_ALLOWED", `MIME type not allowed: ${detected}`);
+    }
     const storage = await this.storage.of(file.storage_provider);
     const checksum = createHash("sha256").update(content).digest("hex");
 

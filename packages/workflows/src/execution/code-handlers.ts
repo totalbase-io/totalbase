@@ -49,6 +49,10 @@ const executeFunction: OperationHandler = async ({ context, dataPrincipal, confi
 const executeSql: OperationHandler = async ({ context, dataPrincipal, configuration }) => {
   const statement = (configuration.statement as string | undefined)?.trim();
   if (!statement) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no SQL statement configured.");
+  // The SQL Console's own switch (Administration.md §5.1): off, no raw SQL runs - from the console or from a step.
+  if (!(await context.settings.get("sql_console.enabled"))) {
+    throw new TotalBaseError("SQL_CONSOLE_DISABLED", "The SQL Console is turned off (Settings > SQL Console), and an Execute SQL step with it.");
+  }
   const executeAs = (configuration.executeAs as string | undefined) ?? dataPrincipal.principal.id;
   if (!executeAs) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step has no \"Execute as\" user configured.");
   const result = await context.sqlConsole.execute(executeAs, { sql: statement });
@@ -292,7 +296,7 @@ const httpRequest: OperationHandler = async ({ context, configuration, workflowC
     if (typeof entry?.name !== "string" || !entry.name.trim() || typeof entry.secret !== "string" || !entry.secret) {
       throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "Every secret header needs a name and a secret.");
     }
-    headers[entry.name.trim()] = await context.secrets.decrypt(entry.secret);
+    headers[entry.name.trim()] = await context.secrets.decrypt(entry.secret, "WORKFLOWS");
   }
   const body = configuration.body;
   const includeBody = body !== undefined && method !== "GET" && method !== "DELETE" && method !== "HEAD" && method !== "OPTIONS";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PASSWORD_MAX_LENGTH, assertPasswordStrength, hashPassword, verifyPassword } from "./password.js";
+import { PASSWORD_CHECKS_AT_ONCE, PASSWORD_CHECKS_WAITING, PASSWORD_MAX_LENGTH, assertPasswordStrength, hashPassword, verifyPassword } from "./password.js";
 
 const code = (fn: () => void): string | undefined => {
   try {
@@ -46,4 +46,18 @@ describe("hashPassword / verifyPassword (Security.md §2.3)", () => {
     expect(hash).toMatch(/^\$argon2id\$v=19\$/);
     expect(await verifyPassword(hash, "correct horse battery staple")).toBe(true);
   });
+});
+
+describe("the password checks a process runs at once (Security.md §2.4)", () => {
+  it("queues a burst and refuses only past the queue, then serves again", async () => {
+    const hash = await hashPassword("tb-correct-horse");
+    const burst = PASSWORD_CHECKS_AT_ONCE + PASSWORD_CHECKS_WAITING + 5;
+    const results = await Promise.allSettled(Array.from({ length: burst }, () => verifyPassword(hash, "wrong-password")));
+    const refused = results.filter((r) => r.status === "rejected");
+    expect(refused).toHaveLength(5);
+    for (const r of refused) expect((r as PromiseRejectedResult).reason).toMatchObject({ code: "RATE_LIMIT_EXCEEDED" });
+    expect(results.filter((r) => r.status === "fulfilled").every((r) => (r as PromiseFulfilledResult<boolean>).value === false)).toBe(true);
+    // Every turn was handed back: the next check runs at once.
+    expect(await verifyPassword(hash, "tb-correct-horse")).toBe(true);
+  }, 120_000);
 });

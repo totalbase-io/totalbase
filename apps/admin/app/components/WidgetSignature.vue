@@ -169,6 +169,8 @@ async function submit(): Promise<void> {
       if (!blob) return
       const formData = new FormData()
       formData.append('file', new File([blob], photoFileName(new Date(), t('dataviews.widgetSignature.fileStem'), 'png'), { type: 'image/png' }))
+      // A record's file: reached by whoever reads the record, and nobody else (Administration.md §10.6).
+      formData.append('visibility', 'LINKED')
       const { data } = await dataApi.post<FileNode>('/totalbase/table/files', formData)
       ownId = data.id
       modelValue.value = data.id

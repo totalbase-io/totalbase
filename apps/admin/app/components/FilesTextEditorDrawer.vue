@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import { adminThemeName, defineAdminThemes } from '~/utils/monaco-theme'
 
 const props = withDefaults(defineProps<{
@@ -96,6 +97,7 @@ function toggleWordWrap() {
 async function mountEditor() {
   if (editor || !containerRef.value) return
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
   editor = monaco.editor.create(containerRef.value, {

@@ -60,6 +60,9 @@ describe("MCP tools (an agent building on a real instance)", () => {
     await server.connect(serverTransport);
     mcp = new Client({ name: "mcp-tools-test", version: "1.0.0" });
     await mcp.connect(clientTransport);
+    // Listing the tools hands the client their output schemas: from here it checks every answer's structured content
+    // against its tool's - a schema that drifts from what a tool answers fails the call that shows it.
+    await mcp.listTools();
   });
 
   afterAll(async () => {
@@ -308,6 +311,17 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(master.viewType).toBe("MASTER_DETAIL");
   });
 
+  // A nested key a tool doesn't take was dropped: `references` for `foreign_key` made a table without its FK.
+  it("refuses a nested key it doesn't take - a column's, a grant's - instead of dropping it", async () => {
+    await expect(call("create_table", { schema: SCHEMA, name: "no_fk", columns: [{ name: "customer", data_type: "uuid", references: "customers" }] })).rejects.toThrow(/references/);
+    await expect(call("grant_permissions", { role_ids: [roleId], grants: [{ schema: SCHEMA, name: "deals", actions: ["READ"], wehre: { stage: { _eq: "WON" } } }] })).rejects.toThrow(/wehre/);
+    expect((await call<{ name: string }[]>("list_resources", { schema: SCHEMA })).map((r) => r.name)).not.toContain("no_fk");
+    // A grant's filter over a foreign key that doesn't exist is refused when saved, not on every later read.
+    await expect(call("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", where: { "stage.owner": { _eq: "$USER.id" } } })).rejects.toThrow(/INVALID_RELATION.*deals\.stage/);
+    await expect(call("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", where: { "customer.nombre": { _eq: "x" } } })).rejects.toThrow(/INVALID_FIELD.*customers\.nombre/);
+    await expect(call("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", where: { stge: { _eq: "WON" } } })).rejects.toThrow(/INVALID_FIELD.*deals\.stge/);
+  });
+
   it("finds a re-created table by its live resource, not the dropped one of the same name", async () => {
     const scratch = { schema: SCHEMA, name: "scratch", columns: [{ name: "id", data_type: "uuid", primary_key: true, default: "gen_random_uuid()" }] };
     await call("create_table", scratch);
@@ -488,8 +502,19 @@ describe("MCP tools (an agent building on a real instance)", () => {
     expect(deals.actions.READ!.fields).not.toContain("amount");
 
     // M19: a READ naming its fields without the reference's path says the App would show the key.
-    const keysOnly = await call<{ warnings?: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", fields: ["id", "stage", "customer"] });
+    const keysOnly = await call<{ where: unknown; warnings?: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", fields: ["id", "stage", "customer"] });
     expect(keysOnly.warnings?.[0]).toContain("customer.name");
+    // Re-granting to change fields, without where, keeps the row filter - it never widens rows silently.
+    expect(keysOnly.where).toEqual({ stage: { _eq: "WON" } });
+    expect((await read()).json().data).toHaveLength(2);
+    // where: null clears it, and the answer says so.
+    const cleared = await call<{ where: unknown; warnings?: string[] }>("grant_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", where: null });
+    expect(cleared.where).toBeNull();
+    expect(cleared.warnings?.some((w) => w.includes("now covers every row"))).toBe(true);
+    const batch = await call<{ grants: { where?: unknown; warnings?: string[] }[] }>("grant_permissions", { role_ids: [roleId], grants: [{ schema: SCHEMA, name: "deals", actions: ["READ"], where: { stage: { _eq: "WON" } } }] });
+    expect(batch.grants[0]!.where).toEqual({ stage: { _eq: "WON" } });
+    const rebatched = await call<{ grants: { where?: unknown }[] }>("grant_permissions", { role_ids: [roleId], grants: [{ schema: SCHEMA, name: "deals", actions: ["READ"], fields: ["id", "stage"] }] });
+    expect(rebatched.grants[0]!.where).toEqual({ stage: { _eq: "WON" } });
 
     await call("revoke_permission", { role_id: roleId, schema: SCHEMA, name: "deals", action: "READ", confirm: true });
     expect((await call<{ resource: string }[]>("get_permissions", { role_id: roleId, schema: SCHEMA })).map((p) => p.resource)).not.toContain(`${SCHEMA}.deals`);
@@ -635,6 +660,9 @@ describe("MCP tools (an agent building on a real instance)", () => {
       await asToken("PATCH", "/admin/api/settings/sql_console", { data: { "sql_console.token_access": true } }),
       await asToken("DELETE", "/admin/api/settings/sql_console/token_access"),
     ]) expect([response.statusCode, response.json().errors[0].code]).toEqual([403, "PERMISSION_DENIED"]);
+    // Nor lift the role its widget SQL runs as (Dashboards.md §2.10) - security regression.
+    const queryRole = await asToken("PATCH", "/admin/api/settings/dashboards", { data: { "dashboards.query_role": "" } });
+    expect([queryRole.statusCode, queryRole.json().errors[0].code]).toEqual([403, "PERMISSION_DENIED"]);
     const settingsResource = (await database.query<{ id: string; exposed_methods: string[] }>(
       `SELECT id, exposed_methods FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'settings' AND status = 'ACTIVE'`,
     )).rows[0]!;
@@ -929,6 +957,29 @@ function onRecordSaved(dataview) { dataview.vars.recent.refresh() }`;
     } finally {
       await database.query(`DELETE FROM totalbase.files WHERE id = $1`, [file.id]);
     }
+  });
+
+  it("answers structured content that fits each tool's output schema - the tools the build above doesn't call", async () => {
+    // The client checks every answer against its tool's outputSchema (listTools, in beforeAll): a call that returns is a schema that fits.
+    for (const tool of ["whoami", "get_settings", "list_resources", "list_roles", "list_users", "list_dataviews", "list_dashboards", "list_workflows", "list_templates", "list_secrets", "list_broken_references", "check_app", "get_app_menu", "sync_catalog"]) {
+      await call(tool);
+    }
+    const answer = await mcp.callTool({ name: "list_roles", arguments: {} });
+    const roles = (answer.structuredContent as { items: { id: string; name: string }[] }).items;
+    expect(roles.map((r) => r.name)).toContain("Administrators");
+    expect(JSON.parse((answer.content as { text: string }[])[0]!.text)).toEqual(roles);
+
+    await call("get_settings", { group: "api", describe: true });
+    await call("get_permissions", { role_id: roleId });
+    await call("get_permissions", { schema: "totalbase", name: "roles" });
+    await call("set_capability", { role_id: roleId, capability: "SEND_EMAIL", effect: "ALLOW" });
+    await call("set_capability", { role_id: roleId, capability: "SEND_EMAIL", effect: "OFF" });
+    const [workflow] = await call<{ id: string }[]>("list_workflows");
+    if (workflow) await call("get_workflow", { id: workflow.id });
+
+    // A row's own keys never meet the schema's: rows are held under `rows`, a function's result under `value`.
+    const rows = await mcp.callTool({ name: "query_records", arguments: { schema: "totalbase", name: "roles", limit: 1 } });
+    expect((rows.structuredContent as { rows: unknown[] }).rows).toHaveLength(1);
   });
 
   it("moves a page widget into a card and to the top of the page, keeping its props", async () => {

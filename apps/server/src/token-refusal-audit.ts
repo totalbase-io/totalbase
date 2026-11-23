@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AppContext } from "./context.js";
 import { clientIp } from "./client-ip.js";
+import { routePath } from "./admin-ui.js";
 
 /**
  * A personal access token that was refused, in the audit log (Security.md §11.6, `auth.token_refused`): a
@@ -69,7 +70,7 @@ export function registerTokenRefusalAudit(app: FastifyInstance, context: AppCont
         principal: { type: "API_KEY", id: refusal.id },
         action: "AUTH",
         status: "DENIED",
-        source: request.url.startsWith("/admin/") ? "admin" : "auth",
+        source: routePath(request).startsWith("/admin/") ? "admin" : "auth",
         ip: request.ip,
         userAgent: request.headers["user-agent"],
         metadata: {

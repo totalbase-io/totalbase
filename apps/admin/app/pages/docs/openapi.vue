@@ -142,6 +142,7 @@ watch(viewerRef, (viewer) => {
       icon="i-lucide-shield"
       :title="t('content.docs.openapi.selectRole')"
       :description="t('content.docs.openapi.selectRoleDescription')"
+      class="page-empty"
     />
 
     <template v-else-if="spec">

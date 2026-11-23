@@ -1,3 +1,4 @@
+import { PIVOT_AGGREGATES } from "./pivot-query.js";
 import { convertDashboardConfig, DASHBOARD_WIDGET_TYPES, dashboardRolesProblem, dashboardValueKind, dashboardWidgetDefinition, isDashboardWidgetType, isPresentationWidget, resolveDashboardRoles, validateDashboardWidgetConfig, type DashboardWidgetType } from "@totalbase/tb-catalog";
 import { TotalBaseError } from "@totalbase/errors";
 import { isUuid } from "@totalbase/shared";
@@ -163,7 +164,8 @@ export function assertRolesDraw(type: DashboardWidgetType, config: Record<string
   if (problem) throw new TotalBaseError(problem.code, problem.message);
   if (type === "PIVOT") {
     const aggregates = (config.aggregates ?? {}) as Record<string, unknown>;
-    const missing = (roles.values?.columns ?? []).filter((column) => typeof aggregates[column] !== "string");
+    // One of the five aggregates by name, never other text: it is written into the pivot's SQL as the function it names.
+    const missing = (roles.values?.columns ?? []).filter((column) => !PIVOT_AGGREGATES.includes(aggregates[column] as never));
     if (missing.length) {
       throw new TotalBaseError("DASHBOARD_PIVOT_AGGREGATE_REQUIRED", `Pivot table needs an aggregate for ${missing.map((c) => `"${c}"`).join(", ")} - one of sum, avg, min, max, count: aggregates: {"${missing[0]}": "sum"}.`);
     }

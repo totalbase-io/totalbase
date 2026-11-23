@@ -2,9 +2,11 @@ import { randomUUID, randomBytes } from "node:crypto";
 import Fastify from "fastify";
 import { TotalBaseError } from "@totalbase/errors";
 import type { DocumentedRoute, RouteInfo } from "@totalbase/openapi";
-import { registerAdminUi, routeNotFound } from "./admin-ui.js";
+import { registerAdminUi, routeNotFound, routePath } from "./admin-ui.js";
+import { trustProxyOption } from "./client-ip.js";
 import { registerMcpEndpoint } from "./mcp-endpoint.js";
 import type { AppContext } from "./context.js";
+import { registerLockdown } from "./lockdown.js";
 import { catalogChanged } from "./invalidations.js";
 import { registerPathIdHook } from "./path-ids.js";
 import { FASTIFY_BODY_LIMIT_CEILING, maxHeaderSizeFor, parseQueryString, registerHardeningHooks } from "./hardening.js";
@@ -86,11 +88,13 @@ export async function buildServer(
 ) {
   // A Fastify construction option, so read once: security.trust_proxy and security.trusted_proxies
   // apply after a restart (Administration.md §7.5, §7.7). A list of trusted proxies, when set, is the
-  // option - only those addresses' X-Forwarded-For is believed; else the boolean (every hop, or none).
+  // option - only those addresses' X-Forwarded-For is believed; else the boolean: on, the one proxy in front
+  // (one hop: the address it appended), never every hop - the left of X-Forwarded-For is whatever the client sent,
+  // and believing it would let any client choose its address (rate limits, audit, a token's allowed_ips).
   // Every other hardening setting is read per request (hardening.ts).
   const trustedProxies = await context.settings.get("security.trusted_proxies");
   const trustProxyFlag = await context.settings.get("security.trust_proxy");
-  const trustProxy: boolean | string[] = trustedProxies.length > 0 ? trustedProxies : trustProxyFlag;
+  const trustProxy = trustProxyOption(trustedProxies, trustProxyFlag);
   // Node's header limit, also read once: big enough for a query string of
   // api.max_query_string_bytes to reach the hardening hook (and its
   // QUERY_STRING_TOO_LARGE) instead of Node's raw 431. Raising the setting
@@ -128,6 +132,8 @@ export async function buildServer(
   // goes to Fastify's own JSON parser (prototype poisoning refused, malformed JSON a 400).
   const parseJson = app.getDefaultJsonParser("error", "error");
   app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    // The body as it came, for a webhook's signature (an HMAC of these bytes, Workflows.md §13.2).
+    request.rawBody = body as string;
     if (body === "") done(null, undefined);
     else void parseJson(request, body as string, done);
   });
@@ -135,6 +141,10 @@ export async function buildServer(
   // Lets the MCP endpoint's in-process calls past the per-IP limit (it limits its own callers per token); made here, never stored or sent.
   const internalKey = randomBytes(32).toString("hex");
   registerHardeningHooks(app, context.settings, { internalKey, publicUrl: () => context.auth.mailer.publicUrl() });
+  // The rate limiter counts a credential on its user once it has validated (Administration.md §7.8).
+  context.auth.sessions.onValidated(app.credentialOwners!.remember);
+  context.usersApis.onValidated(app.credentialOwners!.remember);
+  registerLockdown(app, context);
   registerPathIdHook(app);
   registerViewAsGuard(app);
   registerAccessAudit(app, context);
@@ -182,7 +192,8 @@ export async function buildServer(
   app.addHook("onResponse", async (request, reply) => {
     if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
     if (reply.statusCode < 200 || reply.statusCode >= 300) return;
-    if (!request.url.startsWith("/admin/api/") || request.url.startsWith("/admin/api/auth/")) return;
+    const path = routePath(request);
+    if (!path.startsWith("/admin/api/") || path.startsWith("/admin/api/auth/")) return;
     await catalogChanged(context).catch((error: unknown) => request.log.warn({ error }, "catalog invalidation signal failed"));
   });
 
@@ -195,6 +206,8 @@ export async function buildServer(
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof TotalBaseError) {
+      // A scheduled lockdown says when it ends (Security.md §2.21) - wherever the refusal was raised.
+      if (error.code === "LOCKDOWN" && typeof error.meta?.retryAfterSeconds === "number") reply.header("retry-after", String(error.meta.retryAfterSeconds));
       // Seeing the App as someone (view-as.ts): a refusal names their roles.
       reply.code(error.httpStatus).send({ errors: error.toPublicErrors().map((e) => ({ ...e, message: nameRolesInRefusal(request, String(e.message)) })) });
       return;

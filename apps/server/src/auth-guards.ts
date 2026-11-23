@@ -66,6 +66,18 @@ export async function assertRecentAuthentication(context: AppContext, request: F
   }
 }
 
+/**
+ * Issuing or regenerating a plane="ADMIN" token (Security.md §2.19, §3): from a signed-in administrator's session
+ * only, re-authenticated. Never from a token - an agent holding one would otherwise mint itself an unrestricted
+ * sibling (no allowed addresses, ten years), and a token's containment would contain nothing.
+ */
+export async function assertSessionForAdminToken(context: AppContext, request: FastifyRequest): Promise<void> {
+  if (request.adminToken) {
+    throw new TotalBaseError("PERMISSION_DENIED", "An administrator's token is issued or regenerated from a signed-in session, never with a token.");
+  }
+  await assertRecentAuthentication(context, request);
+}
+
 /** Factory: builds a preHandler that authenticates a user bearer session. */
 export function requireUser(context: AppContext) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {

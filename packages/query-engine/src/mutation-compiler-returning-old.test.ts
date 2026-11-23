@@ -43,6 +43,7 @@ describe("compileUpdate on a table without a primary key (integration)", () => {
   const context = (overrides?: Partial<MutationCompileContext>): MutationCompileContext => ({
     root,
     fieldDecision: () => "ALLOW",
+    whereFieldDecision: () => "ALLOW",
     rowFilter: undefined,
     payloadChecks: undefined,
     resolveUserVariable: () => undefined,

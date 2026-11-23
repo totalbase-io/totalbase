@@ -72,27 +72,26 @@ test('rename a file and move it to another folder from its details', async ({ pa
   await main.getByText('draft.txt', { exact: true }).click()
   const details = page.getByRole('dialog', { name: 'draft.txt' })
 
-  // Rename: a popover with the name; the extension follows it.
-  await details.getByRole('button', { name: 'Rename' }).click()
-  const name = page.getByLabel('Name', { exact: true })
+  // The details are a record form: Name and Description saved together by Save; the extension follows the name.
+  const name = details.getByLabel('Name', { exact: true })
   await expect(name).toHaveValue('draft.txt')
   await name.fill('final notes.md')
-  await page.getByRole('button', { name: 'Rename', exact: true }).last().click()
-  await expect.poll(async () => (await fileInfo(page, token, fileId)).name).toBe('final notes.md')
-  expect((await fileInfo(page, token, fileId)).extension).toBe('md')
-  await expect(main.getByText('final notes.md', { exact: true })).toBeVisible()
-
   // The metadata PATCH's envelope (regression: the explorer sent a bare
   // body, so a description or tags save changed nothing).
-  const renamedDetails = page.getByRole('dialog', { name: 'final notes.md' })
-  await renamedDetails.getByLabel('Description').fill('kept')
-  await renamedDetails.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect.poll(async () => (await apiRequest<{ description: string | null }>(page, token, 'GET', `/api/totalbase/table/files/${fileId}/info`)).description).toBe('kept')
+  await details.getByLabel('Description').fill('kept')
+  await details.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(details).toBeHidden()
+  await expect.poll(async () => (await fileInfo(page, token, fileId)).name).toBe('final notes.md')
+  const info = await apiRequest<{ extension: string, description: string | null }>(page, token, 'GET', `/api/totalbase/table/files/${fileId}/info`)
+  expect(info.extension).toBe('md')
+  expect(info.description).toBe('kept')
+  await expect(main.getByText('final notes.md', { exact: true })).toBeVisible()
 
-  // Save closes the details; opened again, they carry the new name. Move: a modal with the folders by path.
-  await expect(renamedDetails).toBeHidden()
+  // Opened again, they carry the new name. Move: the header's "⋮", then a modal with the folders by path.
   await main.getByText('final notes.md', { exact: true }).click()
-  await renamedDetails.getByRole('button', { name: 'Move to folder…' }).click()
+  const renamedDetails = page.getByRole('dialog', { name: 'final notes.md' })
+  await renamedDetails.getByRole('button', { name: 'Record actions' }).click()
+  await page.getByRole('menuitem', { name: 'Move to folder…' }).click()
   const move = page.getByRole('dialog', { name: 'Move to folder' })
   await move.getByLabel('Folder').click()
   await page.getByRole('option', { name: `/${FOLDER_B}`, exact: true }).click()

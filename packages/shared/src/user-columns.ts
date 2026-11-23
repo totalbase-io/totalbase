@@ -7,7 +7,7 @@
 export const TOTALBASE_USER_COLUMNS: readonly string[] = [
   "id", "email", "password_hash", "name", "avatar_url", "active", "email_verified_at", "last_login_at", "created_at", "updated_at",
   "owner", "can_login", "failed_login_count", "locked_until", "preferences", "removed_at",
-  "password_changed_at", "password_change_required",
+  "password_changed_at", "password_change_required", "sign_in_failures", "sign_in_delayed_until",
 ];
 
 /** A column a project added to users. */

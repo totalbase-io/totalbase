@@ -19,6 +19,45 @@ describe("AdminClient", () => {
     expect(roles).toEqual([{ id: "r1", name: "Administrators" }]);
   });
 
+  // Security regression (Administration.md §11.3): a tool's id went into its path as given - `id: "../users?x="` reached
+  // another Admin API route than the tool's, past the tool groups and the mode the instance set.
+  it("refuses a path an id turned into a climb to another route, plain or percent-encoded", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new AdminClient({ baseUrl: "http://localhost:3000", token: "tb_test" });
+    for (const id of ["../users?x=", "..", "%2e%2e", ".%2E", "./x/.."]) {
+      await expect(client.get(`/dashboards/${id}/spec`), id).rejects.toMatchObject({ code: "INVALID_QUERY" });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(client.get("/dashboards/abc/spec")).resolves.toEqual({});
+  });
+
+  // Security regression (Administration.md §11.3): the dot-segment guard read only "/" as a separator - a URL also
+  // splits at "\", drops tabs and newlines, and ends the path at "?" or "#" - so `..\sql\execute`, `.\t.` or `x?` still
+  // reached another route than the tool's.
+  it("refuses every other way an id leaves its segment: backslashes, control characters, ?, #, encoded separators, empty segments", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new AdminClient({ baseUrl: "http://localhost:3000", token: "tb_test" });
+    for (const id of ["..\\..\\sql\\execute", "..\\sql\\execute", ".\t.", ".\n.", "x?", "x#", "a b", "%2F..%2Fsql", "%5C..", "%3F", "", "/evil.example"]) {
+      await expect(client.post(`/dashboards/${id}/query`, {}), JSON.stringify(id)).rejects.toMatchObject({ code: "INVALID_QUERY" });
+    }
+    await expect(client.document("//evil.example/x"), "a path that names a host").rejects.toMatchObject({ code: "INVALID_QUERY" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("puts a query in the URL's query, never in the path", async () => {
+    const fetchMock = vi.fn(async (url: URL) => {
+      expect(url.pathname).toBe("/admin/api/users");
+      expect(url.searchParams.get("extra[sucursal]")).toBe("a&b=c");
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new AdminClient({ baseUrl: "http://localhost:3000", token: "tb_test" });
+    await client.get("/users", { "extra[sucursal]": "a&b=c" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("throws AdminApiError with the server's error list on a non-2xx response", async () => {
     vi.stubGlobal(
       "fetch",

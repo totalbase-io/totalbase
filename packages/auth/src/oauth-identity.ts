@@ -1,3 +1,4 @@
+import { providerJson } from "./oauth-endpoints.js";
 import { createRemoteJWKSet, errors, jwtVerify, type JWTPayload } from "jose";
 import { TotalBaseError } from "@totalbase/errors";
 import type { AuthProvider } from "./auth-providers-service.js";
@@ -31,15 +32,15 @@ export async function exchangeCodeForTokens(
     redirect_uri: params.redirectUri,
     code_verifier: params.codeVerifier,
   });
-  const response = await fetch(tokenEndpoint, {
+  const { status, json } = await providerJson(tokenEndpoint, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body,
   });
-  if (!response.ok) {
-    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `Token exchange with the provider failed (${response.status}).`);
+  if (json === null) {
+    throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `Token exchange with the provider failed (${status}).`);
   }
-  return response.json() as Promise<OAuthTokenResponse>;
+  return json as OAuthTokenResponse;
 }
 
 interface GitHubUser {
@@ -56,11 +57,11 @@ interface GitHubEmail {
 
 async function fetchGitHubIdentity(accessToken: string): Promise<OAuthIdentity> {
   const headers = { authorization: `Bearer ${accessToken}`, "user-agent": "TotalBase", accept: "application/vnd.github+json" };
-  const profileResponse = await fetch("https://api.github.com/user", { headers });
-  if (!profileResponse.ok) {
+  const profileResponse = await providerJson("https://api.github.com/user", { headers });
+  if (profileResponse.json === null) {
     throw new TotalBaseError("OAUTH_UPSTREAM_ERROR", `Could not fetch the GitHub profile (${profileResponse.status}).`);
   }
-  const profile = (await profileResponse.json()) as GitHubUser;
+  const profile = profileResponse.json as GitHubUser;
 
   // A public profile email is exposed by GitHub only once the user has
   // verified it and made it public, so its mere presence here already
@@ -69,9 +70,9 @@ async function fetchGitHubIdentity(accessToken: string): Promise<OAuthIdentity> 
   let email = profile.email;
   let emailVerified = email !== null;
   if (!email) {
-    const emailsResponse = await fetch("https://api.github.com/user/emails", { headers });
-    if (emailsResponse.ok) {
-      const emails = (await emailsResponse.json()) as GitHubEmail[];
+    const emailsResponse = await providerJson("https://api.github.com/user/emails", { headers });
+    if (Array.isArray(emailsResponse.json)) {
+      const emails = emailsResponse.json as GitHubEmail[];
       const primary = emails.find((e) => e.primary) ?? emails[0];
       email = primary?.email ?? null;
       emailVerified = primary?.verified ?? false;

@@ -17,6 +17,7 @@ export interface RetentionResult {
   derivatives: { expired: number; orphanedFiles: number };
   expiredAssignments: number;
   dormantAccounts: number;
+  signInAddresses: number;
 }
 
 type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "idempotency" | "filesTransform" | "logger" | "auth" | "roleAssignments">;
@@ -43,7 +44,7 @@ type RetentionContext = Pick<AppContext, "database" | "settings" | "audit" | "id
  *   both audited, as the system.
  */
 export async function runRetention(context: RetentionContext): Promise<RetentionResult> {
-  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, realtimeTickets: 0, derivatives: { expired: 0, orphanedFiles: 0 }, expiredAssignments: 0, dormantAccounts: 0 };
+  const result: RetentionResult = { auditLogs: 0, idempotencyKeys: 0, outboxEvents: 0, executions: 0, tokens: 0, challenges: 0, realtimeTickets: 0, derivatives: { expired: 0, orphanedFiles: 0 }, expiredAssignments: 0, dormantAccounts: 0, signInAddresses: 0 };
   const { logger } = context;
 
   try {
@@ -65,6 +66,13 @@ export async function runRetention(context: RetentionContext): Promise<Retention
     }
   } catch (error) {
     logger.error({ error }, "audit log purge failed");
+  }
+
+  try {
+    // Sign-in addresses (Security.md §2.4) nothing has come from for 90 days.
+    result.signInAddresses = await context.auth.users.purgeStaleAddresses();
+  } catch (error) {
+    logger.error({ error }, "sign-in addresses purge failed");
   }
 
   try {

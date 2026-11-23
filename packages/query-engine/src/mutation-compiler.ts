@@ -42,6 +42,17 @@ export interface MutationCompileContext {
   root: ResolvedResource;
   fieldDecision: (field: string) => PermissionDecision;
   rowFilter: FilterNode | undefined;
+  /**
+   * Which fields the request's own `where` may name (an UPDATE's or DELETE's, a by-key write's key): the caller's
+   * READ decisions, with protected and Password columns denied - a field they can't read is never filtered on, or
+   * which rows a write touched would tell its values (Security.md §6.4). Absent: none may.
+   */
+  whereFieldDecision?: (field: string) => PermissionDecision;
+  /**
+   * The caller's READ row filter, for compileDelete: each returned row carries `__readable` - whether a read could have
+   * shown it, judged on the row as it was - so the answer shows a deleted row only to who may read it (Security.md §6.6).
+   */
+  readFilter?: FilterNode | undefined;
   /** AND-combined (every ALLOW grant's checks apply), unlike rowFilter's OR. undefined/empty = no checks. */
   payloadChecks: PayloadCheckRule[] | undefined;
   resolveUserVariable: (field: string) => unknown;
@@ -400,7 +411,7 @@ export async function compileUpdate(
   }
 
   // The request's where reads the table's own columns; the grant's row filter may follow its foreign keys.
-  const whereContext = mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable);
+  const whereContext = requestWhereContext(context);
   const oldContext = mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable, context.related);
   const whereParts: string[] = [];
 
@@ -458,7 +469,7 @@ export async function compileDelete(
   expectedVersion?: string,
 ): Promise<CompiledMutation> {
   const { root, rowFilter, resolveUserVariable } = context;
-  const whereContext = mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable);
+  const whereContext = requestWhereContext(context);
   const filterContext = mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable, context.related);
   const params: unknown[] = [];
   const whereParts: string[] = [];
@@ -480,7 +491,13 @@ export async function compileDelete(
   }
 
   const whereSql = whereParts.length > 0 ? ` WHERE ${whereParts.join(" AND ")}` : "";
-  const sql = deleteWithReturning(qualifiedTable(root.schema, root.table), TABLE_ALIAS, whereSql);
+  let readable = "";
+  if (context.readFilter) {
+    const compiled = await compileFilter(context.readFilter, filterContext, params.length);
+    params.push(...compiled.params);
+    readable = `, COALESCE((${compiled.sql}), false) AS "__readable"`;
+  }
+  const sql = deleteWithReturning(qualifiedTable(root.schema, root.table), TABLE_ALIAS, whereSql, readable);
   return { sql, params, payloadCheckColumns: [], oldValueColumns: [] };
 }
 
@@ -489,9 +506,23 @@ export async function compileDelete(
  * under If-Match tells a row written since (409) from one that isn't there for them (404), never revealing a row
  * the filter hides (T56).
  */
+/** The request's `where` of a write: the table's own columns, each one the caller may read (whereFieldDecision). */
+function requestWhereContext(context: MutationCompileContext): FilterCompileContext {
+  const own = mutationFilterContext(context.root, TABLE_ALIAS, context.resolveUserVariable);
+  const decision = context.whereFieldDecision ?? (() => "DENY" as const);
+  return {
+    ...own,
+    async resolveColumn(path: string[]) {
+      const resolved = await own.resolveColumn(path);
+      if (decision(path.join(".")) !== "ALLOW") throw new TotalBaseError("FIELD_PERMISSION_DENIED", `Field not authorized: ${path.join(".")}`);
+      return resolved;
+    },
+  };
+}
+
 export async function compileRowExists(context: MutationCompileContext, where: FilterNode): Promise<{ sql: string; params: unknown[] }> {
   const { root, rowFilter, resolveUserVariable } = context;
-  const contexts = [mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable), mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable, context.related)];
+  const contexts = [requestWhereContext(context), mutationFilterContext(root, TABLE_ALIAS, resolveUserVariable, context.related)];
   const params: unknown[] = [];
   const parts: string[] = [];
   for (const [index, filter] of [where, rowFilter].entries()) {

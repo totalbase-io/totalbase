@@ -11,7 +11,7 @@ export interface FileNode {
   checksum: string
   width: number | null
   height: number | null
-  visibility: 'PRIVATE' | 'PUBLIC'
+  visibility: 'PRIVATE' | 'LINKED' | 'PUBLIC'
   metadata: Record<string, unknown>
   description: string | null
   tags: string[]

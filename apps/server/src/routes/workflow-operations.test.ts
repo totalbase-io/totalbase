@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:http";
+import { gzipSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -52,6 +53,12 @@ describe("workflow operations", () => {
       payload: JSON.stringify({ data }),
     });
 
+  /** A run's outcome as its history records it - with a step's own diagnostics, which its caller gets only the code of (§13.1). */
+  const recorded = async (response: { json: () => { data: { id: string; status: string } } }) => {
+    const { id, status } = response.json().data;
+    const { rows } = await database.query<{ error: unknown }>(`SELECT error FROM totalbase.workflows_runs WHERE id = $1`, [id]);
+    return { status, error: rows[0]?.error };
+  };
   function definitionWith(step: { type: string; configuration: Record<string, unknown> }) {
     const startId = randomUUID();
     const stepId = randomUUID();
@@ -100,8 +107,20 @@ describe("workflow operations", () => {
     context.emailSender = { send: async (input: EmailSendInput) => { sent.push(input); } } as AppContext["emailSender"];
 
     server = createServer((request, response) => {
+      if (request.url === "/redirect-elsewhere") {
+        // localhost and 127.0.0.1 are two origins: this hop leaves the one the step named.
+        response.writeHead(302, { location: `http://127.0.0.1:${serverPort}/ok` }).end();
+        return;
+      }
       if (request.url === "/redirect-to-loopback") {
         response.writeHead(302, { location: `http://127.0.0.1:${serverPort}/ok` }).end();
+        return;
+      }
+      if (request.url === "/bomb") {
+        // 50 MB of zeros, about 50 KB gzipped - well under the response limit as sent - cut short of its end: inflated
+        // whole, zlib fails at the end ("unexpected end of file"); stopped at the limit, it never gets there.
+        const bomb = gzipSync(Buffer.alloc(50 * 1024 * 1024));
+        response.writeHead(200, { "content-type": "application/octet-stream", "content-encoding": "gzip" }).end(bomb.subarray(0, bomb.length - 64));
         return;
       }
       if (request.url === "/big") {
@@ -187,6 +206,32 @@ describe("workflow operations", () => {
       const res = await run(`${PREFIX}-fn-actor`);
       expect(res.json().data, res.body).toMatchObject({ status: "SUCCEEDED", result: { data: caller.userId } });
     });
+
+    // Security regression (Workflows.md §5.6, Security.md §11.2): a step's function call audited its arguments as given -
+    // a `password` argument landed in the log in clear, where the Data API's own call redacts it.
+    it("never audits a credential argument in clear", async () => {
+      await database.query(`DROP FUNCTION IF EXISTS public.wfop_login(text, text)`);
+      await database.query(`CREATE FUNCTION public.wfop_login(username text, password text) RETURNS boolean LANGUAGE sql AS $$SELECT true$$`);
+      const loginId = (await database.query<{ id: string }>(
+        `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
+         VALUES (to_regprocedure('public.wfop_login(text, text)')::oid, 'public', 'wfop_login', 'FUNCTION', 'ACTIVE', '{POST}') RETURNING id`,
+      )).rows[0]!.id;
+      try {
+        await context.permissions.set(roleId, loginId, "EXECUTE", { effect: "ALLOW" });
+        await publishedWorkflow(`${PREFIX}-fn-secret`, { type: "totalbase.execute-function", configuration: { function: loginId, arguments: { username: "ada", password: "wfop-clear-password" } } });
+        const res = await run(`${PREFIX}-fn-secret`);
+        expect(res.json().data, res.body).toMatchObject({ status: "SUCCEEDED" });
+        const { rows } = await database.query<{ payload: unknown }>(`SELECT payload FROM totalbase.logs WHERE resource = $1 AND action = 'EXECUTE'`, [loginId]);
+        expect(rows.length).toBeGreaterThan(0);
+        expect(JSON.stringify(rows.map((row) => row.payload))).not.toContain("wfop-clear-password");
+        expect(JSON.stringify(rows[0]!.payload)).toContain("ada");
+      } finally {
+        await database.query(`DELETE FROM totalbase.logs WHERE resource = $1`, [loginId]);
+        await database.query(`DELETE FROM totalbase.permissions WHERE resource = $1`, [loginId]);
+        await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [loginId]);
+        await database.query(`DROP FUNCTION IF EXISTS public.wfop_login(text, text)`);
+      }
+    });
   });
 
   describe("Update/Delete records and api.require_where_for_*", () => {
@@ -247,6 +292,45 @@ describe("workflow operations", () => {
     });
   });
 
+  // Security regression (Workflows.md §4.3): what a caller sends is a value in a step's filter, never the filter
+  // grammar - `{"code": "$ROW.code"}` made `code = {{start.data.code}}` read `code = code`, every row the executor
+  // reaches; `"a,b"` widened an `_in`.
+  describe("a carried value in a record step's filter", () => {
+    let resourceId: string;
+    const rows = async () => (await database.query<{ code: string; name: string }>(`SELECT code, name FROM public.wfop_carried ORDER BY code`)).rows;
+    beforeAll(async () => {
+      await database.query(`DROP TABLE IF EXISTS public.wfop_carried`);
+      await database.query(`CREATE TABLE public.wfop_carried (code text PRIMARY KEY, name text NOT NULL)`);
+      await database.query(`INSERT INTO public.wfop_carried VALUES ('a', 'first'), ('b', 'second')`);
+      resourceId = (await database.query<{ id: string }>(
+        `INSERT INTO totalbase.resources (postgres_oid, "schema", name, type, status, exposed_methods)
+         VALUES (to_regclass('public.wfop_carried')::oid, 'public', 'wfop_carried', 'TABLE', 'ACTIVE', '{GET,PATCH,DELETE}') RETURNING id`,
+      )).rows[0]!.id;
+      const fields = (names: string[]) => names.map((field) => ({ field, effect: "ALLOW" as const }));
+      await context.permissions.set(roleId, resourceId, "READ", { effect: "ALLOW", fields: fields(["code", "name"]) });
+      await context.permissions.set(roleId, resourceId, "UPDATE", { effect: "ALLOW", fields: fields(["name"]) });
+      await context.permissions.set(roleId, resourceId, "DELETE", { effect: "ALLOW" });
+      await publishedWorkflow(`${PREFIX}-carried-upd`, { type: "totalbase.update-records", configuration: { resource: resourceId, set: { name: "changed" }, where: { code: { _eq: "{{start.data.code}}" } } } });
+      await publishedWorkflow(`${PREFIX}-carried-del`, { type: "totalbase.delete-records", configuration: { resource: resourceId, where: { code: { _in: "{{start.data.codes}}" } } } });
+      await publishedWorkflow(`${PREFIX}-carried-read`, { type: "totalbase.read-records", configuration: { resource: resourceId, query: { where: { code: { _eq: "{{start.data.code}}" } } } } });
+    });
+    afterAll(async () => {
+      await database.query(`DELETE FROM totalbase.resources WHERE id = $1`, [resourceId]);
+      await database.query(`DROP TABLE IF EXISTS public.wfop_carried`);
+    });
+
+    it("updates, deletes and reads only the rows the value names", async () => {
+      expect((await run(`${PREFIX}-carried-upd`, { code: "$ROW.code" })).json().data).toMatchObject({ status: "SUCCEEDED", result: { data: [] } });
+      expect((await run(`${PREFIX}-carried-read`, { code: "$ROW.code" })).json().data).toMatchObject({ status: "SUCCEEDED", result: { data: [] } });
+      expect((await run(`${PREFIX}-carried-del`, { codes: "a,b" })).json().data).toMatchObject({ status: "SUCCEEDED", result: { data: [] } });
+      expect(await rows()).toEqual([{ code: "a", name: "first" }, { code: "b", name: "second" }]);
+
+      // The value it was meant to be still works.
+      expect((await run(`${PREFIX}-carried-upd`, { code: "b" })).json().data).toMatchObject({ status: "SUCCEEDED", result: { data: [{ code: "b", name: "changed" }] } });
+      expect(await rows()).toEqual([{ code: "a", name: "first" }, { code: "b", name: "changed" }]);
+    });
+  });
+
   describe("Validate data", () => {
     beforeAll(async () => {
       await publishedWorkflow(`${PREFIX}-validate`, {
@@ -281,7 +365,7 @@ describe("workflow operations", () => {
       publishedWorkflow(`${PREFIX}-${slug}`, { type: "totalbase.soap-request", configuration: { url: `http://127.0.0.1:${serverPort}/soap`, operation: "getPersona", namespace: "urn:test", ...configuration } });
     beforeAll(async () => {
       await context.settings.set("workflows.http_allowed_hosts", ["127.0.0.0/8"]);
-      await context.secrets.set(SECRET, "soap-s3cr3t");
+      await context.secrets.set(SECRET, "soap-s3cr3t", "WORKFLOWS");
       await step("soap-one", { soapAction: "", body: { id: 1, name: "Tom & \"Jerry\" <b>", skip: null }, arrays: ["item"], secretHeaders: [{ name: "x-api-key", secret: SECRET }] });
       await step("soap-two", { soapAction: "urn:test#getPersona", body: { id: 2 } });
       await step("soap-fault", { body: { id: 0 } });
@@ -312,21 +396,23 @@ describe("workflow operations", () => {
 
     it("fails the step with the service's Fault", async () => {
       const res = await run(`${PREFIX}-soap-fault`);
-      expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: expect.stringContaining("No existe persona con ese Id") } });
+      expect(await recorded(res), res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: expect.stringContaining("No existe persona con ese Id") } });
+      // Its caller gets the code, never the service's answer (Workflows.md §13.1).
+      expect(res.json().data.error).toEqual({ code: "WORKFLOW_SOAP_FAULT", message: "The workflow failed. Its run history has the details." });
     });
 
     it("reads a SOAP 1.2 Fault - Code.Value, Reason.Text with its xml:lang - its entities decoded", async () => {
       const res = await run(`${PREFIX}-soap-fault-12`);
-      expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: "SOAP request failed: Id & nombre <inválidos> (env:Sender)." } });
+      expect(await recorded(res), res.body).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_SOAP_FAULT", message: "SOAP request failed: Id & nombre <inválidos> (env:Sender)." } });
     });
 
     it("refuses an answer that declares entities (a DOCTYPE) before parsing it", async () => {
-      expect((await run(`${PREFIX}-soap-doctype`)).json().data).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR", message: expect.stringContaining("DOCTYPE") } });
+      expect(await recorded(await run(`${PREFIX}-soap-doctype`))).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR", message: expect.stringContaining("DOCTYPE") } });
     });
 
     it("fails on an answer that is not a SOAP envelope, on a key that is markup, and on a refused destination", async () => {
-      expect((await run(`${PREFIX}-soap-text`)).json().data).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR", message: expect.stringContaining("without a SOAP envelope") } });
-      expect((await run(`${PREFIX}-soap-markup`)).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_INVALID_DESIGN", message: expect.stringContaining("not a valid XML element name") } });
+      expect(await recorded(await run(`${PREFIX}-soap-text`))).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR", message: expect.stringContaining("without a SOAP envelope") } });
+      expect(await recorded(await run(`${PREFIX}-soap-markup`))).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_INVALID_DESIGN", message: expect.stringContaining("not a valid XML element name") } });
       expect((await run(`${PREFIX}-soap-blocked`)).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_HTTP_DESTINATION_BLOCKED" } });
     });
   });
@@ -339,11 +425,11 @@ describe("workflow operations", () => {
     beforeAll(async () => {
       dir = mkdtempSync(join(tmpdir(), "tb-wfop-sign-"));
       execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", "key.pem", "-out", "cert.pem", "-days", "2", "-subj", "/CN=wfop-sign"], { cwd: dir, stdio: "ignore" });
-      await context.secrets.set(CERT, readFileSync(join(dir, "cert.pem"), "utf8"));
-      await context.secrets.set(KEY, readFileSync(join(dir, "key.pem"), "utf8"));
+      await context.secrets.set(CERT, readFileSync(join(dir, "cert.pem"), "utf8"), "WORKFLOWS");
+      await context.secrets.set(KEY, readFileSync(join(dir, "key.pem"), "utf8"), "WORKFLOWS");
       await publishedWorkflow(`${PREFIX}-sign`, { type: "totalbase.sign", configuration: { format: "CMS", data: "<ticket/>", certificate: CERT, privateKey: KEY } });
       await publishedWorkflow(`${PREFIX}-sign-missing`, { type: "totalbase.sign", configuration: { format: "CMS", data: "<ticket/>", certificate: CERT, privateKey: "wfop_sign_nope" } });
-      await context.secrets.set(HMAC_KEY, "pseudonym-key");
+      await context.secrets.set(HMAC_KEY, "pseudonym-key", "WORKFLOWS");
       await publishedWorkflow(`${PREFIX}-hmac`, { type: "totalbase.sign", configuration: { format: "HMAC_SHA256", data: "30111222", key: HMAC_KEY } });
       await publishedWorkflow(`${PREFIX}-hmac-b64`, { type: "totalbase.sign", configuration: { format: "HMAC_SHA256", data: "30111222", key: HMAC_KEY, encoding: "BASE64" } });
     });
@@ -426,11 +512,13 @@ describe("workflow operations", () => {
     const SECRET = "wfop_http_api_key";
     beforeAll(async () => {
       await context.settings.set("workflows.http_allowed_hosts", ["127.0.0.0/8"]);
-      await context.secrets.set(SECRET, "s3cr3t-value");
+      await context.secrets.set(SECRET, "s3cr3t-value", "WORKFLOWS");
       const step = (slug: string, configuration: Record<string, unknown>) => publishedWorkflow(`${PREFIX}-${slug}`, { type: "totalbase.http-request", configuration });
       await step("http-secret", { method: "GET", url: `http://127.0.0.1:${serverPort}/ok`, secretHeaders: [{ name: "x-api-key", secret: SECRET }] });
+      await step("http-secret-redirect", { method: "GET", url: `http://localhost:${serverPort}/redirect-elsewhere`, secretHeaders: [{ name: "x-api-key", secret: SECRET }] });
       await step("http-head", { method: "HEAD", url: `http://127.0.0.1:${serverPort}/ok` });
       await step("http-big", { method: "GET", url: `http://127.0.0.1:${serverPort}/big` });
+      await step("http-bomb", { method: "GET", url: `http://127.0.0.1:${serverPort}/bomb` });
       await step("http-body", { method: "POST", url: `http://127.0.0.1:${serverPort}/ok`, body: { text: "y".repeat(4096) } });
       await step("http-fail", { method: "GET", url: `http://127.0.0.1:${serverPort}/fail` });
     });
@@ -448,6 +536,13 @@ describe("workflow operations", () => {
       expect(JSON.stringify(rows[0]!.definition)).not.toContain("s3cr3t-value");
     });
 
+    // Security regression: only authorization, cookie and proxy-authorization were dropped on a redirect to another
+    // origin - a secret header of any other name (X-Api-Key) went to whoever the first host redirected to.
+    it("never sends a secret header to another origin a redirect leads to", async () => {
+      const res = await run(`${PREFIX}-http-secret-redirect`);
+      expect(res.json().data, res.body).toMatchObject({ status: "SUCCEEDED", result: { data: { body: { ok: true, key: null } } } });
+    });
+
     it("takes HEAD, answering its status and how long it took", async () => {
       const res = await run(`${PREFIX}-http-head`);
       expect(res.json().data, res.body).toMatchObject({ status: "SUCCEEDED", result: { data: { status: 200 } } });
@@ -461,10 +556,22 @@ describe("workflow operations", () => {
       expect((await run(`${PREFIX}-http-body`)).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_LIMIT_EXCEEDED" } });
     });
 
+    // Security regression: the limit was checked after the whole body was inflated, synchronously, on the event loop -
+    // a few compressed megabytes became gigabytes in the one TotalBase process.
+    it("stops inflating a compressed response at the limit", async () => {
+      await context.settings.set("workflows.http_max_response_bytes", 1024 * 1024);
+      expect((await run(`${PREFIX}-http-bomb`)).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_LIMIT_EXCEEDED" } });
+      await context.settings.reset("workflows.http_max_response_bytes");
+    });
+
     it("says what failed on a non-2xx: status, url and duration - no header values", async () => {
       const res = await run(`${PREFIX}-http-fail`);
-      expect(res.json().data, res.body).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR" } });
-      expect(res.body).toContain("HTTP request returned status 500");
+      const history = await recorded(res);
+      expect(history, res.body).toMatchObject({ status: "FAILED", error: { code: "INTERNAL_ERROR" } });
+      expect(JSON.stringify(history.error)).toContain("HTTP request returned status 500");
+      // The upstream's status, URL and body stay in the history: the caller gets none of it.
+      expect(res.body).not.toContain("HTTP request returned status 500");
+      expect(res.body).not.toContain("127.0.0.1");
     });
   });
 
@@ -532,6 +639,17 @@ describe("workflow operations", () => {
       })]);
     });
 
+    // Security regression (Workflows.md §5.16): recipients a webhook sent went to the relay as they came - one call
+    // mailed any number of addresses through the instance.
+    it("Send email refuses more than MAX_RECIPIENTS_PER_STEP recipients, and anything that isn't an address", async () => {
+      await publishedWorkflow(`${PREFIX}-mail-many`, { type: "totalbase.send-email", configuration: { to: "{{start.data.to}}", subject: "Hi", bodyType: "text", textBody: "Hi" } });
+      sent.length = 0;
+      const many = Array.from({ length: 51 }, (_, i) => `r${i}@example.com`).join(", ");
+      expect((await run(`${PREFIX}-mail-many`, { to: many })).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_LIMIT_EXCEEDED" } });
+      expect((await run(`${PREFIX}-mail-many`, { to: "not an address" })).json().data).toMatchObject({ status: "FAILED", error: { code: "WORKFLOW_INVALID_DESIGN" } });
+      expect(sent).toHaveLength(0);
+    });
+
     it("Send email renders the template with READ (row filter honored), escaping values in the message", async () => {
       await context.permissions.set(roleId, templatesResourceId, "READ", { effect: "ALLOW", where: { id: { _eq: mailingId } } });
       try {
@@ -554,7 +672,8 @@ describe("workflow operations", () => {
       const filesResourceId = (await database.query<{ id: string }>(
         `SELECT id FROM totalbase.resources WHERE "schema" = 'totalbase' AND name = 'files'`,
       )).rows[0]!.id;
-      const file = await context.filesAdmin.upload({ content: Buffer.from("a,b\n1,2\n"), filename: "report.csv", declaredContentType: "text/csv", visibility: "PRIVATE" });
+      // The executor's own file: a PRIVATE file is reached by its uploader only (Administration.md §10.6).
+      const file = await context.filesAdmin.upload({ content: Buffer.from("a,b\n1,2\n"), filename: "report.csv", declaredContentType: "text/csv", visibility: "PRIVATE", actorUserId: caller.userId });
       await publishedWorkflow(`${PREFIX}-mail-attach`, {
         type: "totalbase.send-email",
         configuration: { to: "dest@example.com", subject: "Report", bodyType: "text", textBody: "Attached.", attachments: ["{{start.data.file}}"] },

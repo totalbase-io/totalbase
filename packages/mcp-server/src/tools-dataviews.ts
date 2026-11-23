@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { whereParams, type AdminClient } from "./admin-client.js";
+import { FULL_POLICY, refuseDestructive, refuseRemovedRoles, type McpPolicy } from "./policy.js";
+import { heldRoles } from "./tools-users.js";
 import { columnInputWidgets, columnValueKind, GRID_CELL_CONFIG_KEYS, GRID_CELL_MAX_LINES, GRID_CELL_TEXT_WRAPS, GRID_CELL_VERTICAL_ALIGNS, GRID_COLUMN_DEFAULT_MAX_WIDTH, GRID_COLUMN_WIDTH_RANGE, gridCellConfigProblem, looksLikeSettingsTable, suggestSettingsLayout, widgetDefinition, type WidgetName } from "@totalbase/tb-catalog";
-import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, schemaName, publishOutcome } from "./tool-helpers.js";
+import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, findResource, deleteEach, deletedOutput, deleteTargets, IDEMPOTENT, jsonObject, listOf, NAME_RULE, publishOutput, READ_ONLY, result, roleId, schemaName, publishOutcome } from "./tool-helpers.js";
 
 /**
  * DataViews (DataViews.md, Administration.md
@@ -101,13 +103,41 @@ function missingPaths(related: Record<string, string[]>): Record<string, string[
   return Object.keys(missing).length > 0 ? missing : null;
 }
 
-export function registerDataViewTools(server: McpServer, client: AdminClient): void {
+/** A DataView as summary answers it. */
+const summaryOutput = {
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  viewType: z.string(),
+  source: z.string().nullable().describe("Its source table or view, schema.name"),
+  liveVersion: z.number().nullable().describe("null: never published"),
+  hasUnpublishedChanges: z.boolean().optional(),
+};
+/** A DataView's field: a column, or with detail a widget of its form. */
+const fieldOutput = z.looseObject({
+  id: z.string(),
+  kind: z.enum(["COLUMN", "RELATED", "WIDGET"]),
+  column: z.string().optional(),
+  label: z.string().optional(),
+  title: z.string().optional(),
+  shortLabel: z.string().optional(),
+  widget: z.string().optional(),
+  gridWidget: z.string().optional(),
+  formInput: z.string().optional(),
+  formInputFollowsColumn: z.boolean().optional(),
+  visible: z.boolean(),
+  config: jsonObject().optional(),
+  cell: jsonObject().optional(),
+});
+
+export function registerDataViewTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
   server.registerTool(
     "list_dataviews",
     {
       title: "List DataViews",
       description: "Every DataView: id, name, slug, type, source table, live version (null: never published) and whether the draft has unpublished changes.",
       inputSchema: {},
+      outputSchema: listOf(z.object(summaryOutput)),
       annotations: READ_ONLY,
     },
     async () => result((await client.get<DataView[]>("/dataviews")).map(summary)),
@@ -122,6 +152,16 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
       inputSchema: {
         id: z.string().describe("The DataView's id (list_dataviews)"),
         detail: z.boolean().optional().describe("Every field - the form's widgets too - with its config"),
+      },
+      outputSchema: {
+        ...summaryOutput,
+        description: z.string().nullable(),
+        icon: z.string().nullable(),
+        scope: z.string().optional(),
+        viewConfig: jsonObject(),
+        fields: z.array(fieldOutput).describe("Its columns; with detail, the form's widgets too"),
+        roles: z.array(z.object({ role: z.string(), read: z.string().optional(), create: z.string().optional(), update: z.string().optional(), delete: z.string().optional() })).describe("The roles that open it, with what each may do on its source"),
+        rolesMissingRelatedColumns: z.record(z.string(), z.array(z.string())).optional(),
       },
       annotations: READ_ONLY,
     },
@@ -181,6 +221,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
           .optional()
           .describe("MASTER_DETAIL only"),
       },
+      outputSchema: { ...summaryOutput, hint: z.string().optional(), next: z.string() },
       annotations: ADDITIVE,
     },
     async ({ name, view_type, schema, table, columns, slug, icon, menu_label, view_config, detail }) => {
@@ -268,9 +309,12 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
           )
           .optional(),
       },
+      outputSchema: { ...summaryOutput, viewConfig: jsonObject(), fields: z.array(fieldOutput).optional().describe("The fields changed"), roleIds: z.array(z.string()).optional() },
       annotations: IDEMPOTENT,
     },
     async ({ id, name, slug, description, menu_label, icon, color, scope, view_config, auto_refresh, role_ids, add_columns, remove_columns, column_order, default_sort, toolbar_mode, fields }) => {
+      if (role_ids) await refuseRemovedRoles(policy, "Replacing who may open the DataView", role_ids, () => heldRoles(client, "dataviews_roles", "dataview", id));
+      if (remove_columns?.length) refuseDestructive(policy, "Removing columns (remove_columns) - hide them with fields visible false");
       if (role_ids) await client.put(`/dataviews/${id}/roles`, { data: { roleIds: role_ids } });
       if (add_columns?.length) await client.post(`/dataviews/${id}/columns`, { data: add_columns });
       if (remove_columns?.length) {
@@ -352,9 +396,11 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
       description:
         "Publish a DataView's draft as its next version - what users see in the App. published=false: the draft already equaled the live version, nothing changed. role_ids replaces the roles that may open it (list_roles); without any, only administrators do. Those roles also need the source table's permissions (grant_permission) to read or write its rows - get_dataview shows what each role may do. A published, LISTED DataView joins the App menu.",
       inputSchema: { id: z.string().describe("The DataView's id"), role_ids: z.array(roleId()).optional().describe("Every role that may open it - replaces the current set"), note: z.string().max(128).optional().describe("What this version changes - shown in its Versions") },
+      outputSchema: { id: z.string(), ...publishOutput(), roleIds: z.array(z.string()).optional(), warnings: z.array(z.unknown()).optional() },
       annotations: ADDITIVE,
     },
     async ({ id, role_ids, note }) => {
+      if (role_ids) await refuseRemovedRoles(policy, "Replacing who may open the DataView", role_ids, () => heldRoles(client, "dataviews_roles", "dataview", id));
       if (role_ids) await client.put(`/dataviews/${id}/roles`, { data: { roleIds: role_ids } });
       const { data: version, meta, status } = await client.postWithMeta<{ version: number }>(`/dataviews/${id}/publish`, note ? { data: { note } } : {});
       // A role opening it without a path its columns show - a related column, a reference's name (B44, M19).
@@ -373,6 +419,7 @@ export function registerDataViewTools(server: McpServer, client: AdminClient): v
       title: "Delete DataView",
       description: "Delete a DataView with its versions (and the detail DataViews it owns) - it leaves the App menu. The table and its rows stay. Refused while another page embeds it. Requires confirm=true.",
       inputSchema: { ...deleteTargets(), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: deletedOutput(),
       annotations: DESTRUCTIVE,
     },
     async ({ id, ids }) => result(await deleteEach(client, "/dataviews", { id, ids })),

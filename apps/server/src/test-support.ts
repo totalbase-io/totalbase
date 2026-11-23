@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { relationDetailCache } from "@totalbase/pg-catalog";
 import type { Database } from "@totalbase/database";
@@ -19,12 +22,31 @@ import { buildServer } from "./server.js";
 // goes through a reconcile that clears the relation-detail cache, so here it is simply off.
 relationDetailCache.enabled = false;
 
+let testDataDir: string | null = null;
+
+/**
+ * The data directory the test bootstrap starts with: one of this process's own, removed when it exits - never the
+ * one TOTALBASE_DATA_DIR names (/var/lib/totalbase by default), which a development instance on the same machine
+ * starts from. What bootstrap writes there - the ciphertext-format marker (Foundations.md §15), the setup code -
+ * would otherwise speak for that instance's database: a marker the test database left made the development one
+ * refuse to start. The tests' master key is always TOTALBASE_MASTER_KEY, never a file in it.
+ */
+export function testBootstrapDataDir(): string {
+  if (testDataDir === null) {
+    const dir = mkdtempSync(join(tmpdir(), "totalbase-test-data-"));
+    process.once("exit", () => rmSync(dir, { recursive: true, force: true }));
+    testDataDir = dir;
+  }
+  return testDataDir;
+}
+
 export async function setupTestApp(): Promise<{ app: FastifyInstance; context: AppContext; database: Database }> {
-  const env = loadServerEnv();
+  const env = { ...loadServerEnv(), dataDir: testBootstrapDataDir() };
   const logger = pino({ level: "silent" });
 
   const { database } = await bootstrap(env, logger);
-  const context = buildContext(database, logger, testMasterKey(env.masterKey), env.publicUrl!, env.nodeEnv);
+  // The data directory is the system's temporary one: where the suites make the directories they store files and backups in.
+  const context = buildContext(database, logger, testMasterKey(env.masterKey), env.publicUrl!, env.nodeEnv, undefined, undefined, tmpdir());
   const app = await buildServer(context, "silent");
   await app.ready();
 

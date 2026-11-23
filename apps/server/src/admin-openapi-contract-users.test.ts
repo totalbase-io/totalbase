@@ -132,7 +132,7 @@ describe("Admin OpenAPI matches real responses: users and credentials", () => {
   });
 
   it("secrets", async () => {
-    const put = await inject("PUT", `/admin/api/secrets/${secretKey}`, { value: "oac-users-secret" });
+    const put = await inject("PUT", `/admin/api/secrets/${secretKey}`, { value: "oac-users-secret", scope: "AUTH_PROVIDERS" });
     expect(put.statusCode, put.body).toBe(200);
     secretId = (await contract.database.query<{ id: string }>(`SELECT id FROM totalbase.secrets WHERE key = $1`, [secretKey])).rows[0]!.id;
     contract.expectKeys(put.json().data, contract.dataSchema("/admin/api/secrets/{key}", "put"), "PUT secret");

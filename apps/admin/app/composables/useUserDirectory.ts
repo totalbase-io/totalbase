@@ -76,9 +76,41 @@ export function useUserDirectory() {
     return id ? entries.value[id]?.email ?? null : null
   }
 
+  /**
+   * The same lookup by email, for the one place that knows a user only by it: a refused sign-in, whose audit entry
+   * has no principal (StatusFeed.vue). An email no account has is remembered as such.
+   */
+  const byEmail = useState<Record<string, string | null>>('user-directory-emails', () => ({}))
+  async function ensureEmails(emails: Array<string | null | undefined>): Promise<void> {
+    const missing = [...new Set(emails.filter((email): email is string => !!email).map(email => email.toLowerCase()))]
+      .filter(email => !(email in byEmail.value))
+    for (let i = 0; i < missing.length; i += BATCH) {
+      const batch = missing.slice(i, i + BATCH)
+      try {
+        const { data } = await dataApi.get<Array<{ id: string, name?: string | null, email?: string | null, avatar_url?: string | null }>>(
+          dataApi.resourcePath('totalbase', 'users'),
+          { 'where[email][_in]': batch.join(','), 'limit': BATCH }
+        )
+        const users = { ...entries.value }
+        const found: Record<string, string | null> = Object.fromEntries(batch.map(email => [email, null]))
+        for (const user of data) {
+          users[user.id] = { name: user.name ?? null, email: user.email ?? null, avatarUrl: user.avatar_url ?? null }
+          if (user.email) found[user.email.toLowerCase()] = user.id
+        }
+        entries.value = users
+        byEmail.value = { ...byEmail.value, ...found }
+      } catch {
+        // Not readable by this viewer: the email stays what is shown.
+      }
+    }
+  }
+  function idByEmail(email: string | null | undefined): string | null {
+    return email ? byEmail.value[email.toLowerCase()] ?? null : null
+  }
+
   function avatar(id: string | null | undefined): string | null {
     return id ? entries.value[id]?.avatarUrl ?? null : null
   }
 
-  return { ensure, label, email, avatar, entries }
+  return { ensure, ensureEmails, idByEmail, label, email, avatar, entries }
 }

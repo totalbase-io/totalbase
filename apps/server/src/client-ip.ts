@@ -21,3 +21,14 @@ export async function ipInRanges(database: Database, address: string | undefined
   const { rows } = await database.query<{ allowed: boolean | null }>(`SELECT $1::inet <<= ANY($2::inet[]) AS allowed`, [address, ranges]);
   return rows[0]?.allowed === true;
 }
+
+/**
+ * Fastify's `trustProxy` from the settings (Administration.md §7.7): the listed proxies, when there are any - only
+ * their X-Forwarded-For is believed; else, with `security.trust_proxy` on, the one proxy in front - the address it
+ * appended, one hop - never every hop: the left of the header is whatever the client sent, so believing it would let
+ * any client choose its address (rate limits, the audit, a token's allowed_ips).
+ */
+export function trustProxyOption(trustedProxies: string[], trustProxy: boolean): false | string[] | ((address: string, hop: number) => boolean) {
+  if (trustedProxies.length > 0) return trustedProxies;
+  return trustProxy ? (_address, hop) => hop < 1 : false;
+}

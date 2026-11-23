@@ -28,17 +28,18 @@ import {
   assertAdminWrittenTable,
   assertNotSettingsWrite,
   assertAssignmentDeleteAllowed,
-  assertRoleOwnership,
+  roleOwnershipCheck,
   accessEventFor,
   resolveWriteCaller,
   assertGuardedColumnsWriteAllowed,
   assertUserRoleAssignmentAllowed,
+  assertAssignmentMoveAllowed,
   isProtectedField,
   protectedFieldDecision,
   withoutProtectedFields,
 } from "./totalbase-guardrails.js";
 import { hashPasswordFields, loadPasswordColumns, stripPasswordFields } from "./password-fields.js";
-import { mutationResponseProjection } from "./response-projection.js";
+import { mutationResponseProjection, readRowFilter, writeWhereFieldDecision } from "./response-projection.js";
 
 export interface Limits {
   maxFilterDepth: number;
@@ -134,6 +135,7 @@ export function stripInternal(row: Record<string, unknown>): Record<string, unkn
   const clean = { ...row };
   delete clean["__authorized"];
   delete clean["__inserted"];
+  delete clean["__readable"];
   delete clean[ROW_VERSION_COLUMN];
   for (const key of Object.keys(clean)) {
     if (key.startsWith("__payload_check_") || key.startsWith("__old_")) delete clean[key];
@@ -483,7 +485,7 @@ export async function executeCreate(
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
   await preloadRelations(mutationContext);
   const passwordColumns = await loadPasswordColumns(deps.context, deps.resourceId);
-  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns);
+  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns, deps.limits);
   const caller = await resolveWriteCaller((ids) => deps.context.effectivePermissions.isAdministrators(ids), deps.dataPrincipal);
   const oldValueFields = upsert ? updateOldValueFields(deps) : undefined;
 
@@ -515,11 +517,13 @@ export async function executeCreate(
           assertValidRow(row, compiled.payloadCheckColumns);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await queueAuditAndOutbox(deps, client, "CREATE", startedAt, undefined, clean, batch);
-          results.push(project(clean));
+          results.push(await project(clean, client));
         }
         outboxEventIds.push(...(await flushWriteBatch(deps.context, client, batch)));
         return results;
       }
+      // Which roles the caller may change, read before an upsert's DO UPDATE moves any (Security.md §9.5).
+      const ownsRole = await roleOwnershipCheck(client, deps.root, caller);
       for (const item of items) {
         if (onConflict?.action === "UPDATE") {
           // The DO UPDATE branch passes the guardrails a plain UPDATE's data does - every column it sets,
@@ -543,11 +547,12 @@ export async function executeCreate(
           const action = compiled.insertedColumn && row[compiled.insertedColumn] === false ? "UPDATE" : "CREATE";
           await assertAuthorizedRow(row, action);
           assertValidRow(row, compiled.payloadCheckColumns);
-          if (action === "UPDATE") await assertRoleOwnership(client, deps.root, row, caller);
+          if (action === "UPDATE") ownsRole(row);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           const oldRow = action === "UPDATE" ? oldRowOf(row, compiled, passwordColumns) : undefined;
+          if (oldRow) await assertAssignmentMoveAllowed(client, deps.root, oldRow, clean, caller);
           await queueAuditAndOutbox(deps, client, action, startedAt, oldRow, clean, batch);
-          results.push(project(clean));
+          results.push(await project(clean, client));
         }
       }
       outboxEventIds.push(...(await flushWriteBatch(deps.context, client, batch)));
@@ -591,9 +596,11 @@ export async function executeUpdate(
   }
   const rowFilter = buildRowFilter(permission, deps.limits);
   const payloadChecks = buildPayloadChecks(permission, deps.limits);
+  const passwordColumns = await loadPasswordColumns(deps.context, deps.resourceId);
   const mutationContext = {
     root: deps.root,
     fieldDecision: protectedFieldDecision(deps.root, permission.fieldDecision),
+    whereFieldDecision: await writeWhereFieldDecision(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns),
     rowFilter,
     payloadChecks,
     resolveUserVariable: userVariableResolver(deps.dataPrincipal),
@@ -604,8 +611,7 @@ export async function executeUpdate(
   };
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
   await preloadRelations(mutationContext);
-  const passwordColumns = await loadPasswordColumns(deps.context, deps.resourceId);
-  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns);
+  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns, deps.limits);
   const caller = await resolveWriteCaller((ids) => deps.context.effectivePermissions.isAdministrators(ids), deps.dataPrincipal);
   const oldValueFields = updateOldValueFields(deps);
 
@@ -614,6 +620,8 @@ export async function executeUpdate(
     const results = await deps.context.database.transaction(async (client: Queryable) => {
       const results: Record<string, unknown>[] = [];
       const batch = newWriteBatch();
+      // Which roles the caller may change, read before this write moves any (Security.md §9.5).
+      const ownsRole = await roleOwnershipCheck(client, deps.root, caller);
       for (const op of operations) {
         assertGuardedColumnsWriteAllowed(deps.root, op.data, caller, "UPDATE");
         await assertUserRoleAssignmentAllowed(client, deps.root, op.data, caller);
@@ -628,11 +636,12 @@ export async function executeUpdate(
           if (typeof row[ROW_VERSION_COLUMN] === "string") versions?.push(row[ROW_VERSION_COLUMN] as string);
           await assertAuthorizedRow(row, "UPDATE");
           assertValidRow(row, compiled.payloadCheckColumns);
-          await assertRoleOwnership(client, deps.root, row, caller);
+          ownsRole(row);
           const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           const oldRow = oldRowOf(row, compiled, passwordColumns);
+          if (oldRow) await assertAssignmentMoveAllowed(client, deps.root, oldRow, clean, caller);
           await queueAuditAndOutbox(deps, client, "UPDATE", startedAt, oldRow, clean, batch);
-          results.push(project(clean));
+          results.push(await project(clean, client));
         }
       }
       outboxEventIds.push(...(await flushWriteBatch(deps.context, client, batch)));
@@ -661,6 +670,7 @@ export async function executeDelete(
     throw error;
   }
   const rowFilter = buildRowFilter(permission, deps.limits);
+  const passwordColumns = await loadPasswordColumns(deps.context, deps.resourceId);
   // DELETE has no proposed values to check a business rule against
   // (Security.md §6.6, and see the Payload checks chat) - compileDelete
   // ignores this either way, only present so the shared
@@ -668,16 +678,18 @@ export async function executeDelete(
   const mutationContext = {
     root: deps.root,
     fieldDecision: protectedFieldDecision(deps.root, permission.fieldDecision),
+    whereFieldDecision: await writeWhereFieldDecision(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns),
     rowFilter,
     payloadChecks: undefined,
+    // Whether each deleted row was one the caller could read - what its answer may show (Security.md §6.6).
+    readFilter: await readRowFilter(deps.context, deps.dataPrincipal, deps.resourceId, deps.limits),
     resolveUserVariable: userVariableResolver(deps.dataPrincipal),
     // The grant's row filter and payload checks may follow foreign keys (Security.md §6.5).
     related: relatedResolver(new SchemaContext(deps.context.database)),
   };
   // Before BEGIN: the tables its filters reach are read through the pool now, never inside the transaction.
   await preloadRelations(mutationContext);
-  const passwordColumns = await loadPasswordColumns(deps.context, deps.resourceId);
-  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns);
+  const project = await mutationResponseProjection(deps.context, deps.dataPrincipal, deps.root, deps.resourceId, passwordColumns, deps.limits);
   const caller = await resolveWriteCaller((ids) => deps.context.effectivePermissions.isAdministrators(ids), deps.dataPrincipal);
 
   const outboxEventIds: string[] = [];
@@ -685,6 +697,8 @@ export async function executeDelete(
     const results = await deps.context.database.transaction(async (client: Queryable) => {
       const results: Record<string, unknown>[] = [];
       const batch = newWriteBatch();
+      // Which roles the caller may change, read before this write moves any (Security.md §9.5).
+      const ownsRole = await roleOwnershipCheck(client, deps.root, caller);
       for (const op of operations) {
         const compiled = await compileDelete(mutationContext, op.where, op.version);
         const { rows } = await client.query(compiled.sql, compiled.params);
@@ -696,11 +710,11 @@ export async function executeDelete(
         // deletion - the entry's `payload` (Security.md §11.4).
         for (const row of rows as Record<string, unknown>[]) {
           assertRolesDeleteAllowed(deps.root, row);
-          await assertRoleOwnership(client, deps.root, row, caller);
+          ownsRole(row);
           await assertAssignmentDeleteAllowed(client, deps.root, row, caller);
-          const clean = stripPasswordFields(row, passwordColumns);
+          const clean = stripPasswordFields(stripInternal(row), passwordColumns);
           await queueAuditAndOutbox(deps, client, "DELETE", startedAt, clean, undefined, batch);
-          results.push(project(clean));
+          results.push(await project(clean, client, { readable: row["__readable"] === true }));
         }
       }
       outboxEventIds.push(...(await flushWriteBatch(deps.context, client, batch)));

@@ -1,5 +1,5 @@
 import { TotalBaseError } from "@totalbase/errors";
-import type { ResolvedResource } from "./schema-context.js";
+import { assertReachableThroughRelation, type ResolvedResource } from "./schema-context.js";
 import { quoteIdentifier, qualifiedTable } from "./pg-dialect.js";
 import { coerceLiteral } from "./value-coercion.js";
 import type { FilterCompileContext } from "./filter-compiler.js";
@@ -61,6 +61,7 @@ async function relationSubquery(root: ResolvedResource, tableAlias: string, path
   const last = path[path.length - 1]!;
   const column = current.columns.find((c) => c.name === last);
   if (!column) throw new TotalBaseError("INVALID_FIELD", `Unknown field: ${current.table}.${last}`);
+  assertReachableThroughRelation(current, last, path.join("."));
   return {
     columnSql: `(SELECT ${prefix}${path.length - 2}.${quoteIdentifier(column.name)} FROM ${from} WHERE ${correlation})`,
     dataType: column.dataType,

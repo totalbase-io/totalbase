@@ -30,12 +30,12 @@ export class S3Connection {
       this.settings.get("s3.secret_key"),
     ]);
     if (!enabled && !options.whileDisabled) {
-      throw new TotalBaseError("INVALID_SETTING", "S3 storage is turned off - enable it under Settings › S3 storage.");
+      throw new TotalBaseError("INVALID_SETTING", "S3 storage is turned off - enable it under Settings › S3.");
     }
     if (!endpoint || !bucket || !accessKeyId || !secretKey) {
       throw new TotalBaseError(
         "INVALID_SETTING",
-        "S3 storage is not configured - set its endpoint, bucket, access key ID and secret access key under Settings › S3 storage.",
+        "S3 storage is not configured - set its endpoint, bucket, access key ID and secret access key under Settings › S3.",
       );
     }
     const base = prefix && !prefix.endsWith("/") ? `${prefix}/` : prefix;

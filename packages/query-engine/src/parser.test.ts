@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { parseFilter, parseQuery } from "./parser.js";
+import { FilterLiteral } from "./ast.js";
 import { assertFilterComplexity } from "./complexity.js";
 
 const limits = { maxFilterDepth: 10, maxRelationDepth: 3 };
 
 describe("parseQuery: fields", () => {
+  it("takes a list of paths as the plain list", () => {
+    expect(parseQuery({ fields: ["id", "brand.name"] }, limits).fields).toEqual([{ path: ["id"] }, { path: ["brand", "name"] }]);
+    expect(() => parseQuery({ fields: ["id", 3] }, limits)).toThrow(/list of paths/);
+  });
   it("parses a plain comma list with no aliases", () => {
     const ast = parseQuery({ fields: "id,name,brand.name" }, limits);
     expect(ast.fields).toEqual([{ path: ["id"] }, { path: ["name"] }, { path: ["brand", "name"] }]);
@@ -157,10 +162,38 @@ describe("parseQuery: where", () => {
     }
   });
 
+  // A program's value (a workflow's resolved {{...}}) is that value - never the grammar it would read as from an author.
+  it("takes a FilterLiteral as that value: never a $ variable, never split on commas", () => {
+    const leaf = (where: unknown) => parseFilter(where, limits, 0);
+    expect(leaf({ id: { _eq: new FilterLiteral("$ROW.id") } })).toMatchObject({ operator: "_eq", value: "$ROW.id" });
+    expect(leaf({ id: { _eq: new FilterLiteral("$USER.id") } })).toMatchObject({ value: "$USER.id" });
+    expect(leaf({ at: { _gt: new FilterLiteral("$CURRENT_DATE") } })).toMatchObject({ value: "$CURRENT_DATE" });
+    expect(leaf({ qty: { _eq: new FilterLiteral(7) } })).toMatchObject({ value: "7" });
+    expect(leaf({ id: { _in: new FilterLiteral("1,2,3") } })).toMatchObject({ operator: "_in", value: ["1,2,3"] });
+    expect(leaf({ id: { _in: new FilterLiteral(["1", "$ROW.id"]) } })).toMatchObject({ value: ["1", "$ROW.id"] });
+    // Beside the author's own text, which stays the grammar.
+    expect(leaf({ owner: { _in: [new FilterLiteral("$ROW.owner"), "$USER.id"] } })).toMatchObject({ value: ["$ROW.owner", { kind: "user" }] });
+    expect(leaf({ owner: { _eq: "$USER.id" } })).toMatchObject({ value: { kind: "user" } });
+    for (const bad of [{ x: { _eq: new FilterLiteral(null) } }, { x: { _eq: new FilterLiteral({ _neq: 1 }) } }, { x: { _between: new FilterLiteral(["1"]) } }]) {
+      expect(() => leaf(bad)).toThrow(expect.objectContaining({ code: "INVALID_QUERY" }));
+    }
+  });
+
   it("rejects filter nesting beyond max_filter_depth", () => {
     expect(() =>
       parseQuery({ where: { _and: [{ _and: [{ _and: [{ x: { _eq: "1" } }] }] }] } }, { ...limits, maxFilterDepth: 1 }),
     ).toThrow();
+  });
+});
+
+// Security regression (Data_API.md §12): an _in list took any number of values - a filter's node count sees it as one.
+describe("list values", () => {
+  it("takes at most 10,000 values in an _in or _nin list, as an array or a comma list", () => {
+    const many = (n: number) => Array.from({ length: n }, (_, i) => String(i));
+    expect(() => parseFilter({ id: { _in: many(10_000) } }, limits, 0)).not.toThrow();
+    for (const value of [many(10_001), many(10_001).join(",")]) {
+      expect(() => parseFilter({ id: { _nin: value } }, limits, 0)).toThrow(expect.objectContaining({ code: "QUERY_COMPLEXITY_LIMIT_EXCEEDED" }));
+    }
   });
 });
 
@@ -250,3 +283,22 @@ describe("parseQuery limit and offset", () => {
   });
 });
 
+// Security regression: an alias went into the SQL as a quoted identifier as given - a NUL byte cut the statement (a
+// 500), and a name past 63 characters was silently truncated by PostgreSQL.
+describe("parseQuery: aliases", () => {
+  it("refuses an alias with a control character or longer than 63 characters", () => {
+    for (const alias of ["a\u0000b", "line\nbreak", "x".repeat(64)]) {
+      expect(() => parseQuery({ fields: { name: alias } }, limits), JSON.stringify(alias)).toThrow(expect.objectContaining({ code: "INVALID_ALIAS" }));
+    }
+    expect(() => parseQuery({ fields: { name: "Nombre del cliente" } }, limits)).not.toThrow();
+  });
+});
+
+// An unknown parameter was dropped: `sort=-amount` read unsorted, `aggregate` read rows (Data_API.md §3.1).
+describe("parseQuery: unknown parameters", () => {
+  it("refuses a parameter the query language doesn't define, naming it and what it means here", () => {
+    expect(() => parseQuery({ sort: "-amount" }, limits)).toThrow(/Unknown query parameter: sort \(sort -> order_by\)/);
+    expect(() => parseQuery({ fields: "id", aggregate: "count", extra: "1" }, limits)).toThrow(/parameters: aggregate, extra/);
+    expect(() => parseQuery({ fields: "id", order_by: "-id", _count: { "*": "n" }, count: "true" }, limits)).not.toThrow();
+  });
+});

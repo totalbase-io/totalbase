@@ -17,6 +17,7 @@ interface LoginResponse {
 
 const session = useSession()
 const { instance } = useInstance()
+const lockdown = useLockdown()
 // An instance with no administrator yet is set up first (pages/setup.vue) - there is no one to sign in.
 onMounted(async () => {
   try {
@@ -410,6 +411,15 @@ async function submit() {
                 </template>
               </UInput>
             </UFormField>
+
+            <UAlert
+              v-if="lockdown.active"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-lock"
+              :title="t(lockdown.readOnly ? 'auth.lockdown.titleReadOnly' : 'auth.lockdown.title')"
+              :description="lockdown.text(t(lockdown.readOnly ? 'auth.lockdown.signInReadOnly' : 'auth.lockdown.signIn'))"
+            />
 
             <UAlert
               v-if="errorMessage"

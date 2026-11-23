@@ -328,6 +328,7 @@ function rowMenu(endpoint: Endpoint): DropdownMenuItem[][] {
             icon="i-lucide-route"
             :title="t('content.docs.endpoints.emptyTitle')"
             :description="t('content.docs.endpoints.emptyDescription')"
+            class="table-empty"
           />
         </template>
       </UTable>

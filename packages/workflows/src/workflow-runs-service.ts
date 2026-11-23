@@ -184,13 +184,16 @@ export class WorkflowRunsService {
     return rows[0]?.last ?? null;
   }
 
-  /** Runs that finished FAILED since `since` - the dashboard's "needs attention". */
-  async countFailedSince(since: Date): Promise<number> {
-    const { rows } = await this.database.query<{ count: number }>(
-      `SELECT count(*)::int AS count FROM totalbase.workflows_runs WHERE status = 'FAILED' AND finished_at >= $1`,
+  /** Runs finished since `since`, succeeded and failed - the admin dashboard's count and its needs-attention item. */
+  async countFinishedSince(since: Date): Promise<{ succeeded: number; failed: number }> {
+    const { rows } = await this.database.query<{ succeeded: number; failed: number }>(
+      `SELECT count(*) FILTER (WHERE status = 'SUCCEEDED')::int AS succeeded,
+              count(*) FILTER (WHERE status = 'FAILED')::int AS failed
+       FROM totalbase.workflows_runs
+       WHERE finished_at >= $1 AND status IN ('SUCCEEDED', 'FAILED')`,
       [since],
     );
-    return rows[0]!.count;
+    return rows[0]!;
   }
 
   /**

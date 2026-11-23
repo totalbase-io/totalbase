@@ -173,6 +173,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       [
         { label: 'shell.nav.items.general', type: 'label' },
         { label: 'shell.nav.items.general', icon: 'i-lucide-globe', to: '/settings/system' },
+        { label: 'shell.nav.items.lockdown', icon: 'i-lucide-lock', to: '/settings/lockdown' },
         { label: 'shell.nav.items.appearance', icon: 'i-lucide-palette', to: '/settings/appearance' },
         { label: 'shell.nav.items.emailSmtp', icon: 'i-lucide-send', to: '/settings/smtp' },
         { label: 'shell.nav.items.s3Storage', icon: 'i-lucide-cloud', to: '/settings/s3' }
@@ -187,6 +188,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       [
         { label: 'shell.nav.items.access', type: 'label' },
         { label: 'shell.nav.items.authentication', icon: 'i-lucide-log-in', to: '/settings/auth' },
+        { label: 'shell.nav.items.mfa', icon: 'i-lucide-smartphone', to: '/settings/mfa' },
         { label: 'shell.nav.items.authProviders', icon: 'i-lucide-fingerprint', to: '/settings/auth-providers' },
         { label: 'shell.nav.items.tokens', icon: 'i-lucide-key-round', to: '/settings/api-tokens' }
       ],
@@ -238,6 +240,7 @@ export function translateNavGroups(groups: AdminNavGroup[], t: (key: string) => 
  */
 export const SETTINGS_GROUP_ROUTES: Record<string, string> = {
   system: '/settings/system',
+  lockdown: '/settings/lockdown',
   appearance: '/settings/appearance',
   smtp: '/settings/smtp',
   s3: '/settings/s3',
@@ -245,6 +248,7 @@ export const SETTINGS_GROUP_ROUTES: Record<string, string> = {
   pool: '/settings/connector',
   catalog: '/settings/connector',
   auth: '/settings/auth',
+  mfa: '/settings/mfa',
   api_keys: '/settings/api-tokens',
   security: '/settings/network',
   audit: '/settings/audit',

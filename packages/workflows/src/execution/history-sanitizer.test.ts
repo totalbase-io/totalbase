@@ -11,6 +11,14 @@ describe("history-sanitizer", () => {
     expect(result).toEqual({ name: "Acme", password: "[REDACTED]" });
   });
 
+  // WF-L2: an inbound header named outside the pattern (X-Custom-Auth) was stored as it came.
+  it("redacts a credential whatever a caller named its header - and an authorization scheme under any key", () => {
+    const headers = { "x-custom-auth": "abc123", "x-session-id": "s1", "x-hub-signature-256": "sha256=ff", "x-forwarded-for": "203.0.113.7", "x-upstream": "Bearer eyJhbGciOiJIUzI1NiJ9.x.y", author: "Ana" };
+    expect(sanitizePayload({ meta: { headers } }, { historyLevel: "DETAILED", maxPayloadBytes: 65_536 })).toEqual({
+      meta: { headers: { "x-custom-auth": "[REDACTED]", "x-session-id": "[REDACTED]", "x-hub-signature-256": "[REDACTED]", "x-forwarded-for": "203.0.113.7", "x-upstream": "[REDACTED]", author: "Ana" } },
+    });
+  });
+
   it("preserves a Date value instead of collapsing it to {}", () => {
     const createdAt = new Date("2026-09-22T16:34:28.373Z");
     const result = sanitizePayload({ id: "1", created_at: createdAt }, { historyLevel: "DETAILED", maxPayloadBytes: 65_536 }) as { created_at: Date };

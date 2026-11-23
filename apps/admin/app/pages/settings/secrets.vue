@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DEFAULT_SECRET_SIZE, generateSecret, SECRET_KINDS, SECRET_SIZES, secretLength, type SecretKind } from '~/utils/generate-secret'
-import type { SecretMetadata } from '~/types/secret'
+import { SECRET_SCOPES, type SecretMetadata, type SecretScope } from '~/types/secret'
 // Absolute dates/times in the user's zone and format (My account > Preferences).
 const dates = useDateTimeFormat()
 
@@ -59,6 +59,8 @@ const isFormOpen = ref(false)
 const saving = ref(false)
 const draftKey = ref('')
 const draftValue = ref('')
+const draftScope = ref<SecretScope>('WORKFLOWS')
+const scopeItems = computed(() => SECRET_SCOPES.map(scope => ({ label: t(`settings.secrets.scopes.${scope}`), value: scope })))
 const showValue = ref(false)
 const editingExisting = ref(false)
 
@@ -119,6 +121,7 @@ const emptyState = computed(() => search.value.trim()
 function openCreate() {
   draftKey.value = ''
   draftValue.value = ''
+  draftScope.value = 'WORKFLOWS'
   generatedValue.value = null
   showValue.value = false
   editingExisting.value = false
@@ -127,6 +130,7 @@ function openCreate() {
 function openReplace(secret: SecretMetadata) {
   draftKey.value = secret.key
   draftValue.value = ''
+  draftScope.value = secret.scope
   generatedValue.value = null
   showValue.value = false
   editingExisting.value = true
@@ -140,7 +144,7 @@ async function save() {
   }
   saving.value = true
   try {
-    await api.put(`/secrets/${encodeURIComponent(draftKey.value)}`, { data: { value: draftValue.value } })
+    await api.put(`/secrets/${encodeURIComponent(draftKey.value)}`, { data: { value: draftValue.value, scope: draftScope.value } })
     toast.add({ title: editingExisting.value ? t('settings.secrets.replaced') : t('settings.secrets.created'), color: 'success' })
     isFormOpen.value = false
     await refresh()
@@ -215,7 +219,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
       </PageHeader>
     </template>
 
-    <div class="flex flex-col gap-4">
+    <div class="flex min-h-full flex-col gap-4">
       <UAlert
         v-if="error"
         color="error"
@@ -251,7 +255,15 @@ const headerSelection = computed<HeaderSelection>(() => ({
               class="size-5 shrink-0 text-muted"
             />
             <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span class="truncate font-mono text-sm font-medium text-highlighted">{{ secret.key }}</span>
+              <span class="flex min-w-0 items-center gap-2">
+                <span class="truncate font-mono text-sm font-medium text-highlighted">{{ secret.key }}</span>
+                <UBadge
+                  :label="t(`settings.secrets.scopes.${secret.scope}`)"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                />
+              </span>
               <span class="text-xs text-muted">
                 {{ t('settings.secrets.dates', { updated: formatDay(secret.updatedAt), created: formatDay(secret.createdAt) }) }}
               </span>
@@ -276,6 +288,7 @@ const headerSelection = computed<HeaderSelection>(() => ({
         v-else-if="!pending"
         icon="i-lucide-lock-keyhole"
         v-bind="emptyState"
+        class="page-empty"
       />
     </div>
 
@@ -301,6 +314,15 @@ const headerSelection = computed<HeaderSelection>(() => ({
               v-model="draftKey"
               autocomplete="off"
               class="w-full font-mono"
+            />
+          </UFormField>
+          <UFormField
+            :label="t('settings.secrets.scope')"
+            :description="t('settings.secrets.scopeDescription')"
+          >
+            <URadioGroup
+              v-model="draftScope"
+              :items="scopeItems"
             />
           </UFormField>
           <UFormField

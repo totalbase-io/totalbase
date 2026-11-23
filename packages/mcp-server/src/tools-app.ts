@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AdminClient } from "./admin-client.js";
-import { IDEMPOTENT, READ_ONLY, result } from "./tool-helpers.js";
+import { IDEMPOTENT, jsonObject, READ_ONLY, result } from "./tool-helpers.js";
 
 /**
  * The App menu (Security.md §8.2): the arrangement of every
@@ -65,6 +65,16 @@ const compact = (nodes: MenuNode[]): unknown[] =>
 /** The menu's settings as the tools show them. */
 const settingsOf = (menu: AdminMenu) => ({ mode: menu.mode, groups_open: menu.groupsOpen.toLowerCase(), search: menu.search.toLowerCase(), shell: menu.shell.toLowerCase(), menu_header: menu.menuHeader.toLowerCase() });
 
+/** The App's menu: its settings and its nodes as set_app_menu takes them. */
+const menuOutput = {
+  mode: z.string(),
+  groups_open: z.string(),
+  search: z.string(),
+  shell: z.string(),
+  menu_header: z.string(),
+  nodes: z.array(jsonObject()),
+};
+
 export function registerAppTools(server: McpServer, client: AdminClient): void {
   server.registerTool(
     "get_app_menu",
@@ -72,6 +82,7 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
       title: "Get App menu",
       description: "The App menu as administrators arrange it: groups and, in order, every published LISTED DataView and dashboard (by slug) and the modules placed in it ({module: users|roles|files|templates|logs}); hidden lists the published EMBEDDED_ONLY ones (scope - update_dataview / update_dashboard - shows them). Each viewer sees only what they may open. shell says how non-administrators get the App: shared (beside the rail) or standalone (the menu as the only sidebar, headed as menu_header says).",
       inputSchema: {},
+      outputSchema: { ...menuOutput, hidden: z.array(jsonObject()).describe("Published objects the menu doesn't show") },
       annotations: READ_ONLY,
     },
     async () => {
@@ -90,6 +101,7 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
         dataview: z.string().optional().describe("Only this DataView (slug or id)"),
         dashboard: z.string().optional().describe("Only this dashboard (slug or id)"),
       },
+      outputSchema: { warnings: z.number(), objects: z.array(z.object({ dataview: z.string().optional(), dashboard: z.string().optional(), name: z.string(), issues: z.array(z.object({ code: z.string(), severity: z.string(), message: z.string() })) })) },
       annotations: READ_ONLY,
     },
     async ({ dataview, dashboard }) => {
@@ -119,6 +131,7 @@ export function registerAppTools(server: McpServer, client: AdminClient): void {
         shell: z.enum(["shared", "standalone"]).optional().describe("How non-administrators get the App: shared - beside the rail, as administrators see it (the default); standalone - the App menu is the only sidebar: the instance's logo and name at its head, their account at its foot, and the modules placed in the menu. Administrators always keep the rail"),
         menu_header: z.enum(MENU_HEADERS).optional().describe("What heads the standalone App's menu: logo_and_name (the default), logo, name or none"),
       },
+      outputSchema: menuOutput,
       annotations: IDEMPOTENT,
     },
     async ({ nodes, groups_open, search, shell, menu_header }) => {

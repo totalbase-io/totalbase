@@ -1,3 +1,4 @@
+import { parseFilter } from "@totalbase/query-engine";
 import type { FastifyInstance } from "fastify";
 import { UUID_PATTERN } from "@totalbase/shared";
 import { callerRoleIds, callerRoles } from "../caller-roles.js";
@@ -196,6 +197,21 @@ export function registerAppDataViewsRuntimeRoutes(app: FastifyInstance, context:
       throw new TotalBaseError("INVALID_QUERY", `Unsupported audit event action: ${action}`);
     }
     if (!resource) throw new TotalBaseError("INVALID_QUERY", "resource is required.");
+    // What the entry records is the caller's word: held to the shape the App sends, never free text of any size.
+    if (rowCount !== undefined && (typeof rowCount !== "number" || !Number.isInteger(rowCount) || rowCount < 0)) {
+      throw new TotalBaseError("INVALID_QUERY", "rowCount must be a whole number.");
+    }
+    if (format !== undefined && (typeof format !== "string" || !/^[a-z]{1,16}$/.test(format))) {
+      throw new TotalBaseError("INVALID_QUERY", "format must be a short lowercase name (csv, xlsx, pdf).");
+    }
+    if (search !== undefined && search !== null && (typeof search !== "string" || search.length > 500)) {
+      throw new TotalBaseError("INVALID_QUERY", "search must be text of at most 500 characters.");
+    }
+    if (where !== undefined && where !== null) {
+      const [maxFilterDepth, maxRelationDepth] = await Promise.all([context.settings.get("api.max_filter_depth"), context.settings.get("api.max_relation_depth")]);
+      parseFilter(where, { maxFilterDepth, maxRelationDepth }, 0);
+      if (JSON.stringify(where).length > 10_000) throw new TotalBaseError("INVALID_QUERY", "where is too large to record.");
+    }
     const roleIds = await callerRoleIds(context, request);
     if (roleIds !== null && (await context.effectivePermissions.resolve(roleIds, resource, "READ")).action !== "ALLOW") {
       throw new TotalBaseError("RESOURCE_NOT_FOUND", "Resource not found.");

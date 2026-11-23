@@ -114,15 +114,15 @@ const sign: OperationHandler = async ({ context, configuration }) => {
   if (format === "HMAC_SHA256") {
     const encoding = configuration.encoding ?? "HEX";
     if (encoding !== "HEX" && encoding !== "BASE64") throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This step's encoding must be HEX or BASE64.");
-    const key = await context.secrets.decrypt(secretName(configuration, "key", "key"));
+    const key = await context.secrets.decrypt(secretName(configuration, "key", "key"), "WORKFLOWS");
     return { output: "next", result: signHmac(data, key, encoding) };
   }
   const names = { certificate: secretName(configuration, "certificate", "certificate"), privateKey: secretName(configuration, "privateKey", "private key") };
   const passphraseName = typeof configuration.passphrase === "string" && configuration.passphrase.trim() ? configuration.passphrase.trim() : undefined;
   const [certificatePem, privateKeyPem, passphrase] = await Promise.all([
-    context.secrets.decrypt(names.certificate),
-    context.secrets.decrypt(names.privateKey),
-    passphraseName ? context.secrets.decrypt(passphraseName) : Promise.resolve(undefined),
+    context.secrets.decrypt(names.certificate, "WORKFLOWS"),
+    context.secrets.decrypt(names.privateKey, "WORKFLOWS"),
+    passphraseName ? context.secrets.decrypt(passphraseName, "WORKFLOWS") : Promise.resolve(undefined),
   ]);
   return { output: "next", result: signCms(data, certificatePem, privateKeyPem, passphrase, names) };
 };

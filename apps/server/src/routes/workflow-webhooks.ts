@@ -1,3 +1,4 @@
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { clientIp, ipInRanges } from "../client-ip.js";
 import { TotalBaseError } from "@totalbase/errors";
@@ -48,6 +49,55 @@ class PublicWebhookRateLimiter {
 
 const SYNC_TIMEOUT = Symbol("sync-timeout");
 
+declare module "fastify" {
+  interface FastifyRequest {
+    /** A JSON body's text as it came (server.ts's parser) - what a webhook's HMAC signs. */
+    rawBody?: string;
+  }
+}
+
+/** The header a PUBLIC webhook's proof comes in, unless its Start names another (Workflows.md §6.5). */
+const DEFAULT_SECRET_HEADER = { TOKEN: "x-webhook-token", HMAC_SHA256: "x-webhook-signature" } as const;
+
+/** Equal, in a time that depends neither on where they differ nor on their lengths (both hashed to 32 bytes first). */
+function sameBytes(a: Buffer, b: Buffer): boolean {
+  return timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
+}
+
+/** The header a webhook's proof came in, or null without a secret - kept out of what the run receives (and its history). */
+function proofHeader(config: Record<string, unknown>): string | null {
+  if (typeof config.secret !== "string" || !config.secret) return null;
+  const mode = config.secret_mode === "HMAC_SHA256" ? "HMAC_SHA256" : "TOKEN";
+  return (typeof config.secret_header === "string" && config.secret_header.trim() ? config.secret_header.trim() : DEFAULT_SECRET_HEADER[mode]).toLowerCase();
+}
+
+/**
+ * A PUBLIC webhook's shared secret (Workflows.md §6.5): the caller proves it holds the Workflows secret the Start
+ * names - the secret itself in a header (TOKEN), or an HMAC-SHA256 of the raw body with it (HMAC_SHA256, as
+ * `sha256=<hex>` or bare hex, GitHub's shape). Unset: anyone who knows the address calls it.
+ */
+async function assertWebhookSecret(context: AppContext, request: FastifyRequest, config: Record<string, unknown>): Promise<void> {
+  const key = typeof config.secret === "string" ? config.secret : "";
+  if (!key) return;
+  const mode = config.secret_mode === "HMAC_SHA256" ? "HMAC_SHA256" : "TOKEN";
+  const raw = request.headers[proofHeader(config)!];
+  const presented = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
+  // A secret deleted since publish refuses every call - never the key's name to an anonymous caller.
+  const secret = await context.secrets.decrypt(key, "WORKFLOWS").catch(() => {
+    throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This webhook's secret is not available.");
+  });
+  let proven = false;
+  if (presented) {
+    if (mode === "TOKEN") proven = sameBytes(Buffer.from(presented, "utf8"), Buffer.from(secret, "utf8"));
+    else {
+      const expected = createHmac("sha256", secret).update(request.rawBody ?? "", "utf8").digest();
+      const hex = presented.replace(/^sha256=/i, "");
+      proven = /^[0-9a-f]{64}$/i.test(hex) && sameBytes(Buffer.from(hex, "hex"), expected);
+    }
+  }
+  if (!proven) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Missing or wrong webhook secret.");
+}
+
 /**
  * The WEBHOOK trigger's public HTTP surface (Workflows.md §13.2):
  * `GET|POST /api/workflows/{slug}/webhook`. A workflow-authored
@@ -58,6 +108,9 @@ const SYNC_TIMEOUT = Symbol("sync-timeout");
  */
 export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: AppContext): void {
   const rateLimiter = new PublicWebhookRateLimiter();
+  // Runs each workflow has going from its webhook (workflows.webhook_max_concurrent_runs) - one process serves
+  // every request (Foundations.md §4.1), so a count in memory is exact.
+  const running = new Map<string, number>();
   const sweepInterval = setInterval(() => rateLimiter.sweep(), 60_000);
   sweepInterval.unref();
   app.addHook("onClose", (_instance, done) => {
@@ -96,12 +149,17 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
       if (!rateLimiter.consume(request.ip)) {
         throw new TotalBaseError("RATE_LIMIT_EXCEEDED", "Too many requests. Please slow down.");
       }
+      await assertWebhookSecret(context, request, config);
       const executeAs = config.execute_as as string | undefined;
       if (!executeAs) throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "This webhook has no execution user configured.");
       executor = await resolveDataPrincipalForConfiguredUser(context, executeAs);
       initiator = { type: "WEBHOOK", public: true };
     } else {
-      const token = extractBearerToken(request);
+      // The Authorization header only, never the session cookie: a browser sends that by itself to a link or an
+      // image, so a page elsewhere would invoke the webhook as whoever opened it (CSRF).
+      const header = request.headers.authorization;
+      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+      if (!token) throw new TotalBaseError("AUTHENTICATION_REQUIRED", "Missing bearer token.");
       const caller = await resolveDataPrincipal(context, token, undefined, undefined, clientIp(request));
       const decision = await context.workflowPermissions.resolveInvoke(caller.roleIds, workflow.id);
       if (decision !== "ALLOW") throw new TotalBaseError("ACTION_DENIED", "INVOKE is not authorized for this workflow.");
@@ -137,7 +195,27 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
     // Deliberately WEBHOOK-only - the internal `/api/workflows/{slug}/run`
     // route already carries a real authenticated `initiator`, so caller
     // metadata there is far lower value and was left out.
-    const triggerInput = { query: request.query as Record<string, string | string[]>, body, meta: { ip: request.ip, headers: request.headers } };
+    // Never the browser's cookies: a session there is no input of the webhook's.
+    // Nor the webhook's own proof: a secret (a token in a header of any name) never reaches a step or the history.
+    const { cookie: _cookie, ...headers } = request.headers;
+    const proof = access === "PUBLIC" ? proofHeader(config) : null;
+    if (proof) delete headers[proof];
+    const triggerInput = { query: request.query as Record<string, string | string[]>, body, meta: { ip: request.ip, headers } };
+
+    // A flood of calls can't hold every connection and worker: past the cap a request is refused until a run ends.
+    // The cap is read first: between reading the count and taking a slot nothing awaits, so calls arriving together
+    // can't all see the same count.
+    const cap = await context.settings.get("workflows.webhook_max_concurrent_runs");
+    const inFlight = running.get(workflow.id) ?? 0;
+    if (inFlight >= cap) {
+      throw new TotalBaseError("WORKFLOW_CONCURRENCY_LIMIT", "This webhook has too many runs going - try again when one ends.");
+    }
+    running.set(workflow.id, inFlight + 1);
+    const release = () => {
+      const left = (running.get(workflow.id) ?? 1) - 1;
+      if (left > 0) running.set(workflow.id, left);
+      else running.delete(workflow.id);
+    };
 
     const cancelToken = { cancelled: false };
     let resolveAdmitted!: (run: WorkflowRunRecord) => void;
@@ -157,9 +235,12 @@ export function registerWorkflowWebhookRoutes(app: FastifyInstance, context: App
     // Runs to completion regardless of what this request ends up doing
     // below (ASYNC returns immediately; SYNC may time out while this
     // keeps going) - logged here so a background failure is never silent.
-    runPromise.catch((error) => context.logger.error({ error, workflowId: workflow.id }, "webhook-triggered run failed"));
+    runPromise.catch((error) => context.logger.error({ error, workflowId: workflow.id }, "webhook-triggered run failed")).finally(release);
 
-    const run = await admittedPromise;
+    // A run that fails before it is admitted (the database unreachable) answers its error - never a request left open.
+    const run = await Promise.race([admittedPromise, runPromise.then((): never => {
+      throw new TotalBaseError("WORKFLOW_INVALID_DESIGN", "The webhook's run could not start.");
+    })]);
     const responseMode = (config.response_mode as "SYNC" | "ASYNC" | undefined) ?? "SYNC";
     if (responseMode === "ASYNC") {
       // "Asynchronous public callers get the accepted run UUID only for

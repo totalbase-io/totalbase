@@ -108,6 +108,8 @@ async function upload(file: File) {
   try {
     const formData = new FormData()
     formData.append('file', file)
+    // A record's file: reached by whoever reads the record, and nobody else (Administration.md §10.6).
+    formData.append('visibility', 'LINKED')
     const { data } = await dataApi.post<FileNode>('/totalbase/table/files', formData)
     currentFile.value = data
     modelValue.value = data.id

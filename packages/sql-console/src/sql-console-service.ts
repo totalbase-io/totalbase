@@ -6,6 +6,12 @@ export interface SqlExecuteInput {
   sql: string;
   /** Wraps the script in BEGIN/COMMIT/ROLLBACK (Administration.md §5.2: "optional transaction mode"). */
   transactional?: boolean | undefined;
+  /**
+   * One statement in a READ ONLY transaction that is always rolled back (Administration.md §5.2): nothing it runs
+   * commits, a write inside a function it calls included. Over the extended protocol, so PostgreSQL refuses a second
+   * statement - a `COMMIT; DELETE ...` can't step out of the transaction.
+   */
+  readOnly?: boolean | undefined;
   /** Rows returned at most (sql_console.max_rows) - the statement still runs in full. */
   maxRows?: number | undefined;
 }
@@ -80,9 +86,14 @@ export class SqlConsoleService {
   async execute(adminId: string, input: SqlExecuteInput): Promise<SqlExecuteResult> {
     const startedAt = Date.now();
     try {
-      const result = input.transactional
-        ? await this.database.transactionRaw((client) => client.queryRaw(input.sql))
-        : await this.database.queryRaw(input.sql);
+      const result = input.readOnly
+        ? await this.database.readOnlyTransaction(async (client) => {
+            const single = await client.query(input.sql);
+            return { ...single, statements: [{ command: single.command ?? "", rows: single.rows, rowCount: single.rowCount, fields: single.fields }] };
+          })
+        : input.transactional
+          ? await this.database.transactionRaw((client) => client.queryRaw(input.sql))
+          : await this.database.queryRaw(input.sql);
       const durationMs = Date.now() - startedAt;
       await this.recordHistory(adminId, input.sql, "EXECUTED", durationMs, undefined);
       const statements: SqlStatementResult[] = [];

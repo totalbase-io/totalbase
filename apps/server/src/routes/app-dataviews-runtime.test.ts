@@ -371,6 +371,11 @@ describe("App DataView runtime (/app/api/dataviews/:slug/...)", () => {
     expect(rows[0]).toEqual({ action: "EXPORT", resource: resourceId });
     expect((await call("POST", "/app/api/audit/events", otherToken, { data: { resource: resourceId, action: "EXPORT", rowCount: 3 } })).statusCode).toBe(404);
     expect((await call("POST", "/app/api/audit/events", viewerToken, { data: { resource: resourceId, action: "DELETE" } })).statusCode).toBe(400);
+    // Security regression: what the entry records was taken as sent - any type, any size.
+    for (const data of [{ rowCount: "lots" }, { rowCount: -1 }, { format: "x".repeat(200) }, { search: "s".repeat(600) }, { where: { _bogus: 1 } }]) {
+      const bad = await call("POST", "/app/api/audit/events", viewerToken, { data: { resource: resourceId, action: "EXPORT", ...data } });
+      expect(bad.statusCode, JSON.stringify(data)).toBe(400);
+    }
   });
 
   it("tells the viewer what they may do to its rows - New, editing and Delete only where their grants allow", async () => {

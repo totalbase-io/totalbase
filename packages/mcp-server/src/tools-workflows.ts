@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { AdminClient } from "./admin-client.js";
-import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, deleteEach, deleteTargets, IDEMPOTENT, NAME_RULE, READ_ONLY, result, roleId, publishOutcome } from "./tool-helpers.js";
+import { whereParams, type AdminClient } from "./admin-client.js";
+import { FULL_POLICY, refuseDestructiveWorkflow, refuseRemovedRoles, type McpPolicy, type WorkflowLookups } from "./policy.js";
+import { ADDITIVE, defined, DESTRUCTIVE, filterForStorage, deleteEach, deletedOutput, deleteTargets, IDEMPOTENT, jsonObject, listOf, NAME_RULE, passthrough, publishOutput, READ_ONLY, result, roleId, publishOutcome, RESOURCES } from "./tool-helpers.js";
 
 /**
  * Workflows (Workflows.md, Administration.md
@@ -127,14 +128,56 @@ const invokeRoles = z
   .array(roleId())
   .describe("Replaces the roles that may run it on demand (the App, /api/workflows/{slug}/run, an AUTHENTICATED webhook) - the complete set. Administrators always may");
 
-export function registerWorkflowTools(server: McpServer, client: AdminClient): void {
+/** A workflow as summary answers it. */
+const workflowOutput = {
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  trigger: z.string().nullable().optional().describe("Its Start's type"),
+  enabled: z.boolean(),
+  liveVersion: z.number().nullable().describe("null: never published"),
+  hasUnpublishedChanges: z.boolean(),
+  revision: z.string().describe("What save_workflow and publish_workflow take back"),
+  consecutiveFailures: z.number().optional(),
+};
+/** A draft's definition: its operations and how they connect. */
+const definitionOutput = z.looseObject({ operations: z.array(jsonObject()), connections: z.array(jsonObject()) });
+/** A run as outcome answers it: its result and each step's. */
+const runOutput = {
+  run: z.string().describe("The run's id"),
+  status: z.string(),
+  mode: z.string(),
+  trigger: z.unknown().optional(),
+  result: z.unknown().optional(),
+  error: z.unknown().optional(),
+  hasHandledErrors: z.boolean().optional(),
+  steps: z.array(z.object({ step: z.string().describe("The step's key"), type: z.string(), status: z.string(), output: z.string().optional(), result: z.unknown().optional(), error: z.unknown().optional() })),
+};
+
+export function registerWorkflowTools(server: McpServer, client: AdminClient, policy: McpPolicy = FULL_POLICY): void {
+  // A called workflow's live steps (Execute workflow runs its published version), and a step's resource.
+  const publishedOf = async (workflowId: string) => {
+    const workflow = await client.get<Workflow & { liveVersion?: number | null }>(`/workflows/${workflowId}`);
+    if (!workflow.liveVersion) return [];
+    return (await client.get<{ definition: Definition }>(`/workflows/${workflowId}/versions/${workflow.liveVersion}`)).definition.operations ?? [];
+  };
+  const lookups: WorkflowLookups = {
+    publishedOf,
+    resourceOf: async (resourceId) => {
+      const [resource] = await client.data<{ schema: string; name: string }[]>("GET", RESOURCES, { query: whereParams({ id: { _eq: resourceId } }) });
+      if (!resource) throw new Error(`No resource ${resourceId}`);
+      return resource;
+    },
+  };
+  const draftSteps = async (workflowId: string) => (await client.get<{ definition: Definition }>(`/workflows/${workflowId}/draft`)).definition.operations ?? [];
   // Settings > Secrets (Administration.md §9): write-only - a value goes in, never comes back out.
   server.registerTool(
     "list_secrets",
     {
       title: "List secrets",
-      description: "The instance's secrets by key (Settings > Secrets) - metadata only, never a value. A step's secretHeaders, a SOAP step's or a signature's secret names one of these keys.",
+      description: "The instance's secrets by key and scope (Settings > Secrets) - metadata only, never a value. A step's secretHeaders, a SOAP step's or a signature's secret names one of these keys, of scope WORKFLOWS: a secret serves one feature (SMTP, S3, DASHBOARD_EMBEDS, AUTH_PROVIDERS, WORKFLOWS) and only that feature reads it.",
       inputSchema: {},
+      outputSchema: passthrough("The secrets' names, under items - never their values"),
       annotations: READ_ONLY,
     },
     async () => result(await client.get("/secrets")),
@@ -144,19 +187,21 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
     "set_secret",
     {
       title: "Set secret",
-      description: "Store a secret encrypted under the instance's master key, for a workflow step to reference by key (secretHeaders [{name, secret}]). Its value is never returned by anything. An existing key is replaced only with replace: true - something may already depend on its value. Ask the person for the value; never invent one.",
+      description: "Store a secret encrypted under the instance's master key, for the one feature its scope names - WORKFLOWS (the default) for a workflow step to reference by key (secretHeaders [{name, secret}]), SMTP for smtp.password_secret_key, S3 for s3.secret_key, DASHBOARD_EMBEDS for dashboards.embed_secret_key, AUTH_PROVIDERS for a provider's client_secret_key. Its value is never returned by anything. An existing key is replaced only with replace: true - something may already depend on its value. Ask the person for the value; never invent one.",
       inputSchema: {
         key: z.string().describe("Lowercase letters, digits, dots, hyphens and underscores, e.g. 'accounting.api_key'"),
         value: z.string().describe("The secret itself"),
-        replace: z.boolean().optional().describe("Replace the key's value when it exists already"),
+        scope: z.enum(["SMTP", "S3", "DASHBOARD_EMBEDS", "AUTH_PROVIDERS", "WORKFLOWS"]).optional().describe("The feature that reads it - default WORKFLOWS"),
+        replace: z.boolean().optional().describe("Replace the key's value (and scope) when it exists already"),
       },
+      outputSchema: passthrough("The secret saved - its key, never its value"),
       annotations: IDEMPOTENT,
     },
-    async ({ key, value, replace }) => {
+    async ({ key, value, scope, replace }) => {
       if (!replace && (await client.get<{ key: string }[]>("/secrets")).some((secret) => secret.key === key)) {
         throw new Error(`Secret ${key} exists already - pass replace: true to change its value.`);
       }
-      return result(await client.put(`/secrets/${encodeURIComponent(key)}`, { data: { value } }));
+      return result(await client.put(`/secrets/${encodeURIComponent(key)}`, { data: { value, scope: scope ?? "WORKFLOWS" } }));
     },
   );
 
@@ -166,6 +211,7 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
       title: "List workflows",
       description: "Every workflow: id, name, slug, trigger (MANUAL, CRON, WEBHOOK, DATA_EVENT), enabled, live version (null: never published), unpublished changes and its revision.",
       inputSchema: {},
+      outputSchema: listOf(z.object(workflowOutput)),
       annotations: READ_ONLY,
     },
     async () => result((await client.get<Workflow[]>("/workflows")).map(summary)),
@@ -177,6 +223,7 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
       title: "Get workflow",
       description: "A workflow's draft: its settings, revision (save_workflow and publish_workflow need it), definition (operations and connections) and the roles that may invoke it. Read it before changing a workflow.",
       inputSchema: { id: z.string().describe("The workflow's id (list_workflows)") },
+      outputSchema: { ...workflowOutput, description: z.string().nullable(), definition: definitionOutput, roleIds: z.array(z.string()).describe("The roles that may invoke it") },
       annotations: READ_ONLY,
     },
     async ({ id }) => {
@@ -201,6 +248,7 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         start: z.record(z.string(), z.unknown()).default({ trigger: "MANUAL" }).describe("The Start step's configuration, e.g. {\"trigger\":\"MANUAL\"} or {\"trigger\":\"CRON\",\"cron_expression\":\"0 9 * * MON-FRI\",\"timezone\":\"America/Argentina/Buenos_Aires\",\"execute_as\":\"<user id>\"}"),
         history_level: z.enum(["SUMMARY", "DETAILED"]).optional().describe("DETAILED keeps each step's (redacted) payloads in the run history; SUMMARY (default) only statuses"),
       },
+      outputSchema: { ...workflowOutput, definition: definitionOutput },
       annotations: ADDITIVE,
     },
     async ({ name, description, slug, start, history_level }) => {
@@ -222,9 +270,11 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         operations: z.array(operationInput).min(1),
         connections: z.array(connectionInput).default([]),
       },
+      outputSchema: { ...workflowOutput, definition: definitionOutput },
       annotations: IDEMPOTENT,
     },
     async ({ id, revision, operations, connections }) => {
+      await refuseDestructiveWorkflow(policy, "Saving this workflow", operations.map((op) => ({ type: op.type, configuration: op.configuration as Record<string, unknown> | undefined })), lookups);
       const ids = new Map<string, string>();
       const withIds = operations.map((op) => {
         const opId = op.id ?? randomUUID();
@@ -263,9 +313,14 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         full: z.boolean().optional().describe("Every result whole; by default a long text (a PDF's base64) is its size and a long list its first 10 rows"),
         email_redirect: z.string().optional().describe("mode=test only: one address every Send email step sends to instead of its recipients - to see a real email when the data holds @example.com addresses"),
       },
+      outputSchema: runOutput,
       annotations: ADDITIVE,
     },
     async ({ id, mode, input, full, email_redirect }) => {
+      if (policy.mode !== "FULL") {
+        const steps = mode === "test" ? await draftSteps(id) : await publishedOf(id);
+        await refuseDestructiveWorkflow(policy, "Running this workflow", steps, lookups, new Set([id]));
+      }
       const [data, draft] = await Promise.all([
         mode === "test"
           ? client.post<RunOutcome>(`/workflows/${id}/test-run`, { data: input ?? null, ...(email_redirect && { emailRedirect: email_redirect }) })
@@ -287,12 +342,19 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         page: z.number().int().min(1).default(1),
         full: z.boolean().optional().describe("run_id: every result whole; by default a long text is its size and a long list its first 10 rows"),
       },
+      outputSchema: {
+        ...Object.fromEntries(Object.entries(runOutput).map(([key, schema]) => [key, schema.optional()])),
+        items: z
+          .array(z.object({ run: z.string(), status: z.string(), mode: z.string(), trigger: z.unknown().optional(), startedAt: z.string().nullable(), finishedAt: z.string().nullable(), error: z.unknown().optional() }))
+          .optional()
+          .describe("With id: the workflow's runs, newest first; with run_id the run itself is the answer"),
+      },
       annotations: READ_ONLY,
     },
     async ({ id, run_id, page, full }) => {
       if (run_id) return result(outcome(await client.get<RunOutcome>(`/workflows/runs/${run_id}`), undefined, full));
       if (!id) throw new Error("Pass id (a workflow's history) or run_id (one run).");
-      const runs = await client.get<RunOutcome["run"][]>(`/workflows/${id}/runs?page=${page}`);
+      const runs = await client.get<RunOutcome["run"][]>(`/workflows/${id}/runs`, { page: String(page) });
       return result(runs.map((r) => ({ run: r.id, status: r.status, mode: r.mode, trigger: r.trigger, startedAt: r.startedAt, finishedAt: r.finishedAt, ...(r.error !== null && { error: r.error }) })));
     },
   );
@@ -310,15 +372,21 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
         role_ids: invokeRoles.optional(),
         note: z.string().max(128).optional().describe("What this version changes - shown in the workflow's Versions"),
       },
+      outputSchema: { ...workflowOutput, ...publishOutput(), roleIds: z.array(z.string()).optional(), warnings: z.array(z.string()).optional().describe("Advice on what was published: a public webhook with no secret and no allowed addresses") },
       annotations: ADDITIVE,
     },
     async ({ id, revision, enabled, role_ids, note }) => {
-      const { data: version, status } = await client.postWithMeta<{ version: number }>(`/workflows/${id}/publish`, { data: { revision, ...(note && { note }) } });
+      // Publishing puts the draft live, where its trigger runs it.
+      await refuseDestructiveWorkflow(policy, "Publishing this workflow", await draftSteps(id), lookups, new Set([id]));
+      const { data: version, status, meta } = await client.postWithMeta<{ version: number }>(`/workflows/${id}/publish`, { data: { revision, ...(note && { note }) } });
+      // The server's advice (Workflows.md §6.5): a public webhook anyone with its URL sets off.
+      const warnings = Array.isArray(meta?.warnings) ? (meta.warnings as string[]) : [];
       // Publishing moves the revision on: the workflow is read again for the enable and the summary.
       let workflow = await client.get<Workflow>(`/workflows/${id}`);
       if (enabled !== undefined && enabled !== workflow.enabled) workflow = await client.patch<Workflow>(`/workflows/${id}`, { data: { revision: workflow.revision, enabled } });
+      if (role_ids) await refuseRemovedRoles(policy, "Replacing who may run the workflow", role_ids, () => client.get<string[]>(`/workflows/${id}/roles`));
       const roles = role_ids ? await client.put<string[]>(`/workflows/${id}/roles`, { data: { roleIds: role_ids } }) : undefined;
-      return result({ ...summary(workflow), ...publishOutcome(version.version, status), ...(roles && { roleIds: roles }) });
+      return result({ ...summary(workflow), ...publishOutcome(version.version, status), ...(roles && { roleIds: roles }), ...(warnings.length > 0 && { warnings }) });
     },
   );
 
@@ -329,9 +397,11 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
       description:
         "Turn a published workflow on or off without publishing its draft: enabled, its trigger admits runs (a schedule, a data event, a webhook, a manual run); disabled, nothing new starts - its runs and versions stay. Enabling needs a published version (WORKFLOW_NOT_ACTIVATABLE) and resets its failure streak.",
       inputSchema: { id: z.string(), enabled: z.boolean() },
+      outputSchema: workflowOutput,
       annotations: IDEMPOTENT,
     },
     async ({ id, enabled }) => {
+      if (enabled) await refuseDestructiveWorkflow(policy, "Turning this workflow on", await publishedOf(id), lookups, new Set([id]));
       const current = await client.get<Workflow>(`/workflows/${id}`);
       const workflow = current.enabled === enabled ? current : await client.patch<Workflow>(`/workflows/${id}`, { data: { revision: current.revision, enabled } });
       return result(summary(workflow));
@@ -344,6 +414,7 @@ export function registerWorkflowTools(server: McpServer, client: AdminClient): v
       title: "Delete workflow",
       description: "Delete a workflow with its versions and run history. Irreversible - requires confirm=true; ask the user first. To stop it without losing it, set_workflow_enabled enabled=false.",
       inputSchema: { ...deleteTargets(), confirm: z.literal(true).describe("Must be true") },
+      outputSchema: deletedOutput(),
       annotations: DESTRUCTIVE,
     },
     async ({ id, ids }) => result(await deleteEach(client, "/workflows", { id, ids })),

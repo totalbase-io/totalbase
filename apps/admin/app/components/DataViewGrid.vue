@@ -1439,6 +1439,7 @@ async function onImported(created: number) {
             size="sm"
             icon="i-lucide-inbox"
             :title="t('dataviews.layouts.noRows')"
+            :class="isStandalone ? 'table-empty' : undefined"
           />
         </template>
       </UTable>

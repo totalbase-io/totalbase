@@ -20,6 +20,7 @@
  * never Monaco's buffer directly.
  */
 import type * as Monaco from 'monaco-editor'
+import { guardMonacoLinks } from '~/utils/monaco-links'
 import type { CatalogColumn } from '~/types/permission'
 import { adminThemeName, defineAdminThemes } from '~/utils/monaco-theme'
 import { FORMULA_FUNCTION_SIGNATURES } from '~/utils/formula-engine'
@@ -121,6 +122,7 @@ onMounted(async () => {
   // the admin (JsonEditor.vue's own doc comment) - the app already pays
   // this cost elsewhere, reusing it here is marginal, not a new one.
   monaco = await import('monaco-editor')
+  guardMonacoLinks(monaco)
   if (!containerRef.value) return
   defineAdminThemes(monaco)
   registerFormulaLanguage(monaco)

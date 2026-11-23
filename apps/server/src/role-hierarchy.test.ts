@@ -107,6 +107,39 @@ describe("role hierarchy - delegated grants within the ceiling", () => {
     expect((await call("PATCH", `/api/totalbase/table/roles/${operatorRole}`, managerToken, { data: { name: `${P}-night-operator-a2` } })).statusCode).toBe(200);
   });
 
+  // Security regression: ownership was judged on the row the UPDATE returned - once `parent` pointed into the
+  // manager's tree, the role "was" theirs. It is judged on where the role stood before the write.
+  it("never pulls a foreign role into its subtree - by key, by upsert, in a transaction", async () => {
+    const parentOf = async (id: string) => (await database.query<{ parent: string | null }>(`SELECT parent FROM totalbase.roles WHERE id = $1`, [id])).rows[0]!.parent;
+    await database.query(`INSERT INTO totalbase.roles_capabilities (role, capability, effect) VALUES ($1, 'TRANSACTIONS', 'ALLOW') ON CONFLICT DO NOTHING`, [managerRole]);
+    for (const parent of [managerRole, operatorRole]) {
+      const moved = await call("PATCH", `/api/totalbase/table/roles/${foreignRole}`, managerToken, { data: { parent } });
+      expect([moved.statusCode, moved.json().errors?.[0]?.code], moved.body).toEqual([403, "PERMISSION_DENIED"]);
+    }
+    const upsert = await call("POST", "/api/totalbase/table/roles", managerToken, {
+      data: { name: `${P}-governing-body`, parent: managerRole },
+      on_conflict: { target: ["name"], action: "UPDATE", data: { parent: managerRole } },
+    });
+    expect(upsert.statusCode, upsert.body).toBe(403);
+    const transaction = await call("POST", "/api/transactions", managerToken, {
+      operations: [{ key: "move", operation: "update", schema: "totalbase", table: "roles", id: foreignRole, data: { parent: managerRole } }],
+    });
+    expect(transaction.statusCode, transaction.body).toBe(403);
+    expect(await parentOf(foreignRole)).toBeNull();
+    // A role already below its own still moves within its tree.
+    expect((await call("PATCH", `/api/totalbase/table/roles/${operatorRole}`, managerToken, { data: { parent: managerRole } })).statusCode).toBe(200);
+  });
+
+  it("never changes a role it holds, even one it created (Security.md §9.4)", async () => {
+    const created = await call("POST", "/api/totalbase/table/roles", managerToken, { data: { name: `${P}-held-by-creator`, parent: managerRole } });
+    expect(created.statusCode, created.body).toBe(201);
+    const held = created.json().data.id as string;
+    await context.roleAssignments.assignRoleToUser(managerId, held);
+    const renamed = await call("PATCH", `/api/totalbase/table/roles/${held}`, managerToken, { data: { name: `${P}-held-renamed` } });
+    expect(renamed.statusCode, renamed.body).toBe(403);
+    await database.query(`DELETE FROM totalbase.users_roles WHERE "user" = $1 AND role = $2`, [managerId, held]);
+  });
+
   it("grants within the ceiling - ALLOW only, never an action or field the parent lacks - and records who granted", async () => {
     const ok = await call("PUT", grantUrl(operatorRole, "READ"), managerToken, { data: { effect: "ALLOW", where: { kind: { _eq: "night" } }, fields: fields("id", "site", "kind") } });
     expect(ok.statusCode, ok.body).toBe(200);
@@ -123,6 +156,44 @@ describe("role hierarchy - delegated grants within the ceiling", () => {
     expect(action.json().errors[0].code).toBe("PERMISSION_EXCEEDS_CEILING");
     const deny = await call("PUT", grantUrl(operatorRole, "DELETE"), managerToken, { data: { effect: "DENY" } });
     expect([deny.statusCode, deny.json().errors[0].code]).toEqual([403, "PERMISSION_DENIED"]);
+    // Security regression: a grant's filter decides which rows its holder sees, so one on a column the parent can't
+    // read told that column's values through the rows that appeared - in a row filter, a payload check or a $ROW.
+    for (const grant of [
+      { effect: "ALLOW", where: { notes: { _like: "a%" } }, fields: fields("id") },
+      { effect: "ALLOW", where: { kind: { _eq: "$ROW.notes" } }, fields: fields("id") },
+      { effect: "ALLOW", where: { _or: [{ site: { _eq: "A" } }, { "site.secret": { _eq: "x" } }] }, fields: fields("id") },
+    ]) {
+      const filtered = await call("PUT", grantUrl(operatorRole, "READ"), managerToken, { data: grant });
+      expect([filtered.statusCode, filtered.json().errors?.[0]?.code], JSON.stringify(grant)).toEqual([403, "PERMISSION_EXCEEDS_CEILING"]);
+    }
+    const checked = await call("PUT", grantUrl(operatorRole, "READ"), managerToken, { data: { effect: "ALLOW", fields: fields("id"), payloadChecks: [{ rule: { notes: { _nnull: true } } }] } });
+    expect(checked.json().errors?.[0]).toMatchObject({ code: "PERMISSION_EXCEEDS_CEILING", meta: { fields: ["notes"] } });
+    // Security regression (DELEG-01): a manager's `deny_fields` was dropped, the columns left allowed - refused by name.
+    for (const [url, data] of [[grantUrl(operatorRole, "READ"), { effect: "ALLOW", fields: fields("id"), deny_fields: ["kind"] }], [`/app/api/resources/${controls}/permissions/READ`, { effect: "ALLOW", roleIds: [operatorRole], deny_fields: ["kind"] }]] as const) {
+      const unknown = await call("PUT", url, managerToken, { data });
+      expect([unknown.statusCode, unknown.json().errors?.[0]?.message]).toEqual([400, expect.stringMatching(/^Unknown key in the grant: deny_fields/)]);
+    }
+    // Security regression (Data_API.md §3.12): a delegated filter isn't an administrator's - with query.allow_regex off
+    // it still put a regex on every row its holders read.
+    await context.settings.set("query.allow_regex", false);
+    try {
+      const regex = await call("PUT", grantUrl(operatorRole, "READ"), managerToken, { data: { effect: "ALLOW", where: { kind: { _regex: "^(a+)+$" } }, fields: fields("id", "kind") } });
+      expect([regex.statusCode, regex.json().errors?.[0]?.code]).toEqual([400, "QUERY_FEATURE_DISABLED"]);
+    } finally {
+      await context.settings.reset("query.allow_regex");
+    }
+    // Security regression: an administrator's DENY on a managed role - removed or replaced by the manager, it handed
+    // back access the administrator took away.
+    await context.permissions.set(operatorRole, controls, "DELETE", { effect: "DENY" });
+    expect([(await call("DELETE", grantUrl(operatorRole, "DELETE"), managerToken)).statusCode]).toEqual([403]);
+    const replaced = await call("PUT", grantUrl(operatorRole, "DELETE"), managerToken, { data: { effect: "ALLOW" } });
+    expect(replaced.statusCode).toBe(403);
+    const many = await call("PUT", `/app/api/resources/${controls}/permissions/DELETE`, managerToken, { data: { effect: "ALLOW", roleIds: [operatorRole] } });
+    expect(many.statusCode).toBe(403);
+    expect((await context.permissions.get(operatorRole, controls, "DELETE"))?.effect).toBe("DENY");
+    await context.permissions.delete(operatorRole, controls, "DELETE");
+    // The grant above, filtered on a field the parent reads, still stands.
+    expect((await database.query(`SELECT where_clause FROM totalbase.permissions WHERE role = $1 AND resource = $2 AND action = 'READ'`, [operatorRole, controls])).rows[0]).toEqual({ where_clause: { kind: { _eq: "night" } } });
     // The editor's choices: what the parent may do.
     const ceiling = (await call("GET", `/app/api/roles/${operatorRole}/ceiling`, managerToken)).json().data;
     expect(ceiling.find((c: { resource: { id: string } }) => c.resource.id === controls)?.actions).toEqual({ READ: { fields: ["id", "site", "kind"] } });

@@ -138,7 +138,20 @@ const webhook = ref({
   access: 'PUBLIC' as 'AUTHENTICATED' | 'PUBLIC',
   executeAs: null as string | null,
   /** Allowed addresses (Workflows.md §6.5): empty is anywhere. */
-  allowedIps: [] as string[]
+  allowedIps: [] as string[],
+  /** A PUBLIC webhook's shared secret (Workflows.md §6.5): a Workflows secret's key, empty for none. */
+  secret: '',
+  secretMode: 'TOKEN' as 'TOKEN' | 'HMAC_SHA256',
+  /** Empty: X-Webhook-Token / X-Webhook-Signature. */
+  secretHeader: ''
+})
+const { data: workflowSecretKeys } = useAsyncData('webhook-secrets', () => api.get<{ key: string }[]>('/secrets', { scope: 'WORKFLOWS' }).then(r => r.data.map(s => s.key)), { default: () => [] })
+// `''` can't be a select item's value: None is a sentinel, mapped back to no secret.
+const NO_SECRET = '__none__'
+const secretItems = computed(() => [{ label: t('common.none'), value: NO_SECRET }, ...(workflowSecretKeys.value ?? []).map(key => ({ label: key, value: key }))])
+const webhookSecret = computed({
+  get: () => webhook.value.secret || NO_SECRET,
+  set: (value: string) => { webhook.value.secret = value === NO_SECRET ? '' : value }
 })
 
 // Seeds every field this component controls directly. A saved
@@ -177,7 +190,10 @@ function parseInitial(config: Record<string, unknown> | undefined) {
       timeoutAction: (config.timeout_action as 'CONTINUE' | 'CANCEL' | undefined) ?? 'CONTINUE',
       access: (config.access as 'AUTHENTICATED' | 'PUBLIC' | undefined) ?? 'PUBLIC',
       executeAs: (config.execute_as as string | null | undefined) ?? null,
-      allowedIps: Array.isArray(config.allowed_ips) ? [...config.allowed_ips as string[]] : []
+      allowedIps: Array.isArray(config.allowed_ips) ? [...config.allowed_ips as string[]] : [],
+      secret: (config.secret as string | undefined) ?? '',
+      secretMode: (config.secret_mode as 'TOKEN' | 'HMAC_SHA256' | undefined) ?? 'TOKEN',
+      secretHeader: (config.secret_header as string | undefined) ?? ''
     }
   }
 }
@@ -226,7 +242,10 @@ function buildConfiguration(): Record<string, unknown> {
       ...(webhook.value.responseMode === 'SYNC' ? { wait_seconds: webhook.value.waitSeconds, timeout_action: webhook.value.timeoutAction } : {}),
       access: webhook.value.access,
       execute_as: webhook.value.executeAs,
-      ...(webhook.value.allowedIps.length > 0 ? { allowed_ips: webhook.value.allowedIps } : {})
+      ...(webhook.value.allowedIps.length > 0 ? { allowed_ips: webhook.value.allowedIps } : {}),
+      ...(webhook.value.access === 'PUBLIC' && webhook.value.secret
+        ? { secret: webhook.value.secret, secret_mode: webhook.value.secretMode, ...(webhook.value.secretHeader.trim() ? { secret_header: webhook.value.secretHeader.trim() } : {}) }
+        : {})
     }
   }
   if (kind.value === 'MANUAL') {
@@ -553,6 +572,43 @@ defineExpose({ buildConfiguration, valid })
             ]"
           />
         </UFormField>
+
+        <template v-if="webhook.access === 'PUBLIC'">
+          <UFormField
+            :label="t('workflows.triggerFields.secret')"
+            :description="t('workflows.triggerFields.secretDescription')"
+          >
+            <USelect
+              v-model="webhookSecret"
+              :items="secretItems"
+              class="w-full font-mono"
+            />
+          </UFormField>
+          <template v-if="webhook.secret">
+            <UFormField
+              :label="t('workflows.triggerFields.secretMode')"
+              :description="webhook.secretMode === 'TOKEN' ? t('workflows.triggerFields.secretModeToken') : t('workflows.triggerFields.secretModeHmac')"
+            >
+              <URadioGroup
+                v-model="webhook.secretMode"
+                orientation="horizontal"
+                :items="[
+                  { label: t('workflows.triggerFields.secretToken'), value: 'TOKEN' },
+                  { label: t('workflows.triggerFields.secretHmac'), value: 'HMAC_SHA256' }
+                ]"
+              />
+            </UFormField>
+            <UFormField
+              :label="t('workflows.triggerFields.secretHeader')"
+              :description="t('workflows.triggerFields.secretHeaderDescription', { header: webhook.secretMode === 'TOKEN' ? 'X-Webhook-Token' : 'X-Webhook-Signature' })"
+            >
+              <UInput
+                v-model="webhook.secretHeader"
+                class="w-full font-mono"
+              />
+            </UFormField>
+          </template>
+        </template>
 
         <UFormField
           :label="t('workflows.triggerFields.allowedIps')"

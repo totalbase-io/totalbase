@@ -26,9 +26,10 @@ function assertKnownGroup(group: string): void {
 /**
  * Settings a personal access token may not change, only a signed-in
  * administrator: the ones that decide what a token itself may do - an
- * agent must not grant itself raw SQL, nor widen its own MCP policy.
+ * agent must not grant itself raw SQL, nor widen its own MCP policy, nor
+ * lift the role its widget SQL runs as (Dashboards.md §2.10).
  */
-const SESSION_ONLY_SETTINGS = new Set<string>(["sql_console.token_access"]);
+const SESSION_ONLY_SETTINGS = new Set<string>(["sql_console.token_access", "dashboards.query_role"]);
 /** Whole groups a token may not change: Settings > MCP decides what an agent - a token - may do. */
 const SESSION_ONLY_GROUPS = ["mcp."];
 
@@ -133,7 +134,7 @@ export function registerAdminSettingsRoutes(app: FastifyInstance, context: AppCo
         fields: keys.map(key => ({
           key,
           ...(SETTINGS_METADATA[key] ?? { label: key.slice(group.length + 1), description: "" }),
-          default: SETTINGS_DEFAULTS[key],
+          default: context.settings.defaultOf(key),
           ...(typeof SETTINGS_DEFAULTS[key] === "number" ? settingBounds(key) : {}),
           ...(key in liveValues ? { liveValue: liveValues[key as keyof typeof liveValues]!() } : {}),
         })),

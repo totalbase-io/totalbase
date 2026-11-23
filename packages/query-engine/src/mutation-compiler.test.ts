@@ -2,7 +2,7 @@ import { Database, loadDatabaseConfigFromEnv } from "@totalbase/database";
 import type { PermissionDecision } from "@totalbase/permissions";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FilterNode } from "./ast.js";
-import { compileDelete, compileInsert, compileInsertMany, compileUpdate, type ConflictUpdateAuthorization, type MutationCompileContext } from "./mutation-compiler.js";
+import { compileDelete, compileInsert, compileInsertMany, compileRowExists, compileUpdate, type ConflictUpdateAuthorization, type MutationCompileContext } from "./mutation-compiler.js";
 import { SchemaContext, type ResolvedResource } from "./schema-context.js";
 
 function allowAll(): PermissionDecision {
@@ -54,6 +54,7 @@ describe("mutation-compiler (integration)", () => {
     return {
       root,
       fieldDecision: allowAll,
+      whereFieldDecision: allowAll,
       rowFilter: undefined,
       payloadChecks: undefined,
       resolveUserVariable: () => {
@@ -538,6 +539,32 @@ describe("mutation-compiler (integration)", () => {
         `SELECT sku FROM public.mc_test_products ORDER BY sku`,
       );
       expect(remaining.map((r) => r.sku)).toEqual(["D2"]);
+    });
+  });
+
+  // Security regression (Security.md §6.4): a write's own where names only what the caller may read - which rows a
+  // PATCH or DELETE touched would otherwise tell a hidden column's values, a password hash's included.
+  describe("a write's request where", () => {
+    const onPrice: FilterNode = { type: "comparison", path: ["price"], operator: "_gt", value: "1" };
+    const priceHidden = (field: string): PermissionDecision => (field === "price" ? "DENY" : "ALLOW");
+    const refused = expect.objectContaining({ code: "FIELD_PERMISSION_DENIED" });
+
+    it("refuses a field the caller can't read, in an UPDATE, a DELETE and the stale-row probe", async () => {
+      await expect(compileUpdate(context({ whereFieldDecision: priceHidden }), { name: "x" }, onPrice)).rejects.toThrow(refused);
+      await expect(compileDelete(context({ whereFieldDecision: priceHidden }), onPrice)).rejects.toThrow(refused);
+      await expect(compileRowExists(context({ whereFieldDecision: priceHidden }), onPrice)).rejects.toThrow(refused);
+      // An undecided field is not readable either.
+      await expect(compileDelete(context({ whereFieldDecision: () => "UNDEFINED" }), onPrice)).rejects.toThrow(refused);
+    });
+
+    it("refuses every field when no decision is given - fail closed", async () => {
+      const { whereFieldDecision: _none, ...undecided } = context();
+      await expect(compileDelete(undecided, onPrice)).rejects.toThrow(refused);
+    });
+
+    it("leaves the grant's own row filter to its rules: it may name a field the caller can't read", async () => {
+      const compiled = await compileDelete(context({ whereFieldDecision: priceHidden, rowFilter: onPrice }), undefined);
+      expect(compiled.sql).toContain(`"price"`);
     });
   });
 });

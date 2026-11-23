@@ -123,7 +123,7 @@ describe("dashboard variables (D22, integration)", () => {
     expect((await dashboards.get(dashboardId)).variables[1]!.dependsOn).toEqual(["country"]);
   });
 
-  it("reuses a published widget's result - per values, zone and (when it reads them) user; Refresh runs it again (D24)", async () => {
+  it("reuses a published widget's result - per values, zone and viewer; Refresh runs it again (D24)", async () => {
     await dashboards.update(dashboardId, { variables: [{ name: "n", label: "N", type: "NUMBER" }] });
     const plain = await dashboards.addWidget(dashboardId, { type: "KPI", gridX: 0, gridY: 0, gridW: 3, gridH: 2, query: "SELECT extract(epoch FROM clock_timestamp()) AS t, $VAR.n AS n", config: { roles: { value: "t" } } });
     const personal = await dashboards.addWidget(dashboardId, { type: "KPI", gridX: 3, gridY: 0, gridW: 3, gridH: 2, query: "SELECT extract(epoch FROM clock_timestamp()) AS t, $USER.id AS u", config: { roles: { value: "t" } } });
@@ -134,7 +134,9 @@ describe("dashboard variables (D22, integration)", () => {
     const first = await run(plain.id, { userId: null }, { n: 1 });
     expect(first.cached).toBe(false);
     expect(first.durationMs).toBeGreaterThanOrEqual(0);
-    expect(await run(plain.id, { userId }, { n: 1 })).toMatchObject({ cached: true, rows: first.rows });
+    expect(await run(plain.id, { userId: null }, { n: 1 })).toMatchObject({ cached: true, rows: first.rows });
+    // Another viewer never gets it, even from a query that doesn't name them (below).
+    expect((await run(plain.id, { userId }, { n: 1 })).cached).toBe(false);
     expect((await run(plain.id, { userId: null }, { n: 2 })).cached).toBe(false);
     expect((await run(plain.id, { userId: null, timezone: "Asia/Tokyo" }, { n: 1 })).cached).toBe(false);
     const refreshed = await run(plain.id, { userId: null }, { n: 1 }, { fresh: true });
@@ -145,5 +147,19 @@ describe("dashboard variables (D22, integration)", () => {
     expect((await run(personal.id, { userId })).cached).toBe(true);
     const other = (await database.query<{ id: string }>(`SELECT id FROM totalbase.users WHERE id <> $1 LIMIT 1`, [userId])).rows[0];
     if (other) expect((await run(personal.id, { userId: other.id })).rows[0]!.u).not.toBe(mine.rows[0]!.u);
+  });
+
+  // Security regression (Dashboards.md §2.3): the key carried the viewer only when the query named `$USER.*` or read
+  // a table under Row Level Security - a query reading its viewer some other way (the actor setting, a view or a
+  // function keyed on it) was cached once and served to every viewer, an embed's visitors included.
+  it("never serves one viewer's cached result to another, whatever the query reads them by", async () => {
+    const actor = await dashboards.addWidget(dashboardId, { type: "KPI", gridX: 6, gridY: 0, gridW: 3, gridH: 2, query: "SELECT 1 AS n, current_setting('totalbase.actor_user_id', true) AS who", config: { roles: { value: "n" } } });
+    await dashboards.publish(dashboardId, null);
+    const run = (viewer: string | null) => dashboards.executePublishedWidget(dashboardId, actor.id, { ...LIMITS, cacheSeconds: 60 }, { userId: viewer }, {});
+    const other = (await database.query<{ id: string }>(`SELECT id FROM totalbase.users WHERE id <> $1 LIMIT 1`, [userId])).rows[0]!.id;
+    expect((await run(userId)).rows[0]!.who).toBe(userId);
+    expect((await run(other)).rows[0]!.who).toBe(other);
+    expect(await run(userId)).toMatchObject({ cached: true, rows: [{ who: userId }] });
+    expect((await run(null)).rows[0]!.who || null).toBeNull();
   });
 });

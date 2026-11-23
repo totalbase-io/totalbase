@@ -156,6 +156,9 @@
       "actOnBehalfHelp": "A program with this role names the user it acts for (X-TotalBase-On-Behalf-Of) - one it can read - and the audit log records both. It lends no permission: the request is the program's.",
       "reviewRequired": "Review its access periodically",
       "reviewRequiredHelp": "Its Access reviews tab reminds when a review is due, as for Administrators.",
+      "mfaRequired": "Requires MFA",
+      "mfaRequiredHelp": "Whether its members must sign in with a code from an authenticator app. Set for every role in",
+      "mfaSettings": "Settings › Access › MFA",
       "relations": "Relations with other roles",
       "relationsHelp": "Where it sits among the roles, what its members may do below it, who assigns it and what it can't be held with."
     },
@@ -179,6 +182,7 @@
       "invalidJson": "Not valid JSON.",
       "invalidJsonRule": "Not valid JSON: {rule}",
       "saved": "Permission saved",
+      "savedWithAdvice": "Permission saved - review this",
       "saveError": "Could not save permission",
       "cleared": "Grant cleared",
       "clearError": "Could not clear grant",
@@ -510,7 +514,8 @@
         "failed": "Failed sign-ins",
         "lockedUntil": "Locked until {date} - unlock from the ⋯ menu",
         "failedCount": "{n} since the last successful sign-in",
-        "created": "Created"
+        "created": "Created",
+        "held": "Addresses locked out after failed sign-ins"
       },
       "danger": {
         "title": "Danger zone",
@@ -521,7 +526,7 @@
         "deleteTitle": "Delete user",
         "deleteHelp": "Permanently deletes the account with its sessions, API tokens, role assignments and avatar. Audit log entries stay. Can't be undone.",
         "removeTitle": "Remove user",
-        "removeHelp": "For someone who is no longer part of the organization: keeps the account for the audit log and takes away every way in - password, sessions, API tokens, two-factor authentication and roles. Comes back only by invitation.",
+        "removeHelp": "For someone who is no longer part of the organization: keeps the account for the audit log and takes away every way in - password, sessions, API tokens, MFA and roles. Comes back only by invitation.",
         "removedTitle": "This user was removed",
         "removedHelp": "The account is kept for the audit log and nothing of theirs works. To bring them back, send an invitation from the menu above and give them their roles again."
       },
@@ -549,20 +554,21 @@
         "notSet": "The user was created, but not its additional data"
       },
       "mfa": {
-        "label": "Two-factor authentication",
+        "label": "MFA",
         "on": "On",
         "off": "Off",
-        "reset": "Reset two-factor authentication",
-        "resetTitle": "Reset two-factor authentication",
-        "resetDescription": "{name}'s authenticator app and recovery codes are removed - for a lost phone. Their sessions stay; they set it up again (at their next sign-in, when the instance requires it).",
+        "required": "Required",
+        "reset": "Reset MFA",
+        "resetTitle": "Reset MFA",
+        "resetDescription": "{name}'s authenticator app and recovery codes are removed - for a lost phone. Their sessions stay; they set it up again (at their next sign-in, when their account requires it).",
         "resetButton": "Reset",
-        "resetDone": "Two-factor authentication reset",
-        "resetError": "Could not reset two-factor authentication."
+        "resetDone": "MFA reset",
+        "resetError": "Could not reset MFA."
       },
       "removed": "User removed",
       "removeError": "Could not remove user",
       "removeTitle": "Remove this user?",
-      "removeDescription": "The account stays, so the audit log goes on naming them, but nothing of theirs works any more: their password, sessions, API tokens, two-factor authentication, sign-in providers, pending links and roles are gone. Only a new invitation brings them back.",
+      "removeDescription": "The account stays, so the audit log goes on naming them, but nothing of theirs works any more: their password, sessions, API tokens, MFA, sign-in providers, pending links and roles are gone. Only a new invitation brings them back.",
       "removeConfirm": "Remove"
     },
     "userCreate": {

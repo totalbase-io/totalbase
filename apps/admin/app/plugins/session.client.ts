@@ -26,6 +26,12 @@ export default defineNuxtPlugin({
           session.admin.value = data
           return
         } catch (error) {
+          // A lockdown (Security.md §2.21) is no reason to try again, nor a sign-out: the session stays, and its
+          // user waits on /lockdown (middleware/auth.global.ts).
+          if ((error as { code?: string }).code === 'LOCKDOWN' || useLockedOut().value) {
+            useLockedOut().value = true
+            return
+          }
           if (isSignedOut(error)) {
             session.clear()
             rememberSignedIn(false)

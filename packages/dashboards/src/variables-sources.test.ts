@@ -43,6 +43,7 @@ describe("dashboard variables (D22, integration)", () => {
 
   afterAll(async () => {
     await database.query(`DELETE FROM totalbase.dashboards WHERE id = $1`, [dashboardId]);
+    await database.query(`DELETE FROM totalbase.users WHERE email = 'dashboards-d22-other@example.com'`);
     await database.query(`DELETE FROM totalbase.resources WHERE id = ANY($1::uuid[])`, [[countriesId, citiesId]]);
     await database.query(`DROP TABLE IF EXISTS public.${CITIES}, public.${COUNTRIES} CASCADE`);
     await database.close();
@@ -156,7 +157,8 @@ describe("dashboard variables (D22, integration)", () => {
     const actor = await dashboards.addWidget(dashboardId, { type: "KPI", gridX: 6, gridY: 0, gridW: 3, gridH: 2, query: "SELECT 1 AS n, current_setting('totalbase.actor_user_id', true) AS who", config: { roles: { value: "n" } } });
     await dashboards.publish(dashboardId, null);
     const run = (viewer: string | null) => dashboards.executePublishedWidget(dashboardId, actor.id, { ...LIMITS, cacheSeconds: 60 }, { userId: viewer }, {});
-    const other = (await database.query<{ id: string }>(`SELECT id FROM totalbase.users WHERE id <> $1 LIMIT 1`, [userId])).rows[0]!.id;
+    // Its own second viewer: a fresh database holds only the administrator.
+    const other = (await database.query<{ id: string }>(`INSERT INTO totalbase.users (email) VALUES ('dashboards-d22-other@example.com') RETURNING id`)).rows[0]!.id;
     expect((await run(userId)).rows[0]!.who).toBe(userId);
     expect((await run(other)).rows[0]!.who).toBe(other);
     expect(await run(userId)).toMatchObject({ cached: true, rows: [{ who: userId }] });
